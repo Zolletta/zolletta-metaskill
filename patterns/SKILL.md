@@ -1,5 +1,7 @@
 ---
-name: zolletta-review
+name: zolletta-patterns
+version: 1.0.0
+license: MIT + Commons Clause
 description: >
   Language-agnostic design pattern analysis with automated class metrics scanning. Detects God classes, SOLID violations, tight coupling, and composition-vs-inheritance issues in Python (via AST scripts) and other languages (via manual principle application). Use when refactoring a God class, evaluating structural quality, or planning a modular architecture. Succeeds and extends python-design-patterns (MIT, wshobson/agents).
 allowed-tools:
@@ -32,7 +34,7 @@ The principles are language-agnostic (KISS, SOLID, Separation of Concerns, Compo
 - Deciding whether to add a new abstraction or live with duplication
 - Choosing between inheritance and composition for a new class hierarchy
 - When a codebase is becoming hard to test because of entangled I/O and business logic
-- As part of a `/zolletta-python-review` run (design-patterns subagent)
+- As part of a `/zolletta review` run (patterns subagent)
 
 ## Reference Files
 
@@ -48,12 +50,12 @@ This skill is organized into a lean entry point (this file) plus five reference 
 
 ## Output
 
-When this skill runs a review, it writes its findings to a markdown file with formatted tables:
+When this skill runs a review, it writes its findings to a markdown file using the [report template](assets/report_template.md):
 
 - **Path**: `.scratches/zolletta-review/zolletta-review-YYYY-MM-DD-HH-MM.md` (timestamp = run start time)
-- **Compound skills** (e.g. `zolletta-python-review`) may override the folder and filename — follow their instructions instead
+- **Compound skills** (e.g. `zolletta-review`) may override the folder and filename — follow their instructions instead
 - **`.scratches/` setup**: create the directory if it does not exist; add `.scratches/` to `.gitignore` (create `.gitignore` if not present, do not modify an existing one beyond appending the entry)
-- **Format**: each finding is a row in a table with columns for severity, file, class/symbol, issue, and suggested fix
+- **Format**: follow the [report template](assets/report_template.md) — grade at the top, scanning script results, findings grouped by severity with file/class/issue/principle/fix columns
 
 ## Best Practices Summary
 

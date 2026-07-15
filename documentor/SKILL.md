@@ -1,17 +1,9 @@
 ---
-name: documentor
+name: zolletta-documentor
+version: 1.0.0
 description: >
   Documentation review combining Diátaxis compliance checks with automated drift detection. Reviews .backstage/ docs for structure, accuracy, consistency, and freshness against the codebase. Use when reviewing docs, preparing releases, running CI doc gates, or auditing doc quality.
 license: MIT + Commons Clause
-metadata:
-  version: 3.0.0
-  author: borghei
-  category: engineering
-  domain: documentation
-  updated: 2026-07-15
-  tags: [documentation, diataxis, staleness, api-docs, drift-analysis, compliance]
-  python-tools: drift_analyzer.py, doc_staleness_scorer.py, api_doc_validator.py, link_checker.py
-  tech-stack: python, git, markdown, documentation
 ---
 
 # Zolletta Documentor
@@ -110,7 +102,7 @@ When checking accuracy, the agent MUST:
    - **If GitNexus is present** (and tokensave is not, or for execution-flow questions): use `gitnexus context` to get callers/callees/signature, `gitnexus query` to find execution flows.
    - **If neither is present**: use `grep` to find the symbol, then `read` only the relevant file section. Do not read entire files when a targeted grep + partial read suffices.
 2. **Understand the distinction between dev-only and user-facing commands.**
-   A command mentioned in AGENTS.md as "dev-only" refers to the specific wrapper or invocation described — not to every occurrence of the same binary name. For example, if AGENTS.md says `./cite` (a bash wrapper) is dev-only but the Docker image internally runs `uv run pepita-cite`, then `uv run pepita-cite` in a tutorial is NOT a dev-only command — it's what the Docker image runs for end users. Always verify the full context before flagging.
+   A command mentioned in AGENTS.md as "dev-only" refers to the specific wrapper or invocation described — not to every occurrence of the same binary name. For example, if AGENTS.md says `./mytool` (a bash wrapper) is dev-only but the Docker image internally runs `uv run mytool`, then `uv run mytool` in a tutorial is NOT a dev-only command — it's what the Docker image runs for end users. Always verify the full context before flagging.
 3. **Distinguish illustrative from factual content.** Directory trees, schema
    examples, and protocol definitions may be illustrative. Check whether the document presents them as current state or as hypothetical examples.
 4. **Verify previous issues are still present** before carrying them forward.
@@ -124,9 +116,9 @@ When checking accuracy, the agent MUST:
 
 - **Full drift analysis** — map docs to code, compare git histories, detect renamed files, version drift, and structural gaps; classify each issue by category, severity, and fix type. Per-file factual drift (only flags when specific referenced source files changed). Referential drift suppressed by default (use `--include-referential`); `link_checker.py` covers broken links more reliably.
 - **API doc validation** — AST-based extraction of Python signatures/classes compared against markdown API docs. Reports real drift (phantom docs, parameter mismatches, deprecations) as issues. Undocumented items are separated as prioritized suggestions (high/medium/low/skip) using heuristics — use `--suggest-coverage` to see them. Undocumented items do not affect the exit code or issue count.
-- **Staleness scoring** — weighted 0-100 freshness score across five dimensions with CI threshold gates and README-focused mode. Respects `.gitignore` (v2.1.1+).
+- **Staleness scoring** — weighted 0-100 freshness score across five dimensions with CI threshold gates and README-focused mode. Respects `.gitignore`.
 - **Link integrity audit** — validate local files, anchors, cross-document anchors, images, case-sensitivity, and duplicate anchors; optional external URL checks.
-- **Drift classification** — structural, factual, referential, temporal categories (semantic removed in v2.2.0 as unreliable), each tagged `[AUTO]`/`[SEMI]`/`[MANUAL]` for fix routing.
+- **Drift classification** — structural, factual, referential, temporal categories (semantic removed as unreliable), each tagged `[AUTO]`/`[SEMI]`/`[MANUAL]` for fix routing.
 - **CI/CD integration** — non-zero exit codes, JSON output, GitHub Actions and pre-commit recipes for ongoing monitoring.
 
 ### Tools

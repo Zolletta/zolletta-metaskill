@@ -347,7 +347,7 @@ def validate_external_url(url: str) -> Tuple[bool, Optional[str]]:
     """Validate an external URL with a HEAD request."""
     try:
         req = urllib.request.Request(url, method="HEAD")
-        req.add_header("User-Agent", "zolletta-doc-drift-detector/2.2")
+        req.add_header("User-Agent", "zolletta-documentor/1.0")
         with urllib.request.urlopen(req, timeout=10) as resp:
             if resp.status < 400:
                 return True, None
@@ -357,7 +357,7 @@ def validate_external_url(url: str) -> Tuple[bool, Optional[str]]:
         if e.code == 405:
             try:
                 req = urllib.request.Request(url, method="GET")
-                req.add_header("User-Agent", "zolletta-doc-drift-detector/2.2")
+                req.add_header("User-Agent", "zolletta-documentor/1.0")
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     return resp.status < 400, None if resp.status < 400 else f"HTTP {resp.status}"
             except Exception:

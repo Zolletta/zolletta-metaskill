@@ -86,8 +86,8 @@ src/.../cache.py  ->  tests/.../test_cache*.py
 One source class can have many test files. The check uses prefix matching, not exact filename matching. For example, `cache.py` (class `Cache`) matches any of: `test_cache.py`, `test_cache_operations.py`, `test_cache_getters.py`, `test_cache_init.py`, etc.
 
 ```text
-src/pepita/ci/testerengine/engine/config/config_factory.py
--> tests/pepita/ci/testerengine/engine/config/test_config_factory*.py
+src/myproject/engine/config/config_factory.py
+-> tests/myproject/engine/config/test_config_factory*.py
 ```
 
 **Why this matters**:

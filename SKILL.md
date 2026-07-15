@@ -1,14 +1,27 @@
 ---
 name: zolletta
+version: 1.0.0
+license: MIT + Commons Clause
 description: 'Zolletta — meta-skill and registry for the zolletta-* review family. Lists available skills, shared resources, and orchestration rules.'
 argument-hint: "[subcommand]"
 ---
 
 # Zolletta — Skill Registry
 
-A family of code review skills for Python projects. Invoke with `/zolletta <subcommand>` to run a specific review, or `/zolletta` with no argument to see available subcommands.
+A family of generic code review skills with specializations for
+
+- Python
+- Others (Work in progress)
+
+Invoke with `/zolletta <subcommand>` to run a specific review, or `/zolletta` with no argument to see available subcommands.
 
 All paths are relative to where this SKILL.md is found.
+
+## Skills leveraged if available
+
+- [tokensave](https://github.com/aovestdipaperino/tokensave) — semantic code-graph MCP tools for exploration and impact analysis
+- [gitnexus](https://github.com/abhigyanpatwari/GitNexus) — code intelligence MCP tools for impact analysis and execution-flow tracing
+- [graphify](https://github.com/safishamsi/graphify) — knowledge-graph MCP tools for architecture and file-relationship queries
 
 ## Subcommands
 
@@ -16,8 +29,8 @@ All paths are relative to where this SKILL.md is found.
 |------------|------|-------|
 | `documentor` | `documentor/SKILL.md` | Diátaxis compliance + drift detection for `.backstage/` |
 | `patterns` | `patterns/SKILL.md` | God classes, SOLID, coupling, composition vs inheritance for `src/` |
-| `external-review` | `external-review/SKILL.md` | Code review following Pepita project conventions |
-| `review` | `review/SKILL.md` | Orchestrator — runs all skills in parallel batches, aggregates reports |
+| `external-review` | `external-review/SKILL.md` | External-LLM code review on modified files only (default model: `swe`, override via front-matter or `ZOLLETTA_EXTERNAL_REVIEW_MODEL`) |
+| `review` | `review/SKILL.md` | Orchestrator — detects language, runs general + language-specific skills in parallel batches, aggregates reports |
 
 ## Shared resources
 
