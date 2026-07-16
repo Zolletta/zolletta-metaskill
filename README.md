@@ -1,21 +1,21 @@
-# Zolletta meta-skill
+# Zolletta-metaskill
 
 A family of generic code review skills with specializations for Python (other languages in progress).
 
-Zolletta is a **meta-skill**: it dispatches to subcommands that each perform a specific review task. It leverages [tokensave](https://github.com/aovestdipaperino/tokensave) when available for semantic code-graph queries, and falls back to grep + targeted reads otherwise.
+Zolletta-metaskill is a **meta-skill**: it dispatches to subcommands that each perform a specific review task. It leverages [tokensave](https://github.com/aovestdipaperino/tokensave) when available for semantic code-graph queries, and falls back to grep + targeted reads otherwise.
 
 ## Quick start
 
 ```text
-/zolletta                  # list available subcommands
-/zolletta setup            # initialize .zolletta-metaskill/settings.json
-/zolletta review           # full project review (orchestrator)
-/zolletta patterns         # design pattern analysis
-/zolletta documentor       # documentation review (Diátaxis + drift detection)
-/zolletta external-review  # external-LLM review of modified files
+/zolletta-metaskill                  # list available subcommands
+/zolletta-metaskill setup            # initialize .zolletta-metaskill/settings.json
+/zolletta-metaskill review           # full project review (orchestrator)
+/zolletta-metaskill patterns         # design pattern analysis
+/zolletta-metaskill documentor       # documentation review (Diátaxis + drift detection)
+/zolletta-metaskill external-review  # external-LLM review of modified files
 ```
 
-The first time you run any subcommand in a project, the **setup guard** automatically runs `/zolletta setup` if `.zolletta-metaskill/settings.json` does not exist.
+The first time you run any subcommand in a project, the **setup guard** automatically runs `/zolletta-metaskill setup` if `.zolletta-metaskill/settings.json` does not exist.
 
 ## Subcommands
 
@@ -31,11 +31,11 @@ The first time you run any subcommand in a project, the **setup guard** automati
 
 ## Tools leveraged if available
 
-| Tool      | Homepage                                      | Why zolletta benefits                                                                                                                                                                                                                          |
+| Tool      | Homepage                                      | Why zolletta-metaskill benefits                                                                                                                                                                                                                |
 | --------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | tokensave | https://github.com/aovestdipaperino/tokensave | Semantic code-graph index (symbols, call/callee, impact radius). Used by patterns, documentor, review, external-review to understand code without reading full files, assess blast radius, verify documented symbols, and find affected tests. |
 
-When a tool is not installed, zolletta prints a message explaining why it would benefit from the tool and links to the homepage. It does **not** install anything.
+When a tool is not installed, zolletta-metaskill prints a message explaining why it would benefit from the tool and links to the homepage. It does **not** install anything.
 
 ## Shared resources
 
@@ -46,7 +46,7 @@ When a tool is not installed, zolletta prints a message explaining why it would 
 
 ## Setup and settings.json
 
-`/zolletta setup` creates `.zolletta-metaskill/settings.json` in the project root and adds `.zolletta-metaskill/` to `.gitignore`. The file is read by all other subcommands.
+`/zolletta-metaskill setup` creates `.zolletta-metaskill/settings.json` in the project root and adds `.zolletta-metaskill/` to `.gitignore`. The file is read by all other subcommands.
 
 ### Schema
 
@@ -88,7 +88,7 @@ When a tool is not installed, zolletta prints a message explaining why it would 
 | `python.mypy`                       | `true` if mypy is available                                         |
 | `python_code_style_available`       | `true` for Python projects (skill is bundled)                       |
 | `python_testing_patterns_available` | `true` for Python projects (skill is bundled)                       |
-| `external_review_model`             | Default model for `external-review` (overridable by env var)        |
+| `external_review_model`             | Default model for `external-review` (overridable by front-matter)   |
 | `reports_dir`                       | Directory where review reports are saved                            |
 
 ### Tool-failure handler
@@ -108,6 +108,16 @@ All reports are saved to:
 ```
 
 The timestamp format (`YYYY-MM-DD-HH-MM`) is lexicographically sortable, so finding the most recent review is a simple directory listing.
+
+## False-positive prevention
+
+The patterns skill includes three mechanisms to prevent verdict oscillation between reviews:
+
+1. **Mandatory judgment step for God class detection** — `scan_class_metrics.py` reports class size as a triage signal, never a verdict. Before reporting any class as a God class, the reviewer must apply the "reason to change" test: list every change that could require editing the class, group by domain, and only report if there are reasons from **different domains**. Classes that are parsers, strategies, orchestrators, or factories serving a single domain are explicitly suppressed. See `patterns/SKILL.md` → "Mandatory Procedure".
+
+2. **Coverage cross-check for missing tests** — `scan_tests.py` reports structurally missing test files. Before reporting any as a finding, the reviewer must run `pytest --cov` and check the file's coverage. Files with >50% coverage are downgraded to informational — they are tested indirectly. Only files with <50% coverage AND no indirect references are reported as findings.
+
+3. **Semantic composition-root detection** — `scan_dependency_inversion.py` excludes classes that create DI containers (`make_container()`, `Container()`, etc.) as composition roots, regardless of filename. This prevents false positives on classes like `CITesterEngine` that wire the DI container but don't match entry-point filename patterns.
 
 ## Rules
 

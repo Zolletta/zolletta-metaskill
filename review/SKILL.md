@@ -1,5 +1,5 @@
 ---
-name: zolletta-review
+name: zolletta-metaskill-review
 version: 1.0.0
 license: MIT + Commons Clause
 description: >
@@ -18,7 +18,7 @@ allowed-tools:
   - ask_user_question
 ---
 
-# Zolletta Review — Orchestrator
+# Zolletta-metaskill Review — Orchestrator
 
 You are an orchestrator that runs a full project review by invoking specialist skills in parallel batches, collecting each output, and producing an aggregated, prioritized TODO.
 
@@ -68,8 +68,8 @@ Launch subagents in **batches** using `run_subagent` with `is_background: true`.
 
 **General skills** (always run, regardless of language):
 
-- `/zolletta patterns` — design pattern analysis (language-agnostic principles + language-specific scripts when available)
-- `/zolletta documentor` — documentation review (Diátaxis compliance + drift detection)
+- `/zolletta-metaskill patterns` — design pattern analysis (language-agnostic principles + language-specific scripts when available)
+- `/zolletta-metaskill documentor` — documentation review (Diátaxis compliance + drift detection)
 
 **Language-specific skills** (run only when the project uses the matching language **and** the skill is available):
 
@@ -89,10 +89,10 @@ Launch subagents in **batches** using `run_subagent` with `is_background: true`.
 1. `python-code-style` (skip if `python_code_style_available: false`)
 2. `python-testing-patterns` (skip if `python_testing_patterns_available: false`)
 
-**Batch 2** (2 parallel background subagents — zolletta subcommands, always):
+**Batch 2** (2 parallel background subagents — zolletta-metaskill subcommands, always):
 
-3. `/zolletta patterns`
-4. `/zolletta documentor`
+3. `/zolletta-metaskill patterns`
+4. `/zolletta-metaskill documentor`
 
 If both Python skills are unavailable, skip Batch 1 entirely and only run Batch 2. For non-Python projects, all skills are general — run them in a single batch of 2.
 
@@ -108,10 +108,10 @@ If both Python skills are unavailable, skip Batch 1 entirely and only run Batch 
 
 | Skill | Type | Scope |
 |-------|------|-------|
-| `python-code-style` | bundled skill (Python only) | Review **all Python source code** in `src/` (and any other source dirs) for style, linting, formatting, naming, docstring, and type annotation issues. **Follow `~/.agents/rules/python-code-style-rules.md`** for the exact uv/Docker workflow, ruff format/ty check order, and the explanation of the `mypy` ignore_missing_imports scope. |
-| `python-testing-patterns` | bundled skill (Python only) | Review **all test code** in `tests/` for testing best practices: test isolation, naming, mocking patterns, fixture design, AAA structure. **Coverage gap analysis**: run `pytest --cov` (mandatory) and flag only modules with coverage below 50% AND no direct test references AND all callers mocked. Do NOT duplicate the structural "missing test file" check from `scan_tests.py` — that is owned by `/zolletta patterns`. If `scan_tests.py` already flagged a file as structurally missing a test, reference that finding but focus on whether the code is actually covered via `pytest --cov`. |
-| `/zolletta patterns` | zolletta subcommand (always) | Review **all source code** in `src/` for design pattern issues: KISS violations, SRP violations, tight coupling, composition vs inheritance, God classes, premature abstraction, SOLID principle violations (OCP, LSP, ISP, DIP). Also check structural conventions: one class per file, and test directory structure mirroring source structure. **For Python projects**: run all eight scanning scripts (`scan_class_metrics.py`, `scan_test_god_classes.py`, `scan_one_class_per_file.py`, `scan_tests.py`, `scan_dependency_inversion.py`, `scan_interface_segregation.py`, `scan_open_closed.py`, and `scan_liskov_substitution.py` from the skill's `scripts/python/` directory) for automated triage, then apply the "reason to change" test to the top candidates. **Use the `scan_tests.py` markdown output directly in the report**: its five tables (misnamed tests, misplaced tests, orphaned tests, multi-class tests, missing tests) are **structural** findings — they check file naming and directory mirroring, not actual code coverage. Copy them into the report's findings section. **Do not flag coverage gaps** — that is owned by `python-testing-patterns` which runs `pytest --cov`. Use `test_splitter.py` if the human decides to split a test God class. **For other languages**: apply the same principles manually (no AST scripts available yet). **If `.tokensave/` exists, use the code graph tools** (tokensave_context/callees/callers or tokensave_impact) to understand class responsibilities and assess blast radius before proposing splits — see the skill's "Code Graph Tools" section for the decision tree. |
-| `/zolletta documentor` | zolletta subcommand (always) | Review **documentation in `.backstage/` only**: Diátaxis compliance (document type correctness, audience clarity, structure, accuracy, consistency) **and** drift detection (staleness, broken links, API doc validation, structural gaps) in a single pass. **Follow `documentor/references/operational-rules.md`** for false positive patterns, correct tool invocation (project root as repo path for staleness scorer), and the recommended workflow order. |
+| `python-code-style` | bundled skill (Python only) | Review **all Python source code** in `src/` (and any other source dirs) for style, linting, formatting, naming, docstring, and type annotation issues. **Follow `~/.agents/rules/python-code-style-rules.md`** for the uv/Docker workflow and environment setup, but run in **review mode (read-only)**: use `ruff check` (no `--fix`), `ruff format --check` (no formatting), `ty check` (no `--fix`), and `mypy` as-is. **Auto-fixable** issues (ruff fixable rules, ruff format reformatting, ty fixable diagnostics) are **informational only** — list them in a separate "Auto-fixable (informational)" section and do **not** count them toward the grade. Only **non-auto-fixable** issues are listed as findings and affect the score. |
+| `python-testing-patterns` | bundled skill (Python only) | Review **all test code** in `tests/` for testing best practices: test isolation, naming, mocking patterns, fixture design, AAA structure. **Coverage gap analysis**: run `pytest --cov` (mandatory) and flag only modules with coverage below 50% AND no direct test references AND all callers mocked. Do NOT duplicate the structural "missing test file" check from `scan_tests.py` — that is owned by `/zolletta-metaskill patterns`. If `scan_tests.py` already flagged a file as structurally missing a test, reference that finding but focus on whether the code is actually covered via `pytest --cov`. |
+| `/zolletta-metaskill patterns` | zolletta-metaskill subcommand (always) | Review **all source code** in `src/` for design pattern issues: KISS violations, SRP violations, tight coupling, composition vs inheritance, God classes, premature abstraction, SOLID principle violations (OCP, LSP, ISP, DIP). Also check structural conventions: one class per file, and test directory structure mirroring source structure. **For Python projects**: run all eight scanning scripts (`scan_class_metrics.py`, `scan_test_god_classes.py`, `scan_one_class_per_file.py`, `scan_tests.py`, `scan_dependency_inversion.py`, `scan_interface_segregation.py`, `scan_open_closed.py`, and `scan_liskov_substitution.py` from the skill's `scripts/python/` directory) for automated triage, then apply the "reason to change" test to the top candidates. **This is a mandatory step, not optional.** See `patterns/SKILL.md` → "Mandatory Procedure" for the full procedure. You MUST read `../reference/general-principles.md` (God class detection procedure + "What is NOT a God class") and `references/troubleshooting.md` before evaluating any class. **You must NOT report a class as a God class based on size alone** — size is a triage signal, never a verdict. Classes that are parsers, strategies, orchestrators, or factories serving a single domain must be suppressed. **Use the `scan_tests.py` markdown output directly in the report**: its five tables (misnamed tests, misplaced tests, orphaned tests, multi-class tests, missing tests) are **structural** findings — they check file naming and directory mirroring, not actual code coverage. Copy them into the report's findings section **except the "Missing tests" table**: before reporting any file from the "Missing tests" table as a finding, run `pytest --cov` and check the file's coverage. If coverage >50%, downgrade to informational. Only report as a finding if coverage <50% AND no indirect references. **Do not flag coverage gaps** — that is owned by `python-testing-patterns` which runs `pytest --cov`. **The DIP scanner excludes composition roots** (entry points by filename + classes that create DI containers via `make_container()`/`Container()` detected semantically). If the scanner still flags a class that is clearly a composition root, suppress it and note "composition root — not a DIP violation". Use `test_splitter.py` if the human decides to split a test God class. **For other languages**: apply the same principles manually (no AST scripts available yet). **If `.tokensave/` exists, use the code graph tools** (tokensave_context/callees/callers or tokensave_impact) to understand class responsibilities and assess blast radius before proposing splits — see the skill's "Code Graph Tools" section for the decision tree. |
+| `/zolletta-metaskill documentor` | zolletta-metaskill subcommand (always) | Review **documentation in `.backstage/` only**: Diátaxis compliance (document type correctness, audience clarity, structure, accuracy, consistency) **and** drift detection (staleness, broken links, API doc validation, structural gaps) in a single pass. **Follow `documentor/references/operational-rules.md`** for false positive patterns, correct tool invocation (project root as repo path for staleness scorer), and the recommended workflow order. |
 
 **Subagent task template** (adapt for each):
 
@@ -125,7 +125,7 @@ Then apply those guidelines to review the following scope:
 
 Project root: <current working directory>
 AGENTS.md: Read the project's AGENTS.md (and ~/.agents/AGENTS.md) for project-specific and global rules.
-For `python-code-style` reviews: also read `~/.agents/rules/python-code-style-rules.md` and apply the uv/Docker workflow, ruff format, ruff check --fix, ty check --fix, and mypy verification order described there.
+For `python-code-style` reviews: also read `~/.agents/rules/python-code-style-rules.md` for the uv/Docker workflow and environment setup, but run in **review mode (read-only)**: use `ruff check` (no `--fix`), `ruff format --check` (no formatting), `ty check` (no `--fix`), and `mypy` as-is. **Auto-fixable** issues (ruff fixable rules, ruff format reformatting, ty fixable diagnostics) are **informational only** — list them in a separate "Auto-fixable (informational)" section and do **not** count them toward the grade. Only **non-auto-fixable** issues are listed as findings and affect the score.
 
 Produce a structured markdown report with:
 - A summary section

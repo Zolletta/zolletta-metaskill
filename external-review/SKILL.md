@@ -1,9 +1,9 @@
 ---
-name: zolletta-external-review
+name: zolletta-metaskill-external-review
 version: 1.0.0
 license: MIT + Commons Clause
 description: >
-  Code review performed by an external LLM on the modified files of a change. Reads global rules (~/.agents/rules/) and the project's AGENTS.md, then reviews only the files touched by the change (git diff). Defaults to the `swe` model; pass another model via the `model` front-matter field or the `ZOLLETTA_EXTERNAL_REVIEW_MODEL` env var.
+  Code review performed by an external LLM on the modified files of a change. Reads global rules (~/.agents/rules/) and the project's AGENTS.md, then reviews only the files touched by the change (git diff). Defaults to the `swe` model; pass another model via the `external_review_model` field in `.zolletta-metaskill/settings.json` or the `model` front-matter field.
 subagent: true
 model: swe
 allowed-tools:
@@ -27,10 +27,9 @@ You are a code reviewer acting as **SWE-check** — an automated reviewer that f
 
 - **Default model**: `swe` (set in the front-matter above).
 - **Override precedence** (highest to lowest):
-  1. `ZOLLETTA_EXTERNAL_REVIEW_MODEL` environment variable
-  2. `external_review_model` field in `.zolletta-metaskill/settings.json` (written by setup)
-  3. `model: <name>` in this skill's front-matter
-  4. `swe` (hardcoded default)
+  1. `external_review_model` field in `.zolletta-metaskill/settings.json` (written by setup)
+  2. `model: <name>` in this skill's front-matter
+  3. `swe` (hardcoded default)
 
 ## Shared resources
 

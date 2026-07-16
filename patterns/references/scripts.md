@@ -87,6 +87,8 @@ python3 scripts/python/scan_tests.py \
 
 **Indirect test detection**: source files with no mirrored test file are always checked for indirect references. The script reads all test files once and checks if any class name from the source file appears in the test code. Files with indirect references are excluded from the "missing" table — they have no mirrored test file but their classes ARE exercised through other test files.
 
+**Coverage cross-check (mandatory)**: The "Missing tests" table is a structural signal only. Before reporting any file from this table as a finding in a review, you MUST run `pytest --cov` and check the file's coverage. If the file has >50% coverage, it is adequately tested via indirect tests — downgrade to informational. Only report as a finding if coverage <50% AND no indirect references. This prevents the whack-a-mole cycle where every review re-reports the same structurally-missing-but-adequately-covered files.
+
 ### scan_naming_conventions.py
 
 Checks two naming conventions in a single pass:
@@ -133,7 +135,7 @@ python3 scripts/python/scan_dependency_inversion.py <directory>
 | `--skip`         | off                                                    | Skip this check entirely                     |
 | `--strict`       | off                                                    | Exit with code 1 if violations are found     |
 
-**Exclusions**: entry points (composition roots), dataclasses/NamedTuples/TypedDicts/Enums, factory classes, and stdlib types are automatically excluded.
+**Exclusions**: entry points (composition roots by filename pattern), classes that create DI containers (`make_container()`, `Container()`, etc. — detected semantically as composition roots), dataclasses/NamedTuples/TypedDicts/Enums, factory classes, and stdlib types are automatically excluded.
 
 ### scan_interface_segregation.py (ISP)
 

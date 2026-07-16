@@ -23,7 +23,7 @@ The standard scanning workflow (see `patterns/references/scripts.md`) can be enh
 
 ## Subagents
 
-When running as part of `/zolletta review`, this skill is invoked by a subagent. When running standalone, you may spawn your own subagents for parallel work.
+When running as part of `/zolletta-metaskill review`, this skill is invoked by a subagent. When running standalone, you may spawn your own subagents for parallel work.
 
 ### When to use subagents
 

@@ -1,5 +1,5 @@
 ---
-name: zolletta-patterns
+name: zolletta-metaskill-patterns
 version: 1.0.0
 license: MIT + Commons Clause
 description: >
@@ -17,7 +17,7 @@ allowed-tools:
   - mcp_list_tools
 ---
 
-# Zolletta Design Patterns
+# Zolletta-metaskill Design Patterns
 
 Identify structural problems in object-oriented codebases using a two-phase approach:
 
@@ -34,29 +34,66 @@ The principles are language-agnostic (KISS, SOLID, Separation of Concerns, Compo
 - Deciding whether to add a new abstraction or live with duplication
 - Choosing between inheritance and composition for a new class hierarchy
 - When a codebase is becoming hard to test because of entangled I/O and business logic
-- As part of a `/zolletta review` run (patterns subagent)
+- As part of a `/zolletta-metaskill review` run (patterns subagent)
 
 ## Reference Files
 
-This skill is organized into a lean entry point (this file) plus five reference files. Read the relevant reference file when you need detailed guidance:
+This skill is organized into a lean entry point (this file) plus five reference files. Some are **mandatory reading** (marked with ★) — you must read them before starting any review. Others are optional and can be read on demand.
 
-| File | Content |
-| ---  | --- |
-| [general-principles.md](../reference/general-principles.md) | Language-agnostic principles: SOLID (SRP, OCP, LSP, ISP, DIP), KISS, Separation of Concerns, Composition over Inheritance, Rule of Three, function size, dependency injection, God class detection procedure, common anti-patterns, and manual checks for non-Python languages — **shared** |
-| [python-review.md](references/python-review.md) | Python-specific patterns: strategy pattern with autodiscovery, one-class-per-file convention, naming conventions, test structure mirroring, test God class splitting, Protocol vs ABC guidance |
-| [scripts.md](references/scripts.md) | Full reference for all 10 scripts: usage, options, examples, and the complete 14-step workflow |
-| [code-exploration.md](../reference/code-exploration.md) | Code graph tools (tokensave) decision tree, subagent guidance, and task templates — **shared** |
-| [tool-messages.md](../reference/tool-messages.md) | "not installed" messages for the tool-failure handler — **shared** |
-| [troubleshooting.md](references/troubleshooting.md) | Common questions and edge cases: God class false positives, DI parameter bloat, composition depth, rule of three exceptions, layering violations |
+| File | Mandatory | Content |
+| ---  | ---       | --- |
+| [general-principles.md](../reference/general-principles.md) | ★ | Language-agnostic principles: SOLID (SRP, OCP, LSP, ISP, DIP), KISS, Separation of Concerns, Composition over Inheritance, Rule of Three, function size, dependency injection, God class detection procedure, "What is NOT a God class" criteria, common anti-patterns, and manual checks for non-Python languages — **shared** |
+| [python-review.md](references/python-review.md) | ★ | Python-specific patterns: strategy pattern with autodiscovery, one-class-per-file convention, naming conventions, test structure mirroring, test God class splitting, Protocol vs ABC guidance |
+| [scripts.md](references/scripts.md) | ★ | Full reference for all 10 scripts: usage, options, examples, and the complete 14-step workflow |
+| [troubleshooting.md](references/troubleshooting.md) | ★ | Common questions and edge cases: God class false positives, DI parameter bloat, composition depth, rule of three exceptions, layering violations |
+| [code-exploration.md](../reference/code-exploration.md) | on demand | Code graph tools (tokensave) decision tree, subagent guidance, and task templates — **shared** |
+| [tool-messages.md](../reference/tool-messages.md) | on demand | "not installed" messages for the tool-failure handler — **shared** |
 
 **Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
+
+## Mandatory Procedure (Python)
+
+Before evaluating any findings, you MUST read the four mandatory reference files (★) listed above. The principles in these files prevent false positives. Skipping them produces verdict oscillation between reviews.
+
+### Mandatory judgment step for God class detection
+
+For every class in the `scan_class_metrics.py` top-15 output, you MUST apply the "reason to change" test before reporting it as a finding:
+
+1. List every change that could require editing the class.
+2. Group the changes by domain (HTTP/API, business logic, data access, configuration, presentation, I/O).
+3. If the list has items from **different domains**, report it as a God class.
+4. If all changes stem from the **same domain**, the class is cohesive. Explicitly state "cohesive — not a God class" in the report and do NOT report it as a finding.
+
+**Classes that must be suppressed** (from `general-principles.md` "What is NOT a God class"):
+
+- A large class whose methods all serve one domain (e.g., a parser with 14 handler methods)
+- A class with many static helpers that all operate on the same data structure
+- An orchestrator that delegates to injected dependencies (high attribute count is delegation, not mixed concerns)
+- A strategy class implementing a single protocol (all methods serve one strategy)
+
+**You must NOT report a class as a God class or "large class" finding based on size alone.** Size (lines, methods, attributes) is a triage signal, never a verdict. A 400-line parser with 14 methods that all serve the parsing domain is NOT a God class. A 234-line orchestrator with 15 methods that delegates to injected dependencies is NOT a God class.
+
+### Missing tests — coverage cross-check
+
+The `scan_tests.py` "Missing tests" table is a **structural** signal. Before reporting any file from this table as a finding:
+
+1. Run `pytest --cov` (or `pytest --cov --cov-report=term-missing` if available).
+2. Check the coverage percentage for each file in the "Missing tests" table.
+3. If the file has **>50% coverage**, downgrade to informational — do NOT report it as a finding. Note it in an "Informational" section: "Structurally missing direct test file, but covered at X% via indirect tests."
+4. Only report as a finding if the file has **<50% coverage** AND no direct test file AND no indirect class references.
+
+This prevents the whack-a-mole cycle where every review re-reports the same structurally-missing-but-adequately-covered files.
+
+### Composition roots — DIP suppression
+
+The `scan_dependency_inversion.py` scanner excludes entry points by filename pattern and detects DI container creation (`make_container()`, `Container()`, etc.) semantically. If the scanner still flags a class that is clearly a composition root (it wires the DI container, creates the container, or is the top-level entry point), suppress it and note "composition root — not a DIP violation" in the report. Someone has to create the container — that is not a violation.
 
 ## Output
 
 When this skill runs a review, it writes its findings to a markdown file using the [report template](assets/report_template.md):
 
 - **Path**: `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/patterns.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`)
-- **Compound skills** (e.g. `zolletta-review`) may override the folder and filename — follow their instructions instead
+- **Compound skills** (e.g. `zolletta-metaskill-review`) may override the folder and filename — follow their instructions instead
 - **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the [setup guard](../SKILL.md#setup-guard) — no manual setup needed
 - **Format**: follow the [report template](assets/report_template.md) — grade at the top, scanning script results, findings grouped by severity with file/class/issue/principle/fix columns
 
@@ -83,4 +120,4 @@ When this skill runs a review, it writes its findings to a markdown file using t
 
 ## Attribution
 
-The design pattern principles and reference examples in this skill are adapted from [python-design-patterns](https://github.com/wshobson/agents) by wshobson (MIT License). The scanning scripts and the "reason to change" diagnostic workflow are original additions by Zolletta.
+The design pattern principles and reference examples in this skill are adapted from [python-design-patterns](https://github.com/wshobson/agents) by wshobson (MIT License). The scanning scripts and the "reason to change" diagnostic workflow are original additions by Zolletta-metaskill.

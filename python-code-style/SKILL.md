@@ -21,7 +21,7 @@ Consistent code style and clear documentation make codebases maintainable and co
 - Establishing team coding standards
 - Configuring ruff, mypy, or ty
 - Reviewing code for style consistency
-- As part of a `/zolletta review` run (python-code-style subagent)
+- As part of a `/zolletta-metaskill review` run (python-code-style subagent)
 
 ## Core Concepts
 
@@ -102,6 +102,12 @@ ruff format .       # Format code
 
 If `ruff` is `false` in `settings.json`, print the ruff "not installed" message and skip linting/formatting checks.
 
+> **Review mode (read-only)**: when this skill is invoked as part of a `/zolletta-metaskill review` (or any read-only review context), do **NOT** apply any fixes. Run `ruff check` (no `--fix`) and `ruff format --check` (no formatting). Classify every issue into two buckets:
+> - **Auto-fixable** (ruff reports the rule as fixable, or `ruff format --check` would reformat the file): report as **informational** — list them in a separate "Auto-fixable (informational)" section, do **not** count them toward the grade, and do **not** list them as findings.
+> - **Not auto-fixable**: list as actual findings with severity, impact, and suggested fix — these are the only issues that affect the grade.
+>
+> To distinguish the two buckets, run `ruff check` and inspect the output: ruff marks each diagnostic with a fix indicator (e.g. `[F]` or `[*]` for fixable, `[--fix]` for unsafe-fixable). Alternatively run `ruff check --fix --exit-zero` as a dry-run probe to see what would be fixed, then discard the changes (`git checkout -- .`). For format, `ruff format --check` lists the files it would reformat — those are auto-fixable (informational).
+
 ### Pattern 2: Type Checking Configuration
 
 **Read the project's `pyproject.toml`** to find the type checker configuration. The project may use `mypy` (`[tool.mypy]`), `ty` (`[tool.ty]`), or `pyright` (`[tool.pyright]`). Use whichever is configured.
@@ -132,6 +138,12 @@ python-version = "3.12"
 ```
 
 If neither `mypy` nor `ty` is available (`python.mypy: false` and `python.ty: false` in `settings.json`), print both "not installed" messages and skip type checking.
+
+> **Review mode (read-only)**: when this skill is invoked as part of a `/zolletta-metaskill review` (or any read-only review context), do **NOT** apply any fixes. Run `ty check` (no `--fix`) and `mypy` as-is. Classify `ty` issues into two buckets:
+> - **Auto-fixable** (ty reports the diagnostic as fixable): report as **informational** — list them in a separate "Auto-fixable (informational)" section, do **not** count them toward the grade, and do **not** list them as findings.
+> - **Not auto-fixable**: list as actual findings with severity, impact, and suggested fix — these are the only type issues that affect the grade.
+>
+> `mypy` does not have an auto-fix mode, so all mypy findings are listed as actual findings and scored normally.
 
 ### Pattern 3: Naming Conventions
 

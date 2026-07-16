@@ -12,6 +12,9 @@ client as a parameter: `def __init__(self, client: GitLabClient)`.
 Exclusions:
   - Files matching entry-point patterns (main, cli, app, __main__) — these are
     composition roots where object creation is expected.
+  - Classes that create DI containers (make_container, Container, etc.) — these
+    are semantic composition roots, detected by AST analysis regardless of
+    filename.
   - Data classes / dataclasses / NamedTuples / TypedDicts / Enums.
   - Value objects and simple structs (classes with only __init__ and properties,
     no method calls to other classes).
@@ -58,6 +61,18 @@ DATA_CLASS_MARKERS = {"dataclass", "NamedTuple", "TypedDict"}
 ENTRY_POINT_DEFAULTS = {"main", "cli", "app", "__main__", "cite", "manage",
                         "wsgi", "asgi", "conftest"}
 
+# DI container creation function names that indicate a composition root.
+# A class that calls any of these is responsible for wiring the DI container
+# and is excluded from DIP violation reporting — someone has to create it.
+DI_CONTAINER_FACTORIES = {
+    "make_container",       # dishka
+    "Container",            # generic
+    "DIContainer",          # generic
+    "create_container",     # generic
+    "build_container",      # generic
+    "AsyncContainer",       # dishka async
+}
+
 
 def _is_data_class(node: ast.ClassDef) -> bool:
     """Check if a class is a dataclass, NamedTuple, TypedDict, or Enum."""
@@ -86,6 +101,23 @@ def _is_entry_point(filename: str, patterns: set[str]) -> bool:
     for pattern in patterns:
         if pattern in stem:
             return True
+    return False
+
+
+def _is_composition_root(class_node: ast.ClassDef) -> bool:
+    """Check if a class is a composition root by detecting DI container creation.
+
+    A class that calls make_container(), Container(), or similar DI-framework
+    functions is a composition root — it is the place where the DI container
+    is assembled. Object creation is expected there and is not a DIP violation.
+    """
+    for node in ast.walk(class_node):
+        if isinstance(node, ast.Call):
+            func = node.func
+            if isinstance(func, ast.Name) and func.id in DI_CONTAINER_FACTORIES:
+                return True
+            if isinstance(func, ast.Attribute) and func.attr in DI_CONTAINER_FACTORIES:
+                return True
     return False
 
 
@@ -217,6 +249,8 @@ def main() -> int:
             if _is_data_class(node):
                 continue
             if _is_factory(node.name):
+                continue
+            if _is_composition_root(node):
                 continue
 
             init_params = _get_constructor_params(node)

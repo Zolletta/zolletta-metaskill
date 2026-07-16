@@ -1,9 +1,9 @@
 ---
-name: zolletta-setup
+name: zolletta-metaskill-setup
 version: 1.0.0
 license: MIT + Commons Clause
 description: >
-  Project initialization for zolletta. Creates the .zolletta-metaskill/ directory, detects the project language, detects Docker container, tests tokensave availability, detects Python tooling, and writes settings.json. Also adds .zolletta-metaskill/ to .gitignore. Run automatically by the setup guard before any subcommand if settings.json is missing, or manually via /zolletta setup.
+  Project initialization for zolletta-metaskill. Creates the .zolletta-metaskill/ directory, detects the project language, detects Docker container, tests tokensave availability, detects Python tooling, and writes settings.json. Also adds .zolletta-metaskill/ to .gitignore. Run automatically by the setup guard before any subcommand if settings.json is missing, or manually via /zolletta-metaskill setup.
 allowed-tools:
   - read
   - grep
@@ -21,7 +21,7 @@ permissions:
     - mcp__tokensave__tokensave_status
 ---
 
-# Zolletta Setup
+# Zolletta-metaskill Setup
 
 Initialize the `.zolletta-metaskill/` directory and write `settings.json` so that every other subcommand can read project-wide configuration from a single location.
 
@@ -45,7 +45,7 @@ mkdir -p .zolletta-metaskill
 2. Read `.gitignore` and check if `.zolletta-metaskill/` is already listed. If not, append it with a leading comment on its own line:
 
    ```gitignore
-   # Zolletta review artifacts
+   # Zolletta-metaskill review artifacts
    .zolletta-metaskill/
    ```
 
@@ -135,7 +135,7 @@ Read the [settings template](assets/settings_template.json) and write `.zolletta
 | `python`                         | Object from Step 6 (Python only; `null` otherwise) — see below |
 | `python_code_style_available`    | Boolean from Step 7 (Python only; `false` otherwise) |
 | `python_testing_patterns_available` | Boolean from Step 7 (Python only; `false` otherwise) |
-| `external_review_model`          | `"swe"` (default; overridable by env var or settings) |
+| `external_review_model`          | `"swe"` (default; overridable by front-matter) |
 | `reports_dir`                    | `".zolletta-metaskill/reports"`                 |
 
 The `python` subobject has this shape:
@@ -155,7 +155,7 @@ Use the `write` tool to create the file. The JSON must be valid and pretty-print
 
 ### Step 9 — Print "not installed" messages
 
-For each tool that is **not** available, print the corresponding message from `../reference/tool-messages.md`. The message explains why zolletta benefits from the tool and links to the project homepage (where applicable).
+For each tool that is **not** available, print the corresponding message from `../reference/tool-messages.md`. The message explains why zolletta-metaskill benefits from the tool and links to the project homepage (where applicable).
 
 This covers:
 - `tokensave_available: false` → tokensave message
@@ -170,7 +170,7 @@ This covers:
 Print a brief summary to the user:
 
 ```text
-Zolletta setup complete.
+Zolletta-metaskill setup complete.
 
   Language:                        <language>
   Container:                       <container_name or none>
@@ -192,4 +192,4 @@ If any tools or skills were unavailable, the "not installed" messages from Step 
 
 ## Re-running setup
 
-`/zolletta setup` can be run at any time to re-detect tools and refresh `settings.json`. The previous `settings.json` is overwritten. This is useful after installing tokensave or Python tooling, after adding/removing a Docker container, or after a project language change.
+`/zolletta-metaskill setup` can be run at any time to re-detect tools and refresh `settings.json`. The previous `settings.json` is overwritten. This is useful after installing tokensave or Python tooling, after adding/removing a Docker container, or after a project language change.
