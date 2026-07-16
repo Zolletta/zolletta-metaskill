@@ -20,6 +20,47 @@ Comprehensive guide to implementing robust testing strategies in Python using py
 - Implementing property-based testing
 - Testing database operations
 - Debugging failing tests
+- As part of a `/zolletta review` run (python-testing-patterns subagent)
+
+## Coverage gap detection
+
+When reviewing test coverage, **never rely on grep alone** to determine if a class is tested. A class with zero direct references in test files may still be well-covered through indirect calls. Follow this procedure:
+
+### Step 1 — Run coverage first
+
+Always start by running `pytest --cov` to get actual coverage data. If `container_name` is set in `settings.json`, run inside the container. If `python.uv` is `true`, use `uv run pytest --cov`.
+
+```bash
+# Example:
+uv run pytest --cov=src --cov-report=term-missing tests/ 2>&1 | grep <module_name>
+```
+
+If coverage for a module is **above 80%**, it is well-covered — do not flag it as a coverage gap even if there are no direct test references. The code is exercised through integration tests or indirect calls.
+
+### Step 2 — Check for indirect coverage
+
+If a class has no direct test file but coverage is non-zero, trace the call chain:
+
+1. Use `tokensave_callers` (if tokensave is available) to find who calls the class
+2. For each caller, check if it is instantiated **for real** (not mocked) in any test
+3. If a caller is real (not `MagicMock()` or `patch()`), the class is indirectly covered
+
+**Key distinction**: `ci_linter=MagicMock()` means the class is NOT covered. `ci_linter=CILinter(mock_gitlab_manager)` means the class IS covered (real instance with mocked dependencies).
+
+### Step 3 — Only flag as a gap if coverage is genuinely low
+
+Only report a coverage gap when:
+- Coverage is **below 50%** AND
+- There are no direct test references AND
+- All callers are mocked in tests (no real instances)
+
+If any of these conditions is false, the class has adequate coverage — do not flag it.
+
+### Step 4 — For genuine gaps, check callers' test style
+
+If you find a genuine gap, check whether the caller's tests mock the class or use a real instance. This determines the fix:
+- If callers mock the class → recommend a direct unit test file for the class itself
+- If callers use real instances but don't exercise all branches → recommend adding edge-case tests
 
 ## Core Concepts
 
