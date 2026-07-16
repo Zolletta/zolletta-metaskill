@@ -16,16 +16,19 @@ A unified documentation review skill that combines:
 
 Derived from the [Diátaxis Documentation Expert](https://github.com/github/awesome-copilot/blob/main/skills/documentation-writer/SKILL.md) skill (MIT, github/awesome-copilot) and the [Doc Drift Detector](https://github.com/borghei/Claude-Skills/blob/main/engineering/doc-drift-detector/SKILL.md) (MIT + Commons Clause, borghei/Claude-Skills), merged into a single review pipeline.
 
-> This file narrows down any eventual general rule about code exploration and documentation, i.e. [code-exploration-rules.md](~/.agents/rules/code-exploration-rules.md), [tokensave-rules.md](~/.agents/rules/tokensave-rules.md), [gitnexus-rules.md](~/.agents/rules/gitnexus-rules.md), [documentation-rules.md](~/.agents/rules/documentation-rules.md). All files in `~/.agents/rules/` are the single source of truth for their domain.
+> This file narrows down any eventual general rule about code exploration and documentation, i.e. [code-exploration-rules.md](~/.agents/rules/code-exploration-rules.md), [tokensave-rules.md](~/.agents/rules/tokensave-rules.md), [documentation-rules.md](~/.agents/rules/documentation-rules.md). All files in `~/.agents/rules/` are the single source of truth for their domain.
 
 ## Shared resources
 
 Read shared guidelines from the meta-skill (parent directory):
 
-- `../reference/code-exploration.md` — code graph tools (tokensave, GitNexus, graphify) decision tree
+- `../reference/code-exploration.md` — code graph tools (tokensave, graphify) decision tree
 - `../reference/documentation_standards.md` — generic doc writing standards (README, API docs, changelogs, ADRs)
 - `../reference/general-principles.md` — SOLID, KISS, composition over inheritance (language-agnostic)
+- `../reference/tool-messages.md` — "not installed" messages for the tool-failure handler
 - `../scripts/python/` — shared scanning scripts
+
+**Tool-failure handler**: if a tokensave or graphify MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
 
 Local scripts and references are in this skill's own subdirectories:
 
@@ -75,7 +78,7 @@ For each document, verify:
 - Explanation docs provide context and design rationale
 
 **Accuracy**
-- Code snippets match the actual codebase (verify via tokensave/gitnexus first, `read` only as fallback)
+- Code snippets match the actual codebase (verify via tokensave first, `read` only as fallback)
 - Field names, types, and signatures match the source
 - File paths and directory trees reflect the actual repository structure
 - CLI commands match the actual entry points and flags
@@ -99,8 +102,7 @@ When checking accuracy, the agent MUST:
 
 1. **Verify against the actual codebase before flagging a doc issue.** Never assume the doc is wrong based on a pattern match or heuristic alone. Use the fastest available method:
    - **If tokensave is present**: use `tokensave_search` to check if a documented symbol exists, `tokensave_context` to get its signature/params without reading the file. This is the fastest path — 1-2 calls per symbol, no file I/O.
-   - **If GitNexus is present** (and tokensave is not, or for execution-flow questions): use `gitnexus context` to get callers/callees/signature, `gitnexus query` to find execution flows.
-   - **If neither is present**: use `grep` to find the symbol, then `read` only the relevant file section. Do not read entire files when a targeted grep + partial read suffices.
+   - **If tokensave is not present**: use `grep` to find the symbol, then `read` only the relevant file section. Do not read entire files when a targeted grep + partial read suffices.
 2. **Understand the distinction between dev-only and user-facing commands.**
    A command mentioned in AGENTS.md as "dev-only" refers to the specific wrapper or invocation described — not to every occurrence of the same binary name. For example, if AGENTS.md says `./mytool` (a bash wrapper) is dev-only but the Docker image internally runs `uv run mytool`, then `uv run mytool` in a tutorial is NOT a dev-only command — it's what the Docker image runs for end users. Always verify the full context before flagging.
 3. **Distinguish illustrative from factual content.** Directory trees, schema
@@ -188,13 +190,7 @@ For each issue that requires verifying a doc claim against source code, choose t
 - **Budget**: 3 `tokensave_context` calls max per project. After 3, fall back to `grep` + targeted `read`.
 - For class methods that `api_doc_validator.py` reports as phantom: use `tokensave_search` with the method name — if it exists as a node, the doc is correct (the validator just can't see class methods via top-level AST).
 
-#### If GitNexus is present (`.gitnexus/` exists) and tokensave is not
-
-- Use `gitnexus context` to get a symbol's signature, callers, and callees in one call.
-- Use `gitnexus query` to find execution flows that a doc claims exist.
-- Use `gitnexus impact` to verify blast radius claims in architecture docs.
-
-#### If neither is present
+#### If tokensave is not present
 
 - Use `grep` to find the symbol in source, then `read` only the relevant lines (not the whole file).
 - Batch grep queries: search for multiple symbol names in one pass where possible.

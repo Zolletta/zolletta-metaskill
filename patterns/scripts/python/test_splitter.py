@@ -24,7 +24,7 @@ Options:
     --mapping <json>    JSON file or inline JSON string mapping prefix to SUT
                         class name. Example: {"cache": "Cache", "extract_defaults":
                         "DefaultsExtractor"}
-    --out <dir>         Output directory (default: .scratches/test_split/<filename>/)
+    --out <dir>         Output directory (default: .zolletta-metaskill/test_split/<filename>/)
     --class <name>      Name of the test class to split (default: first test class
                         in the file, i.e. first ClassDef with test methods)
     --dry-run           Show the proposed split without writing any files.
@@ -208,7 +208,7 @@ def main() -> int:
     parser.add_argument(
         "--out",
         default=None,
-        help="Output directory (default: .scratches/test_split/<filename>/)",
+        help="Output directory (default: .zolletta-metaskill/test_split/<filename>/)",
     )
     parser.add_argument(
         "--class",
@@ -311,7 +311,7 @@ def main() -> int:
     if args.out:
         out_dir = Path(args.out)
     else:
-        out_dir = Path(".scratches/test_split") / test_file.stem
+        out_dir = Path(".zolletta-metaskill/test_split") / test_file.stem
 
     out_dir.mkdir(parents=True, exist_ok=True)
     print(f"\nWriting split files to: {out_dir}/")

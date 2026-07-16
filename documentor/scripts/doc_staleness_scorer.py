@@ -42,7 +42,7 @@ def _load_gitignore_patterns(repo_path: str) -> set[str]:
     """Load directory/file names from .gitignore that should be skipped.
 
     Only extracts simple entries (no negation, no wildcards) — patterns like
-    `.scratches/`, `.devin/`, `.pytest_cache/` etc. This is intentionally
+    `.zolletta-metaskill/`, `.devin/`, `.pytest_cache/` etc. This is intentionally
     conservative: complex glob patterns are left to git itself.
     """
     patterns: set[str] = set()

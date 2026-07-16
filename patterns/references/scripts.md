@@ -24,12 +24,12 @@ python3 scripts/python/scan_class_metrics.py <directory> [--top N] [--min-lines 
 
 Use the output to identify candidates, then read the code to apply the "reason to change" test.
 
-### scan_test_classes.py
+### scan_test_god_classes.py
 
 Scans test files and reports test classes sorted by size, with method count and method names. Detects test classes that test multiple unrelated SUTs.
 
 ```bash
-python3 scripts/python/scan_test_classes.py <directory> [--top N] [--show-methods]
+python3 scripts/python/scan_test_god_classes.py <directory> [--top N] [--show-methods]
 ```
 
 | Option           | Default | Description                                             |
@@ -57,12 +57,18 @@ python3 scripts/python/scan_one_class_per_file.py <directory> [--strict] [--igno
 
 **Exceptions**: `__init__.py` is always skipped. Files with 0 classes are reported as low severity — use `--ignore-zero` to hide them.
 
-### scan_test_structure_mirror.py
+### scan_tests.py
 
-Checks that the test directory structure mirrors the source directory structure. Reports source dirs with no test dir, test dirs with no source dir, and source files containing classes with no corresponding test file.
+Checks that the test directory structure mirrors the source directory structure. Outputs a markdown report with five tables:
+
+1. **Misnamed tests** — test files whose name doesn't match the source stem or class name of the source they test. Action: rename.
+2. **Misplaced tests** — test files with a name matching a source file but located in the wrong directory. Action: move.
+3. **Orphaned tests** — test files or directories that don't match any source file or directory. Action: delete or investigate.
+4. **Missing tests** — source files with classes that have no direct test file and no indirect class reference in any test file. Action: write new tests.
+5. **Indirect references** — test files that reference classes from source files without a direct test. Informative only: shows which test files provide indirect coverage for otherwise untested source files.
 
 ```bash
-python3 scripts/python/scan_test_structure_mirror.py \
+python3 scripts/python/scan_tests.py \
     --src <src_root> --tests <test_root> \
     [--src-package <name>] [--tests-package <name>] \
     [--ignore-dirs <dir1,dir2,...>] [--skip]
@@ -77,7 +83,9 @@ python3 scripts/python/scan_test_structure_mirror.py \
 | `--ignore-dirs`   | (none)                  | Comma-separated dir names to skip (e.g. `assets,templates`) |
 | `--skip`          | off                     | Skip this check entirely                                    |
 
-**File matching convention**: `src/.../my_module.py` -> `tests/.../test_my_module*.py`. One source class can have many test files (e.g. `test_cache_operations.py`, `test_cache_getters.py`), so matching is by prefix. Also checks class-name-based prefixes: `src/.../my_module.py` with class `MyClass` -> `tests/.../test_my_class*.py`.
+**File matching convention**: `src/.../my_module.py` -> `tests/.../test_my_module*.py`. One source class can have many test files (e.g. `test_cache_operations.py`, `test_cache_getters.py`), so matching is by prefix. Also checks class-name-based prefixes: `src/.../my_module.py` with class `MyClass` -> `tests/.../test_my_class*.py`. Uses longest-prefix matching to avoid false positives (e.g. `test_scenario_writer.py` matches `scenario_writer.py`, not `scenario.py`). When two source files have equal-length prefixes (e.g. two `cache.py` files in different directories), prefers the one in the same directory as the test.
+
+**Indirect test detection**: source files with no mirrored test file are always checked for indirect references. The script reads all test files once and checks if any class name from the source file appears in the test code. Files with indirect references are excluded from the "missing" table — they have no mirrored test file but their classes ARE exercised through other test files.
 
 ### scan_naming_conventions.py
 
@@ -105,7 +113,7 @@ python3 scripts/python/scan_naming_conventions.py \
 
 **Matching logic**: for each test file `test_cache_operations.py`, the script strips `test_` to get `cache_operations`, then checks if any source file stem in the mirrored directory is a prefix (followed by nothing or by `_`). So `cache.py` matches `cache_operations` (suffix `_operations`), and `cache_operations.py` also matches (no suffix). The longest match wins. Class-name-based prefixes are also checked: source file `my_module.py` with class `MyClass` accepts `test_my_class*.py`.
 
-**Use this instead of** `scan_one_class_per_file.py` + `scan_test_structure_mirror.py` when you want a single focused check on naming compliance (not coverage or directory mirroring).
+**Use this instead of** `scan_one_class_per_file.py` + `scan_tests.py` when you want a single focused check on naming compliance (not coverage or directory mirroring).
 
 ## SOLID Validator Scripts
 
@@ -190,18 +198,18 @@ python3 scripts/python/test_splitter.py <test_file> \
     --mapping '{"cache": "Cache", "extract_defaults": "DefaultsExtractor"}' \
     --dry-run
 
-# Step 3: write the split files to .scratches/test_split/<filename>/
+# Step 3: write the split files to .zolletta-metaskill/test_split/<filename>/
 python3 scripts/python/test_splitter.py <test_file> \
     --mapping '{"cache": "Cache", "extract_defaults": "DefaultsExtractor"}'
 ```
 
-| Option             | Default                             | Description                                               |
-| ------------------ | ----------------------------------- | --------------------------------------------------------- |
-| `<test_file>`      | (required)                          | Path to the test .py file to split                        |
-| `--mapping <json>` | (none)                              | JSON file or inline JSON mapping prefix to SUT class name |
-| `--out <dir>`      | `.scratches/test_split/<filename>/` | Output directory                                          |
-| `--class <name>`   | first test class                    | Name of the test class to split                           |
-| `--dry-run`        | off                                 | Show the proposed split without writing files             |
+| Option             | Default                                      | Description                                               |
+| ------------------ | -------------------------------------------- | --------------------------------------------------------- |
+| `<test_file>`      | (required)                                   | Path to the test .py file to split                        |
+| `--mapping <json>` | (none)                                       | JSON file or inline JSON mapping prefix to SUT class name |
+| `--out <dir>`      | `.zolletta-metaskill/test_split/<filename>/` | Output directory                                          |
+| `--class <name>`   | first test class                             | Name of the test class to split                           |
+| `--dry-run`        | off                                          | Show the proposed split without writing files             |
 
 **Workflow**:
 
@@ -230,10 +238,10 @@ The scripts give you **triage data**, not verdicts. The recommended workflow:
 2. Read the top 5-10 candidates
 3. For each, list its responsibilities and group by domain
 4. Apply the "reason to change" test
-5. `scan_test_classes.py tests/ --show-methods` → find test classes testing multiple SUTs
+5. `scan_test_god_classes.py tests/ --show-methods` → find test classes testing multiple SUTs
 6. For test God classes, check if each SUT has its own source file
 7. `scan_one_class_per_file.py src/` → find files with multiple classes or name mismatches
-8. `scan_test_structure_mirror.py` → find source files with no test file and structural gaps
+8. `scan_tests.py` → find source files with no test file and structural gaps
 9. `scan_naming_conventions.py` → find source files where class name ≠ filename and orphan/misnamed test files
 10. If the human decides to split a test God class, use `test_splitter.py`
 11. `scan_dependency_inversion.py src/` → find dependencies created internally

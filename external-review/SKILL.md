@@ -26,18 +26,23 @@ You are a code reviewer acting as **SWE-check** — an automated reviewer that f
 ## Model selection
 
 - **Default model**: `swe` (set in the front-matter above).
-- **Override**: to use a different LLM, either:
-  1. Set `model: <name>` in this skill's front-matter, or
-  2. Set the `ZOLLETTA_EXTERNAL_REVIEW_MODEL` environment variable before invoking the skill.
+- **Override precedence** (highest to lowest):
+  1. `ZOLLETTA_EXTERNAL_REVIEW_MODEL` environment variable
+  2. `external_review_model` field in `.zolletta-metaskill/settings.json` (written by setup)
+  3. `model: <name>` in this skill's front-matter
+  4. `swe` (hardcoded default)
 
 ## Shared resources
 
 Read shared guidelines from the meta-skill (parent directory):
 
-- `../reference/code-exploration.md` — code graph tools (tokensave, GitNexus, graphify) decision tree
+- `../reference/code-exploration.md` — code graph tools (tokensave, graphify) decision tree
 - `../reference/general-principles.md` — SOLID, KISS, composition over inheritance (language-agnostic)
 - `../reference/documentation_standards.md` — generic doc writing standards (README, API docs, changelogs, ADRs)
+- `../reference/tool-messages.md` — "not installed" messages for the tool-failure handler
 - `../scripts/python/` — shared scanning scripts
+
+**Tool-failure handler**: if a tokensave or graphify MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
 
 ## Procedure
 

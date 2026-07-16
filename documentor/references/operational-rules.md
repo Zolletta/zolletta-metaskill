@@ -12,7 +12,7 @@ Shared rules for running documentation drift detection. These rules apply when t
 - Run `api_doc_validator.py` with the source directory as the first argument and the docs
   directory as the second: `api_doc_validator.py src/myproject .backstage/docs --recursive --json`.
 - Both `drift_analyzer.py` and `doc_staleness_scorer.py` respect `.gitignore`,
-  so gitignored directories (`.scratches/`, `.devin/`, etc.) are automatically excluded.
+  so gitignored directories (`.zolletta-metaskill/`, `.devin/`, etc.) are automatically excluded.
 
 ## Differences from doc-drift-detector
 
@@ -55,4 +55,4 @@ The `documentor` skill merges the original `doc-drift-detector` and `documentati
 
 These rules apply only if run in isolation, not as part of a compound skill:
 
-- Save reports to `.scratches/drift/<AAMMDDHHMM>/drift-report.md`
+- Save reports to `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/documentor.md`
