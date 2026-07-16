@@ -30,6 +30,8 @@ All paths are relative to where this SKILL.md is found.
 | `patterns` | `patterns/SKILL.md` | God classes, SOLID, coupling, composition vs inheritance for `src/` |
 | `external-review` | `external-review/SKILL.md` | External-LLM code review on modified files only (default model: `swe`, override via front-matter, `ZOLLETTA_EXTERNAL_REVIEW_MODEL` env var, or `settings.json`) |
 | `review` | `review/SKILL.md` | Orchestrator — reads language from `settings.json`, runs general + language-specific skills in parallel batches, aggregates reports |
+| `python-code-style` | `python-code-style/SKILL.md` | Python source code style review (ruff, mypy, naming, docstrings, type annotations) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT) |
+| `python-testing-patterns` | `python-testing-patterns/SKILL.md` | Python test code review (isolation, naming, coverage gaps, mocking, fixtures, AAA structure) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT) |
 
 ## Shared resources
 
@@ -57,17 +59,16 @@ This guarantees that every subcommand can rely on `settings.json` being present 
 
 ## Tool-failure handler
 
-When any subcommand calls a tokensave MCP tool and receives a **tool-not-found** or **server-not-found** error (the MCP server is not registered or not responding), or when `skill invoke` returns "Skill not found" for a Python review skill:
+When any subcommand calls a tokensave MCP tool and receives a **tool-not-found** or **server-not-found** error (the MCP server is not registered or not responding):
 
-1. **Update `settings.json`**: set the corresponding flag to `false`:
-   - `tokensave_*` failure → `tokensave_available: false`
-   - `python-code-style` not found → `python_code_style_available: false`
-   - `python-testing-patterns` not found → `python_testing_patterns_available: false`
+1. **Update `settings.json`**: set `tokensave_available: false`.
    Use the `edit` tool to update `.zolletta-metaskill/settings.json` in place.
-2. **Print the "not installed" message**: read the corresponding message from [`reference/tool-messages.md`](reference/tool-messages.md) and print it. The message explains why zolletta benefits from the tool/skill and links to the project homepage (where applicable). **Do NOT install anything.**
-3. **Continue with fallback**: proceed using grep + targeted reads instead of the graph tool, or skip the missing skill's review area. Do not abort the subcommand — the review can still complete, just with reduced coverage.
+2. **Print the "not installed" message**: read the tokensave message from [`reference/tool-messages.md`](reference/tool-messages.md) and print it. The message explains why zolletta benefits from the tool and links to the project homepage. **Do NOT install anything.**
+3. **Continue with fallback**: proceed using grep + targeted reads instead of the graph tool. Do not abort the subcommand — the review can still complete, just with reduced coverage.
 
-This handler applies to every subcommand that uses tokensave (`patterns`, `documentor`, `external-review`, `review`) and to `review` when it launches Python skill subagents. Each subcommand's SKILL.md links back to this section.
+This handler applies to every subcommand that uses tokensave (`patterns`, `documentor`, `external-review`, `review`). Each subcommand's SKILL.md links back to this section.
+
+> **Python skills**: `python-code-style` and `python-testing-patterns` are bundled inside this meta-skill, so they are always available — the "not found" case does not apply. The `*_available` flags in `settings.json` only reflect whether the project language is Python.
 
 ## Dispatch
 

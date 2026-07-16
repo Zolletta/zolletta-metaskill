@@ -80,13 +80,11 @@ Launch subagents in **batches** using `run_subagent` with `is_background: true`.
 
 > When support for other languages is added, extend this table with the corresponding skills.
 
-**Checking skill availability**: before launching Batch 1, read `python_code_style_available` and `python_testing_patterns_available` from `settings.json`. If a flag is `false`, **skip that skill** — do not launch a subagent for it. Print the corresponding "not installed" message from `../reference/tool-messages.md` so the user knows why the area was skipped. The SUMMARY.md and TODO.md should note that the area was not reviewed.
-
-If a skill subagent fails to invoke the skill (returns "Skill not found"), follow the [tool-failure handler](../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the message, and note in the report that the area was skipped.
+**Checking skill availability**: before launching Batch 1, read `python_code_style_available` and `python_testing_patterns_available` from `settings.json`. If a flag is `false` (non-Python project), **skip that skill** — do not launch a subagent for it. The SUMMARY.md and TODO.md should note that the area was not reviewed. The Python skills are bundled inside this meta-skill, so they are always available for Python projects — no "Skill not found" handling is needed.
 
 **Batching strategy**: group skills into batches of up to 3 parallel background subagents. Place general skills and language-specific skills across batches to maximise parallelism. For Python projects with both skills available (4 skills total), use two batches:
 
-**Batch 1** (up to 2 parallel background subagents — external skills, Python only, if available):
+**Batch 1** (up to 2 parallel background subagents — bundled Python skills, Python only):
 
 1. `python-code-style` (skip if `python_code_style_available: false`)
 2. `python-testing-patterns` (skip if `python_testing_patterns_available: false`)
@@ -110,8 +108,8 @@ If both Python skills are unavailable, skip Batch 1 entirely and only run Batch 
 
 | Skill | Type | Scope |
 |-------|------|-------|
-| `python-code-style` | external skill (Python only) | Review **all Python source code** in `src/` (and any other source dirs) for style, linting, formatting, naming, docstring, and type annotation issues. **Follow `~/.agents/rules/python-code-style-rules.md`** for the exact uv/Docker workflow, ruff format/ty check order, and the explanation of the `mypy` ignore_missing_imports scope. |
-| `python-testing-patterns` | external skill (Python only) | Review **all test code** in `tests/` for testing best practices: test isolation, naming, coverage gaps, mocking patterns, fixture design, AAA structure |
+| `python-code-style` | bundled skill (Python only) | Review **all Python source code** in `src/` (and any other source dirs) for style, linting, formatting, naming, docstring, and type annotation issues. **Follow `~/.agents/rules/python-code-style-rules.md`** for the exact uv/Docker workflow, ruff format/ty check order, and the explanation of the `mypy` ignore_missing_imports scope. |
+| `python-testing-patterns` | bundled skill (Python only) | Review **all test code** in `tests/` for testing best practices: test isolation, naming, coverage gaps, mocking patterns, fixture design, AAA structure |
 | `/zolletta patterns` | zolletta subcommand (always) | Review **all source code** in `src/` for design pattern issues: KISS violations, SRP violations, tight coupling, composition vs inheritance, God classes, premature abstraction, SOLID principle violations (OCP, LSP, ISP, DIP). Also check structural conventions: one class per file, and test directory structure mirroring source structure. **For Python projects**: run all eight scanning scripts (`scan_class_metrics.py`, `scan_test_god_classes.py`, `scan_one_class_per_file.py`, `scan_tests.py`, `scan_dependency_inversion.py`, `scan_interface_segregation.py`, `scan_open_closed.py`, and `scan_liskov_substitution.py` from the skill's `scripts/python/` directory) for automated triage, then apply the "reason to change" test to the top candidates. **Use the `scan_tests.py` markdown output directly in the report**: its five tables (misnamed tests, misplaced tests, orphaned tests, multi-class tests, missing tests) are the structural findings — copy them into the report's findings section. Use `test_splitter.py` if the human decides to split a test God class. **For other languages**: apply the same principles manually (no AST scripts available yet). **If `.tokensave/` exists, use the code graph tools** (tokensave_context/callees/callers or tokensave_impact) to understand class responsibilities and assess blast radius before proposing splits — see the skill's "Code Graph Tools" section for the decision tree. |
 | `/zolletta documentor` | zolletta subcommand (always) | Review **documentation in `.backstage/` only**: Diátaxis compliance (document type correctness, audience clarity, structure, accuracy, consistency) **and** drift detection (staleness, broken links, API doc validation, structural gaps) in a single pass. **Follow `documentor/references/operational-rules.md`** for false positive patterns, correct tool invocation (project root as repo path for staleness scorer), and the recommended workflow order. |
 

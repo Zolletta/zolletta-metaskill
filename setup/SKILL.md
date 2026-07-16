@@ -76,20 +76,14 @@ Determine the project's primary language by checking for language markers in the
    - If the call succeeds → `tokensave_available: true`
    - If the call fails with tool-not-found / server-not-found → `tokensave_available: false`
 
-### Step 5 — Test Python skill availability (Python projects only)
+### Step 5 — Set Python skill availability
 
-If the detected language from Step 3 is **Python**, probe for the two language-specific skills that `review` launches as subagents:
+The two Python review skills (`python-code-style`, `python-testing-patterns`) are bundled inside zolletta-metaskill, so they are always available — no probing needed.
 
-1. Try `skill invoke python-code-style`.
-   - If the invoke succeeds (the skill loads) → `python_code_style_available: true`
-   - If the invoke fails with "Skill not found" → `python_code_style_available: false`
-2. Try `skill invoke python-testing-patterns`.
-   - If the invoke succeeds → `python_testing_patterns_available: true`
-   - If the invoke fails with "Skill not found" → `python_testing_patterns_available: false`
+- If the detected language from Step 3 is **Python** → set both `python_code_style_available: true` and `python_testing_patterns_available: true`
+- If the language is **not Python** → set both flags to `false`
 
-If the language is **not Python**, set both flags to `false` and skip the probes entirely.
-
-> **Unified approach**: both steps (tokensave, Python skills) use the same detection pattern — try the actual tool, catch the not-found error, set the flag. This mirrors the [tool-failure handler](../SKILL.md#tool-failure-handler) at runtime: the same error that triggers the handler during a review is the one we probe for during setup.
+> **Note**: these skills are adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT License, Copyright (c) 2024 Seth Hobson) and live in `python-code-style/` and `python-testing-patterns/` within this meta-skill.
 
 ### Step 6 — Write settings.json
 
@@ -114,8 +108,8 @@ For each tool or skill that is **not** available, print the corresponding messag
 
 This covers:
 - `tokensave_available: false` → tokensave message
-- `python_code_style_available: false` (Python only) → python-code-style message
-- `python_testing_patterns_available: false` (Python only) → python-testing-patterns message
+
+(The Python skills are bundled inside this meta-skill, so no "not installed" message is needed for them — `python_code_style_available` and `python_testing_patterns_available` are `false` only when the project language is not Python.)
 
 **Do NOT install anything.** Only inform the user.
 

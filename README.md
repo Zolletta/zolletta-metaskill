@@ -19,13 +19,15 @@ The first time you run any subcommand in a project, the **setup guard** automati
 
 ## Subcommands
 
-| Subcommand        | Scope                                                                                                                                             |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `setup`           | Project initialization — creates `settings.json`, detects language, tests tool availability                                                       |
-| `review`          | Full project review orchestrator — runs general + language-specific skills in parallel batches, produces graded SUMMARY.md and aggregated TODO.md |
-| `patterns`        | God classes, SOLID violations, coupling, composition vs inheritance for `src/`                                                                    |
-| `documentor`      | Diátaxis compliance + drift detection for `.backstage/`                                                                                           |
-| `external-review` | External-LLM code review on modified files only (default model: `swe`)                                                                            |
+| Subcommand                | Scope                                                                                                                                                                   |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `setup`                   | Project initialization — creates `settings.json`, detects language, tests tool availability                                                                             |
+| `review`                  | Full project review orchestrator — runs general + language-specific skills in parallel batches, produces graded SUMMARY.md and aggregated TODO.md                       |
+| `patterns`                | God classes, SOLID violations, coupling, composition vs inheritance for `src/`                                                                                          |
+| `documentor`              | Diátaxis compliance + drift detection for `.backstage/`                                                                                                                 |
+| `external-review`         | External-LLM code review on modified files only (default model: `swe`)                                                                                                  |
+| `python-code-style`       | Python source code style review (ruff, mypy, naming, docstrings, type annotations) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)           |
+| `python-testing-patterns` | Python test code review (isolation, naming, coverage gaps, mocking, fixtures, AAA structure) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT) |
 
 ## Tools leveraged if available
 
@@ -74,7 +76,7 @@ When a tool is not installed, zolletta prints a message explaining why it would 
 
 ### Tool-failure handler
 
-If any subcommand calls a tokensave MCP tool and receives a tool-not-found / server-not-found error, or if `skill invoke` returns "Skill not found" for a Python review skill, it:
+If any subcommand calls a tokensave MCP tool and receives a tool-not-found / server-not-found error, it:
 
 1. Updates the corresponding `*_available` flag in `settings.json` to `false`
 2. Prints the "not installed" message from `reference/tool-messages.md`
