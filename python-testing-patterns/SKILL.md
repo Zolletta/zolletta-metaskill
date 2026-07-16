@@ -24,6 +24,8 @@ Comprehensive guide to implementing robust testing strategies in Python using py
 
 ## Coverage gap detection
 
+> **Scope boundary**: the `/zolletta patterns` subcommand runs `scan_tests.py` which produces a "Missing tests" table — a **structural** check (no `test_<module>.py` file exists). That is a structural finding owned by `patterns`. This skill owns **coverage gap analysis** using `pytest --cov` — checking whether code is actually exercised by tests, regardless of file naming. Do not duplicate the structural check. If `scan_tests.py` already flagged a file as structurally missing a test, reference that finding but focus on whether the code is actually covered.
+
 When reviewing test coverage, **never rely on grep alone** to determine if a class is tested. A class with zero direct references in test files may still be well-covered through indirect calls. Follow this procedure:
 
 ### Step 1 — Run coverage (mandatory)
