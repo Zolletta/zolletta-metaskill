@@ -26,16 +26,17 @@ Comprehensive guide to implementing robust testing strategies in Python using py
 
 When reviewing test coverage, **never rely on grep alone** to determine if a class is tested. A class with zero direct references in test files may still be well-covered through indirect calls. Follow this procedure:
 
-### Step 1 — Run coverage first
+### Step 1 — Run coverage (mandatory)
 
-Always start by running `pytest --cov` to get actual coverage data. If `container_name` is set in `settings.json`, run inside the container. If `python.uv` is `true`, use `uv run pytest --cov`.
+You **must** run coverage before flagging any coverage gap. Do not skip this step. Check `settings.json` for how to run:
 
-```bash
-# Example:
-uv run pytest --cov=src --cov-report=term-missing tests/ 2>&1 | grep <module_name>
-```
+- If `python.uv` is `true` → use `uv run pytest --cov`
+- If `container_name` is set → run inside the container: `docker compose exec <container_name> uv run pytest --cov`
+- Otherwise → `pytest --cov`
 
-If coverage for a module is **above 80%**, it is well-covered — do not flag it as a coverage gap even if there are no direct test references. The code is exercised through integration tests or indirect calls.
+The project's `pyproject.toml` may already configure coverage options under `[tool.coverage.run]` and `[tool.pytest.ini_options]`. If so, a plain `uv run pytest --cov` (or `pytest --cov`) will use those settings — no need to add extra flags.
+
+Read the coverage output. If a module shows **above 80%** coverage, it is well-covered — do not flag it as a coverage gap even if there are no direct test references. The code is exercised through integration tests or indirect calls.
 
 ### Step 2 — Check for indirect coverage
 
