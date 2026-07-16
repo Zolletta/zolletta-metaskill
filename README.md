@@ -97,7 +97,7 @@ If any subcommand calls a tokensave MCP tool and receives a tool-not-found / ser
 
 1. Updates the corresponding `*_available` flag in `settings.json` to `false`
 2. Prints the "not installed" message from `reference/tool-messages.md`
-3. Continues with grep + targeted reads as fallback (for graph tools) or skips the missing skill's review area (for Python skills)
+3. Continues with grep + targeted reads as fallback (for graph tools). Python skills (`python-code-style`, `python-testing-patterns`) are bundled inside this meta-skill and are always available — the "not found" case does not apply to them.
 
 ## Reports
 
