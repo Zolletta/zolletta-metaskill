@@ -25,7 +25,7 @@ All paths are relative to where this SKILL.md is found.
 
 | Subcommand | Path | Scope |
 |------------|------|-------|
-| `setup` | `setup/SKILL.md` | Project initialization — creates `.zolletta-metaskill/settings.json`, detects language, tests tokensave availability |
+| `setup` | `setup/SKILL.md` | Project initialization — creates `.zolletta-metaskill/settings.json`, detects language, Docker container, tokensave, and Python tooling |
 | `documentor` | `documentor/SKILL.md` | Diátaxis compliance + drift detection for `.backstage/` |
 | `patterns` | `patterns/SKILL.md` | God classes, SOLID, coupling, composition vs inheritance for `src/` |
 | `external-review` | `external-review/SKILL.md` | External-LLM code review on modified files only (default model: `swe`, override via front-matter, `ZOLLETTA_EXTERNAL_REVIEW_MODEL` env var, or `settings.json`) |
@@ -51,7 +51,7 @@ All files in `~/.agents/rules/` are the **single source of truth** for their dom
 
 Before dispatching to **any** subcommand (including `setup` itself), check if `.zolletta-metaskill/settings.json` exists in the current project root:
 
-1. If it **exists**, read it and proceed to the requested subcommand. The subcommand may read `language`, `tokensave_available`, `python_code_style_available`, `python_testing_patterns_available`, `external_review_model`, and `reports_dir` from it.
+1. If it **exists**, read it and proceed to the requested subcommand. The subcommand may read `language`, `container_name`, `tokensave_available`, `python`, `python_code_style_available`, `python_testing_patterns_available`, `external_review_model`, and `reports_dir` from it.
 2. If it **does not exist**, run the full `setup` procedure first (read `setup/SKILL.md` and execute every step). Once `settings.json` is written, proceed to the requested subcommand.
 3. If the user invoked `/zolletta setup` explicitly, run setup and stop — do not dispatch to another subcommand.
 

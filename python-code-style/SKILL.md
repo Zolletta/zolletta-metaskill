@@ -8,20 +8,26 @@ description: Python code style, linting, formatting, naming conventions, and doc
 
 Consistent code style and clear documentation make codebases maintainable and collaborative. This skill covers modern Python tooling, naming conventions, and documentation standards.
 
+> **Project-driven configuration**: this skill reads all conventions (line length, target Python version, linting rules, type checking strictness) from the project's `pyproject.toml`. Do not hardcode defaults — always check what the project has configured first. If a setting is absent from `pyproject.toml`, use the fallback defaults noted in each pattern.
+
+> **Tool availability**: before running any tool, read `settings.json` and check the `python` subobject to see which tools are available (`uv`, `ruff`, `pytest`, `ty`, `vulture`, `mypy`). If a tool is `false`, print the corresponding "not installed" message from `../reference/tool-messages.md` and skip that check. **Do NOT install anything.**
+
+> **Running tools**: if `container_name` is set in `settings.json`, run tools inside the container via `docker compose exec <container_name> <command>`. If `container_name` is `null`, run tools directly on the host. If `python.uv` is `true`, prefer `uv run <command>` to ensure the project environment is used.
+
 ## When to Use This Skill
 
 - Setting up linting and formatting for a new project
 - Writing or reviewing docstrings
 - Establishing team coding standards
-- Configuring ruff, mypy, or pyright
+- Configuring ruff, mypy, or ty
 - Reviewing code for style consistency
-- Creating project documentation
+- As part of a `/zolletta review` run (python-code-style subagent)
 
 ## Core Concepts
 
 ### 1. Automated Formatting
 
-Let tools handle formatting debates. Configure once, enforce automatically.
+Let tools handle formatting debates. Configure once in `pyproject.toml`, enforce automatically.
 
 ### 2. Consistent Naming
 
@@ -35,19 +41,22 @@ Docstrings should be maintained alongside the code they describe.
 
 Modern Python code should include type hints for all public APIs.
 
+### 5. One Class Per File
+
+Each class gets its own file; the filename matches the class name (snake_case → PascalCase).
+
 ## Quick Start
 
+Read `pyproject.toml` to understand the project's configuration. All tool invocations should respect the project's settings.
+
 ```bash
-# Install modern tooling
-pip install ruff mypy
+# If uv is available:
+uv run ruff check --fix .   # Lint and auto-fix
+uv run ruff format .         # Format code
 
-# Configure in pyproject.toml
-[tool.ruff]
-line-length = 120
-target-version = "py312"  # Adjust based on your project's minimum Python version
-
-[tool.mypy]
-strict = true
+# If uv is not available, run directly:
+ruff check --fix .
+ruff format .
 ```
 
 ## Fundamental Patterns
@@ -56,11 +65,15 @@ strict = true
 
 Use `ruff` as an all-in-one linter and formatter. It replaces flake8, isort, and black with a single fast tool.
 
+**Read the project's `pyproject.toml`** to find the ruff configuration. The `[tool.ruff]` section defines line length, target version, selected lint rules, and formatting options. Do not hardcode a rule set — use what the project has configured.
+
+If ruff is not configured in `pyproject.toml` and is available as a tool, suggest the following minimal configuration:
+
 ```toml
 # pyproject.toml
 [tool.ruff]
-line-length = 120
-target-version = "py312"  # Adjust based on your project's minimum Python version
+line-length = 120  # fallback default if not set
+target-version = "py312"  # fallback default
 
 [tool.ruff.lint]
 select = [
@@ -80,21 +93,27 @@ quote-style = "double"
 indent-style = "space"
 ```
 
-Run with:
+Run with (adjust for container/uv as noted above):
 
 ```bash
 ruff check --fix .  # Lint and auto-fix
 ruff format .       # Format code
 ```
 
+If `ruff` is `false` in `settings.json`, print the ruff "not installed" message and skip linting/formatting checks.
+
 ### Pattern 2: Type Checking Configuration
 
-Configure strict type checking for production code.
+**Read the project's `pyproject.toml`** to find the type checker configuration. The project may use `mypy` (`[tool.mypy]`), `ty` (`[tool.ty]`), or `pyright` (`[tool.pyright]`). Use whichever is configured.
+
+If both `mypy` and `ty` are available, prefer the one configured in `pyproject.toml`. If neither is configured, use whichever tool is available (check `settings.json`).
+
+Do not hardcode strictness settings — read them from `pyproject.toml`. If no type checker is configured and one is available, suggest a minimal config:
 
 ```toml
-# pyproject.toml
+# pyproject.toml — mypy
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.12"  # fallback default
 strict = true
 warn_return_any = true
 warn_unused_ignores = true
@@ -106,17 +125,17 @@ module = "tests.*"
 disallow_untyped_defs = false
 ```
 
-Alternative: Use `pyright` for faster checking.
-
 ```toml
-[tool.pyright]
-pythonVersion = "3.12"
-typeCheckingMode = "strict"
+# pyproject.toml — ty
+[tool.ty]
+python-version = "3.12"
 ```
+
+If neither `mypy` nor `ty` is available (`python.mypy: false` and `python.ty: false` in `settings.json`), print both "not installed" messages and skip type checking.
 
 ### Pattern 3: Naming Conventions
 
-Follow PEP 8 with emphasis on clarity over brevity.
+Follow PEP 8 with emphasis on clarity over brevity. PEP 8 naming conventions are standard and should not be overridden by `pyproject.toml` — they are language conventions, not project configuration.
 
 **Files and Modules:**
 
@@ -159,7 +178,7 @@ API_BASE_URL = "https://api.example.com"
 
 ### Pattern 4: Import Organization
 
-Group imports in a consistent order: standard library, third-party, local.
+Group imports in a consistent order: standard library, third-party, local. If ruff is configured with the `I` (isort) rule, import ordering is enforced automatically — do not restate the rules manually.
 
 ```python
 # Standard library
@@ -187,13 +206,57 @@ from myproject.utils import retry_decorator
 from ..utils import retry_decorator
 ```
 
+### Pattern 5: One Class Per File
+
+> **Note**: this is a convention, not a PEP standard. PEP 8 does not mandate one class per file. The convention is inspired by Java's "one public class per file" rule and is widely adopted in Python codebases for discoverability and testability.
+
+**Rules:**
+
+- Each public class should live in its own file
+- The filename should match the class name: `snake_case.py` → `PascalCase` class (e.g. `user_repository.py` → `UserRepository`)
+- Small helper classes or enums closely tied to a main class may share the same file
+- Data classes and protocols that are used together may be grouped
+
+**Good:**
+
+```python
+# user_repository.py
+class UserRepository:
+    """Repository for user persistence."""
+    ...
+```
+
+**Avoid:**
+
+```python
+# models.py — 15 classes in one file
+class User: ...
+class Order: ...
+class Product: ...
+class Invoice: ...
+# ... hard to find, hard to test, hard to import
+```
+
+**Detection**: use `scan_one_class_per_file.py` from `../patterns/scripts/python/` to find files with multiple classes. Apply judgment — some groupings are intentional (e.g. a module of closely related enums).
+
 ## Advanced Patterns
 
-### Pattern 5: Google-Style Docstrings
+### Pattern 6: Google-Style Docstrings
 
-Write docstrings for all public classes, methods, and functions.
+Write docstrings for all **public** classes, methods, and functions. Private functions (leading underscore), nested/local functions, and helper closures do **not** need docstrings — they are implementation details, not API.
 
-**Simple Function:**
+**When to include `Args:` and `Returns:` sections:**
+
+Type annotations already convey the argument types and return type. Do **not** repeat them in a docstring section. Only include `Args:` or `Returns:` when there is information the type annotation cannot express:
+
+- Constraints on values (e.g. "must not be empty", "must be a positive integer")
+- Units or formats (e.g. "seconds, not milliseconds", "ISO 8601 format")
+- Side effects or mutation (e.g. "modifies the list in place")
+- Default behavior that is non-obvious
+
+If the type annotation fully describes the argument, a one-line summary docstring is sufficient.
+
+**Simple Function (one-line summary — type annotations say the rest):**
 
 ```python
 def get_user(user_id: str) -> User:
@@ -201,7 +264,7 @@ def get_user(user_id: str) -> User:
     ...
 ```
 
-**Complex Function:**
+**Complex Function (Args/Returns only for non-obvious info):**
 
 ```python
 def process_batch(
@@ -211,17 +274,10 @@ def process_batch(
 ) -> BatchResult:
     """Process items concurrently using a worker pool.
 
-    Processes each item in the batch using the configured number of
-    workers. Progress can be monitored via the optional callback.
-
     Args:
-        items: The items to process. Must not be empty.
-        max_workers: Maximum concurrent workers. Defaults to 4.
-        on_progress: Optional callback receiving (completed, total) counts.
-
-    Returns:
-        BatchResult containing succeeded items and any failures with
-        their associated exceptions.
+        items: Must not be empty. Items are consumed lazily.
+        on_progress: Receives (completed, total) counts. Called from a
+            worker thread — ensure the callback is thread-safe.
 
     Raises:
         ValueError: If items is empty.
@@ -233,6 +289,8 @@ def process_batch(
     """
     ...
 ```
+
+> Note: `max_workers` and the return type are not in `Args:`/`Returns:` — the type annotations (`int = 4`, `-> BatchResult`) already say everything needed.
 
 **Class Docstring:**
 
@@ -253,22 +311,28 @@ class UserService:
     """
 
     def __init__(self, repository: UserRepository, logger: Logger) -> None:
-        """Initialize the user service.
-
-        Args:
-            repository: Data access layer for users.
-            logger: Logger for tracking operations.
-        """
         self.repository = repository
         self.logger = logger
 ```
 
-### Pattern 6: Line Length and Formatting
+> Note: `__init__` does not need a docstring when its parameters are self-explanatory from type annotations. Only add one if the constructor has non-obvious side effects or initialization logic.
 
-Set line length to 120 characters for modern displays while maintaining readability.
+**What does NOT need a docstring:**
+
+- Private functions (`_helper`, `_format_output`)
+- Nested/local functions and closures
+- `__init__` when parameters are obvious from type annotations
+- Test functions (the test name is the documentation)
+- One-line functions where the name + signature is self-explanatory
+
+### Pattern 7: Line Length and Formatting
+
+**Read the line length from `pyproject.toml`** — check `[tool.ruff]` `line-length` first. If not set, use 120 as the fallback default.
+
+Do not hardcode a line length. The project's configuration is the single source of truth.
 
 ```python
-# Good: Readable line breaks
+# Good: Readable line breaks (respecting the project's line-length setting)
 def create_user(
     email: str,
     name: str,
@@ -294,71 +358,32 @@ error_message = (
 )
 ```
 
-### Pattern 7: Project Documentation
+If ruff is available, `ruff format` handles line breaking automatically — do not reformat manually unless ruff is not available.
 
-**README Structure:**
+## Dead Code Detection
 
-```markdown
-# Project Name
+If `vulture` is available (`python.vulture: true` in `settings.json`), run it to find unused code:
 
-Brief description of what the project does.
-
-## Installation
-
-\`\`\`bash
-pip install myproject
-\`\`\`
-
-## Quick Start
-
-\`\`\`python
-from myproject import Client
-
-client = Client(api_key="...")
-result = client.process(data)
-\`\`\`
-
-## Configuration
-
-Document environment variables and configuration options.
-
-## Development
-
-\`\`\`bash
-pip install -e ".[dev]"
-pytest
-\`\`\`
+```bash
+vulture src/ --min-confidence 80
 ```
 
-**CHANGELOG Format (Keep a Changelog):**
+Report findings as low-priority issues — vulture has false positives, especially for dynamically-accessed methods. Review each finding before flagging.
 
-```markdown
-# Changelog
-
-## [Unreleased]
-
-### Added
-- New feature X
-
-### Changed
-- Modified behavior of Y
-
-### Fixed
-- Bug in Z
-```
+If `vulture` is `false`, skip dead code detection.
 
 ## Best Practices Summary
 
-1. **Use ruff** - Single tool for linting and formatting
-2. **Enable strict mypy** - Catch type errors before runtime
-3. **120 character lines** - Modern standard for readability
-4. **Descriptive names** - Clarity over brevity
+1. **Read pyproject.toml first** — never hardcode what the project has already configured
+2. **Use ruff** - Single tool for linting and formatting (if available)
+3. **Type checking** - Use mypy or ty, whichever the project configures (if available)
+4. **Descriptive names** - Clarity over brevity (PEP 8)
 5. **Absolute imports** - More maintainable than relative
-6. **Google-style docstrings** - Consistent, readable documentation
-7. **Document public APIs** - Every public function needs a docstring
-8. **Keep docs updated** - Treat documentation as code
+6. **Google-style docstrings** - For public API only; skip Args/Returns when type annotations suffice
+7. **Document public APIs** - Private functions, nested closures, and obvious `__init__` do not need docstrings
+8. **One class per file** - Each class gets its own file; filename matches class name
 9. **Automate in CI** - Run linters on every commit
-10. **Target Python 3.10+** - For new projects, Python 3.12+ is recommended for modern language features
+10. **Dead code detection** - Run vulture if available, review findings with judgment
 
 ## Attribution
 

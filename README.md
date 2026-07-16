@@ -21,7 +21,7 @@ The first time you run any subcommand in a project, the **setup guard** automati
 
 | Subcommand                | Scope                                                                                                                                                                   |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `setup`                   | Project initialization — creates `settings.json`, detects language, tests tool availability                                                                             |
+| `setup`                   | Project initialization — creates `settings.json`, detects language, Docker container, tokensave, and Python tooling                                                     |
 | `review`                  | Full project review orchestrator — runs general + language-specific skills in parallel batches, produces graded SUMMARY.md and aggregated TODO.md                       |
 | `patterns`                | God classes, SOLID violations, coupling, composition vs inheritance for `src/`                                                                                          |
 | `documentor`              | Diátaxis compliance + drift detection for `.backstage/`                                                                                                                 |
@@ -55,7 +55,16 @@ When a tool is not installed, zolletta prints a message explaining why it would 
   "setup_version": "1.0.0",
   "setup_timestamp": "2026-07-16T14:30:00",
   "language": "python",
+  "container_name": "cite",
   "tokensave_available": true,
+  "python": {
+    "uv": true,
+    "ruff": true,
+    "pytest": true,
+    "ty": false,
+    "vulture": false,
+    "mypy": true
+  },
   "python_code_style_available": true,
   "python_testing_patterns_available": true,
   "external_review_model": "swe",
@@ -63,16 +72,24 @@ When a tool is not installed, zolletta prints a message explaining why it would 
 }
 ```
 
-| Field                               | Description                                                              |
-| ----------------------------------- | ------------------------------------------------------------------------ |
-| `setup_version`                     | Matches the skill version that wrote the file                            |
-| `setup_timestamp`                   | ISO 8601 timestamp of the last setup run                                 |
-| `language`                          | Detected project language (`python`, `php`, `go`, `rust`, etc.)          |
-| `tokensave_available`               | `true` if `tokensave_status` responds (probed directly)                  |
-| `python_code_style_available`       | `true` if the `python-code-style` skill is installed (Python only)       |
-| `python_testing_patterns_available` | `true` if the `python-testing-patterns` skill is installed (Python only) |
-| `external_review_model`             | Default model for `external-review` (overridable by env var)             |
-| `reports_dir`                       | Directory where review reports are saved                                 |
+| Field                               | Description                                                         |
+| ----------------------------------- | ------------------------------------------------------------------- |
+| `setup_version`                     | Matches the skill version that wrote the file                       |
+| `setup_timestamp`                   | ISO 8601 timestamp of the last setup run                            |
+| `language`                          | Detected project language (`python`, `php`, `go`, `rust`, etc.)     |
+| `container_name`                    | Docker container name for running tools (`null` if no Docker)       |
+| `tokensave_available`               | `true` if `tokensave_status` responds (probed directly)             |
+| `python`                            | Object with tool availability flags (Python only; `null` otherwise) |
+| `python.uv`                         | `true` if uv is available                                           |
+| `python.ruff`                       | `true` if ruff is available                                         |
+| `python.pytest`                     | `true` if pytest is available                                       |
+| `python.ty`                         | `true` if ty is available                                           |
+| `python.vulture`                    | `true` if vulture is available                                      |
+| `python.mypy`                       | `true` if mypy is available                                         |
+| `python_code_style_available`       | `true` for Python projects (skill is bundled)                       |
+| `python_testing_patterns_available` | `true` for Python projects (skill is bundled)                       |
+| `external_review_model`             | Default model for `external-review` (overridable by env var)        |
+| `reports_dir`                       | Directory where review reports are saved                            |
 
 ### Tool-failure handler
 
