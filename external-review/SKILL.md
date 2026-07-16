@@ -36,13 +36,13 @@ You are a code reviewer acting as **SWE-check** — an automated reviewer that f
 
 Read shared guidelines from the meta-skill (parent directory):
 
-- `../reference/code-exploration.md` — code graph tools (tokensave, graphify) decision tree
+- `../reference/code-exploration.md` — code graph tools (tokensave) decision tree
 - `../reference/general-principles.md` — SOLID, KISS, composition over inheritance (language-agnostic)
 - `../reference/documentation_standards.md` — generic doc writing standards (README, API docs, changelogs, ADRs)
 - `../reference/tool-messages.md` — "not installed" messages for the tool-failure handler
 - `../scripts/python/` — shared scanning scripts
 
-**Tool-failure handler**: if a tokensave or graphify MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
+**Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
 
 ## Procedure
 

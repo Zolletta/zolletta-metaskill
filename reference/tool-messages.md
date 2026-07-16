@@ -1,6 +1,6 @@
 # Tool "not installed" messages
 
-Shared messages printed by the `setup` subcommand and the tool-failure handler when tokensave, graphify, or a Python review skill is not available. Each message explains **why zolletta benefits from the tool/skill** and links to the project homepage (where applicable).
+Shared messages printed by the `setup` subcommand and the tool-failure handler when tokensave or a Python review skill is not available. Each message explains **why zolletta benefits from the tool/skill** and links to the project homepage (where applicable).
 
 These messages must be printed verbatim (or close to it) by any subcommand that detects a tool is missing — either during setup or via the tool-failure handler when an MCP call returns tool-not-found / server-not-found, or when a skill invoke returns "Skill not found".
 
@@ -22,25 +22,6 @@ Without tokensave, zolletta falls back to grep + targeted reads (slower,
 higher token usage).
 
 Homepage: https://github.com/aovestdipaperino/tokensave
-```
-
----
-
-## graphify
-
-```text
-ℹ graphify is not installed.
-
-graphify turns any folder into a persistent knowledge graph with community
-detection and query/path/explain tools. Zolletta meta-skill uses it to:
-  - answer architecture questions via graph traversal (patterns, review)
-  - trace cross-file relationships and data flows (patterns)
-  - explain nodes in plain language (documentor, review)
-
-Without graphify, zolletta relies on tokensave (if available) or manual
-grep/read for structural queries.
-
-Homepage: https://github.com/safishamsi/graphify
 ```
 
 ---

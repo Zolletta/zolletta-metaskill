@@ -102,7 +102,7 @@ src/myproject/engine/config/config_factory.py
 - Source files with no classes (pure functions/constants) — may be tested indirectly through integration tests.
 - Test helpers, fixtures, mocks, and mixins live outside the mirrored tree (e.g., `tests/fixtures/`, `tests/mocks/`, `tests/mixins/`).
 
-**Detection**: see `scripts.md` → `scan_test_structure_mirror.py`.
+**Detection**: see `scripts.md` → `scan_tests.py`. The script outputs a markdown report with five tables: misnamed tests (rename), misplaced tests (move), orphaned tests (delete or investigate), missing tests (write new tests), and indirect references (informative only — shows which test files provide indirect coverage for source files without a direct test).
 
 ## Naming Conventions
 
@@ -124,7 +124,7 @@ Test files whose name doesn't match any source file or class in the mirrored dir
 
 ## Test God Class Splitting
 
-When a test class tests multiple SUTs (detected by `scan_test_classes.py --show-methods`), it should be split into per-SUT test files. The `test_splitter.py` script automates this.
+When a test class tests multiple SUTs (detected by `scan_test_god_classes.py --show-methods`), it should be split into per-SUT test files. The `test_splitter.py` script automates this.
 
 **When to split**:
 

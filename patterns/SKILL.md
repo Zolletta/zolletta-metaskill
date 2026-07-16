@@ -45,11 +45,11 @@ This skill is organized into a lean entry point (this file) plus five reference 
 | [general-principles.md](../reference/general-principles.md) | Language-agnostic principles: SOLID (SRP, OCP, LSP, ISP, DIP), KISS, Separation of Concerns, Composition over Inheritance, Rule of Three, function size, dependency injection, God class detection procedure, common anti-patterns, and manual checks for non-Python languages — **shared** |
 | [python-review.md](references/python-review.md) | Python-specific patterns: strategy pattern with autodiscovery, one-class-per-file convention, naming conventions, test structure mirroring, test God class splitting, Protocol vs ABC guidance |
 | [scripts.md](references/scripts.md) | Full reference for all 10 scripts: usage, options, examples, and the complete 14-step workflow |
-| [code-exploration.md](../reference/code-exploration.md) | Code graph tools (tokensave, graphify) decision tree, subagent guidance, and task templates — **shared** |
+| [code-exploration.md](../reference/code-exploration.md) | Code graph tools (tokensave) decision tree, subagent guidance, and task templates — **shared** |
 | [tool-messages.md](../reference/tool-messages.md) | "not installed" messages for the tool-failure handler — **shared** |
 | [troubleshooting.md](references/troubleshooting.md) | Common questions and edge cases: God class false positives, DI parameter bloat, composition depth, rule of three exceptions, layering violations |
 
-**Tool-failure handler**: if a tokensave or graphify MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
+**Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
 
 ## Output
 

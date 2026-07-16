@@ -2,7 +2,7 @@
 
 A family of generic code review skills with specializations for Python (other languages in progress).
 
-Zolletta is a **meta-skill**: it dispatches to subcommands that each perform a specific review task. It leverages [tokensave](https://github.com/aovestdipaperino/tokensave) and [graphify](https://github.com/safishamsi/graphify) when available for semantic code-graph queries, and falls back to grep + targeted reads otherwise.
+Zolletta is a **meta-skill**: it dispatches to subcommands that each perform a specific review task. It leverages [tokensave](https://github.com/aovestdipaperino/tokensave) when available for semantic code-graph queries, and falls back to grep + targeted reads otherwise.
 
 ## Quick start
 
@@ -27,12 +27,11 @@ The first time you run any subcommand in a project, the **setup guard** automati
 | `documentor`      | Diátaxis compliance + drift detection for `.backstage/`                                                                                           |
 | `external-review` | External-LLM code review on modified files only (default model: `swe`)                                                                            |
 
-## Skills leveraged if available
+## Tools leveraged if available
 
 | Tool      | Homepage                                      | Why zolletta benefits                                                                                                                                                                                                                          |
 | --------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | tokensave | https://github.com/aovestdipaperino/tokensave | Semantic code-graph index (symbols, call/callee, impact radius). Used by patterns, documentor, review, external-review to understand code without reading full files, assess blast radius, verify documented symbols, and find affected tests. |
-| graphify  | https://github.com/safishamsi/graphify        | Persistent knowledge graph with community detection and query/path/explain tools. Used by patterns and review for architecture questions, cross-file relationship tracing, and plain-language node explanations.                               |
 
 When a tool is not installed, zolletta prints a message explaining why it would benefit from the tool and links to the homepage. It does **not** install anything.
 
@@ -55,7 +54,6 @@ When a tool is not installed, zolletta prints a message explaining why it would 
   "setup_timestamp": "2026-07-16T14:30:00",
   "language": "python",
   "tokensave_available": true,
-  "graphify_available": false,
   "python_code_style_available": true,
   "python_testing_patterns_available": true,
   "external_review_model": "swe",
@@ -63,21 +61,20 @@ When a tool is not installed, zolletta prints a message explaining why it would 
 }
 ```
 
-| Field                               | Description                                                                |
-| ----------------------------------- | -------------------------------------------------------------------------- |
-| `setup_version`                     | Matches the skill version that wrote the file                              |
-| `setup_timestamp`                   | ISO 8601 timestamp of the last setup run                                   |
-| `language`                          | Detected project language (`python`, `php`, `go`, `rust`, etc.)            |
-| `tokensave_available`               | `true` if `tokensave_status` responds (probed directly)                    |
-| `graphify_available`                | `true` if `mcp_list_tools` for graphify succeeds or `graphify-out/` exists |
-| `python_code_style_available`       | `true` if the `python-code-style` skill is installed (Python only)         |
-| `python_testing_patterns_available` | `true` if the `python-testing-patterns` skill is installed (Python only)   |
-| `external_review_model`             | Default model for `external-review` (overridable by env var)               |
-| `reports_dir`                       | Directory where review reports are saved                                   |
+| Field                               | Description                                                              |
+| ----------------------------------- | ------------------------------------------------------------------------ |
+| `setup_version`                     | Matches the skill version that wrote the file                            |
+| `setup_timestamp`                   | ISO 8601 timestamp of the last setup run                                 |
+| `language`                          | Detected project language (`python`, `php`, `go`, `rust`, etc.)          |
+| `tokensave_available`               | `true` if `tokensave_status` responds (probed directly)                  |
+| `python_code_style_available`       | `true` if the `python-code-style` skill is installed (Python only)       |
+| `python_testing_patterns_available` | `true` if the `python-testing-patterns` skill is installed (Python only) |
+| `external_review_model`             | Default model for `external-review` (overridable by env var)             |
+| `reports_dir`                       | Directory where review reports are saved                                 |
 
 ### Tool-failure handler
 
-If any subcommand calls a tokensave or graphify MCP tool and receives a tool-not-found / server-not-found error, or if `skill invoke` returns "Skill not found" for a Python review skill, it:
+If any subcommand calls a tokensave MCP tool and receives a tool-not-found / server-not-found error, or if `skill invoke` returns "Skill not found" for a Python review skill, it:
 
 1. Updates the corresponding `*_available` flag in `settings.json` to `false`
 2. Prints the "not installed" message from `reference/tool-messages.md`

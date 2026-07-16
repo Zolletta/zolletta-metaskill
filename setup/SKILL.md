@@ -3,7 +3,7 @@ name: zolletta-setup
 version: 1.0.0
 license: MIT + Commons Clause
 description: >
-  Project initialization for zolletta. Creates the .zolletta-metaskill/ directory, detects the project language, tests tokensave and graphify availability, and writes settings.json. Also adds .zolletta-metaskill/ to .gitignore. Run automatically by the setup guard before any subcommand if settings.json is missing, or manually via /zolletta setup.
+  Project initialization for zolletta. Creates the .zolletta-metaskill/ directory, detects the project language, tests tokensave availability, and writes settings.json. Also adds .zolletta-metaskill/ to .gitignore. Run automatically by the setup guard before any subcommand if settings.json is missing, or manually via /zolletta setup.
 allowed-tools:
   - read
   - grep
@@ -29,7 +29,7 @@ Initialize the `.zolletta-metaskill/` directory and write `settings.json` so tha
 
 Read shared guidelines from the meta-skill (parent directory):
 
-- `../reference/tool-messages.md` — "not installed" messages for tokensave, graphify, and Python skills
+- `../reference/tool-messages.md` — "not installed" messages for tokensave and Python skills
 
 ## Procedure
 
@@ -76,15 +76,7 @@ Determine the project's primary language by checking for language markers in the
    - If the call succeeds → `tokensave_available: true`
    - If the call fails with tool-not-found / server-not-found → `tokensave_available: false`
 
-### Step 5 — Test graphify availability
-
-1. Try calling `mcp_list_tools` with `server_name: "graphify"`.
-   - If the call succeeds (returns a tool list) → `graphify_available: true`
-   - If the call fails with server-not-found → proceed to step 2
-2. Check for a `graphify-out/` directory in the project root (a previously built graph). If present → `graphify_available: true` (the graph exists and can be queried via the `graphify` skill even without the MCP server).
-3. If neither condition is met → `graphify_available: false`
-
-### Step 6 — Test Python skill availability (Python projects only)
+### Step 5 — Test Python skill availability (Python projects only)
 
 If the detected language from Step 3 is **Python**, probe for the two language-specific skills that `review` launches as subagents:
 
@@ -97,9 +89,9 @@ If the detected language from Step 3 is **Python**, probe for the two language-s
 
 If the language is **not Python**, set both flags to `false` and skip the probes entirely.
 
-> **Unified approach**: all three steps (tokensave, graphify, Python skills) use the same detection pattern — try the actual tool, catch the not-found error, set the flag. This mirrors the [tool-failure handler](../SKILL.md#tool-failure-handler) at runtime: the same error that triggers the handler during a review is the one we probe for during setup.
+> **Unified approach**: both steps (tokensave, Python skills) use the same detection pattern — try the actual tool, catch the not-found error, set the flag. This mirrors the [tool-failure handler](../SKILL.md#tool-failure-handler) at runtime: the same error that triggers the handler during a review is the one we probe for during setup.
 
-### Step 7 — Write settings.json
+### Step 6 — Write settings.json
 
 Read the [settings template](assets/settings_template.json) and write `.zolletta-metaskill/settings.json` with the following fields filled in:
 
@@ -109,27 +101,25 @@ Read the [settings template](assets/settings_template.json) and write `.zolletta
 | `setup_timestamp`                | Current timestamp in ISO 8601 (`date -u +%Y-%m-%dT%H:%M:%S`) |
 | `language`                       | Detected language from Step 3                   |
 | `tokensave_available`            | Boolean from Step 4                             |
-| `graphify_available`             | Boolean from Step 5                             |
-| `python_code_style_available`    | Boolean from Step 6 (Python only; `false` otherwise) |
-| `python_testing_patterns_available` | Boolean from Step 6 (Python only; `false` otherwise) |
+| `python_code_style_available`    | Boolean from Step 5 (Python only; `false` otherwise) |
+| `python_testing_patterns_available` | Boolean from Step 5 (Python only; `false` otherwise) |
 | `external_review_model`          | `"swe"` (default; overridable by env var or settings) |
 | `reports_dir`                    | `".zolletta-metaskill/reports"`                 |
 
 Use the `write` tool to create the file. The JSON must be valid and pretty-printed (2-space indent).
 
-### Step 8 — Print "not installed" messages
+### Step 7 — Print "not installed" messages
 
 For each tool or skill that is **not** available, print the corresponding message from `../reference/tool-messages.md`. The message explains why zolletta benefits from the tool/skill and links to the project homepage (where applicable).
 
 This covers:
 - `tokensave_available: false` → tokensave message
-- `graphify_available: false` → graphify message
 - `python_code_style_available: false` (Python only) → python-code-style message
 - `python_testing_patterns_available: false` (Python only) → python-testing-patterns message
 
 **Do NOT install anything.** Only inform the user.
 
-### Step 9 — Summary
+### Step 8 — Summary
 
 Print a brief summary to the user:
 
@@ -138,7 +128,6 @@ Zolletta setup complete.
 
   Language:                        <language>
   tokensave available:             <yes/no>
-  graphify available:              <yes/no>
   python-code-style available:     <yes/no>  (Python only)
   python-testing-patterns available: <yes/no>  (Python only)
   Settings file:                   .zolletta-metaskill/settings.json
@@ -149,4 +138,4 @@ If any tools or skills were unavailable, the "not installed" messages from Step 
 
 ## Re-running setup
 
-`/zolletta setup` can be run at any time to re-detect tools and refresh `settings.json`. The previous `settings.json` is overwritten. This is useful after installing tokensave or graphify, or after a project language change.
+`/zolletta setup` can be run at any time to re-detect tools and refresh `settings.json`. The previous `settings.json` is overwritten. This is useful after installing tokensave, or after a project language change.

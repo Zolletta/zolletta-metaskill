@@ -6,7 +6,7 @@ with method count and optional method name listing. Use --show-methods to
 spot test classes that test multiple unrelated SUTs.
 
 Usage:
-    python3 scan_test_classes.py [directory] [--top N] [--show-methods]
+    python3 scan_test_god_classes.py [directory] [--top N] [--show-methods]
 
 Arguments:
     directory       Root directory to scan (default: tests)
