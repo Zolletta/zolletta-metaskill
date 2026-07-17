@@ -3,6 +3,19 @@
 **Project:** {{project_name}}
 **Language:** {{language}}
 
+## Detailed reports
+
+For full findings (file paths, line numbers, impact, suggested fixes), see the specialist reports:
+
+| Area            | Report file                                |
+| --------------- | ------------------------------------------ |
+| Design patterns | [patterns.md](patterns.md)                 |
+| Documentation   | [documentor.md](documentor.md)             |
+| {{lang_area_1}} | [{{lang_skill_1}}.md]({{lang_skill_1}}.md) |
+| {{lang_area_2}} | [{{lang_skill_2}}.md]({{lang_skill_2}}.md) |
+
+> Only include rows for skills that were actually run.
+
 ## Dependency changes (under my control)
 
 > ⚠️ Requires dependency release — do these first, then wait for the release before proceeding.

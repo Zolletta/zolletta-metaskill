@@ -62,9 +62,9 @@ The setup guard (see the meta-skill's [setup guard](../SKILL.md#setup-guard)) gu
 2. If there are previous review folders, identify the **newest** one (excluding the one you just created). Read its `TODO.md` if it exists.
 3. Keep this previous TODO for the comparison in Step 6.
 
-### Step 4 — Launch the review subagents in parallel batches
+### Step 4 — Launch the review subagents in parallel
 
-Launch subagents in **batches** using `run_subagent` with `is_background: true`. Within each batch, launch all subagents in a single tool-call block so they run concurrently. After launching a batch, wait for all its subagents to finish (using `read_subagent` with `block: true`) and save their reports before starting the next batch.
+Launch **one subagent per command**, all in parallel as background subagents (`is_background: true`). Issue all `run_subagent` calls in a single tool-call block so they run concurrently. Each subagent writes its own report file directly to the review folder — the orchestrator does not collect and save reports on their behalf.
 
 **General skills** (always run, regardless of language):
 
@@ -80,38 +80,25 @@ Launch subagents in **batches** using `run_subagent` with `is_background: true`.
 
 > When support for other languages is added, extend this table with the corresponding skills.
 
-**Checking skill availability**: before launching Batch 1, read `python_code_style_available` and `python_testing_patterns_available` from `settings.json`. If a flag is `false` (non-Python project), **skip that skill** — do not launch a subagent for it. The SUMMARY.md and TODO.md should note that the area was not reviewed. The Python skills are bundled inside this meta-skill, so they are always available for Python projects — no "Skill not found" handling is needed.
-
-**Batching strategy**: group skills into batches of up to 3 parallel background subagents. Place general skills and language-specific skills across batches to maximise parallelism. For Python projects with both skills available (4 skills total), use two batches:
-
-**Batch 1** (up to 2 parallel background subagents — bundled Python skills, Python only):
-
-1. `python-code-style` (skip if `python_code_style_available: false`)
-2. `python-testing-patterns` (skip if `python_testing_patterns_available: false`)
-
-**Batch 2** (2 parallel background subagents — zolletta-metaskill subcommands, always):
-
-3. `/zolletta-metaskill patterns`
-4. `/zolletta-metaskill documentor`
-
-If both Python skills are unavailable, skip Batch 1 entirely and only run Batch 2. For non-Python projects, all skills are general — run them in a single batch of 2.
-
-**Why batching**: at most one foreground subagent can run at a time, so all subagents in a batch MUST be launched as background (`is_background: true`). Issue all `run_subagent` calls for a batch in a single response (parallel tool calls), then collect each result with `read_subagent` (block: true) in the next turn. Save each report immediately after collecting it.
-
-**Important**: Each subagent must be given the full context of what to review and must invoke the relevant skill via the `skill` tool. The subagent should:
-
-1. Invoke the skill with `skill invoke <skill-name>`
-2. Apply the skill's guidelines to review the specified scope
-3. Return a structured markdown report with findings (issues, file paths, line numbers, severity, suggested fixes)
+**Checking skill availability**: before launching, read `python_code_style_available` and `python_testing_patterns_available` from `settings.json`. If a flag is `false` (non-Python project), **skip that skill** — do not launch a subagent for it. The SUMMARY.md and TODO.md should note that the area was not reviewed. The Python skills are bundled inside this meta-skill, so they are always available for Python projects — no "Skill not found" handling is needed.
 
 **Skill scopes:**
 
 | Skill | Type | Scope |
 |-------|------|-------|
-| `python-code-style` | bundled skill (Python only) | Review **all Python source code** in `src/` (and any other source dirs) for style, linting, formatting, naming, docstring, and type annotation issues. **Follow `~/.agents/rules/python-code-style-rules.md`** for the uv/Docker workflow and environment setup, but run in **review mode (read-only)**: use `ruff check` (no `--fix`), `ruff format --check` (no formatting), `ty check` (no `--fix`), and `mypy` as-is. **Auto-fixable** issues (ruff fixable rules, ruff format reformatting, ty fixable diagnostics) are **informational only** — list them in a separate "Auto-fixable (informational)" section and do **not** count them toward the grade. Only **non-auto-fixable** issues are listed as findings and affect the score. |
-| `python-testing-patterns` | bundled skill (Python only) | Review **all test code** in `tests/` for testing best practices: test isolation, naming, mocking patterns, fixture design, AAA structure. **Coverage gap analysis**: run `pytest --cov` (mandatory) and flag only modules with coverage below 50% AND no direct test references AND all callers mocked. Do NOT duplicate the structural "missing test file" check from `scan_tests.py` — that is owned by `/zolletta-metaskill patterns`. If `scan_tests.py` already flagged a file as structurally missing a test, reference that finding but focus on whether the code is actually covered via `pytest --cov`. |
+| `python-code-style` | bundled skill (Python only) | Review **all Python source code** in `src/` (and any other source dirs) for style, linting, formatting, naming, docstring, and type annotation issues. Run in **review mode (read-only)** per [`../reference/review-mode.md`](../reference/review-mode.md): use `ruff check` (no `--fix`), `ruff format --check`, `ty check` (no `--fix`), and `mypy` as-is. Auto-fixable issues are informational only — do not count them toward the grade. Read rule toggles from `python_code_style_rules` in `settings.json` and effective tool config from `python_config`. |
+| `python-testing-patterns` | bundled skill (Python only) | Review **all test code** in `tests/` for testing best practices: test isolation, naming, mocking patterns, fixture design, AAA structure. **Coverage gap analysis**: run `pytest --cov` (mandatory) and flag only modules with coverage below 50% AND no direct test references AND all callers mocked. Do NOT duplicate the structural "missing test file" check from `scan_tests.py` — that is owned by `/zolletta-metaskill patterns`. |
 | `/zolletta-metaskill patterns` | zolletta-metaskill subcommand (always) | Review **all source code** in `src/` for design pattern issues: KISS violations, SRP violations, tight coupling, composition vs inheritance, God classes, premature abstraction, SOLID principle violations (OCP, LSP, ISP, DIP). Also check structural conventions: one class per file, and test directory structure mirroring source structure. **For Python projects**: run all eight scanning scripts (`scan_class_metrics.py`, `scan_test_god_classes.py`, `scan_one_class_per_file.py`, `scan_tests.py`, `scan_dependency_inversion.py`, `scan_interface_segregation.py`, `scan_open_closed.py`, and `scan_liskov_substitution.py` from the skill's `scripts/python/` directory) for automated triage, then apply the "reason to change" test to the top candidates. **This is a mandatory step, not optional.** See `patterns/SKILL.md` → "Mandatory Procedure" for the full procedure. You MUST read `../reference/general-principles.md` (God class detection procedure + "What is NOT a God class") and `references/troubleshooting.md` before evaluating any class. **You must NOT report a class as a God class based on size alone** — size is a triage signal, never a verdict. Classes that are parsers, strategies, orchestrators, or factories serving a single domain must be suppressed. **Use the `scan_tests.py` markdown output directly in the report**: its five tables (misnamed tests, misplaced tests, orphaned tests, multi-class tests, missing tests) are **structural** findings — they check file naming and directory mirroring, not actual code coverage. Copy them into the report's findings section **except the "Missing tests" table**: before reporting any file from the "Missing tests" table as a finding, run `pytest --cov` and check the file's coverage. If coverage >50%, downgrade to informational. Only report as a finding if coverage <50% AND no indirect references. **Do not flag coverage gaps** — that is owned by `python-testing-patterns` which runs `pytest --cov`. **The DIP scanner excludes composition roots** (entry points by filename + classes that create DI containers via `make_container()`/`Container()` detected semantically). If the scanner still flags a class that is clearly a composition root, suppress it and note "composition root — not a DIP violation". Use `test_splitter.py` if the human decides to split a test God class. **For other languages**: apply the same principles manually (no AST scripts available yet). **If `.tokensave/` exists, use the code graph tools** (tokensave_context/callees/callers or tokensave_impact) to understand class responsibilities and assess blast radius before proposing splits — see the skill's "Code Graph Tools" section for the decision tree. |
 | `/zolletta-metaskill documentor` | zolletta-metaskill subcommand (always) | Review **documentation in `.backstage/` only**: Diátaxis compliance (document type correctness, audience clarity, structure, accuracy, consistency) **and** drift detection (staleness, broken links, API doc validation, structural gaps) in a single pass. **Follow `documentor/references/operational-rules.md`** for false positive patterns, correct tool invocation (project root as repo path for staleness scorer), and the recommended workflow order. |
+
+**Each subagent writes its own report file.** The subagent is given the output path and must use the `write` tool to save its report directly. The orchestrator does not collect subagent output and save it — that is the subagent's responsibility.
+
+| Subagent | Output file |
+|----------|------------|
+| python-code-style | `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/python-code-style.md` |
+| python-testing-patterns | `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/python-testing-patterns.md` |
+| patterns | `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/patterns.md` |
+| documentor | `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/documentor.md` |
 
 **Subagent task template** (adapt for each):
 
@@ -125,7 +112,14 @@ Then apply those guidelines to review the following scope:
 
 Project root: <current working directory>
 AGENTS.md: Read the project's AGENTS.md (and ~/.agents/AGENTS.md) for project-specific and global rules.
-For `python-code-style` reviews: also read `~/.agents/rules/python-code-style-rules.md` for the uv/Docker workflow and environment setup, but run in **review mode (read-only)**: use `ruff check` (no `--fix`), `ruff format --check` (no formatting), `ty check` (no `--fix`), and `mypy` as-is. **Auto-fixable** issues (ruff fixable rules, ruff format reformatting, ty fixable diagnostics) are **informational only** — list them in a separate "Auto-fixable (informational)" section and do **not** count them toward the grade. Only **non-auto-fixable** issues are listed as findings and affect the score.
+Review mode: follow ../reference/review-mode.md — read-only, no fixes applied. Auto-fixable
+issues are informational only and do not count toward the grade.
+
+settings.json: Read .zolletta-metaskill/settings.json for tool availability (python.*),
+effective tool config (python_config.*), and rule toggles (python_code_style_rules.*).
+
+You MUST write your report to this file using the write tool:
+  <output_file_path>
 
 Produce a structured markdown report with:
 - A summary section
@@ -143,21 +137,16 @@ Produce a structured markdown report with:
 - 40-59: Poor — many issues, significant quality gaps
 - 0-39: Failing — critical issues throughout, major rework needed
 
-Return ONLY the markdown report as your final output.
+Write the report to <output_file_path> using the write tool. Do NOT return the report
+as your final output — write it to the file. Return only a one-line confirmation that
+the file was written, along with the grade you assigned.
 ```
 
-### Step 5 — Collect and save each report
+### Step 5 — Wait for all subagents to complete
 
-After launching a batch, collect each subagent's output with `read_subagent` (`block: true`, then `block: false` for incremental reads if needed). Save each report to a markdown file in the review folder as soon as it is collected:
+After launching all subagents in parallel, wait for each one to finish using `read_subagent` (`block: true`). Each subagent writes its own report file — the orchestrator only needs to confirm completion and collect the grade from each subagent's one-line confirmation.
 
-| Subagent | Output file |
-|----------|------------|
-| python-code-style | `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/python-code-style.md` |
-| python-testing-patterns | `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/python-testing-patterns.md` |
-| patterns | `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/patterns.md` |
-| documentor | `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/documentor.md` |
-
-Only the files for skills that were actually launched will be created. Use the `write` tool to save each report. If a subagent returns an error or empty output, still create the file with a note explaining what happened. Do not start the next batch until all reports from the current batch are saved.
+If a subagent fails or times out, create its report file with a note explaining what happened, and continue — do not abort the entire review.
 
 ### Step 6 — Compare with previous review (if exists)
 
@@ -177,7 +166,9 @@ If no previous review exists, skip this step (note in the TODO that this is the 
 
 ### Step 7 — Create the executive summary (SUMMARY.md)
 
-Read all report files that were produced and extract the grade from each. Create `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/SUMMARY.md` following the [summary template](assets/summary_template.md).
+Read all report files that were produced by the subagents and extract the grade from each. Create `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/SUMMARY.md` following the [summary template](assets/summary_template.md).
+
+The SUMMARY.md is an executive overview — it contains grades, strengths, weaknesses, and trends. It does **not** duplicate the detailed findings from the specialist reports. Instead, it links to them in a "Detailed reports" section so the reader can drill down.
 
 **Overall grade calculation**: use a weighted average of the sub-grades. Only include areas that were actually run. Suggested weights for a Python project (4 skills):
 
@@ -201,7 +192,9 @@ If a previous review exists, include a "Trend vs previous review" subsection not
 
 ### Step 8 — Create the aggregated TODO.md
 
-Read all report files you just saved. Create `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/TODO.md` following the [TODO template](assets/todo_template.md).
+Read all report files produced by the subagents. Create `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/TODO.md` following the [TODO template](assets/todo_template.md).
+
+The TODO.md is a prioritized action list — it does **not** duplicate the full findings from the specialist reports. Each item links to the relevant specialist report for full details (file path, line numbers, impact, suggested fix).
 
 **Organization rules** (in this exact order):
 

@@ -33,6 +33,19 @@
 
 {{grade_rationale}}
 
+## Detailed reports
+
+For full findings, see the specialist reports:
+
+| Area            | Report file                                |
+| --------------- | ------------------------------------------ |
+| Design patterns | [patterns.md](patterns.md)                 |
+| Documentation   | [documentor.md](documentor.md)             |
+| {{lang_area_1}} | [{{lang_skill_1}}.md]({{lang_skill_1}}.md) |
+| {{lang_area_2}} | [{{lang_skill_2}}.md]({{lang_skill_2}}.md) |
+
+> Only include rows for skills that were actually run.
+
 ## Trend vs previous review
 
 {{trend_summary}}
