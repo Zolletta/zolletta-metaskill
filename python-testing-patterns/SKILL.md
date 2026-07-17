@@ -20,7 +20,6 @@ Comprehensive guide to implementing robust testing strategies in Python using py
 - Implementing property-based testing
 - Testing database operations
 - Debugging failing tests
-- As part of a `/zolletta-metaskill review` run (python-testing-patterns subagent)
 
 ## Coverage gap detection
 
@@ -30,13 +29,9 @@ When reviewing test coverage, **never rely on grep alone** to determine if a cla
 
 ### Step 1 — Run coverage (mandatory)
 
-You **must** run coverage before flagging any coverage gap. Do not skip this step. Check `settings.json` for how to run:
+You **must** run coverage before flagging any coverage gap. Do not skip this step. Follow the shared "Running tools" convention from the parent `SKILL.md` (container/uv detection) to run `pytest --cov`.
 
-- If `python.uv` is `true` → use `uv run pytest --cov`
-- If `container_name` is set → run inside the container: `docker compose exec <container_name> uv run pytest --cov`
-- Otherwise → `pytest --cov`
-
-The project's `pyproject.toml` may already configure coverage options under `[tool.coverage.run]` and `[tool.pytest.ini_options]`. If so, a plain `uv run pytest --cov` (or `pytest --cov`) will use those settings — no need to add extra flags.
+The project's `pyproject.toml` may already configure coverage options under `[tool.coverage.run]` and `[tool.pytest.ini_options]`. If so, a plain `pytest --cov` will use those settings — no need to add extra flags.
 
 Read the coverage output. If a module shows **above 80%** coverage, it is well-covered — do not flag it as a coverage gap even if there are no direct test references. The code is exercised through integration tests or indirect calls.
 

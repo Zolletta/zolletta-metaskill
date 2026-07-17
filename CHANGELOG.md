@@ -24,6 +24,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `license: MIT + Commons Clause` and `version: 1.0.0` in all SKILL.md frontmatter
 - `CHANGELOG.md` following Keep a Changelog format
 - `README.md` with project overview, subcommands table, leveraged skills, shared resources, setup behavior, settings.json schema, and reports location
+- **`python_config` caching in `settings.json`** — setup Step 6.5 extracts effective tool configuration from `pyproject.toml` (line length, target version, ruff/mypy/ty/pytest settings, `type_checker` resolution) and records `pyproject_mtime` for staleness detection. Unconfigured tools get their real built-in defaults (not skill-invented fallbacks) and trigger an "unconfigured" warning. Setup never modifies `pyproject.toml`
+- **Setup guard staleness check** — if `settings.json` exists and `pyproject.toml`'s mtime differs from `python_config.pyproject_mtime`, the guard re-runs only Step 6.5 (light refresh of `python_config`) instead of full setup
+- **Shared "Running tools" convention** in the parent `SKILL.md` — container/uv execution rules stated once, referenced by all subcommands instead of duplicated per skill
+- **`reference/review-mode.md`** — shared read-only review rules (auto-fixable = informational and not graded; not auto-fixable = findings with severity/impact/suggested fix and graded), with tool-specific notes for ruff, ty, mypy, and vulture
+- **"Unconfigured" warnings in `reference/tool-messages.md`** — warnings for ruff, mypy, ty, and pytest when available but missing a `[tool.*]` section in `pyproject.toml`. Each warning states the tool's effective built-in defaults and links to the full options reference URL
+- **`python_code_style_rules` in `settings.json`** — configurable rule toggles for the `python-code-style` skill: `check_acronym_casing`, `check_no_relative_imports`, `check_one_class_per_file`, `check_filename_matches_class`, `check_public_docstrings`, `check_docstring_no_type_repeat`, `check_skip_obvious_docstrings`, `check_line_length`, `vulture_min_confidence` (all default `true` / `80`)
+- **`python-code-style/SKILL.md` rewrite** — two-table structure (always-on rules vs. configurable settings), detailed per-rule explanations with settings.json keys and enforcement methods, reads all configuration from `settings.json` (`python_config` + `python_code_style_rules`). Dropped fallback TOML blocks, Quick Start, Best Practices Summary, and redundant rules (~400 → ~240 lines)
+- **`python-testing-patterns/SKILL.md` streamlined** — embedded container/uv convention replaced with a pointer to the parent `SKILL.md` shared convention; "As part of a review run" line dropped from "When to Use"
 
 ### Changed
 
