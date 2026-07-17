@@ -126,12 +126,6 @@ Test functions should follow the pattern `test_<unit>_<scenario>_<expected_outco
 **Good names**: `test_create_user_with_valid_data_returns_user`, `test_login_fails_with_invalid_password`
 **Bad names**: `test_1`, `test_user`, `test_function`
 
-## Detailed patterns and worked examples
-
-For comprehensive worked examples (fixtures, parameterized tests, mocking, exceptions, retry testing, freezegun, test markers, test organization, test design principles), see [`references/details.md`](references/details.md).
-
-For advanced patterns (async testing, monkeypatching, temporary files, conftest setup, property-based testing, database testing, CI/CD integration), see [`references/advanced-patterns.md`](references/advanced-patterns.md).
-
 ## Attribution
 
 This skill is adapted from [python-testing-patterns](https://github.com/wshobson/agents/tree/main/plugins/python-development/skills/python-testing-patterns) by Seth Hobson ([wshobson/agents](https://github.com/wshobson/agents)), licensed under the MIT License. Copyright (c) 2024 Seth Hobson.
