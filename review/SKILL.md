@@ -125,7 +125,7 @@ Follow the report template for this skill (linked in the skill's "Output" sectio
   - python-code-style: assets/report_template.md
   - python-testing-patterns: assets/report_template.md
   - patterns: assets/report_template.md
-  - documentor: assets/drift_report_template.md
+  - documentor: assets/report_template.md
 
 The report must include:
 - A **grade** section at the top with a numeric score from 0 to 100 for the project's

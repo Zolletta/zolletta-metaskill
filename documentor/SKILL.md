@@ -159,7 +159,7 @@ Load on demand — keep this file lean:
 
 | Asset | Description |
 |-------|-------------|
-| [Drift Report Template](assets/drift_report_template.md) | Template for drift analysis reports |
+| [Report Template](assets/report_template.md) | Template for drift analysis reports |
 | [Sample Drift Data](assets/sample_drift_data.json) | Sample JSON for testing and demonstration |
 
 ---
