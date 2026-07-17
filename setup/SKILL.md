@@ -1,6 +1,6 @@
 ---
 name: zolletta-metaskill-setup
-version: 1.0.0
+version: 1.1.0
 license: MIT + Commons Clause
 description: >
   Project initialization for zolletta-metaskill. Creates the .zolletta-metaskill/ directory, detects the project language, detects Docker container, tests tokensave availability, detects Python tooling, and writes settings.json. Also adds .zolletta-metaskill/ to .gitignore. Run automatically by the setup guard before any subcommand if settings.json is missing, or manually via /zolletta-metaskill setup.
@@ -175,6 +175,7 @@ Read the [settings template](assets/settings_template.json) and write `.zolletta
 | `python_code_style_rules`        | Object from Step 6.5 (Python only; defaults from `settings_template.json`) — see below |
 | `python_testing_patterns_rules`  | Object from Step 6.5 (Python only; defaults from `settings_template.json`) — see below |
 | `external_review_model`          | `"swe"` (default; overridable by front-matter) |
+| `documentation_language`         | `"en"` (default; ISO 639-1 code for documentation language) |
 | `reports_dir`                    | `".zolletta-metaskill/reports"`                 |
 
 The `python` subobject has this shape:

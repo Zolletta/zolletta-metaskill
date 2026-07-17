@@ -15,7 +15,7 @@ python3 scripts/python/scan_class_metrics.py <directory> [--top N] [--min-lines 
 ```
 
 | Option          | Default | Description                       |
-| --------------- | ------- | --------------------------------- |
+| -----------------| ---------| -----------------------------------|
 | `<directory>`   | `src`   | Root directory to scan            |
 | `--top N`       | 30      | Show only the top N classes       |
 | `--min-lines N` | 50      | Skip classes shorter than N lines |

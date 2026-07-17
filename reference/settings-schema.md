@@ -62,27 +62,29 @@
     "check_test_naming": true
   },
   "external_review_model": "swe",
+  "documentation_language": "en",
   "reports_dir": ".zolletta-metaskill/reports"
 }
 ```
 
 ## Top-level fields
 
-| Field                               | Type              | Description                                                                                              |
-| ----------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------- |
-| `setup_version`                     | string            | Matches the skill version that wrote the file                                                            |
-| `setup_timestamp`                   | string (ISO 8601) | Timestamp of the last setup run                                                                          |
-| `language`                          | string            | Detected project language (`python`, `php`, `go`, `rust`, etc.)                                          |
-| `container_name`                    | string \| null    | Docker container name for running tools (`null` if no Docker)                                            |
-| `tokensave_available`               | boolean           | `true` if `tokensave_status` responds (probed directly)                                                  |
-| `python`                            | object \| null    | Tool availability flags (Python only; `null` otherwise) — see below                                      |
-| `python_config`                     | object \| null    | Effective tool configuration extracted from `pyproject.toml` (Python only; `null` otherwise) — see below |
-| `python_code_style_available`       | boolean           | `true` for Python projects (skill is bundled)                                                            |
-| `python_testing_patterns_available` | boolean           | `true` for Python projects (skill is bundled)                                                            |
-| `python_code_style_rules`           | object            | Configurable rule toggles for the `python-code-style` skill — see below                                  |
-| `python_testing_patterns_rules`     | object            | Configurable rule toggles for the `python-testing-patterns` skill — see below                            |
-| `external_review_model`             | string            | Default model for `external-review` (overridable by front-matter)                                        |
-| `reports_dir`                       | string            | Directory where review reports are saved                                                                 |
+| Field                               | Type              | Description                                                                                                                                                                    |
+| ----------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `setup_version`                     | string            | Matches the skill version that wrote the file                                                                                                                                  |
+| `setup_timestamp`                   | string (ISO 8601) | Timestamp of the last setup run                                                                                                                                                |
+| `language`                          | string            | Detected project language (`python`, `php`, `go`, `rust`, etc.)                                                                                                                |
+| `container_name`                    | string \| null    | Docker container name for running tools (`null` if no Docker)                                                                                                                  |
+| `tokensave_available`               | boolean           | `true` if `tokensave_status` responds (probed directly)                                                                                                                        |
+| `python`                            | object \| null    | Tool availability flags (Python only; `null` otherwise) — see below                                                                                                            |
+| `python_config`                     | object \| null    | Effective tool configuration extracted from `pyproject.toml` (Python only; `null` otherwise) — see below                                                                       |
+| `python_code_style_available`       | boolean           | `true` for Python projects (skill is bundled)                                                                                                                                  |
+| `python_testing_patterns_available` | boolean           | `true` for Python projects (skill is bundled)                                                                                                                                  |
+| `python_code_style_rules`           | object            | Configurable rule toggles for the `python-code-style` skill — see below                                                                                                        |
+| `python_testing_patterns_rules`     | object            | Configurable rule toggles for the `python-testing-patterns` skill — see below                                                                                                  |
+| `external_review_model`             | string            | Default model for `external-review` (overridable by front-matter)                                                                                                              |
+| `documentation_language`            | string            | ISO 639-1 code for documentation language (default: `"en"`). When not `"en"`, the `documentor` skill translates Diátaxis signpost headings before running the staleness scorer |
+| `reports_dir`                       | string            | Directory where review reports are saved                                                                                                                                       |
 
 ## `python` — tool availability
 

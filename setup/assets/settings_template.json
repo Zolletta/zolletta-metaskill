@@ -1,5 +1,5 @@
 {
-  "setup_version": "1.0.0",
+  "setup_version": "1.1.0",
   "setup_timestamp": "",
   "language": "",
   "container_name": null,
@@ -26,5 +26,6 @@
     "check_test_naming": true
   },
   "external_review_model": "swe",
+  "documentation_language": "en",
   "reports_dir": ".zolletta-metaskill/reports"
 }

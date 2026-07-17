@@ -290,19 +290,20 @@ python scripts/doc_staleness_scorer.py <repo_path> [options]
 
 **Parameters:**
 
-| Flag                    | Type       | Default                                       | Description                                                     |
-| ----------------------- | ---------- | --------------------------------------------- | --------------------------------------------------------------- |
-| `repo_path`             | positional | _(required)_                                  | Path to the git repository to score                             |
-| `--json`                | flag       | off                                           | Output the full scoring report as JSON                          |
-| `--threshold`           | float      | _(none)_                                      | Fail with exit code 1 if aggregate score falls below this value |
-| `--readme-focus`        | flag       | off                                           | Only score README files (filenames starting with `readme`)      |
-| `--required-sections`   | string     | `Installation,Usage,API,Contributing,License` | Comma-separated section names for completeness scoring          |
-| `--quiet`               | flag       | off                                           | Only print the aggregate score number (no report)               |
-| `--weight-updated`      | float      | `0.20`                                        | Weight for the "last updated" dimension                         |
-| `--weight-alignment`    | float      | `0.30`                                        | Weight for the "code-doc alignment" dimension                   |
-| `--weight-links`        | float      | `0.15`                                        | Weight for the "link health" dimension                          |
-| `--weight-completeness` | float      | `0.20`                                        | Weight for the "completeness" dimension                         |
-| `--weight-accuracy`     | float      | `0.15`                                        | Weight for the "accuracy" dimension                             |
+| Flag                      | Type       | Default                                       | Description                                                                                                                               |
+| ------------------------- | ---------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `repo_path`               | positional | _(required)_                                  | Path to the git repository to score                                                                                                       |
+| `--json`                  | flag       | off                                           | Output the full scoring report as JSON                                                                                                    |
+| `--threshold`             | float      | _(none)_                                      | Fail with exit code 1 if aggregate score falls below this value                                                                           |
+| `--readme-focus`          | flag       | off                                           | Only score README files (filenames starting with `readme`)                                                                                |
+| `--required-sections`     | string     | `Installation,Usage,API,Contributing,License` | Comma-separated section names for completeness scoring                                                                                    |
+| `--diataxis-translations` | string     | _(none)_                                      | Path to a JSON file with translated Diátaxis headings and directory names (for non-English documentation). See below for the JSON format. |
+| `--quiet`                 | flag       | off                                           | Only print the aggregate score number (no report)                                                                                         |
+| `--weight-updated`        | float      | `0.20`                                        | Weight for the "last updated" dimension                                                                                                   |
+| `--weight-alignment`      | float      | `0.30`                                        | Weight for the "code-doc alignment" dimension                                                                                             |
+| `--weight-links`          | float      | `0.15`                                        | Weight for the "link health" dimension                                                                                                    |
+| `--weight-completeness`   | float      | `0.20`                                        | Weight for the "completeness" dimension                                                                                                   |
+| `--weight-accuracy`       | float      | `0.15`                                        | Weight for the "accuracy" dimension                                                                                                       |
 
 **Example:**
 
@@ -317,6 +318,43 @@ python scripts/doc_staleness_scorer.py /path/to/repo --threshold 60 --readme-foc
 - **Quiet** (`--quiet`): Single line with the aggregate score (e.g., `72.3`)
 
 **Exit Codes:** 0 = score above threshold (or no threshold set), 1 = score below threshold, 2 = tool error
+
+**`--diataxis-translations` JSON format:**
+
+For non-English documentation, the agent translates the English signpost headings and directory names into the documentation language and writes them to a JSON file. The English strings act as signposts — the agent translates each one.
+
+```json
+{
+  "readme_sections": [
+    "installazione",
+    "utilizzo",
+    "api",
+    "contribuire",
+    "licenza"
+  ],
+  "quadrants": {
+    "tutorials": {
+      "dir_names": ["tutorials", "tutorial", "guide"],
+      "required_sections": ["cosa impareremo", "prerequisiti"]
+    },
+    "how-to": {
+      "dir_names": ["come-fare", "guide-pratiche"],
+      "any_of_groups": [["prerequisiti", "prima di iniziare"]]
+    },
+    "reference": {
+      "dir_names": ["riferimento", "api"]
+    },
+    "explanation": {
+      "dir_names": ["spiegazione", "design", "architettura"]
+    }
+  }
+}
+```
+
+- `readme_sections`: translated equivalents of `installation`, `usage`, `api`, `contributing`, `license` (used for non-Diátaxis docs)
+- `quadrants.<name>.dir_names`: **added** to the English defaults (additive merge — both languages are matched)
+- `quadrants.<name>.required_sections`: **replaces** the English list (the translated version is authoritative)
+- `quadrants.<name>.any_of_groups`: **replaces** the English groups
 
 ### api_doc_validator.py
 

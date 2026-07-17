@@ -1,6 +1,6 @@
 ---
 name: zolletta-metaskill-review
-version: 1.0.0
+version: 1.1.0
 license: MIT + Commons Clause
 description: >
   Full project review orchestrator. Reads the project language from .zolletta-metaskill/settings.json (written by setup), then runs the appropriate specialist skills as subagents in parallel batches — general skills (patterns, documentor) always, plus language-specific skills when applicable (e.g. python-code-style and python-testing-patterns for Python). Saves each report to .zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/, produces an aggregated TODO.md organized by functional priority (dependency changes first, then by severity), and compares with the previous review's TODO to verify completion. Respond in the user's language.

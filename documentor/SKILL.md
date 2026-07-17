@@ -1,6 +1,6 @@
 ---
 name: zolletta-metaskill-documentor
-version: 1.0.0
+version: 1.1.0
 description: >
   Documentation review combining [Diátaxis](https://diataxis.fr/) compliance checks with automated drift detection. Reviews .backstage/ docs for structure, accuracy, consistency, and freshness against the codebase. Use when reviewing docs, preparing releases, running CI doc gates, or auditing doc quality.
 license: MIT + Commons Clause
@@ -142,7 +142,7 @@ When running automated tools, filter out these known false positive patterns:
 - **Phantom docs for class methods** — `api_doc_validator.py` uses top-level AST extraction; class methods, stdlib imports, and protocol methods are invisible to it. Verify with grep before reporting.
 - **Parameter mismatches from name collisions** — e.g., `Cache.cache(scenario)` vs `BranchCache.cache(templates_by_project, gitlab_manager)`. Verify which class the doc references.
 - **Temporal drift on docs updated after source** — if the doc was committed after the source file, the temporal signal is a false positive.
-- **Completeness=0 for Diátaxis docs** — `doc_staleness_scorer.py` expects README-style sections; Diátaxis docs always score 0 on completeness. Ignore this dimension.
+- **Completeness=0 for Diátaxis docs** — `doc_staleness_scorer.py` detects Diátaxis quadrant directories and applies quadrant-specific completeness checks. If a doc scores 0 on completeness despite being in a quadrant directory, verify the directory name matches the expected signposts (see `--diataxis-translations` for non-English docs).
 - **Illustrative paths in docs** — template placeholders (`<verifier_name>_result.py`), example file names, and glob patterns are intentional, not missing files.
 
 ### References
@@ -174,6 +174,7 @@ Load on demand — keep this file lean:
    - `api_doc_validator.py` — API doc accuracy against source (AST)
    - `drift_analyzer.py` — full drift analysis
    - `doc_staleness_scorer.py` — freshness score
+   - **Non-English documentation**: if `documentation_language` in `settings.json` is not `"en"`, translate the English signpost headings and directory names before running the staleness scorer. Write a JSON file (see `--diataxis-translations` in `reference/scripts.md` for the format) with the translated equivalents and pass it via `--diataxis-translations <path>`. The English signposts (e.g. `"tutorials"`, `"prerequisites"`, `"what we will learn"`) are the keys — translate each to the documentation language. Also translate the README section defaults (`installation`, `usage`, `api`, `contributing`, `license`) and include them as `readme_sections` in the JSON.
 3. **Filter false positives** using the rules above.
 4. **Inventory docs:** List all `.md` files in `.backstage/` and classify by Diátaxis quadrant.
 5. **Review each document** against the Diátaxis compliance checklist (this is a doc-internal check — no source reading needed).

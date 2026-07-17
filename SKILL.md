@@ -1,6 +1,6 @@
 ---
 name: zolletta-metaskill
-version: 1.0.0
+version: 1.1.0
 license: MIT + Commons Clause
 description: 'Zolletta-metaskill — meta-skill and registry for the zolletta-* review family. Lists available skills, shared resources, and orchestration rules.'
 argument-hint: "[subcommand]"

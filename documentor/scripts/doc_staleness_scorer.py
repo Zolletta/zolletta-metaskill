@@ -15,6 +15,7 @@ Usage:
     python doc_staleness_scorer.py /path/to/repo --threshold 60
     python doc_staleness_scorer.py /path/to/repo --readme-focus
     python doc_staleness_scorer.py /path/to/repo --required-sections "Installation,Usage,API"
+    python doc_staleness_scorer.py /path/to/repo --diataxis-translations translations.json
 """
 
 import argparse
@@ -85,6 +86,12 @@ DEFAULT_README_SECTIONS = [
 # When a doc file lives under one of these directories, the completeness
 # dimension uses the quadrant-specific required sections instead of the
 # README defaults. This prevents Diátaxis docs from always scoring 0.
+#
+# The English strings below act as **signposts**: when the documentation
+# language is not English (``--diataxis-translations`` flag), the agent
+# provides translated equivalents via a JSON file. Translations are merged
+# additively into ``dir_names`` and replace ``required_sections`` /
+# ``any_of_groups`` so that non-English docs are matched correctly.
 DIATAXIS_QUADRANTS = {
     "tutorials": {
         "dir_names": {"tutorials", "tutorial"},
@@ -111,6 +118,69 @@ DIATAXIS_QUADRANTS = {
         "required_sections": [],
     },
 }
+
+
+def _load_diataxis_translations(path: str) -> Dict[str, Any]:
+    """Load translated Diátaxis headings and directory names from a JSON file.
+
+    The JSON format mirrors ``DIATAXIS_QUADRANTS`` but with translated strings.
+    Only non-English languages need this — English signposts are built in.
+
+    Expected format::
+
+        {
+          "readme_sections": ["installazione", "utilizzo", "api", "contribuire", "licenza"],
+          "quadrants": {
+            "tutorials": {
+              "dir_names": ["tutorials", "tutorial", "guide"],
+              "required_sections": ["cosa impareremo", "prerequisiti"]
+            },
+            "how-to": {
+              "dir_names": ["come-fare", "guide-pratiche"],
+              "any_of_groups": [["prerequisiti", "prima di iniziare"]]
+            },
+            "reference": {
+              "dir_names": ["riferimento", "api"]
+            },
+            "explanation": {
+              "dir_names": ["spiegazione", "design", "architettura"]
+            }
+          }
+        }
+
+    Returns a dict with ``readme_sections`` (list or None) and ``quadrants``
+    (dict keyed by quadrant name with translated fields).
+    """
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, IOError, json.JSONDecodeError) as exc:
+        print(f"Warning: could not load Diátaxis translations from {path}: {exc}", file=sys.stderr)
+        return {"readme_sections": None, "quadrants": {}}
+
+    readme_sections = data.get("readme_sections")
+    quadrants = data.get("quadrants", {})
+    return {"readme_sections": readme_sections, "quadrants": quadrants}
+
+
+def _merge_translations(translations: Dict[str, Any]) -> None:
+    """Merge translated headings/dir names into the global ``DIATAXIS_QUADRANTS``.
+
+    - ``dir_names`` are merged additively (English + translated).
+    - ``required_sections`` and ``any_of_groups`` are replaced if present in
+      the translation (the translated version is authoritative for that
+      language).
+    """
+    for quad_name, quad_trans in translations.get("quadrants", {}).items():
+        if quad_name not in DIATAXIS_QUADRANTS:
+            continue
+        quad = DIATAXIS_QUADRANTS[quad_name]
+        if "dir_names" in quad_trans:
+            quad["dir_names"] = quad["dir_names"] | {n.lower() for n in quad_trans["dir_names"]}
+        if "required_sections" in quad_trans:
+            quad["required_sections"] = [s.lower() for s in quad_trans["required_sections"]]
+        if "any_of_groups" in quad_trans:
+            quad["any_of_groups"] = [[s.lower() for s in group] for group in quad_trans["any_of_groups"]]
 
 SCORE_LABELS = {
     (90, 101): "excellent",
@@ -746,6 +816,13 @@ def main():
         "--required-sections", default=None,
         help="Comma-separated required sections for completeness scoring",
     )
+    parser.add_argument(
+        "--diataxis-translations", default=None,
+        help="Path to a JSON file with translated Diátaxis headings and "
+             "directory names (for non-English documentation). The English "
+             "signposts are built in; this file adds/replaces them with "
+             "language-specific equivalents.",
+    )
     parser.add_argument("--quiet", action="store_true", help="Only output score number")
     parser.add_argument("--weight-updated", type=float, default=None)
     parser.add_argument("--weight-alignment", type=float, default=None)
@@ -778,8 +855,19 @@ def main():
     if total_weight > 0:
         weights = {k: v / total_weight for k, v in weights.items()}
 
-    # Required sections
-    required_sections = DEFAULT_README_SECTIONS
+    # Load Diátaxis translations (non-English documentation)
+    if args.diataxis_translations:
+        translations = _load_diataxis_translations(args.diataxis_translations)
+        _merge_translations(translations)
+        translated_readme = translations.get("readme_sections")
+        if translated_readme and not args.required_sections:
+            required_sections = [s.strip() for s in translated_readme]
+        else:
+            required_sections = DEFAULT_README_SECTIONS
+    else:
+        required_sections = DEFAULT_README_SECTIONS
+
+    # Required sections (CLI override takes precedence)
     if args.required_sections:
         required_sections = [s.strip() for s in args.required_sections.split(",")]
 
