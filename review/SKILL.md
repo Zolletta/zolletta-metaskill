@@ -121,13 +121,19 @@ effective tool config (python_config.*), and rule toggles (python_code_style_rul
 You MUST write your report to this file using the write tool:
   <output_file_path>
 
-Produce a structured markdown report with:
-- A summary section
+Follow the report template for this skill (linked in the skill's "Output" section):
+  - python-code-style: assets/report_template.md
+  - python-testing-patterns: assets/report_template.md
+  - patterns: assets/report_template.md
+  - documentor: assets/drift_report_template.md
+
+The report must include:
 - A **grade** section at the top with a numeric score from 0 to 100 for the project's
   performance in the scope you reviewed. Justify the score with a brief breakdown of
   what earned points and what lost points.
-- Each issue as a section with: file path, line number(s), severity (critical/high/medium/low),
-  problem description, impact, and suggested fix
+- The skill-specific sections from the report template (tool results, coverage tables,
+  scanning script results, etc. as applicable)
+- Findings grouped by severity (critical/high/medium/low) using the template's table format
 - If no issues are found, state that explicitly with a brief explanation of what was checked
 
 **Grading scale** (0-100):

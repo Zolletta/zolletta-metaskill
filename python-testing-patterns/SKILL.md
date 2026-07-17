@@ -126,6 +126,15 @@ Test functions should follow the pattern `test_<unit>_<scenario>_<expected_outco
 **Good names**: `test_create_user_with_valid_data_returns_user`, `test_login_fails_with_invalid_password`
 **Bad names**: `test_1`, `test_user`, `test_function`
 
+## Output
+
+When this skill runs a review, it writes its findings to a markdown file using the [report template](assets/report_template.md):
+
+- **Path**: `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/python-testing-patterns.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`)
+- **Compound skills** (e.g. `zolletta-metaskill-review`) may override the folder and filename — follow their instructions instead
+- **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the [setup guard](../SKILL.md#setup-guard) — no manual setup needed
+- **Format**: follow the [report template](assets/report_template.md) — grade at the top, coverage summary, coverage gaps table, findings grouped by severity with file/test-symbol/rule/issue/fix columns
+
 ## Attribution
 
 This skill is adapted from [python-testing-patterns](https://github.com/wshobson/agents/tree/main/plugins/python-development/skills/python-testing-patterns) by Seth Hobson ([wshobson/agents](https://github.com/wshobson/agents)), licensed under the MIT License. Copyright (c) 2024 Seth Hobson.

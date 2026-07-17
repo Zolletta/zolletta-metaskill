@@ -238,6 +238,15 @@ The confidence threshold is read from `python_code_style_rules.vulture_min_confi
 
 If `vulture` is `false` in `settings.json`, skip dead-code detection.
 
+## Output
+
+When this skill runs a review, it writes its findings to a markdown file using the [report template](assets/report_template.md):
+
+- **Path**: `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/python-code-style.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`)
+- **Compound skills** (e.g. `zolletta-metaskill-review`) may override the folder and filename — follow their instructions instead
+- **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the [setup guard](../SKILL.md#setup-guard) — no manual setup needed
+- **Format**: follow the [report template](assets/report_template.md) — grade at the top, tool results (ruff, type checker, vulture), auto-fixable issues (informational, do not count toward grade), findings grouped by severity with file/symbol/rule ID/issue/fix columns
+
 ## Attribution
 
 This skill is adapted from [python-code-style](https://github.com/wshobson/agents/tree/main/plugins/python-development/skills/python-code-style) by Seth Hobson ([wshobson/agents](https://github.com/wshobson/agents)), licensed under the MIT License. Copyright (c) 2024 Seth Hobson.
