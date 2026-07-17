@@ -26,6 +26,20 @@ Issues that require human judgment to fix. These are:
 - **Counted toward the grade.**
 - The only issues that affect the review score.
 
+## No "borderline" category — emit or suppress, never hedge
+
+There is **no third bucket** between "finding" and "not a finding." Every diagnostic must be classified as either a real finding (emit it, score it) or not a finding (suppress it silently). The following patterns are **forbidden** in review reports:
+
+- **"Borderline" / "low severity and may be an intentional choice"**: if the rule has a documented exception that applies, suppress the finding. If no exception applies, emit it as a finding. Do not emit it and then say "no action required."
+- **"No action required unless the team wants strict consistency"**: this is a finding that doesn't know what it is. If the rule is worth enforcing, enforce it. If the rule has an exception, document the exception and suppress. Do not leave the decision to the reader.
+- **"Acceptable as-is" in a findings table**: if it's acceptable, it's not a finding. Move it to the informational section or remove it entirely.
+
+**Why this matters**: hedged findings consume triage time without driving any action. A reader who sees "borderline, no action required" must still read the finding, understand it, and decide whether to act — only to arrive at the same conclusion the reviewer already reached. That is pure cost with zero value.
+
+**How to suppress correctly**: if a finding is suppressed because a documented exception applies (e.g. "stdlib concurrency primitive, not a DIP violation" or "enum alias, not a constant"), do not list it in the findings table. Mention it in the manual review checks table with a PASS status and a brief note explaining why the exception applies. Suppressed findings do not count toward the grade.
+
+**How to emit correctly**: if a finding is real, emit it with a severity, a concrete file/line reference, and a specific suggested fix. Do not qualify it with "may be" or "could be considered." If you're not sure whether it's real, the rule definition is not precise enough — that's a skill bug to fix, not a reason to hedge in the report.
+
 ## Tool-specific notes
 
 ### ruff

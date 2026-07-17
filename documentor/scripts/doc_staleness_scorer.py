@@ -81,6 +81,37 @@ DEFAULT_README_SECTIONS = [
     "installation", "usage", "api", "contributing", "license",
 ]
 
+# Diátaxis quadrant directories (lowercase, matched against path components).
+# When a doc file lives under one of these directories, the completeness
+# dimension uses the quadrant-specific required sections instead of the
+# README defaults. This prevents Diátaxis docs from always scoring 0.
+DIATAXIS_QUADRANTS = {
+    "tutorials": {
+        "dir_names": {"tutorials", "tutorial"},
+        "required_sections": ["what we will learn", "prerequisites"],
+    },
+    "how-to": {
+        "dir_names": {"how-to", "howto", "how_to", "guides"},
+        # Diátaxis how-to guides need "Prerequisites" OR "Before Starting" —
+        # either heading satisfies the convention. Stored as an "any_of"
+        # group: at least one heading in the group must be present.
+        "any_of_groups": [["prerequisites", "before starting"]],
+        "required_sections": [],
+    },
+    "reference": {
+        "dir_names": {"reference", "api"},
+        # Reference docs are dictionaries — no mandatory sections beyond
+        # having content. An empty required list means "no structural
+        # requirement" → score 100 (minus length penalty).
+        "required_sections": [],
+    },
+    "explanation": {
+        "dir_names": {"explanation", "design", "architecture", "rationale"},
+        # Explanation docs are discussions — no mandatory sections.
+        "required_sections": [],
+    },
+}
+
 SCORE_LABELS = {
     (90, 101): "excellent",
     (70, 90): "good",
@@ -323,10 +354,46 @@ def score_link_health(repo_path: str, doc_path: str) -> Tuple[float, Dict[str, A
     return (valid / len(links)) * 100.0, details
 
 
+def _detect_diataxis_quadrant(
+    doc_path: str,
+) -> Optional[Dict[str, Any]]:
+    """Return the Diátaxis quadrant config if the doc is inside a quadrant
+    directory, otherwise ``None``.
+
+    Checks each path component of ``doc_path`` against the known quadrant
+    directory names (case-insensitive). This works for both flat layouts
+    (``docs/tutorials/quick-start.md``) and nested ones
+    (``.backstage/docs/v1.x/how-to/configure-x.md``).
+    """
+    parts_lower = [p.lower() for p in Path(doc_path).parts]
+    for quadrant in DIATAXIS_QUADRANTS.values():
+        if any(part in quadrant["dir_names"] for part in parts_lower):
+            return quadrant
+    return None
+
+
 def score_completeness(repo_path: str, doc_path: str, required_sections: List[str]) -> Tuple[float, Dict[str, Any]]:
-    """Score based on whether expected sections are present. 0-100."""
+    """Score based on whether expected sections are present. 0-100.
+
+    If the doc lives under a Diátaxis quadrant directory (tutorials/,
+    how-to/, reference/, explanation/), the quadrant-specific required
+    sections are used instead of the caller-provided ``required_sections``.
+    This prevents Diátaxis docs from always scoring 0 when the caller
+    passes README-style sections (installation, usage, etc.).
+    """
     full_path = os.path.join(repo_path, doc_path)
     details = {"expected_sections": required_sections, "found_sections": [], "missing_sections": []}
+
+    # Detect Diátaxis quadrant from the doc's directory path. If found,
+    # override the required sections with the quadrant-appropriate set.
+    any_of_groups: List[List[str]] = []
+    quadrant = _detect_diataxis_quadrant(doc_path)
+    if quadrant is not None:
+        required_sections = quadrant.get("required_sections", [])
+        any_of_groups = quadrant.get("any_of_groups", [])
+        details["expected_sections"] = required_sections
+        details["doc_structure"] = "diataxis"
+        details["any_of_groups"] = any_of_groups
 
     try:
         with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -357,11 +424,24 @@ def score_completeness(repo_path: str, doc_path: str, required_sections: List[st
         else:
             missing.append(section)
 
+    # Handle "any_of" groups (e.g. how-to needs "Prerequisites" OR "Before
+    # Starting"). Each group counts as one requirement; satisfied if at
+    # least one heading in the group is present.
+    groups_found = 0
+    groups_missing = []
+    for group in any_of_groups:
+        group_lower = [g.lower() for g in group]
+        if any(g in headings_lower or g in heading_words for g in group_lower):
+            groups_found += 1
+        elif any(any(g in h for h in headings_lower) for g in group_lower):
+            groups_found += 1
+        else:
+            groups_missing.append(group)
+
     details["found_sections"] = found
     details["missing_sections"] = missing
-
-    if not required_sections:
-        return 100.0, details
+    details["any_of_groups_found"] = groups_found
+    details["any_of_groups_missing"] = groups_missing
 
     # Also score based on content length (very short docs are incomplete)
     content_lines = len([l for l in content.splitlines() if l.strip()])
@@ -371,7 +451,14 @@ def score_completeness(repo_path: str, doc_path: str, required_sections: List[st
     elif content_lines < 30:
         length_penalty = 15
 
-    section_score = (len(found) / len(required_sections)) * 100.0
+    total_requirements = len(required_sections) + len(any_of_groups)
+    if total_requirements == 0:
+        # No mandatory sections (e.g. Diátaxis reference/explanation docs) —
+        # base score is 100, only the length penalty can reduce it.
+        return max(0.0, 100.0 - length_penalty), details
+
+    satisfied = len(found) + groups_found
+    section_score = (satisfied / total_requirements) * 100.0
     return max(0.0, section_score - length_penalty), details
 
 

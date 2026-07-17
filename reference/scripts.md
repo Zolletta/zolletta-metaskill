@@ -185,6 +185,70 @@ python3 scripts/python/scan_liskov_substitution.py <directory> [--skip] [--stric
 
 **Checks**: overridden methods with extra required params, fewer params than parent, new exception types, stub overrides (pass/return None when parent has a real body).
 
+## Dead Code Script
+
+### scan_unused_all_exports.py
+
+Finds names listed in `__all__` that are never imported by any other module in the source tree. Complements vulture, which treats `__all__` entries as "used" (public API exports) and therefore never flags them as dead code — even when no module ever imports them.
+
+```bash
+python3 scripts/python/scan_unused_all_exports.py <directory> [--strict] [--json] [--skip]
+```
+
+| Option        | Default | Description                                  |
+| ------------- | ------- | -------------------------------------------- |
+| `<directory>` | `src`   | Root source directory to scan                |
+| `--strict`    | off     | Exit with code 1 if unused exports are found |
+| `--json`      | off     | Output as JSON instead of markdown           |
+| `--skip`      | off     | Skip this check entirely                     |
+
+**How it works**: extracts all `__all__` entries from every `.py` file, builds an index of all imported names across the source tree, then cross-references. Names listed in `__all__` but never imported by any file other than the one defining `__all__` are reported as unused.
+
+**Use alongside vulture**: run vulture first for general dead-code detection, then this scanner for the `__all__` gap. Do not double-report symbols that vulture already catches.
+
+### scan_test_naming.py
+
+Checks test function names against the `test_<unit>_<scenario>_<expected>` convention. Flags functions with fewer than `--min-segments` underscore-separated segments after the `test_` prefix. This is a deterministic replacement for manual review of test function names.
+
+```bash
+python3 scripts/python/scan_test_naming.py <directory> [--min-segments N] [--strict] [--json] [--skip]
+```
+
+| Option             | Default | Description                              |
+| ------------------ | ------- | ---------------------------------------- |
+| `<directory>`      | `tests` | Root test directory to scan              |
+| `--min-segments N` | 3       | Minimum segments after `test_` prefix    |
+| `--strict`         | off     | Exit with code 1 if violations are found |
+| `--json`           | off     | Output as JSON instead of markdown       |
+| `--skip`           | off     | Skip this check entirely                 |
+
+**How it works**: for each `test_*.py` or `*_test.py` file, extracts every `test_` function via AST, counts the underscore-separated segments after `test_`, and flags functions with fewer than `--min-segments`. The same input always produces the same output — no AI judgment involved.
+
+**Why this exists**: manual review of test function names was non-deterministic — each review run found a different number of violations depending on how the AI interpreted "too short." The scanner makes the check objective: the segment count is the criterion, and the threshold is configurable.
+
+### scan_acronym_casing.py
+
+Checks that acronyms in PascalCase class names stay fully uppercase. Splits each class name into words, checks each word against a configured acronym list, and flags any word that case-insensitively matches an acronym but isn't all-uppercase (e.g. `Ci` in `CiTesterEngine` when `CI` is a known acronym).
+
+```bash
+python3 scripts/python/scan_acronym_casing.py <directory> [--acronyms LIST] [--settings PATH] [--strict] [--json] [--skip]
+```
+
+| Option            | Default    | Description                                                         |
+| ----------------- | ---------- | ------------------------------------------------------------------- |
+| `<directory>`     | `src`      | Root source directory to scan                                       |
+| `--acronyms LIST` | (built-in) | Comma-separated acronym list (overrides settings.json and defaults) |
+| `--settings PATH` | (auto)     | Path to settings.json to read `python_code_style_rules.acronyms`    |
+| `--strict`        | off        | Exit with code 1 if violations are found                            |
+| `--json`          | off        | Output as JSON instead of markdown                                  |
+| `--skip`          | off        | Skip this check entirely                                            |
+
+**Acronym list**: the shipped `scripts/python/assets/acronyms.json` (common SE acronyms) is always loaded as the base. Project-specific acronyms from `python_code_style_rules.acronyms` in `settings.json` are **merged** with the shipped list (additive, sorted, unique). The `--acronyms` CLI flag fully replaces both (for testing/debugging).
+
+**How it works**: the scanner uses a regex-based PascalCase splitter that correctly handles acronyms embedded in class names (`HTTPClient` → `["HTTP", "Client"]`, `CiteDIProvider` → `["Cite", "DI", "Provider"]`). For each word, it checks if the word case-insensitively matches a known acronym. If it matches but isn't all-uppercase, it's a violation.
+
+**Why this exists**: manual review of acronym casing was non-deterministic — the AI had to guess which tokens were acronyms and which were regular words. The scanner makes the check objective: the acronym list is the criterion, and it's configurable per project.
+
 ## Refactoring Script
 
 ### test_splitter.py
@@ -250,5 +314,8 @@ The scripts give you **triage data**, not verdicts. The recommended workflow:
 12. `scan_interface_segregation.py src/` → find fat protocols
 13. `scan_open_closed.py src/` → find type-based branching that should be polymorphism
 14. `scan_liskov_substitution.py src/` → find subclass overrides that break substitutability
+15. `scan_unused_all_exports.py src/` → find `__all__` entries never imported anywhere (vulture gap)
+16. `scan_test_naming.py tests/` → find test functions with fewer than 3 segments after `test_`
+17. `scan_acronym_casing.py src/` → find class names where acronyms are not fully uppercase
 
 For non-Python languages, see `general-principles.md` → God Class Detection for manual grep/find equivalents.

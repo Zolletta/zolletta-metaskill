@@ -16,6 +16,12 @@ allowed-tools:
   - read_subagent
   - todo_write
   - ask_user_question
+  - mcp_call_tool
+  - mcp_list_tools
+permissions:
+  allow:
+    - mcp__tokensave__tokensave_status
+    - mcp__tokensave__tokensave_files
 ---
 
 # Zolletta-metaskill Review — Orchestrator
@@ -50,6 +56,26 @@ The setup guard (see the meta-skill's [setup guard](../SKILL.md#setup-guard)) gu
    the language using the marker list in `setup/SKILL.md` Step 3.
 3. If the language cannot be determined, ask the user with `ask_user_question`.
 4. Store the detected language for use in subsequent steps.
+
+### Step 1.5 — Tokensave pre-flight check (before launching subagents)
+
+This step ensures the tokensave index is fresh before any subagent uses it. Stale indices cause subagents to silently fall back to direct file reads, degrading review quality without warning. This check runs **in the orchestrator**, not in each subagent, to avoid redundant checks and race conditions on `tokensave sync`.
+
+**Only run this step if `tokensave_available` is `true` in `settings.json`.** If `tokensave_available` is `false`, skip this step — subagents will use the grep/read fallback as usual.
+
+1. **Call `tokensave_status`** (no arguments) via the tokensave MCP server.
+2. **Check index freshness** using the response fields:
+   - **`file_count` vs actual source files**: count `.py` files (or the project's primary language extension) under `src/` using `find src/ -name '*.py' | wc -l` (adapt the extension for the project language). If the indexed `file_count` is significantly lower than the actual count (ratio < 0.8), the index is stale.
+   - **`branch_fallback` / `branch_warning`**: if `branch_fallback` is `true` or a `branch_warning` string is present, the current branch is not tracked. Run `tokensave branch add <current_branch>` (use `git branch --show-current` to get the branch name) before syncing.
+   - **`last_sync_at` staleness**: if the last sync was more than 1 hour ago (compare `last_sync_at` epoch timestamp to current time), the index is stale.
+3. **If any check fails, re-sync the index**:
+   - If `branch_fallback` is `true`: run `tokensave branch add <current_branch>` first.
+   - Then run `tokensave sync` and wait for it to complete.
+   - After sync, call `tokensave_status` again to confirm the index is now fresh.
+4. **If `tokensave sync` fails or the index remains stale after sync**: print a warning at the top of the SUMMARY.md ("⚠️ tokensave index is stale — review quality may be degraded for code exploration tasks") and continue. Do not abort the review. Each subagent will use the grep/read fallback per the tool-failure handler.
+5. **If all checks pass**: proceed to Step 2. No warning is needed.
+
+> **Why this runs in the orchestrator**: running `tokensave sync` inside a subagent would risk concurrent syncs if multiple subagents detect staleness simultaneously. The orchestrator syncs once, before any subagent launches, so all subagents see a consistent fresh index.
 
 ### Step 2 — Create the review folder
 

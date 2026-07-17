@@ -45,7 +45,7 @@ Consistent code style and clear documentation make codebases maintainable and co
 | 14 | Docstrings | No type repetition in docstring Args/Returns | `check_docstring_no_type_repeat` | `true` |
 | 18 | Docstrings | Skip docstrings for obvious one-line functions | `check_skip_obvious_docstrings` | `true` |
 | 20 | Formatting | Line length from project config | `check_line_length` | `true` |
-| 22 | Dead code | Vulture minimum confidence | `vulture_min_confidence` | `80` |
+| 22 | Dead code | Vulture minimum confidence + unused `__all__` exports | `vulture_min_confidence` | `80` |
 
 ## Detailed rule explanations
 
@@ -75,7 +75,25 @@ Classes use `PascalCase`: `UserRepository`, `OrderProcessor`. This is PEP 8 stan
 
 Class names keep acronyms fully uppercase: `HTTPClientFactory`, not `HttpClientFactory`. `CITesterEngine`, not `CiTesterEngine`. This is a deliberate convention common in codebases with domain-specific acronyms.
 
-- **Enforcement**: manual review (no ruff rule for this).
+- **Enforcement**: `scan_acronym_casing.py` from `../scripts/python/` (deterministic). The scanner splits each PascalCase class name into words, checks each word against the configured acronym list, and flags any word that case-insensitively matches an acronym but isn't all-uppercase.
+
+```bash
+python3 ../scripts/python/scan_acronym_casing.py src/ --acronyms CI,MR,AST,DI
+```
+
+The acronym list is built additively:
+1. **Shipped base**: `scripts/python/assets/acronyms.json` (common SE acronyms: CI, CD, CICD, HTTP, HTTPS, JSON, SQL, URL, etc.) — always loaded
+2. **Project-specific**: `python_code_style_rules.acronyms` in `settings.json` — merged with the shipped list (additive, not replacing). Use this for domain-specific acronyms not in the shipped list (e.g. `CITE`, `PEPITA`)
+3. **`--acronyms` CLI flag**: fully replaces both (for testing/debugging only)
+
+To configure project-specific acronyms, add them to `settings.json`:
+```json
+"python_code_style_rules": {
+    "acronyms": ["CI", "MR", "AST", "DI"]
+}
+```
+
+> The scanner is the single source of truth for this rule. Do not manually flag class names that the scanner doesn't flag — the word-splitting + acronym matching is the objective criterion.
 
 **#4 — snake_case functions and variables** *(always-on)*
 
@@ -83,7 +101,28 @@ Functions and variables use `snake_case`: `get_user_by_email`, `retry_count`, `m
 
 **#5 — SCREAMING_SNAKE_CASE module-level constants** *(always-on)*
 
-Module-level constants use `SCREAMING_SNAKE_CASE`: `MAX_RETRY_ATTEMPTS`, `DEFAULT_TIMEOUT_SECONDS`, `API_BASE_URL`. This is PEP 8 standard.
+Module-level **value constants** (strings, numbers, tuples, etc.) use `SCREAMING_SNAKE_CASE`: `MAX_RETRY_ATTEMPTS`, `DEFAULT_TIMEOUT_SECONDS`, `API_BASE_URL`. This is PEP 8 standard.
+
+**Exception — enum/class aliases:** module-level names that re-export an enum member or a class-like constant may use `PascalCase`, following the "**PascalCase for the class, SCREAMING for the constant**" convention. The enum member on the right-hand side is already in `SCREAMING_SNAKE_CASE`; the alias name follows the class/container convention.
+
+```python
+# Good — PascalCase alias of a SCREAMING enum member
+AppScope = Scope.APP
+RuntimeScope = Scope.REQUEST
+
+# Good — SCREAMING_SNAKE_CASE for plain value constants
+MAX_RETRY_ATTEMPTS = 3
+DEFAULT_TIMEOUT_SECONDS = 30
+API_BASE_URL = "https://api.example.com"
+
+# Flag — PascalCase used for a plain value constant (no enum/class on RHS)
+MaxRetries = 3  # should be MAX_RETRIES
+```
+
+**Decision rule for reviewers:**
+- If the right-hand side is an enum member access (`Enum.MEMBER`), a class, or another PascalCase alias → `PascalCase` is valid. **Do not flag.**
+- If the right-hand side is a plain value (string, int, float, tuple, list, dict, `True`/`False`/`None`) → `SCREAMING_SNAKE_CASE` is required. **Flag PascalCase as a finding.**
+- Dead-code detection (unused aliases) is **vulture's responsibility**, not this rule's. Do not flag an alias as unused under rule #5 — flag it under rule #22 (vulture) if vulture detects it.
 
 ### Imports
 
@@ -226,7 +265,7 @@ result = (
 
 ### Dead code
 
-**#22 — Vulture minimum confidence** *(configurable: `vulture_min_confidence`)*
+**#22 — Vulture minimum confidence + unused `__all__` exports** *(configurable: `vulture_min_confidence`)*
 
 If `vulture` is available (`python.vulture: true` in `settings.json`), run it to find unused code:
 
@@ -237,6 +276,16 @@ vulture src/ --min-confidence <vulture_min_confidence>
 The confidence threshold is read from `python_code_style_rules.vulture_min_confidence` in `settings.json` (default: `80`). Findings below this confidence are not reported. Vulture has false positives, especially for dynamically-accessed methods — review each finding above the threshold with judgment before flagging. Report findings as low-priority issues.
 
 If `vulture` is `false` in `settings.json`, skip dead-code detection.
+
+**Supplementary check — unused `__all__` exports:** vulture treats every name in `__all__` as "used" (public API export), so it never flags `__all__` entries that are never imported anywhere. This is a known gap. After running vulture, also run:
+
+```bash
+python3 ../scripts/python/scan_unused_all_exports.py src/
+```
+
+This scanner cross-references every `__all__` entry against actual import statements across the source tree. Names listed in `__all__` but never imported by any other module are reported as unused exports. Report these as low-priority findings (same severity as vulture findings).
+
+**Do not duplicate**: if vulture already flags a symbol as unused, do not also report it via the `__all__` scanner — report it once under vulture. The `__all__` scanner only catches what vulture misses.
 
 ## Output
 

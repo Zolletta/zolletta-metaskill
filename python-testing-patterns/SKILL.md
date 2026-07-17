@@ -121,10 +121,16 @@ If a module shows coverage above this percentage, do not flag it as a coverage g
 Test functions should follow the pattern `test_<unit>_<scenario>_<expected_outcome>`. The name should be descriptive enough to understand what is being tested without reading the body.
 
 - **Default**: `true`
-- **Enforcement**: manual review
+- **Enforcement**: `scan_test_naming.py` from `../scripts/python/` (deterministic). The scanner counts underscore-separated segments after the `test_` prefix and flags functions with fewer than `--min-segments` (default: 3). This replaces manual review, which was non-deterministic and produced different violation counts on each run.
+
+```bash
+python3 ../scripts/python/scan_test_naming.py tests/ --min-segments 3
+```
 
 **Good names**: `test_create_user_with_valid_data_returns_user`, `test_login_fails_with_invalid_password`
-**Bad names**: `test_1`, `test_user`, `test_function`
+**Bad names**: `test_1`, `test_user`, `test_function`, `test_init`, `test_to_dict`
+
+> The scanner is the single source of truth for this rule. Do not manually flag test names that the scanner doesn't flag — the segment count is the objective criterion. If the team disagrees with the threshold, change `--min-segments` in the skill invocation, not the scanner output.
 
 ## Output
 
