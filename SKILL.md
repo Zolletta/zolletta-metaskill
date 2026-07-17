@@ -51,11 +51,22 @@ All files in `~/.agents/rules/` are the **single source of truth** for their dom
 
 Before dispatching to **any** subcommand (including `setup` itself), check if `.zolletta-metaskill/settings.json` exists in the current project root:
 
-1. If it **exists**, read it and proceed to the requested subcommand. The subcommand may read `language`, `container_name`, `tokensave_available`, `python`, `python_code_style_available`, `python_testing_patterns_available`, `external_review_model`, and `reports_dir` from it.
+1. If it **exists**, read it and proceed to the requested subcommand. The subcommand may read `language`, `container_name`, `tokensave_available`, `python`, `python_config`, `python_code_style_available`, `python_testing_patterns_available`, `python_code_style_rules`, `external_review_model`, and `reports_dir` from it.
 2. If it **does not exist**, run the full `setup` procedure first (read `setup/SKILL.md` and execute every step). Once `settings.json` is written, proceed to the requested subcommand.
 3. If the user invoked `/zolletta-metaskill setup` explicitly, run setup and stop — do not dispatch to another subcommand.
+4. **Staleness check (Python projects only)**: if `settings.json` exists and `python_config` is not `null`, compare `pyproject.toml`'s current modification time against `python_config.pyproject_mtime`. If they differ (the file was modified after the last setup), re-run **only** Step 6.5 of setup (pyproject extraction) and patch `python_config` + `pyproject_mtime` in `settings.json`. Do not re-run full setup (language detection, Docker probe, tokensave probe). If `pyproject.toml` does not exist or `python_config` is `null`, skip this check.
 
-This guarantees that every subcommand can rely on `settings.json` being present without each one reimplementing the detection logic.
+This guarantees that every subcommand can rely on `settings.json` being present and up-to-date without each one reimplementing the detection logic.
+
+## Running tools
+
+This convention applies to **every** subcommand that invokes external tools (ruff, mypy, ty, pytest, vulture, etc.):
+
+- If `container_name` is set in `settings.json` (not `null`), run tools inside the container via `docker compose exec <container_name> <command>`.
+- If `container_name` is `null`, run tools directly on the host.
+- If `python.uv` is `true`, prefer `uv run <command>` to ensure the project environment is used.
+
+Subcommands do not restate this convention — they follow it.
 
 ## Tool-failure handler
 

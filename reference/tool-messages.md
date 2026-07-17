@@ -8,6 +8,16 @@ These messages must be printed verbatim (or close to it) by any subcommand that 
 
 ---
 
+# Tool "unconfigured" warnings
+
+Shared warnings printed by the `setup` subcommand when a Python tool is **available** (the command exists) but has **no `[tool.*]` section in `pyproject.toml`**. Each warning states the tool's effective built-in defaults (so the review runs against a known configuration) and links to the full options reference so the user can broaden the review if they choose.
+
+These warnings are **informational only** — setup never modifies `pyproject.toml`. The effective defaults are also written into `python_config` in `settings.json` so review subcommands report against the configuration the tool will actually use, not a skill-invented fallback.
+
+> **Distinguish "absent section" from "present but minimal"**: the warning fires only when the `[tool.*]` section is entirely missing. If the section exists (even with a single key like `line-length = 100`), the tool is considered configured and no warning is printed — the tool merges the user's settings with its own defaults.
+
+---
+
 ## tokensave
 
 ```text
@@ -110,4 +120,78 @@ type annotations and catch type errors before runtime. Without mypy
 (and without ty), the code-style review cannot run type checking.
 
 Homepage: https://github.com/python/mypy
+```
+
+---
+
+# Tool "unconfigured" warnings — per tool
+
+## ruff (unconfigured)
+
+```text
+⚠ ruff is available but has no [tool.ruff] section in pyproject.toml.
+
+ruff will run with its built-in defaults:
+  line-length = 88
+  target-version = "py310"
+  select = ["E4", "E7", "E9", "F"]
+  ignore = []
+  format.quote-style = "double"
+
+The review will still run, but with a minimal rule set (Pyflakes + a subset of
+pycodestyle). Add a [tool.ruff] section to enable broader checks (e.g. isort,
+bugbear, pyupgrade, simplify).
+
+See all available options at: https://docs.astral.sh/ruff/settings/
+```
+
+## mypy (unconfigured)
+
+```text
+⚠ mypy is available but has no [tool.mypy] section in pyproject.toml.
+
+mypy will run with its built-in defaults:
+  strict = false
+  python_version = (not pinned; uses the running interpreter)
+  no per-module overrides
+
+The review will still run, but with lenient type checking. Add a [tool.mypy]
+section to enable strict mode, warn_return_any, disallow_untyped_defs, and
+per-module overrides (e.g. to relax rules for tests.*).
+
+See all available options at: https://mypy.readthedocs.io/en/stable/config_file.html
+```
+
+## ty (unconfigured)
+
+```text
+⚠ ty is available but has no [tool.ty] section in pyproject.toml.
+
+ty will run with its built-in defaults:
+  rules.all = "warn"
+  python-version = (detected from the project environment)
+  no overrides
+
+The review will still run, but with default rule severities. Add a [tool.ty]
+section to promote rules to errors, ignore specific rules, or configure
+per-path overrides.
+
+See all available options at: https://docs.astral.sh/ty/reference/configuration/
+```
+
+## pytest (unconfigured)
+
+```text
+⚠ pytest is available but has no [tool.pytest.ini_options] section in pyproject.toml.
+
+pytest will run with its built-in defaults:
+  no addopts
+  testpaths = (current directory, recursively)
+  minversion = (not enforced)
+
+The review will still run tests, but with default discovery and no custom
+options. Add a [tool.pytest.ini_options] section to set addopts, testpaths,
+markers, and filterwarnings.
+
+See all available options at: https://docs.pytest.org/en/stable/reference/reference.html#ini-options-ref
 ```

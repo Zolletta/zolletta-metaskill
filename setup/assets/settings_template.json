@@ -5,8 +5,20 @@
   "container_name": null,
   "tokensave_available": false,
   "python": null,
+  "python_config": null,
   "python_code_style_available": false,
   "python_testing_patterns_available": false,
+  "python_code_style_rules": {
+    "check_acronym_casing": true,
+    "check_no_relative_imports": true,
+    "check_one_class_per_file": true,
+    "check_filename_matches_class": true,
+    "check_public_docstrings": true,
+    "check_docstring_no_type_repeat": true,
+    "check_skip_obvious_docstrings": true,
+    "check_line_length": true,
+    "vulture_min_confidence": 80
+  },
   "external_review_model": "swe",
   "reports_dir": ".zolletta-metaskill/reports"
 }
