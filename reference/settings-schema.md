@@ -1,5 +1,7 @@
 # settings.json schema
 
+[← Back to README](../README.md)
+
 `.zolletta-metaskill/settings.json` is created by `/zolletta-metaskill setup` and read by every other subcommand. This page documents every field.
 
 ## Example (Python project)
@@ -151,3 +153,7 @@ If any subcommand calls a tokensave MCP tool and receives a tool-not-found / ser
 3. Continues with grep + targeted reads as fallback
 
 Python skills (`python-code-style`, `python-testing-patterns`) are bundled inside this meta-skill and are always available — the "not found" case does not apply to them.
+
+---
+
+[← Back to README](../README.md)

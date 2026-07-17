@@ -4,41 +4,55 @@ All notable changes to the Zolletta-metaskill skill family are documented in thi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2026-07-15
+## [1.0.0] - 2026-07-17
 
 ### Added
 
-- **zolletta-metaskill** meta-skill with subcommand dispatch (`/zolletta-metaskill <subcommand>`)
-- **zolletta-metaskill-setup** subcommand — project initialization that creates `.zolletta-metaskill/settings.json` with the detected project language, Docker container name, tokensave availability, Python tooling (uv, ruff, pytest, ty, vulture, mypy), skill availability flags, external-review model, and reports directory. Adds `.zolletta-metaskill/` to `.gitignore` (creating it if absent). Detects Docker by searching for `docker-compose.yml` or `compose.yml` and parsing service names (asks the user if multiple containers exist). Python tooling is detected by reading `pyproject.toml` first, then trying the command inside the container or on the host. For each unavailable tool, prints a message explaining why zolletta-metaskill benefits from it with a link to the project homepage. Does not install anything.
-- **zolletta-metaskill-documentor** subcommand — unified documentation review combining Diátaxis compliance checks with automated drift detection (staleness scoring, link integrity, API doc validation, drift analysis) with `assets/report_template.md`
-- **zolletta-metaskill-patterns** subcommand — language-agnostic design pattern analysis with automated class metrics scanning (God classes, SOLID violations, coupling, composition vs inheritance) with `assets/report_template.md`
-- **zolletta-metaskill-external-review** subcommand — external-LLM code review on modified files only, with configurable model (default: `swe`, override via `external_review_model` in `settings.json` or front-matter)
-- **zolletta-metaskill-review** subcommand — full project review orchestrator that reads the project language from `settings.json`, runs general skills (patterns, documentor) plus language-specific skills (python-code-style, python-testing-patterns for Python) in parallel batches, and produces an aggregated TODO.md with graded SUMMARY.md using `assets/summary_template.md` and `assets/todo_template.md`
-- **Setup guard** — before dispatching to any subcommand, the meta-skill checks for `.zolletta-metaskill/settings.json` and runs the full setup procedure if it is missing, guaranteeing that every subcommand can rely on settings being present
-- **Tool-failure handler** — when any subcommand calls a tokensave MCP tool and receives a tool-not-found / server-not-found error, it updates `tokensave_available` in `settings.json` to `false`, prints the "not installed" message explaining why zolletta-metaskill benefits from the tool, and continues with grep/read fallback
-- **`reference/tool-messages.md`** — shared "not installed" messages for tokensave and Python tools (uv, ruff, pytest, ty, vulture, mypy), explaining why zolletta-metaskill benefits from each tool with homepage links, used by both setup and the tool-failure handler
-- Shared resources: `reference/` (code-exploration decision tree, general principles, documentation standards, tool messages) and `scripts/python/` (automated scanning scripts)
-- **`python-code-style`** bundled skill — Python source code style review (ruff, mypy, naming, docstrings, type annotations), adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT License, Copyright (c) 2024 Seth Hobson)
-- **`python-testing-patterns`** bundled skill — Python test code review (isolation, naming, coverage gaps, mocking, fixtures, AAA structure), adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT License, Copyright (c) 2024 Seth Hobson)
-- Tools leveraged if available: [tokensave](https://github.com/aovestdipaperino/tokensave)
-- `license: MIT + Commons Clause` and `version: 1.0.0` in all SKILL.md frontmatter
-- `CHANGELOG.md` following Keep a Changelog format
-- `README.md` with project overview, subcommands table, leveraged skills, shared resources, setup behavior, settings.json schema, and reports location
-- **`python_config` caching in `settings.json`** — setup Step 6.5 extracts effective tool configuration from `pyproject.toml` (line length, target version, ruff/mypy/ty/pytest settings, `type_checker` resolution) and records `pyproject_mtime` for staleness detection. Unconfigured tools get their real built-in defaults (not skill-invented fallbacks) and trigger an "unconfigured" warning. Setup never modifies `pyproject.toml`
-- **Setup guard staleness check** — if `settings.json` exists and `pyproject.toml`'s mtime differs from `python_config.pyproject_mtime`, the guard re-runs only Step 6.5 (light refresh of `python_config`) instead of full setup
-- **Shared "Running tools" convention** in the parent `SKILL.md` — container/uv execution rules stated once, referenced by all subcommands instead of duplicated per skill
-- **`reference/review-mode.md`** — shared read-only review rules (auto-fixable = informational and not graded; not auto-fixable = findings with severity/impact/suggested fix and graded), with tool-specific notes for ruff, ty, mypy, and vulture
-- **"Unconfigured" warnings in `reference/tool-messages.md`** — warnings for ruff, mypy, ty, and pytest when available but missing a `[tool.*]` section in `pyproject.toml`. Each warning states the tool's effective built-in defaults and links to the full options reference URL
-- **`python_code_style_rules` in `settings.json`** — configurable rule toggles for the `python-code-style` skill: `check_acronym_casing`, `check_no_relative_imports`, `check_one_class_per_file`, `check_filename_matches_class`, `check_public_docstrings`, `check_docstring_no_type_repeat`, `check_skip_obvious_docstrings`, `check_line_length`, `vulture_min_confidence` (all default `true` / `80`)
-- **`python-code-style/SKILL.md` rewrite** — two-table structure (always-on rules vs. configurable settings), detailed per-rule explanations with settings.json keys and enforcement methods, reads all configuration from `settings.json` (`python_config` + `python_code_style_rules`). Dropped fallback TOML blocks, Quick Start, Best Practices Summary, and redundant rules (~400 → ~240 lines)
-- **`python-testing-patterns/SKILL.md` streamlined** — embedded container/uv convention replaced with a pointer to the parent `SKILL.md` shared convention; "As part of a review run" line dropped from "When to Use"
-- **Review orchestrator refactored** — one subagent per command, all launched in parallel (no more 2-batch strategy). Each subagent writes its own report file directly to the review folder using the `write` tool; the orchestrator no longer collects and saves reports on their behalf. The orchestrator only produces SUMMARY.md and TODO.md, which link to the specialist report files for full details rather than duplicating findings. Both `summary_template.md` and `todo_template.md` gained a "Detailed reports" section with links to the specialist reports
-- **`python-testing-patterns/SKILL.md` streamlined** — tutorial content (Quick Start, Core Concepts, Test Organization, Test Naming examples, Retry Behavior, Freezegun, Test Markers, Coverage Reporting) moved to `references/details.md` or dropped. Skill now contains review rules, coverage gap procedure, and pointers to reference files. Added review-mode pointer. ~322 → ~137 lines
-- **`python_testing_patterns_rules` in `settings.json`** — configurable rule toggles for the `python-testing-patterns` skill: `coverage_gap_threshold` (default `50`), `coverage_well_covered_threshold` (default `80`), `check_test_naming` (default `true`). Coverage gap detection now reads thresholds from `settings.json` instead of hardcoded values
-- **`scan_dependency_inversion.py`** — semantic composition-root detection: classes that call `make_container()`, `Container()`, or other DI-framework functions are now excluded as composition roots, regardless of filename. Previously only entry-point filename patterns were excluded, causing false positives on classes like `CITesterEngine` that create the DI container but don't match filename patterns
-- **`patterns/SKILL.md`** — added "Mandatory Procedure (Python)" section with three enforced steps: (1) mandatory reference file reads (★-marked files must be read before any review), (2) mandatory "reason to change" judgment step for God class detection (size is a triage signal, never a verdict; parsers, strategies, orchestrators, and factories serving a single domain must be suppressed), (3) mandatory coverage cross-check for missing-tests findings (files with >50% coverage via `pytest --cov` must be downgraded to informational)
-- **`patterns/SKILL.md`** — reference files table now marks mandatory reads with ★ and optional reads as "on demand", replacing the previous "read when you need detailed guidance" language that subagents could skip
-- **`review/SKILL.md`** — patterns scope description updated to enforce the mandatory judgment step, coverage cross-check for missing-tests, and composition-root suppression for DIP findings
-- **`patterns/references/scripts.md`** — `scan_tests.py` section now includes a mandatory coverage cross-check note; `scan_dependency_inversion.py` section documents the new semantic composition-root exclusion
-- **Reference reorganization** — `patterns/references/` directory eliminated. `python-review.md` and `scripts.md` moved to `reference/` (shared). `troubleshooting.md` deleted (83% duplicated with `general-principles.md`; the one unique entry — deeply nested composition wrappers — merged into `general-principles.md` under "Composition Over Inheritance"). Scanning scripts moved from `patterns/scripts/python/` to root `scripts/python/` where all references already expected them. All pointers updated across `patterns/SKILL.md`, `review/SKILL.md`, `reference/code-exploration.md`, `python-code-style/SKILL.md`, and `README.md`
-- **Report templates for `python-code-style` and `python-testing-patterns`** — both skills now have `assets/report_template.md` (harmonized with the existing `patterns` and `documentor` templates: header, grade, skill-specific sections, severity tables, recommendations, footer). `python-code-style` template includes tool results (ruff, type checker, vulture) and an auto-fixable (informational) section. `python-testing-patterns` template includes coverage summary and coverage gaps tables. Both SKILL.md files gained an "Output" section referencing their template. The review subagent task template now tells subagents to follow their skill's report template instead of freeform instructions
+#### Core
+
+- **Meta-skill with subcommand dispatch** — one entry point (`/zolletta-metaskill <subcommand>`) routes to specialized review skills
+- **Full project review orchestrator** — runs all applicable skills in parallel (patterns, documentor, python-code-style, python-testing-patterns) and produces a graded SUMMARY.md with an actionable TODO.md linking to detailed per-skill reports
+- **Review mode rules** — strict two-bucket classification: auto-fixable issues are informational (not graded), real findings get severity/impact/suggested fix (graded). No "borderline" hedging
+
+#### Project setup
+
+- **Project setup** — auto-detects language, Docker container, tokensave availability, and Python tooling (uv, ruff, pytest, ty, vulture, mypy). Creates `.zolletta-metaskill/settings.json` with effective tool configuration extracted from `pyproject.toml`. Prints helpful "not installed" messages for missing tools — never installs anything
+- **Setup guard** — every subcommand checks for `settings.json` before running. If missing, setup runs automatically. For Python projects, a staleness check re-extracts `pyproject.toml` configuration when the file changes — no full re-setup needed
+- **Settings schema documentation** — full field-by-field reference for `settings.json` at `reference/settings-schema.md`, covering tool availability, effective configuration, and all configurable rule toggles
+
+#### Documentation review
+
+- **Documentation review** — structure, accuracy, consistency, and freshness checks with automated drift detection (staleness scoring, broken links, API doc validation). Supports [Diátaxis](https://diataxis.fr/)-structured docs (detects quadrant directories and applies appropriate completeness checks) and falls back to README-style sections for other layouts
+
+#### Design pattern analysis
+
+- **Design pattern analysis** — automated class metrics scanning for God classes, SOLID violations, coupling, and composition vs inheritance. Semantic composition-root detection excludes DI containers to prevent false positives. Mandatory "reason to change" judgment step prevents verdict oscillation between reviews
+
+#### Python code style review
+
+- **Python code style review** — ruff, mypy/ty, vulture integration plus 22 naming, docstring, import, and structure rules. Configurable rule toggles in `settings.json` for project-specific overrides
+
+#### Python testing patterns review
+
+- **Python testing patterns review** — coverage gap analysis with threshold-based detection, test naming enforcement, isolation and mocking checks, AAA structure validation
+
+#### External LLM review
+
+- **External LLM review** — sends modified files to an external model (default: `swe`) for a second opinion. Model configurable via `settings.json` or front-matter
+
+#### Deterministic scanners
+
+- **`scan_acronym_casing.py`** — flags acronyms not fully uppercase in PascalCase class names. Ships with 57 common SE acronyms, mergeable with project-specific lists
+- **`scan_unused_all_exports.py`** — catches dead code exported via `__all__` that vulture misses
+- **`scan_test_naming.py`** — enforces descriptive test function names
+- **`scan_class_metrics.py`**, **`scan_tests.py`**, **`scan_dependency_inversion.py`** — class size triage, test structure validation, DIP violation detection
+
+#### Tokensave integration
+
+- **Tokensave integration** — leverages [tokensave](https://github.com/aovestdipaperino/tokensave) semantic code-graph queries when available, with a pre-flight freshness check before review subagents launch. Falls back to grep + targeted reads otherwise
+- **Tool-failure handler** — if tokensave becomes unavailable mid-session, automatically updates `settings.json`, prints a helpful message, and continues with fallback
+
+#### Reports and references
+
+- **Report templates** — each skill ships a markdown report template with grade, tool results, severity tables, and recommendations. The zolletta-metaskill logo is embedded as a base64 data URI in every report footer
+- **Shared references** — code-exploration decision tree, general review principles, documentation standards, tool messages, review-mode rules, and scripts reference — all in `reference/`, linked from every skill

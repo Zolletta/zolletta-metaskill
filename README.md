@@ -1,8 +1,26 @@
+![zolletta-metaskill](assets/zolletta-meta-skill-192.png)
+
 # Zolletta-metaskill
 
 A family of generic code review skills with specializations for Python (other languages in progress).
 
+_Zolletta_ is Italian for sugar cubes — each skill is a compact, self-contained piece that sweetens the review process. Together they dissolve into a complete picture.
+
 Zolletta-metaskill is a **meta-skill**: it dispatches to subcommands that each perform a specific review task. It leverages [tokensave](https://github.com/aovestdipaperino/tokensave) when available for semantic code-graph queries, and falls back to grep + targeted reads otherwise.
+
+## The `.agents/` convention
+
+This skill lives under `~/.agents/skills/` and follows the emerging `.agents/` directory convention — a vendor-neutral, file-based standard for AI agent configuration. The convention defines a two-layer layout: global (`~/.agents/`) for user-wide rules and skills, and workspace (`./.agents/`) for project-specific overrides. Everything is plain text, git-friendly, and works across tools (Claude Code, Cursor, Codex, Devin, and others).
+
+References:
+
+- [agentsfolder/spec](https://github.com/agentsfolder/spec) — the AGENTS-1 specification (manifest, modes, policies, skills, scopes)
+- [.agents Protocol](https://dotagentsprotocol.com/) — vendor-neutral protocol with two-layer global/workspace model
+- [Agents Standard](https://agentsstandard.com/) — hierarchical `AGENTS.md` loading order (`~/.agents/` → `.agents/` → project root → subdirectory)
+
+### Rules
+
+All files in `~/.agents/rules/` are the single source of truth for their domain and apply to every subcommand. Sub-skills link back to them and only narrow behavior for their specific review context.
 
 ## Quick start
 
@@ -24,7 +42,7 @@ The first time you run any subcommand in a project, the **setup guard** automati
 | `setup`                   | Project initialization — creates `settings.json`, detects language, Docker container, tokensave, Python tooling, and extracts effective tool configuration from `pyproject.toml`     |
 | `review`                  | Full project review orchestrator — runs general + language-specific skills as parallel subagents, produces graded SUMMARY.md and aggregated TODO.md with links to specialist reports |
 | `patterns`                | God classes, SOLID violations, coupling, composition vs inheritance for `src/`                                                                                                       |
-| `documentor`              | Diátaxis compliance + drift detection for `.backstage/`                                                                                                                              |
+| `documentor`              | [Diátaxis](https://diataxis.fr/) compliance + drift detection for `.backstage/`                                                                                                      |
 | `external-review`         | External-LLM code review on modified files only (default model: `swe`)                                                                                                               |
 | `python-code-style`       | Python source code style review (ruff, mypy, naming, docstrings, type annotations) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)                        |
 | `python-testing-patterns` | Python test code review (isolation, naming, coverage gaps, mocking, fixtures, AAA structure) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)              |
@@ -95,6 +113,14 @@ All files in `~/.agents/rules/` are the **single source of truth** for their dom
 ## License
 
 MIT + Commons Clause. See `SKILL.md` frontmatter in each subcommand.
+
+## Attributions
+
+- **[wshobson/agents](https://github.com/wshobson/agents)** (MIT, Copyright (c) 2024 Seth Hobson) — `python-code-style` and `python-testing-patterns` skills adapted from the original Python review agents. Design pattern principles in `patterns` also adapted from wshobson's python-design-patterns
+- **[Diátaxis Documentation Expert](https://github.com/github/awesome-copilot/blob/main/skills/documentation-writer/SKILL.md)** (MIT, github/awesome-copilot) — `documentor` skill derived from this documentation review skill
+- **[Doc Drift Detector](https://github.com/borghei/Claude-Skills/blob/main/engineering/doc-drift-detector/SKILL.md)** (MIT + Commons Clause, borghei/Claude-Skills) — drift detection pipeline in `documentor` derived from this skill
+- **[Diátaxis](https://diataxis.fr/)** — documentation framework used by the `documentor` subcommand for structure compliance checks
+- **[tokensave](https://github.com/aovestdipaperino/tokensave)** — semantic code-graph MCP server leveraged for code exploration when available
 
 ## Changelog
 

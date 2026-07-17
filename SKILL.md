@@ -26,7 +26,7 @@ All paths are relative to where this SKILL.md is found.
 | Subcommand | Path | Scope |
 |------------|------|-------|
 | `setup` | `setup/SKILL.md` | Project initialization — creates `.zolletta-metaskill/settings.json`, detects language, Docker container, tokensave, and Python tooling |
-| `documentor` | `documentor/SKILL.md` | Diátaxis compliance + drift detection for `.backstage/` |
+| `documentor` | `documentor/SKILL.md` | [Diátaxis](https://diataxis.fr/) compliance + drift detection for `.backstage/` |
 | `patterns` | `patterns/SKILL.md` | God classes, SOLID, coupling, composition vs inheritance for `src/` |
 | `external-review` | `external-review/SKILL.md` | External-LLM code review on modified files only (default model: `swe`, override via `external_review_model` in `settings.json` or front-matter) |
 | `review` | `review/SKILL.md` | Orchestrator — reads language from `settings.json`, runs general + language-specific skills in parallel batches, aggregates reports |
