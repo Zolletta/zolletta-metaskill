@@ -39,10 +39,10 @@ When a tool is not installed, zolletta-metaskill prints a message explaining why
 
 ## Shared resources
 
-| Resource   | Path              | Contents                                                                                                                            |
-| ---------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| References | `reference/`      | Code-exploration decision tree, general principles, documentation standards, tool messages, review-mode rules, settings.json schema |
-| Scripts    | `scripts/python/` | Automated scanning scripts used by multiple skills                                                                                  |
+| Resource   | Path              | Contents                                                                                                                                                                    |
+| ---------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| References | `reference/`      | Code-exploration decision tree, general principles, Python review guide, scripts reference, documentation standards, tool messages, review-mode rules, settings.json schema |
+| Scripts    | `scripts/python/` | Automated scanning scripts used by multiple skills                                                                                                                          |
 
 ## Setup and settings.json
 

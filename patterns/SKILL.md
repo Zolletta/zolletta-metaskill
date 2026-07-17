@@ -38,14 +38,13 @@ The principles are language-agnostic (KISS, SOLID, Separation of Concerns, Compo
 
 ## Reference Files
 
-This skill is organized into a lean entry point (this file) plus five reference files. Some are **mandatory reading** (marked with ★) — you must read them before starting any review. Others are optional and can be read on demand.
+This skill is organized into a lean entry point (this file) plus shared reference files in `../reference/`. Some are **mandatory reading** (marked with ★) — you must read them before starting any review. Others are optional and can be read on demand.
 
 | File | Mandatory | Content |
 | ---  | ---       | --- |
 | [general-principles.md](../reference/general-principles.md) | ★ | Language-agnostic principles: SOLID (SRP, OCP, LSP, ISP, DIP), KISS, Separation of Concerns, Composition over Inheritance, Rule of Three, function size, dependency injection, God class detection procedure, "What is NOT a God class" criteria, common anti-patterns, and manual checks for non-Python languages — **shared** |
-| [python-review.md](references/python-review.md) | ★ | Python-specific patterns: strategy pattern with autodiscovery, one-class-per-file convention, naming conventions, test structure mirroring, test God class splitting, Protocol vs ABC guidance |
-| [scripts.md](references/scripts.md) | ★ | Full reference for all 10 scripts: usage, options, examples, and the complete 14-step workflow |
-| [troubleshooting.md](references/troubleshooting.md) | ★ | Common questions and edge cases: God class false positives, DI parameter bloat, composition depth, rule of three exceptions, layering violations |
+| [python-review.md](../reference/python-review.md) | ★ | Python-specific patterns: strategy pattern with autodiscovery, one-class-per-file convention, naming conventions, test structure mirroring, test God class splitting, Protocol vs ABC guidance — **shared** |
+| [scripts.md](../reference/scripts.md) | ★ | Full reference for all 10 scripts: usage, options, examples, and the complete 14-step workflow — **shared** |
 | [code-exploration.md](../reference/code-exploration.md) | on demand | Code graph tools (tokensave) decision tree, subagent guidance, and task templates — **shared** |
 | [tool-messages.md](../reference/tool-messages.md) | on demand | "not installed" messages for the tool-failure handler — **shared** |
 
@@ -53,7 +52,7 @@ This skill is organized into a lean entry point (this file) plus five reference 
 
 ## Mandatory Procedure (Python)
 
-Before evaluating any findings, you MUST read the four mandatory reference files (★) listed above. The principles in these files prevent false positives. Skipping them produces verdict oscillation between reviews.
+Before evaluating any findings, you MUST read the three mandatory reference files (★) listed above. The principles in these files prevent false positives. Skipping them produces verdict oscillation between reviews.
 
 ### Mandatory judgment step for God class detection
 

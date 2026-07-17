@@ -1,7 +1,6 @@
 # General Principles (Language-Agnostic)
 
 > Adapted from [python-design-patterns](https://github.com/wshobson/agents) by wshobson (MIT License). Examples in Python and PHP. The principles apply identically regardless of language.
->
 
 ## SOLID Principles
 
@@ -268,6 +267,8 @@ class NotificationService:
 # Easy to test with fakes
 service = NotificationService(email_sender=FakeEmailSender(), sms_sender=FakeSmsSender())
 ```
+
+**When composition produces deeply nested wrappers**: keep the composition shallow (2-3 levels). If wrapping is the only mechanism, consider whether a Protocol-based approach or simple function composition would be cleaner than a chain of decorator objects.
 
 ```php
 // Composition with constructor promotion

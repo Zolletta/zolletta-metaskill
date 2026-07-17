@@ -119,7 +119,7 @@ Use `from myproject.utils import retry_decorator`, not `from ..utils import retr
 
 Each class lives in its own file. No exceptions for "small helper classes" or "closely related enums" — if they're worth defining, they're worth their own file. This applies to all classes, public or private.
 
-- **Enforcement**: `scan_one_class_per_file.py` from `../patterns/scripts/python/`.
+- **Enforcement**: `scan_one_class_per_file.py` from `../scripts/python/`.
 
 **#9 — Filename matches class name** *(configurable: `check_filename_matches_class`)*
 

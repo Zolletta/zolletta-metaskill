@@ -6,7 +6,7 @@ How to use code graph tools (tokensave) during design pattern analysis.
 
 ## Patterns-specific workflow with code graph tools
 
-The standard scanning workflow (see `patterns/references/scripts.md`) can be enhanced:
+The standard scanning workflow (see [`scripts.md`](scripts.md)) can be enhanced:
 
 1. Run `scan_class_metrics.py` → get the largest classes (unchanged)
 2. For each top candidate, use `tokensave_context` to understand its responsibilities **without reading the full file**
