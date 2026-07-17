@@ -19,15 +19,15 @@ The first time you run any subcommand in a project, the **setup guard** automati
 
 ## Subcommands
 
-| Subcommand                | Scope                                                                                                                                                                   |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `setup`                   | Project initialization — creates `settings.json`, detects language, Docker container, tokensave, and Python tooling                                                     |
-| `review`                  | Full project review orchestrator — runs general + language-specific skills in parallel batches, produces graded SUMMARY.md and aggregated TODO.md                       |
-| `patterns`                | God classes, SOLID violations, coupling, composition vs inheritance for `src/`                                                                                          |
-| `documentor`              | Diátaxis compliance + drift detection for `.backstage/`                                                                                                                 |
-| `external-review`         | External-LLM code review on modified files only (default model: `swe`)                                                                                                  |
-| `python-code-style`       | Python source code style review (ruff, mypy, naming, docstrings, type annotations) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)           |
-| `python-testing-patterns` | Python test code review (isolation, naming, coverage gaps, mocking, fixtures, AAA structure) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT) |
+| Subcommand                | Scope                                                                                                                                                                            |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `setup`                   | Project initialization — creates `settings.json`, detects language, Docker container, tokensave, Python tooling, and extracts effective tool configuration from `pyproject.toml` |
+| `review`                  | Full project review orchestrator — runs general + language-specific skills in parallel batches, produces graded SUMMARY.md and aggregated TODO.md                                |
+| `patterns`                | God classes, SOLID violations, coupling, composition vs inheritance for `src/`                                                                                                   |
+| `documentor`              | Diátaxis compliance + drift detection for `.backstage/`                                                                                                                          |
+| `external-review`         | External-LLM code review on modified files only (default model: `swe`)                                                                                                           |
+| `python-code-style`       | Python source code style review (ruff, mypy, naming, docstrings, type annotations) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)                    |
+| `python-testing-patterns` | Python test code review (isolation, naming, coverage gaps, mocking, fixtures, AAA structure) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)          |
 
 ## Tools leveraged if available
 
@@ -39,63 +39,32 @@ When a tool is not installed, zolletta-metaskill prints a message explaining why
 
 ## Shared resources
 
-| Resource   | Path              | Contents                                                                                   |
-| ---------- | ----------------- | ------------------------------------------------------------------------------------------ |
-| References | `reference/`      | Code-exploration decision tree, general principles, documentation standards, tool messages |
-| Scripts    | `scripts/python/` | Automated scanning scripts used by multiple skills                                         |
+| Resource   | Path              | Contents                                                                                                                            |
+| ---------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| References | `reference/`      | Code-exploration decision tree, general principles, documentation standards, tool messages, review-mode rules, settings.json schema |
+| Scripts    | `scripts/python/` | Automated scanning scripts used by multiple skills                                                                                  |
 
 ## Setup and settings.json
 
 `/zolletta-metaskill setup` creates `.zolletta-metaskill/settings.json` in the project root and adds `.zolletta-metaskill/` to `.gitignore`. The file is read by all other subcommands.
 
-### Schema
+For the full schema, field-by-field documentation, the `python_config` and `python_code_style_rules` blocks, and the setup guard staleness check, see [`reference/settings-schema.md`](reference/settings-schema.md).
 
-```json
-{
-  "setup_version": "1.0.0",
-  "setup_timestamp": "2026-07-16T14:30:00",
-  "language": "python",
-  "container_name": "cite",
-  "tokensave_available": true,
-  "python": {
-    "uv": true,
-    "ruff": true,
-    "pytest": true,
-    "ty": false,
-    "vulture": false,
-    "mypy": true
-  },
-  "python_code_style_available": true,
-  "python_testing_patterns_available": true,
-  "external_review_model": "swe",
-  "reports_dir": ".zolletta-metaskill/reports"
-}
-```
+### Setup guard
 
-| Field                               | Description                                                         |
-| ----------------------------------- | ------------------------------------------------------------------- |
-| `setup_version`                     | Matches the skill version that wrote the file                       |
-| `setup_timestamp`                   | ISO 8601 timestamp of the last setup run                            |
-| `language`                          | Detected project language (`python`, `php`, `go`, `rust`, etc.)     |
-| `container_name`                    | Docker container name for running tools (`null` if no Docker)       |
-| `tokensave_available`               | `true` if `tokensave_status` responds (probed directly)             |
-| `python`                            | Object with tool availability flags (Python only; `null` otherwise) |
-| `python.uv`                         | `true` if uv is available                                           |
-| `python.ruff`                       | `true` if ruff is available                                         |
-| `python.pytest`                     | `true` if pytest is available                                       |
-| `python.ty`                         | `true` if ty is available                                           |
-| `python.vulture`                    | `true` if vulture is available                                      |
-| `python.mypy`                       | `true` if mypy is available                                         |
-| `python_code_style_available`       | `true` for Python projects (skill is bundled)                       |
-| `python_testing_patterns_available` | `true` for Python projects (skill is bundled)                       |
-| `external_review_model`             | Default model for `external-review` (overridable by front-matter)   |
-| `reports_dir`                       | Directory where review reports are saved                            |
+Before dispatching to any subcommand, the meta-skill checks for `.zolletta-metaskill/settings.json`:
+
+1. If it **exists**, read it and proceed.
+2. If it **does not exist**, run the full setup procedure first.
+3. If the user invoked `/zolletta-metaskill setup` explicitly, run setup and stop.
+
+For Python projects, the guard also performs a **staleness check**: if `pyproject.toml`'s modification time differs from `python_config.pyproject_mtime` in `settings.json`, the guard re-runs only the pyproject extraction step and patches `python_config` — full setup is not re-run.
 
 ### Tool-failure handler
 
 If any subcommand calls a tokensave MCP tool and receives a tool-not-found / server-not-found error, it:
 
-1. Updates the corresponding `*_available` flag in `settings.json` to `false`
+1. Updates `tokensave_available` in `settings.json` to `false`
 2. Prints the "not installed" message from `reference/tool-messages.md`
 3. Continues with grep + targeted reads as fallback (for graph tools). Python skills (`python-code-style`, `python-testing-patterns`) are bundled inside this meta-skill and are always available — the "not found" case does not apply to them.
 
