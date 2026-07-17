@@ -49,7 +49,7 @@ import sys
 from pathlib import Path
 
 # Path to the shipped acronym list (relative to this script).
-_ACRONYMS_JSON = Path(__file__).resolve().parent.parent / "assets" / "acronyms.json"
+_ACRONYMS_JSON = Path(__file__).resolve().parent / "assets" / "acronyms.json"
 
 
 def _load_default_acronyms() -> list[str]:
