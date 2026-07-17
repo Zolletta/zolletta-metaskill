@@ -144,6 +144,8 @@ If the language is **Python**, read `pyproject.toml` and extract the effective c
 
 6. **Write `python_code_style_rules`** — copy the default rule toggles from `settings_template.json`. If `settings.json` already exists (re-run of setup), **preserve existing user-customized values** and only add keys that are new (i.e. merge, don't overwrite).
 
+7. **Write `python_testing_patterns_rules`** — copy the default rule toggles from `settings_template.json`. Same merge behavior as `python_code_style_rules`: preserve existing user-customized values, only add new keys.
+
 ### Step 7 — Set Python skill availability
 
 The two Python review skills (`python-code-style`, `python-testing-patterns`) are bundled inside zolletta-metaskill, so they are always available — no probing needed.
@@ -169,6 +171,7 @@ Read the [settings template](assets/settings_template.json) and write `.zolletta
 | `python_code_style_available`    | Boolean from Step 7 (Python only; `false` otherwise) |
 | `python_testing_patterns_available` | Boolean from Step 7 (Python only; `false` otherwise) |
 | `python_code_style_rules`        | Object from Step 6.5 (Python only; defaults from `settings_template.json`) — see below |
+| `python_testing_patterns_rules`  | Object from Step 6.5 (Python only; defaults from `settings_template.json`) — see below |
 | `external_review_model`          | `"swe"` (default; overridable by front-matter) |
 | `reports_dir`                    | `".zolletta-metaskill/reports"`                 |
 
@@ -213,6 +216,16 @@ The `python_code_style_rules` subobject has this shape (Python only):
   "check_skip_obvious_docstrings": true,
   "check_line_length": true,
   "vulture_min_confidence": 80
+}
+```
+
+The `python_testing_patterns_rules` subobject has this shape (Python only):
+
+```json
+{
+  "coverage_gap_threshold": 50,
+  "coverage_well_covered_threshold": 80,
+  "check_test_naming": true
 }
 ```
 

@@ -19,6 +19,11 @@
     "check_line_length": true,
     "vulture_min_confidence": 80
   },
+  "python_testing_patterns_rules": {
+    "coverage_gap_threshold": 50,
+    "coverage_well_covered_threshold": 80,
+    "check_test_naming": true
+  },
   "external_review_model": "swe",
   "reports_dir": ".zolletta-metaskill/reports"
 }

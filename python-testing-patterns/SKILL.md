@@ -6,7 +6,11 @@ description: Implement comprehensive testing strategies with pytest, fixtures, m
 
 # Python Testing Patterns
 
-Comprehensive guide to implementing robust testing strategies in Python using pytest, fixtures, mocking, parameterization, and test-driven development practices.
+Review skill for Python test code: test isolation, naming, coverage gaps, mocking patterns, fixture design, and AAA structure.
+
+> **Configuration source**: all project-level configuration (tool availability, effective pytest/coverage config) is read from `settings.json` — specifically the `python` and `python_config` objects. Rule toggles are in `python_testing_patterns_rules`. See the parent `SKILL.md` for the setup guard and the shared "Running tools" convention.
+
+> **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../reference/review-mode.md`](../reference/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
 
 ## When to Use This Skill
 
@@ -16,8 +20,6 @@ Comprehensive guide to implementing robust testing strategies in Python using py
 - Creating integration tests for APIs and services
 - Mocking external dependencies and services
 - Testing async code and concurrent operations
-- Setting up continuous testing in CI/CD
-- Implementing property-based testing
 - Testing database operations
 - Debugging failing tests
 
@@ -33,7 +35,7 @@ You **must** run coverage before flagging any coverage gap. Do not skip this ste
 
 The project's `pyproject.toml` may already configure coverage options under `[tool.coverage.run]` and `[tool.pytest.ini_options]`. If so, a plain `pytest --cov` will use those settings — no need to add extra flags.
 
-Read the coverage output. If a module shows **above 80%** coverage, it is well-covered — do not flag it as a coverage gap even if there are no direct test references. The code is exercised through integration tests or indirect calls.
+Read the coverage output. If a module shows coverage **above `coverage_well_covered_threshold`** (from `python_testing_patterns_rules` in `settings.json`, default `80`), it is well-covered — do not flag it as a coverage gap even if there are no direct test references. The code is exercised through integration tests or indirect calls.
 
 ### Step 2 — Check for indirect coverage
 
@@ -48,7 +50,7 @@ If a class has no direct test file but coverage is non-zero, trace the call chai
 ### Step 3 — Only flag as a gap if coverage is genuinely low
 
 Only report a coverage gap when:
-- Coverage is **below 50%** AND
+- Coverage is **below `coverage_gap_threshold`** (from `python_testing_patterns_rules`, default `50`) AND
 - There are no direct test references AND
 - All callers are mocked in tests (no real instances)
 
@@ -60,262 +62,75 @@ If you find a genuine gap, check whether the caller's tests mock the class or us
 - If callers mock the class → recommend a direct unit test file for the class itself
 - If callers use real instances but don't exercise all branches → recommend adding edge-case tests
 
-## Core Concepts
+## Review rules
 
-### 1. Test Types
+### Always-on rules (cannot be disabled)
 
-- **Unit Tests**: Test individual functions/classes in isolation
-- **Integration Tests**: Test interaction between components
-- **Functional Tests**: Test complete features end-to-end
-- **Performance Tests**: Measure speed and resource usage
+| # | Area | Name |
+|---|------|------|
+| 1 | Structure | AAA pattern (Arrange, Act, Assert) |
+| 2 | Isolation | Tests must be independent — no shared state, each test cleans up after itself |
+| 3 | Coverage | Coverage gap detection is mandatory (run `pytest --cov` before flagging any gap) |
+| 4 | Scope | Do not duplicate the structural "missing test file" check from `patterns` — this skill owns coverage analysis only |
 
-### 2. Test Structure (AAA Pattern)
+### Configurable settings (stored in `settings.json` under `python_testing_patterns_rules`)
 
-- **Arrange**: Set up test data and preconditions
-- **Act**: Execute the code under test
-- **Assert**: Verify the results
+| # | Area | Name | Key | Default |
+|---|------|------|-----|---------|
+| 5 | Coverage | Coverage gap threshold (below X% = gap) | `coverage_gap_threshold` | `50` |
+| 6 | Coverage | Well-covered threshold (above X% = don't flag) | `coverage_well_covered_threshold` | `80` |
+| 7 | Naming | Test naming convention (`test_<unit>_<scenario>_<expected>`) | `check_test_naming` | `true` |
 
-### 3. Test Coverage
+## Detailed rule explanations
 
-- Measure what code is exercised by tests
-- Identify untested code paths
-- Aim for meaningful coverage, not just high percentages
+### #1 — AAA pattern (always-on)
 
-### 4. Test Isolation
+Each test follows the Arrange-Act-Assert structure:
+- **Arrange**: set up test data and preconditions
+- **Act**: execute the code under test
+- **Assert**: verify the results
 
-- Tests should be independent
-- No shared state between tests
-- Each test should clean up after itself
+### #2 — Test isolation (always-on)
 
-## Quick Start
+Tests must be independent. No shared mutable state between tests. Each test should clean up after itself. Use fixtures with appropriate scopes (`function`, `module`, `session`) to manage shared resources without coupling tests.
 
-```python
-# test_example.py
-def add(a, b):
-    return a + b
+### #3 — Coverage gap detection (always-on)
 
-def test_add():
-    """Basic test example."""
-    result = add(2, 3)
-    assert result == 5
+Run `pytest --cov` before flagging any coverage gap. Never rely on grep alone — a class with zero direct test references may be well-covered through indirect calls. Follow the 4-step procedure above.
 
-def test_add_negative():
-    """Test with negative numbers."""
-    assert add(-1, 1) == 0
+### #4 — Scope boundary (always-on)
 
-# Run with: pytest test_example.py
-```
+Do not duplicate the structural "missing test file" check from `scan_tests.py` (owned by `patterns`). This skill owns coverage analysis: whether code is actually exercised by tests, not whether a `test_<module>.py` file exists.
+
+### #5 — Coverage gap threshold (configurable: `coverage_gap_threshold`)
+
+Only report a coverage gap when module coverage is below this percentage. The default is `50` — below this, the code is genuinely under-tested. Above it, the code may be indirectly covered through integration tests.
+
+- **Type**: integer (0–100)
+- **Default**: `50`
+
+### #6 — Well-covered threshold (configurable: `coverage_well_covered_threshold`)
+
+If a module shows coverage above this percentage, do not flag it as a coverage gap even if there are no direct test references. The code is exercised through integration tests or indirect calls. The default is `80`.
+
+- **Type**: integer (0–100)
+- **Default**: `80`
+
+### #7 — Test naming convention (configurable: `check_test_naming`)
+
+Test functions should follow the pattern `test_<unit>_<scenario>_<expected_outcome>`. The name should be descriptive enough to understand what is being tested without reading the body.
+
+- **Default**: `true`
+- **Enforcement**: manual review
+
+**Good names**: `test_create_user_with_valid_data_returns_user`, `test_login_fails_with_invalid_password`
+**Bad names**: `test_1`, `test_user`, `test_function`
 
 ## Detailed patterns and worked examples
 
-Detailed pattern documentation lives in `references/details.md`. Read that file when the navigation tier above is insufficient.
+For comprehensive worked examples (fixtures, parameterized tests, mocking, exceptions, retry testing, freezegun, test markers, test organization, test design principles), see [`references/details.md`](references/details.md).
 
-## Testing Best Practices
-
-### Test Organization
-
-```python
-# tests/
-#   __init__.py
-#   conftest.py           # Shared fixtures
-#   test_unit/            # Unit tests
-#     test_models.py
-#     test_utils.py
-#   test_integration/     # Integration tests
-#     test_api.py
-#     test_database.py
-#   test_e2e/            # End-to-end tests
-#     test_workflows.py
-```
-
-### Test Naming Convention
-
-A common pattern: `test_<unit>_<scenario>_<expected_outcome>`. Adapt to your team's preferences.
-
-```python
-# Pattern: test_<unit>_<scenario>_<expected>
-def test_create_user_with_valid_data_returns_user():
-    ...
-
-def test_create_user_with_duplicate_email_raises_conflict():
-    ...
-
-def test_get_user_with_unknown_id_returns_none():
-    ...
-
-# Good test names - clear and descriptive
-def test_user_creation_with_valid_data():
-    """Clear name describes what is being tested."""
-    pass
-
-def test_login_fails_with_invalid_password():
-    """Name describes expected behavior."""
-    pass
-
-def test_api_returns_404_for_missing_resource():
-    """Specific about inputs and expected outcomes."""
-    pass
-
-# Bad test names - avoid these
-def test_1():  # Not descriptive
-    pass
-
-def test_user():  # Too vague
-    pass
-
-def test_function():  # Doesn't explain what's tested
-    pass
-```
-
-### Testing Retry Behavior
-
-Verify that retry logic works correctly using mock side effects.
-
-```python
-from unittest.mock import Mock
-
-def test_retries_on_transient_error():
-    """Test that service retries on transient failures."""
-    client = Mock()
-    # Fail twice, then succeed
-    client.request.side_effect = [
-        ConnectionError("Failed"),
-        ConnectionError("Failed"),
-        {"status": "ok"},
-    ]
-
-    service = ServiceWithRetry(client, max_retries=3)
-    result = service.fetch()
-
-    assert result == {"status": "ok"}
-    assert client.request.call_count == 3
-
-def test_gives_up_after_max_retries():
-    """Test that service stops retrying after max attempts."""
-    client = Mock()
-    client.request.side_effect = ConnectionError("Failed")
-
-    service = ServiceWithRetry(client, max_retries=3)
-
-    with pytest.raises(ConnectionError):
-        service.fetch()
-
-    assert client.request.call_count == 3
-
-def test_does_not_retry_on_permanent_error():
-    """Test that permanent errors are not retried."""
-    client = Mock()
-    client.request.side_effect = ValueError("Invalid input")
-
-    service = ServiceWithRetry(client, max_retries=3)
-
-    with pytest.raises(ValueError):
-        service.fetch()
-
-    # Only called once - no retry for ValueError
-    assert client.request.call_count == 1
-```
-
-### Mocking Time with Freezegun
-
-Use freezegun to control time in tests for predictable time-dependent behavior.
-
-```python
-from freezegun import freeze_time
-from datetime import datetime, timedelta
-
-@freeze_time("2026-01-15 10:00:00")
-def test_token_expiry():
-    """Test token expires at correct time."""
-    token = create_token(expires_in_seconds=3600)
-    assert token.expires_at == datetime(2026, 1, 15, 11, 0, 0)
-
-@freeze_time("2026-01-15 10:00:00")
-def test_is_expired_returns_false_before_expiry():
-    """Test token is not expired when within validity period."""
-    token = create_token(expires_in_seconds=3600)
-    assert not token.is_expired()
-
-@freeze_time("2026-01-15 12:00:00")
-def test_is_expired_returns_true_after_expiry():
-    """Test token is expired after validity period."""
-    token = Token(expires_at=datetime(2026, 1, 15, 11, 30, 0))
-    assert token.is_expired()
-
-def test_with_time_travel():
-    """Test behavior across time using freeze_time context."""
-    with freeze_time("2026-01-01") as frozen_time:
-        item = create_item()
-        assert item.created_at == datetime(2026, 1, 1)
-
-        # Move forward in time
-        frozen_time.move_to("2026-01-15")
-        assert item.age_days == 14
-```
-
-### Test Markers
-
-```python
-# test_markers.py
-import pytest
-
-@pytest.mark.slow
-def test_slow_operation():
-    """Mark slow tests."""
-    import time
-    time.sleep(2)
-
-
-@pytest.mark.integration
-def test_database_integration():
-    """Mark integration tests."""
-    pass
-
-
-@pytest.mark.skip(reason="Feature not implemented yet")
-def test_future_feature():
-    """Skip tests temporarily."""
-    pass
-
-
-@pytest.mark.skipif(os.name == "nt", reason="Unix only test")
-def test_unix_specific():
-    """Conditional skip."""
-    pass
-
-
-@pytest.mark.xfail(reason="Known bug #123")
-def test_known_bug():
-    """Mark expected failures."""
-    assert False
-
-
-# Run with:
-# pytest -m slow          # Run only slow tests
-# pytest -m "not slow"    # Skip slow tests
-# pytest -m integration   # Run integration tests
-```
-
-### Coverage Reporting
-
-```bash
-# Install coverage
-pip install pytest-cov
-
-# Run tests with coverage
-pytest --cov=myapp tests/
-
-# Generate HTML report
-pytest --cov=myapp --cov-report=html tests/
-
-# Fail if coverage below threshold
-pytest --cov=myapp --cov-fail-under=80 tests/
-
-# Show missing lines
-pytest --cov=myapp --cov-report=term-missing tests/
-```
-
-For advanced patterns (async testing, monkeypatching, property-based testing, database testing, CI/CD integration, and configuration), see [references/advanced-patterns.md](references/advanced-patterns.md)
+For advanced patterns (async testing, monkeypatching, temporary files, conftest setup, property-based testing, database testing, CI/CD integration), see [`references/advanced-patterns.md`](references/advanced-patterns.md).
 
 ## Attribution
 

@@ -19,15 +19,15 @@ The first time you run any subcommand in a project, the **setup guard** automati
 
 ## Subcommands
 
-| Subcommand                | Scope                                                                                                                                                                            |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `setup`                   | Project initialization — creates `settings.json`, detects language, Docker container, tokensave, Python tooling, and extracts effective tool configuration from `pyproject.toml` |
-| `review`                  | Full project review orchestrator — runs general + language-specific skills in parallel batches, produces graded SUMMARY.md and aggregated TODO.md                                |
-| `patterns`                | God classes, SOLID violations, coupling, composition vs inheritance for `src/`                                                                                                   |
-| `documentor`              | Diátaxis compliance + drift detection for `.backstage/`                                                                                                                          |
-| `external-review`         | External-LLM code review on modified files only (default model: `swe`)                                                                                                           |
-| `python-code-style`       | Python source code style review (ruff, mypy, naming, docstrings, type annotations) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)                    |
-| `python-testing-patterns` | Python test code review (isolation, naming, coverage gaps, mocking, fixtures, AAA structure) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)          |
+| Subcommand                | Scope                                                                                                                                                                                |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `setup`                   | Project initialization — creates `settings.json`, detects language, Docker container, tokensave, Python tooling, and extracts effective tool configuration from `pyproject.toml`     |
+| `review`                  | Full project review orchestrator — runs general + language-specific skills as parallel subagents, produces graded SUMMARY.md and aggregated TODO.md with links to specialist reports |
+| `patterns`                | God classes, SOLID violations, coupling, composition vs inheritance for `src/`                                                                                                       |
+| `documentor`              | Diátaxis compliance + drift detection for `.backstage/`                                                                                                                              |
+| `external-review`         | External-LLM code review on modified files only (default model: `swe`)                                                                                                               |
+| `python-code-style`       | Python source code style review (ruff, mypy, naming, docstrings, type annotations) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)                        |
+| `python-testing-patterns` | Python test code review (isolation, naming, coverage gaps, mocking, fixtures, AAA structure) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)              |
 
 ## Tools leveraged if available
 
@@ -48,7 +48,7 @@ When a tool is not installed, zolletta-metaskill prints a message explaining why
 
 `/zolletta-metaskill setup` creates `.zolletta-metaskill/settings.json` in the project root and adds `.zolletta-metaskill/` to `.gitignore`. The file is read by all other subcommands.
 
-For the full schema, field-by-field documentation, the `python_config` and `python_code_style_rules` blocks, and the setup guard staleness check, see [`reference/settings-schema.md`](reference/settings-schema.md).
+For the full schema, field-by-field documentation, the `python_config`, `python_code_style_rules`, and `python_testing_patterns_rules` blocks, and the setup guard staleness check, see [`reference/settings-schema.md`](reference/settings-schema.md).
 
 ### Setup guard
 
