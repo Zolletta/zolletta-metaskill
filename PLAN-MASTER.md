@@ -128,10 +128,10 @@ Both PHP plans touch shared files. This table assigns each file to exactly one p
 
 > Creates the language-neutral data models and engine protocol.
 
-- [ ] **7.1** Create `src/zolletta_metaskill/common/models.py` (`ModuleInfo`, `ClassInfo`, `MethodInfo`, `ImportInfo`) → PLAN-PHP-SUPPORT 1.2
-- [ ] **7.2** Create `src/zolletta_metaskill/common/language_engine.py` (`LanguageEngine` protocol) → PLAN-PHP-SUPPORT 1.3
-- [ ] **7.3** Create `src/zolletta_metaskill/common/registry.py` (engine registry) → PLAN-PHP-SUPPORT 1.4
-- [ ] **7.4** Register deferred tests in PLAN-TEST-RECOVERY "Tests required by PLAN-PHP-SUPPORT" section → PLAN-PHP-SUPPORT 1.5
+- [x] **7.1** Create `src/zolletta_metaskill/common/models.py` (`ModuleInfo`, `ClassInfo`, `MethodInfo`, `ImportInfo`, `Finding`) → PLAN-PHP-SUPPORT 1.2
+- [x] **7.2** Create `src/zolletta_metaskill/common/language_engine.py` (`LanguageEngine` protocol) → PLAN-PHP-SUPPORT 1.3
+- [x] **7.3** Create `src/zolletta_metaskill/common/registry.py` (engine registry) → PLAN-PHP-SUPPORT 1.4
+- [x] **7.4** Register deferred tests in PLAN-TEST-RECOVERY "Tests required by PLAN-PHP-SUPPORT" section → PLAN-PHP-SUPPORT 1.5
 
 ---
 
