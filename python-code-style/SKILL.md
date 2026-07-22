@@ -83,7 +83,7 @@ python3 ../src/zolletta_metaskill/python_code_style/scan_acronym_casing.py src/ 
 ```
 
 The acronym list is built additively:
-1. **Shipped base**: `src/zolletta_metaskill/python_code_style/assets/acronyms.json` (common SE acronyms: CI, CD, CICD, HTTP, HTTPS, JSON, SQL, URL, etc.) — always loaded
+1. **Shipped base**: `python-code-style/assets/acronyms.json` (common SE acronyms: CI, CD, CICD, HTTP, HTTPS, JSON, SQL, URL, etc.) — always loaded
 2. **Project-specific**: `python_code_style_rules.acronyms` in `settings.json` — merged with the shipped list (additive, not replacing). Use this for domain-specific acronyms not in the shipped list (e.g. `XML`, `SVG`)
 3. **`--acronyms` CLI flag**: fully replaces both (for testing/debugging only)
 

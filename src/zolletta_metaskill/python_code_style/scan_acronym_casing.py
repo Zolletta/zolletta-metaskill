@@ -49,8 +49,13 @@ import re
 import sys
 from pathlib import Path
 
-# Path to the shipped acronym list (relative to this script).
-_ACRONYMS_JSON = Path(__file__).resolve().parent / "assets" / "acronyms.json"
+# Path to the shipped acronym list — check skill folder first, then src/.
+_SCRIPT_DIR = Path(__file__).resolve().parent
+_ACRONYMS_JSON = (
+    _SCRIPT_DIR / "assets" / "acronyms.json"  # installed package layout
+    if (_SCRIPT_DIR / "assets" / "acronyms.json").exists()
+    else _SCRIPT_DIR.parents[3] / "python-code-style" / "assets" / "acronyms.json"  # source layout
+)
 
 
 def _load_default_acronyms() -> list[str]:
