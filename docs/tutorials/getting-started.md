@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [setup, review, patterns, documentor, external-review, python-code-style, python-testing-patterns]
+skills: [setup, review, patterns, documentor, external-review, python-*]
 ---
 
 # Getting started

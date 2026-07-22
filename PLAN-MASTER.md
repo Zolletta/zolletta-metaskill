@@ -72,7 +72,7 @@ Both PHP plans touch shared files. This table assigns each file to exactly one p
 > Independent. Pure docs changes.
 
 - [x] **2.1** Update `docs/reference/frontmatter.md` — document `python-*` and `php-*` wildcard syntax → PLAN-PHP-CODE-STYLE 0.1
-- [ ] **2.2** Update 13 docs files — replace `python-code-style, python-testing-patterns` with `python-*` in `skills:` frontmatter → PLAN-PHP-CODE-STYLE 0.2
+- [x] **2.2** Update 13 docs files — replace `python-code-style, python-testing-patterns` with `python-*` in `skills:` frontmatter → PLAN-PHP-CODE-STYLE 0.2
 
 ---
 

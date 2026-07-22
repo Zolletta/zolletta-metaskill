@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [python-code-style, python-testing-patterns, review, patterns]
+skills: [python-*, review, patterns]
 ---
 
 # Python Code Style
@@ -73,9 +73,9 @@ uv run mypy .
   1. Do not change the implementation method signatures to accommodate the test — the type mismatch is intentional.
   2. Add a comment on the line above explaining _why_ the ignore is necessary (what edge case is being tested).
 
-3.6. **ty inherits all mypy rules.** Any rule above applies identically when using `ty` as the type checker.
+  3.6. **ty inherits all mypy rules.** Any rule above applies identically when using `ty` as the type checker.
 
-3.7. **Mypy error codes to avoid:** `[no-any-return]`, `[no-untyped-def]`, `[no-untyped-call]`.
+  3.7. **Mypy error codes to avoid:** `[no-any-return]`, `[no-untyped-def]`, `[no-untyped-call]`.
 
 ## 4. Verification order
 
@@ -224,7 +224,7 @@ def process_order(order: Order) -> Receipt:
 - If a guard's body is just `return`, prefer `if not cond: return` over `if cond: ... else: return`.
 - Apply the same pattern to `for` loops with `continue` to skip irrelevant items early.
 
-9.3. **Ruff enforcement:** `RET501` (unnecessary `yield None`), `RET502` (implicit `return None` after `if`), `RET503` (missing explicit `return`), and `RET505` (unnecessary `else` after `return`) all flag code that should use early returns. Add `"RET"` (flake8-return) to the `select` list in `pyproject.toml` to enable them.
+  9.3. **Ruff enforcement:** `RET501` (unnecessary `yield None`), `RET502` (implicit `return None` after `if`), `RET503` (missing explicit `return`), and `RET505` (unnecessary `else` after `return`) all flag code that should use early returns. Add `"RET"` (flake8-return) to the `select` list in `pyproject.toml` to enable them.
 
 ## 10. Tests
 

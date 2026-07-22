@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [python-code-style, review]
+skills: [python-*, review]
 ---
 
 # Review code style
@@ -53,6 +53,7 @@ The review runs the project's configured dead-code detector. Findings below the 
 The review distinguishes between always-on rules and configurable rules:
 
 **Always-on rules** (cannot be disabled):
+
 - Descriptive filenames with no abbreviations
 - Class names follow the language's PascalCase convention
 - Functions and variables follow the language's naming convention
@@ -63,6 +64,7 @@ The review distinguishes between always-on rules and configurable rules:
 - Type hints required for all public APIs
 
 **Configurable rules** (can be toggled via `settings.json`):
+
 - Acronym casing in class names
 - Absolute imports only (no relative imports)
 - One class per file

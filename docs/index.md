@@ -1,8 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills:
-  [setup, review, patterns, documentor, external-review, python-code-style, python-testing-patterns]
+skills: [setup, review, patterns, documentor, external-review, python-*]
 ---
 
 ![zolletta-metaskill](../assets/zolletta-meta-skill-192.png)

@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [python-code-style]
+skills: [python-*]
 ---
 
 # How to review Python code style

@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [patterns, review, python-code-style, python-testing-patterns]
+skills: [patterns, review, python-*]
 ---
 
 # Structural Conventions

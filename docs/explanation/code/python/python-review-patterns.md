@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [patterns, python-code-style, python-testing-patterns]
+skills: [patterns, python-*]
 ---
 
 # Python Review Patterns

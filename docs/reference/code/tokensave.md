@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [patterns, documentor, review, external-review, python-code-style, python-testing-patterns]
+skills: [patterns, documentor, review, external-review, python-*]
 ---
 
 # Tokensave

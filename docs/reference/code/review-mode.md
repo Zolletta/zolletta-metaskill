@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [review, python-code-style, python-testing-patterns]
+skills: [review, python-*]
 ---
 
 # Review mode (read-only)
