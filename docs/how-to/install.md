@@ -15,13 +15,54 @@ Install the zolletta-metaskill skill family so it is available to the AI agent.
 
 ## Installation
 
-### Option 1 — Clone into the skills directory
+### Option 1 — One-command installer (recommended)
+
+Clone the repository and run the `.install` script:
+
+```bash
+git clone https://github.com/Zolletta/zolletta-metaskill.git
+cd zolletta-metaskill
+./.install
+```
+
+The `.install` script:
+
+1. Copies the skill to `~/.agents/skills/zolletta-metaskill` (excluding `.git/`, `.venv/`, caches, and other generated files)
+2. Symlinks it into every detected AI agent tool's skills directory
+
+Supported tools (auto-detected — only installed tools are linked):
+
+| Tool        | Symlink path                                    |
+| ----------- | ----------------------------------------------- |
+| Claude Code | `~/.claude/skills/zolletta-metaskill`           |
+| Cursor      | `~/.cursor/skills/zolletta-metaskill`           |
+| Gemini CLI  | `~/.gemini/skills/zolletta-metaskill`           |
+| Devin       | `~/.config/devin/skills/zolletta-metaskill`     |
+| Windsurf    | `~/.codeium/windsurf/skills/zolletta-metaskill` |
+| Cline       | `~/.cline/skills/zolletta-metaskill`            |
+| Roo Code    | `~/.roo/skills/zolletta-metaskill`              |
+| Continue    | `~/.continue/skills/zolletta-metaskill`         |
+| Kiro        | `~/.kiro/skills/zolletta-metaskill`             |
+| Goose       | `~/.config/goose/skills/zolletta-metaskill`     |
+| Junie       | `~/.junie/skills/zolletta-metaskill`            |
+| Augment     | `~/.augment/skills/zolletta-metaskill`          |
+| Trae        | `~/.trae/skills/zolletta-metaskill`             |
+
+Native `~/.agents/skills/` readers (Codex, Pi, Kilo Code) need no symlink — they read the canonical copy directly.
+
+To replace an existing real directory with a symlink:
+
+```bash
+./.install --force
+```
+
+### Option 2 — Clone into the skills directory
 
 ```bash
 git clone https://github.com/Zolletta/zolletta-metaskill.git ~/.agents/skills/zolletta-metaskill
 ```
 
-### Option 2 — Symlink from a different location
+### Option 3 — Symlink from a different location
 
 If the repository is already cloned elsewhere:
 
@@ -47,3 +88,4 @@ After installing, run `/zolletta-metaskill setup` in each project where we want 
 
 - [Set up a project](setup-project.md) — initialize a project for reviews
 - [Getting started](../tutorials/getting-started.md) — end-to-end walkthrough
+- [Repository scripts](../reference/code/scripts.md) — `.bump` and `.install` reference
