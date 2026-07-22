@@ -535,7 +535,14 @@ The schema is **already created** at `setup/assets/settings.schema.json` alongsi
 
 - All 11 top-level fields (including `php`, added by this plan)
 - `python` object: `tools` (uv, ruff, pytest, ty, vulture, mypy — each with its config fields), `code_style` (9 toggles), `testing` (3 fields), `pyproject_mtime`
-- `php` object: `tools` (phpunit, phpstan, psalm, php_cs_fixer, phpcs — each with its config fields), `code_style` (3 toggles), `testing` (3 fields), `autoload` (psr-4 + psr-4-dev), `php_version`, `composer_mtime`
+- `php` object: `tools` (phpunit, phpstan, psalm, php_cs_fixer, phpcs — each with its config fields), `code_style` (**12 toggles — see fix below**), `testing` (3 fields), `autoload` (psr-4 + psr-4-dev), `php_version`, `composer_mtime`
+
+> **`php.code_style` toggle fix (Phase 10.2 of PLAN-MASTER.md)**: The schema currently has 3 toggles (`check_naming_conventions`, `check_one_class_per_file`, `check_filename_matches_class`) that correspond to always-on rules from PLAN-PHP-CODE-STYLE — they should not be configurable. These must be **removed** and replaced with the 12 configurable toggles defined in PLAN-PHP-CODE-STYLE Phase 3.1:
+>
+> `check_union_types`, `check_intersection_types`, `check_enum_methods`, `check_first_class_callables`, `check_readonly_classes`, `check_typed_constants`, `check_override_attribute`, `check_property_hooks`, `check_asymmetric_visibility`, `check_pipe_operator`, `check_array_functions`, `check_string_functions`
+>
+> All 12 are `boolean` with `default: true`. This fix is executed in Phase 10.2 of PLAN-MASTER.md.
+
 - `documentation` object: `language`, `dir`
 - `additionalProperties: false` on every object (rejects unknown fields)
 - `oneOf: [null, object]` for `python` and `php` (non-applicable languages get `null`)
