@@ -72,6 +72,7 @@ import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, cast
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -110,7 +111,8 @@ DUNDER_METHODS: frozenset[str] = frozenset({
     "__format__", "__lt__", "__le__", "__eq__", "__ne__", "__gt__", "__ge__",
     "__hash__", "__bool__", "__getattr__", "__getattribute__", "__setattr__",
     "__delattr__", "__dir__", "__get__", "__set__", "__delete__", "__set_name__",
-    "__class_getitem__", "__init_subclass__", "__call__", "__len__", "__getitem__", "__setitem__", "__delitem__", "__iter__", "__next__",
+    "__class_getitem__", "__init_subclass__", "__call__", "__len__",
+    "__getitem__", "__setitem__", "__delitem__", "__iter__", "__next__",
     "__contains__", "__add__", "__sub__", "__mul__", "__matmul__", "__truediv__",
     "__enter__", "__exit__", "__aenter__", "__aexit__", "__await__",
 })
@@ -205,7 +207,7 @@ def rebuild_docstring(summary: list[str], sections: list[tuple[str, list[str]]])
     A trailing blank line is added after the last section to satisfy the
     Google-style D413 rule (blank line after last section).
     """
-    parts = [line for line in summary]
+    parts = list(summary)
     while parts and not parts[-1].strip():
         parts.pop()
     for header, body in sections:
@@ -261,9 +263,7 @@ def is_trivial_arg_desc(
     if desc_lower in (f"the {arg_lower}", f"a {arg_lower}", f"an {arg_lower}"):
         return True
     # "str" / "int" etc. used as the whole description.
-    if desc_clean == ann_clean:
-        return True
-    return False
+    return desc_clean == ann_clean
 
 
 def is_trivial_returns_desc(desc: str, return_annotation: str | None) -> bool:
@@ -273,9 +273,7 @@ def is_trivial_returns_desc(desc: str, return_annotation: str | None) -> bool:
     desc_clean = desc.strip().rstrip(".")
     if not desc_clean:
         return True
-    if desc_clean == return_annotation.strip():
-        return True
-    return False
+    return desc_clean == return_annotation.strip()
 
 
 # ---------------------------------------------------------------------------
@@ -310,6 +308,7 @@ def get_arg_annotations(node: ast.FunctionDef | ast.AsyncFunctionDef) -> dict[st
 
 
 def get_return_annotation(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str | None:
+    """Return the return-type annotation of ``node`` as a string, or ``None``."""
     return _annotation_str(node.returns)
 
 
@@ -332,7 +331,7 @@ def _is_test_file(path: Path) -> bool:
 
 def _is_nested(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     """Return True if *node* is nested inside another function."""
-    return isinstance(node.parent, (ast.FunctionDef, ast.AsyncFunctionDef))  # type: ignore[attr-defined]
+    return isinstance(getattr(node, "parent", None), (ast.FunctionDef, ast.AsyncFunctionDef))
 
 
 # ---------------------------------------------------------------------------
@@ -394,7 +393,10 @@ def _analyze_function(
     if strip_tests and _is_test_function(name) and _is_test_file(path):
         return Finding(path, node.lineno, "test", f"{name}() — test function", node, remove=True)
     if strip_nested and _is_nested(node):
-        return Finding(path, node.lineno, "nested", f"{name}() — nested function", node, remove=True)
+        return Finding(
+            path, node.lineno, "nested",
+            f"{name}() — nested function", node, remove=True,
+        )
     if (
         strip_obvious_init
         and name == "__init__"
@@ -418,10 +420,9 @@ def _analyze_function(
             if _args_section_is_redundant(body, arg_annotations):
                 removed_headers.append("Args")
                 continue
-        elif header_lower == "returns":
-            if _returns_section_is_redundant(body, return_annotation):
-                removed_headers.append("Returns")
-                continue
+        elif header_lower == "returns" and _returns_section_is_redundant(body, return_annotation):
+            removed_headers.append("Returns")
+            continue
 
         kept_sections.append((header, body))
 
@@ -505,7 +506,7 @@ def _annotate_parents(tree: ast.AST) -> None:
     """Attach ``parent`` attributes to every node for nested-function checks."""
     for parent in ast.walk(tree):
         for child in ast.iter_child_nodes(parent):
-            child.parent = parent  # type: ignore[attr-defined]
+            cast(Any, child).parent = parent
 
 
 # ---------------------------------------------------------------------------
@@ -551,14 +552,15 @@ def apply_edits(path: Path, findings: list[Finding]) -> str:
     """
     lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
     # Sort by start line descending.
-    ordered = sorted(findings, key=lambda f: f.node.lineno, reverse=True)
+    ordered = sorted(findings, key=lambda f: getattr(f.node, "lineno", 0), reverse=True)
 
     for finding in ordered:
         node = finding.node
         # The docstring is the first statement of the function/class body.
-        if not hasattr(node, "body") or not node.body:
+        body: list[ast.stmt] = getattr(node, "body", [])
+        if not body:
             continue
-        doc_expr = node.body[0]
+        doc_expr = body[0]
         if not isinstance(doc_expr, ast.Expr) or not isinstance(doc_expr.value, ast.Constant):
             continue
         if not isinstance(doc_expr.value.value, str):
@@ -566,15 +568,21 @@ def apply_edits(path: Path, findings: list[Finding]) -> str:
 
         start = doc_expr.lineno
         end = doc_expr.end_lineno
+        if end is None:
+            continue
         raw_block = "".join(lines[start - 1 : end])
-        indent = re.match(r"^(\s*)", raw_block).group(1)
-        prefix, quote = _detect_prefix_quote(raw_block)
+        indent_match = re.match(r"^(\s*)", raw_block)
+        indent = indent_match.group(1) if indent_match else ""
+        detected = _detect_prefix_quote(raw_block)
+        if detected is None:
+            continue
+        prefix, quote = detected
 
         if finding.remove or finding.new_text is None:
             # If the docstring is the only AST statement in the body,
             # replacing it with nothing would leave an empty body (syntax
             # error).  Insert a ``pass`` statement to keep the body valid.
-            if len(node.body) == 1:
+            if len(body) == 1:
                 pass_line = f"{indent}pass\n"
                 lines[start - 1 : end] = [pass_line]
             else:
@@ -660,6 +668,7 @@ def print_report(reports: list[FileReport], root: Path, apply_mode: bool) -> int
 
 
 def main() -> int:
+    """Entry point for the docstring streamliner CLI."""
     parser = argparse.ArgumentParser(
         description="Streamline Google-style docstrings per python-code-style Pattern 6.",
     )

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""API Documentation Validator
+"""API Documentation Validator.
 
 Extracts function and class signatures from Python source files using the ast module
 and compares them against API documentation in markdown files.
@@ -57,15 +57,18 @@ class SourceSignature:
 
     @property
     def qualified_name(self) -> str:
+        """Return the fully qualified name including the parent class if present."""
         if self.parent_class:
             return f"{self.parent_class}.{self.name}"
         return self.name
 
     @property
     def is_deprecated(self) -> bool:
+        """Return True if the signature is decorated as deprecated."""
         return any("deprecated" in d.lower() for d in self.decorators)
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize the signature to a dictionary."""
         return {
             "name": self.name,
             "qualified_name": self.qualified_name,
@@ -115,9 +118,9 @@ def _extract_decorator_names(decorator_list: list[ast.expr]) -> list[str]:
     return names
 
 
-def _extract_parameters(func_node: ast.FunctionDef) -> list[dict[str, Any]]:
+def _extract_parameters(func_node: ast.FunctionDef | ast.AsyncFunctionDef) -> list[dict[str, Any]]:
     """Extract parameter information from a function definition."""
-    params = []
+    params: list[dict[str, Any]] = []
     args = func_node.args
 
     # Calculate defaults offset
@@ -161,10 +164,11 @@ def _extract_parameters(func_node: ast.FunctionDef) -> list[dict[str, Any]]:
             "has_default": False,
             "default": None,
         }
-        if i < len(args.kw_defaults) and args.kw_defaults[i] is not None:
+        kw_default = args.kw_defaults[i] if i < len(args.kw_defaults) else None
+        if kw_default is not None:
             param["has_default"] = True
             try:
-                param["default"] = ast.unparse(args.kw_defaults[i])
+                param["default"] = ast.unparse(kw_default)
             except AttributeError:
                 param["default"] = "..."
         params.append(param)
@@ -183,7 +187,7 @@ def _extract_parameters(func_node: ast.FunctionDef) -> list[dict[str, Any]]:
 
 def extract_signatures(source_path: str, include_private: bool = False) -> list[SourceSignature]:
     """Extract all function and class signatures from a Python file."""
-    signatures = []
+    signatures: list[SourceSignature] = []
     try:
         with open(source_path, encoding="utf-8", errors="ignore") as f:
             source = f.read()
@@ -194,7 +198,7 @@ def extract_signatures(source_path: str, include_private: bool = False) -> list[
     rel_path = source_path  # Will be made relative by caller
 
     for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             is_private = node.name.startswith("_")
             if is_private and not include_private:
                 continue
@@ -301,7 +305,7 @@ def extract_documented_items(doc_path: str) -> dict[str, dict[str, Any]]:
     # Pattern 2: Function in backticks with params like `function_name(param1, param2)`
     inline_func = re.compile(r'`(\w+(?:\.\w+)*)\(([^)]*)\)`')
     # Pattern 3: Class headings like ### class ClassName or ### ClassName
-    heading_class = re.compile(r'^#{1,6}\s+(?:class\s+)?`?(\w+)`?\s*$')
+    re.compile(r'^#{1,6}\s+(?:class\s+)?`?(\w+)`?\s*$')
     # Pattern 4: Parameter lists like - `param_name` (type): description
     param_pattern = re.compile(r'^\s*[-*]\s+`(\w+)`\s*(?:\(([^)]+)\))?\s*(?::|--)?\s*(.*)')
 
@@ -432,7 +436,10 @@ def validate_api_docs(
                 "name": name,
                 "doc_file": doc_item.get("file", "unknown"),
                 "doc_line": doc_item.get("line", 0),
-                "description": f"'{name}' is documented but not found in source code (removed or renamed)",
+                "description": (
+                    f"'{name}' is documented but not found in source code "
+                    "(removed or renamed)"
+                ),
             })
 
     # 2. In source but not documented — suggestions, not issues
@@ -440,19 +447,24 @@ def validate_api_docs(
         # Skip qualified names that are also present as simple names
         if "." in name and name.split(".")[-1] in source_by_name:
             continue
-        if name not in documented_names and sig.qualified_name not in documented_names:
-            if not sig.is_private:
-                priority, reason = _classify_undocumented(sig)
-                suggestions.append({
-                    "type": "undocumented",
-                    "priority": priority,
-                    "name": sig.qualified_name,
-                    "kind": sig.kind,
-                    "source_file": sig.file_path,
-                    "source_line": sig.line_number,
-                    "reason": reason,
-                    "description": f"'{sig.qualified_name}' ({sig.kind}) is not documented — {reason}",
-                })
+        if (
+            name not in documented_names
+            and sig.qualified_name not in documented_names
+            and not sig.is_private
+        ):
+            priority, reason = _classify_undocumented(sig)
+            suggestions.append({
+                "type": "undocumented",
+                "priority": priority,
+                "name": sig.qualified_name,
+                "kind": sig.kind,
+                "source_file": sig.file_path,
+                "source_line": sig.line_number,
+                "reason": reason,
+                "description": (
+                    f"'{sig.qualified_name}' ({sig.kind}) is not documented — {reason}"
+                ),
+            })
 
     # 3. Parameter mismatches — real drift
     for name in documented_names & source_names:
@@ -481,7 +493,10 @@ def validate_api_docs(
                     "parameter": param,
                     "source_file": sig.file_path,
                     "source_line": sig.line_number,
-                    "description": f"Parameter '{param}' of '{name}' exists in source but not in docs",
+                    "description": (
+                        f"Parameter '{param}' of '{name}' exists in source "
+                        "but not in docs"
+                    ),
                 })
 
         # Parameters in docs but not in source
@@ -507,7 +522,10 @@ def validate_api_docs(
                 "name": name,
                 "source_file": sig.file_path,
                 "source_line": sig.line_number,
-                "description": f"'{name}' has @deprecated decorator but may still be documented as current",
+                "description": (
+                    f"'{name}' has @deprecated decorator but may still be "
+                    "documented as current"
+                ),
             })
 
     return issues, suggestions
@@ -539,7 +557,11 @@ def _classify_undocumented(sig: SourceSignature) -> tuple[str, str]:
 
     # High: classes with many parameters (complex constructors)
     if sig.kind == "class" and len(sig.parameters) > 3:
-        return "high", f"class with {len(sig.parameters)} constructor params — complex initialization"
+        return (
+            "high",
+            f"class with {len(sig.parameters)} constructor params — "
+            "complex initialization",
+        )
 
     # Medium: functions with complex signatures (>3 params)
     if sig.kind == "function" and len(sig.parameters) > 3:
@@ -576,6 +598,9 @@ def generate_report(
     Args:
         issues: Real drift issues (phantom docs, param mismatches, deprecations).
         suggestions: Undocumented items with priority classification.
+        source_count: Total number of source items discovered.
+        doc_count: Total number of documented items found.
+        as_json: If True, return the report as a JSON string; otherwise return Markdown.
         suggest_coverage: If True, include prioritized documentation suggestions
             in the report. If False, only show a summary count of undocumented items.
 
@@ -586,7 +611,7 @@ def generate_report(
         p = s.get("priority", "low")
         sug_by_priority[p] = sug_by_priority.get(p, 0) + 1
 
-    report_data = {
+    report_data: dict[str, Any] = {
         "summary": {
             "source_signatures": source_count,
             "documented_items": doc_count,
@@ -602,8 +627,12 @@ def generate_report(
     for issue in issues:
         itype = issue.get("type", "unknown")
         sev = issue.get("severity", "unknown")
-        report_data["summary"]["by_type"][itype] = report_data["summary"]["by_type"].get(itype, 0) + 1
-        report_data["summary"]["by_severity"][sev] = report_data["summary"]["by_severity"].get(sev, 0) + 1
+        report_data["summary"]["by_type"][itype] = (
+            report_data["summary"]["by_type"].get(itype, 0) + 1
+        )
+        report_data["summary"]["by_severity"][sev] = (
+            report_data["summary"]["by_severity"].get(sev, 0) + 1
+        )
 
     if suggest_coverage:
         report_data["suggestions"] = suggestions
@@ -656,7 +685,10 @@ def generate_report(
             lines.append(f"  [{priority.upper()}] ({len(pri_sugs)} items):")
             for s in pri_sugs[:20]:  # Cap at 20 per priority
                 lines.append(f"    {s['name']} ({s['kind']}) — {s['reason']}")
-                lines.append(f"      Source: {s['source_file']}:{s.get('source_line', '?')}")
+                lines.append(
+                    f"      Source: {s.get('source_file', '?')}:"
+                    f"{s.get('source_line', '?')}"
+                )
             if len(pri_sugs) > 20:
                 lines.append(f"    ... and {len(pri_sugs) - 20} more")
             lines.append("")
@@ -688,7 +720,8 @@ def generate_report(
 
 # --- Main ---
 
-def main():
+def main() -> None:
+    """Entry point for the API documentation validator CLI."""
     parser = argparse.ArgumentParser(
         description="Validate API documentation against Python source code",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -697,7 +730,11 @@ def main():
     parser.add_argument("doc_path", help="Path to API documentation (file or directory)")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
     parser.add_argument("--recursive", action="store_true", help="Recursively scan doc directory")
-    parser.add_argument("--include-private", action="store_true", help="Include private (_prefixed) items")
+    parser.add_argument(
+        "--include-private",
+        action="store_true",
+        help="Include private (_prefixed) items",
+    )
     parser.add_argument(
         "--suggest-coverage",
         action="store_true",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Markdown Link Checker
+"""Markdown Link Checker.
 
 Scans markdown files for links and validates them:
 - Local file references (does the file exist?)
@@ -57,6 +57,7 @@ class LinkInfo:
         self.error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize the link result to a dictionary."""
         return {
             "source_file": self.source_file,
             "line": self.line_number,
@@ -91,7 +92,7 @@ def classify_link(target: str) -> str:
 
 def extract_links(file_path: str, rel_path: str) -> list[LinkInfo]:
     """Extract all links from a markdown file."""
-    links = []
+    links: list[LinkInfo] = []
 
     try:
         with open(file_path, encoding="utf-8", errors="ignore") as f:
@@ -171,7 +172,7 @@ def extract_links(file_path: str, rel_path: str) -> list[LinkInfo]:
 
 def extract_headings(file_path: str) -> set[str]:
     """Extract all heading anchors from a markdown file."""
-    headings = set()
+    headings: set[str] = set()
     try:
         with open(file_path, encoding="utf-8", errors="ignore") as f:
             content = f.read()
@@ -256,22 +257,22 @@ def validate_link(
 
     # For local_file, image, cross_doc_anchor
     target = link.link_target
-    anchor = None
+    anchor_ref: str | None = None
     if "#" in target:
-        file_part, anchor = target.split("#", 1)
+        file_part, anchor_ref = target.split("#", 1)
     else:
         file_part = target
 
-    if not file_part and anchor:
+    if not file_part and anchor_ref:
         # This is actually just an anchor link
         source_full = os.path.join(repo_path, link.source_file)
         headings = _get_headings(source_full, heading_cache)
-        slug = slugify_heading(anchor)
+        slug = slugify_heading(anchor_ref)
         if slug in headings:
             link.is_valid = True
         else:
             link.is_valid = False
-            link.error = f"Anchor '#{anchor}' not found"
+            link.error = f"Anchor '#{anchor_ref}' not found"
         return
 
     # Resolve file path
@@ -298,16 +299,16 @@ def validate_link(
             return
 
     # File exists
-    if anchor:
+    if anchor_ref:
         # Validate anchor in target file
         if resolved.endswith(tuple(MARKDOWN_EXTENSIONS)):
             headings = _get_headings(resolved, heading_cache)
-            slug = slugify_heading(anchor)
+            slug = slugify_heading(anchor_ref)
             if slug in headings:
                 link.is_valid = True
             else:
                 link.is_valid = False
-                link.error = f"File exists but anchor '#{anchor}' not found in '{file_part}'"
+                link.error = f"File exists but anchor '#{anchor_ref}' not found in '{file_part}'"
         else:
             # Non-markdown file with anchor -- can't validate anchor
             link.is_valid = True
@@ -395,9 +396,9 @@ def generate_report(
     as_json: bool = False,
 ) -> str:
     """Generate a link check report."""
-    broken = [l for l in all_links if l.is_valid is False]
-    valid = [l for l in all_links if l.is_valid is True]
-    skipped = [l for l in all_links if l.is_valid is None]
+    broken = [lnk for lnk in all_links if lnk.is_valid is False]
+    valid = [lnk for lnk in all_links if lnk.is_valid is True]
+    skipped = [lnk for lnk in all_links if lnk.is_valid is None]
 
     report_data = {
         "summary": {
@@ -407,7 +408,7 @@ def generate_report(
             "skipped": len(skipped),
             "duplicate_anchors": sum(len(v) for v in duplicate_anchors.values()),
         },
-        "broken_links": [l.to_dict() for l in broken],
+        "broken_links": [lnk.to_dict() for lnk in broken],
         "duplicate_anchors": {
             file: [{"anchor": anchor, "line": line} for anchor, line in dups]
             for file, dups in duplicate_anchors.items()
@@ -415,7 +416,7 @@ def generate_report(
     }
 
     if not broken_only:
-        report_data["all_links"] = [l.to_dict() for l in all_links]
+        report_data["all_links"] = [lnk.to_dict() for lnk in all_links]
 
     if as_json:
         return json.dumps(report_data, indent=2, default=str)
@@ -442,7 +443,7 @@ def generate_report(
 
         for source_file, file_links in sorted(by_file.items()):
             lines.append(f"\n  {source_file}:")
-            for link in sorted(file_links, key=lambda l: l.line_number):
+            for link in sorted(file_links, key=lambda lnk: lnk.line_number):
                 lines.append(f"    Line {link.line_number}: [{link.link_text}]({link.link_target})")
                 lines.append(f"      Error: {link.error}")
         lines.append("")
@@ -479,7 +480,8 @@ def generate_report(
 
 # --- Main ---
 
-def main():
+def main() -> None:
+    """Entry point for the markdown link checker CLI."""
     parser = argparse.ArgumentParser(
         description="Check markdown links for validity",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -487,7 +489,11 @@ def main():
     parser.add_argument("path", help="File or directory to check")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
     parser.add_argument("--broken-only", action="store_true", help="Only show broken links")
-    parser.add_argument("--check-external", action="store_true", help="Also validate external URLs (slower)")
+    parser.add_argument(
+        "--check-external",
+        action="store_true",
+        help="Also validate external URLs (slower)",
+    )
 
     args = parser.parse_args()
 
@@ -538,11 +544,14 @@ def main():
         validate_link(link, repo_path, heading_cache, check_external=args.check_external)
 
     # Report
-    report = generate_report(all_links, duplicate_anchors, broken_only=args.broken_only, as_json=args.json)
+    report = generate_report(
+        all_links, duplicate_anchors,
+        broken_only=args.broken_only, as_json=args.json,
+    )
     print(report)
 
     # Exit code
-    broken_count = sum(1 for l in all_links if l.is_valid is False)
+    broken_count = sum(1 for lnk in all_links if lnk.is_valid is False)
     dup_count = sum(len(v) for v in duplicate_anchors.values())
     sys.exit(1 if (broken_count > 0 or dup_count > 0) else 0)
 

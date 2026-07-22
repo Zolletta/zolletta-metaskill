@@ -58,6 +58,7 @@ import argparse
 import ast
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def _pascal_to_snake(name: str) -> str:
@@ -88,9 +89,9 @@ def _auto_detect_package(src_root: Path) -> str | None:
 
 def _build_source_index(
     src_pkg: Path, ignore_dirs: set[str]
-) -> dict[str, dict]:
+) -> dict[str, dict[str, Any]]:
     """Index all source files with classes: rel_path -> {stem, classes, prefixes}."""
-    index: dict[str, dict] = {}
+    index: dict[str, dict[str, Any]] = {}
     for py in sorted(src_pkg.rglob("*.py")):
         if any(part in ignore_dirs for part in py.parts):
             continue
@@ -115,7 +116,7 @@ def _build_source_index(
 
 
 def _match_test_to_source(
-    test_name: str, src_index: dict[str, dict], test_dir: str = ""
+    test_name: str, src_index: dict[str, dict[str, Any]], test_dir: str = ""
 ) -> str | None:
     """Return the source rel_path whose prefix best matches this test file name.
 
@@ -144,6 +145,7 @@ def _match_test_to_source(
 
 
 def main() -> int:
+    """Entry point for the test structure mirror checker CLI."""
     parser = argparse.ArgumentParser(
         description="Check that test directory structure mirrors source structure."
     )
@@ -218,7 +220,7 @@ def main() -> int:
 
     src_dirs = _collect_dirs(src_pkg)
     test_dirs = _collect_dirs(test_pkg)
-    src_only_dirs = sorted(src_dirs - test_dirs)
+    sorted(src_dirs - test_dirs)
     test_only_dirs = sorted(test_dirs - src_dirs)
 
     # --- Build source index ---
@@ -239,12 +241,12 @@ def main() -> int:
         except (OSError, UnicodeDecodeError):
             test_files[rel] = ""
 
-    test_blob = "\n".join(test_files.values())
+    "\n".join(test_files.values())
 
     # --- Classify each test file ---
-    misnamed: list[dict] = []
-    misplaced: list[dict] = []
-    orphaned: list[dict] = []
+    misnamed: list[dict[str, Any]] = []
+    misplaced: list[dict[str, Any]] = []
+    orphaned: list[dict[str, Any]] = []
 
     # Track which source files have direct test coverage (name match or misnamed)
     directly_covered: set[str] = set()
@@ -256,7 +258,7 @@ def main() -> int:
             class_to_source[cls_name] = src_rel
 
     # For each test file, store: test_rel -> (primary_source, content, referenced_classes)
-    test_refs: list[dict] = []
+    test_refs: list[dict[str, Any]] = []
 
     for test_rel, content in sorted(test_files.items()):
         test_path = test_pkg / test_rel
@@ -269,7 +271,7 @@ def main() -> int:
 
         # Find which source classes are referenced in the test content
         referenced_classes: list[str] = []
-        for src_rel, info in src_index.items():
+        for _src_rel, info in src_index.items():
             for cls_name in info["classes"]:
                 if cls_name in content:
                     referenced_classes.append(cls_name)
@@ -343,7 +345,7 @@ def main() -> int:
     # For each test file, find classes it references from source files that
     # have NO direct test coverage. These are indirect references — the test
     # file is providing coverage for a source file it doesn't directly test.
-    indirect_refs: list[dict] = []
+    indirect_refs: list[dict[str, Any]] = []
     indirectly_covered: set[str] = set()
 
     for ref in test_refs:
@@ -368,7 +370,7 @@ def main() -> int:
             })
 
     # --- Find missing tests (source files not covered directly or indirectly) ---
-    missing: list[dict] = []
+    missing: list[dict[str, Any]] = []
     for src_rel, info in sorted(src_index.items()):
         if src_rel in directly_covered or src_rel in indirectly_covered:
             continue
@@ -383,7 +385,10 @@ def main() -> int:
     orphaned_dirs = [{"test_dir": str(d) + "/"} for d in test_only_dirs]
 
     # --- Print markdown report ---
-    has_issues = bool(misnamed or misplaced or orphaned or orphaned_dirs or missing or indirect_refs)
+    has_issues = bool(
+        misnamed or misplaced or orphaned or orphaned_dirs
+        or missing or indirect_refs
+    )
 
     print("# Test Structure — Validation Report\n")
     print(f"**Source package:** `{src_pkg}`")
@@ -454,7 +459,10 @@ def main() -> int:
     # 5. Indirect references (informative, last)
     print(f"## 5. Indirect references ({len(indirect_refs)}) — informative only\n")
     if indirect_refs:
-        print("| Test file | Primary source | Indirectly tested sources | Indirectly tested classes |")
+        print(
+            "| Test file | Primary source | Indirectly tested sources | "
+            "Indirectly tested classes |"
+        )
         print("|---|---|---|---|")
         for item in indirect_refs:
             print(

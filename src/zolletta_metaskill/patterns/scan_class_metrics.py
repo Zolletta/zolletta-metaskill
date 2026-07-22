@@ -24,6 +24,7 @@ import argparse
 import ast
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def _get_class_end(node: ast.ClassDef) -> int:
@@ -44,7 +45,7 @@ def _count_self_attrs(node: ast.ClassDef) -> int:
     return len(attrs)
 
 
-def scan_file(path: Path) -> list[dict]:
+def scan_file(path: Path) -> list[dict[str, Any]]:
     """Scan a single .py file and return class metric dicts."""
     try:
         tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -76,6 +77,7 @@ def scan_file(path: Path) -> list[dict]:
 
 
 def main() -> int:
+    """Entry point for the class metrics scanner CLI."""
     parser = argparse.ArgumentParser(
         description="Scan Python source for class metrics (God class triage)."
     )
@@ -104,7 +106,7 @@ def main() -> int:
         print(f"Error: directory '{root}' does not exist", file=sys.stderr)
         return 1
 
-    all_results: list[dict] = []
+    all_results: list[dict[str, Any]] = []
     for py in root.rglob("*.py"):
         all_results.extend(scan_file(py))
 

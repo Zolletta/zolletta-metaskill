@@ -25,6 +25,7 @@ import argparse
 import ast
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def _get_class_end(node: ast.ClassDef) -> int:
@@ -32,7 +33,7 @@ def _get_class_end(node: ast.ClassDef) -> int:
     return max(getattr(n, "lineno", node.lineno) for n in ast.walk(node))
 
 
-def scan_file(path: Path) -> list[dict]:
+def scan_file(path: Path) -> list[dict[str, Any]]:
     """Scan a single test file and return test class metric dicts."""
     try:
         tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -62,6 +63,7 @@ def scan_file(path: Path) -> list[dict]:
 
 
 def main() -> int:
+    """Entry point for the test God class scanner CLI."""
     parser = argparse.ArgumentParser(
         description="Scan Python test classes for size and mixed-SUT detection."
     )
@@ -89,7 +91,7 @@ def main() -> int:
         print(f"Error: directory '{root}' does not exist", file=sys.stderr)
         return 1
 
-    all_results: list[dict] = []
+    all_results: list[dict[str, Any]] = []
     for py in root.rglob("*.py"):
         all_results.extend(scan_file(py))
 

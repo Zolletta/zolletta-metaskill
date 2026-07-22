@@ -40,6 +40,7 @@ import ast
 import json
 import sys
 from pathlib import Path
+from typing import cast
 
 
 def _pascal_to_snake(name: str) -> str:
@@ -58,8 +59,8 @@ def _load_mapping(mapping_arg: str | None) -> dict[str, str]:
         return {}
     p = Path(mapping_arg)
     if p.exists():
-        return json.loads(p.read_text(encoding="utf-8"))
-    return json.loads(mapping_arg)
+        return cast(dict[str, str], json.loads(p.read_text(encoding="utf-8")))
+    return cast(dict[str, str], json.loads(mapping_arg))
 
 
 def _get_test_methods(class_node: ast.ClassDef) -> list[ast.FunctionDef | ast.AsyncFunctionDef]:
@@ -80,7 +81,9 @@ def _get_shared_methods(class_node: ast.ClassDef) -> list[ast.FunctionDef | ast.
     ]
 
 
-def _auto_derive_prefixes(methods: list[ast.FunctionDef | ast.AsyncFunctionDef]) -> dict[str, list[str]]:
+def _auto_derive_prefixes(
+    methods: list[ast.FunctionDef | ast.AsyncFunctionDef]
+) -> dict[str, list[str]]:
     """Auto-derive prefix groups from method names.
 
     Uses the first token after ``test_`` as the prefix. Returns a dict
@@ -194,6 +197,7 @@ def _build_split_file(
 
 
 def main() -> int:
+    """Entry point for the test splitter CLI."""
     parser = argparse.ArgumentParser(
         description="Split a God test class into per-SUT test files."
     )
@@ -276,7 +280,10 @@ def main() -> int:
         print("\nNo --mapping provided. Auto-deriving prefixes from method names:")
         auto = _auto_derive_prefixes(test_methods)
         for prefix, names in sorted(auto.items()):
-            print(f"  {prefix}: {len(names)} methods -> {names[:3]}{'...' if len(names) > 3 else ''}")
+            print(
+                f"  {prefix}: {len(names)} methods -> "
+                f"{names[:3]}{'...' if len(names) > 3 else ''}"
+            )
         print("\nUse --mapping '{\"prefix\": \"SutClass\", ...}' to specify SUT names.")
         print("Example:")
         proposed = {p: _snake_to_pascal(p) for p in auto}

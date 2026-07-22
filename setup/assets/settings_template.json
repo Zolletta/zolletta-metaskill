@@ -6,6 +6,7 @@
   "tokensave_available": false,
   "acronyms": [],
   "python": null,
+  "php": null,
   "external_review_model": "swe",
   "reports_dir": ".zolletta-metaskill/reports",
   "documentation": {

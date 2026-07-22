@@ -110,17 +110,17 @@ Both PHP plans touch shared files. This table assigns each file to exactly one p
 
 > **Highest effort phase.** Blocks Phase 9 (scanner refactoring changes signatures, tests must exist first). Estimated 4–16 hours depending on whether surviving copies are found.
 
-- [ ] **6.1** Search for surviving test copies (`find` in home, /tmp, /var/folders) → PLAN-TEST-RECOVERY Source 3
-- [ ] **6.2** Create `tests/conftest.py` + `tests/fixtures/python/` (8 fixture files) → PLAN-TEST-RECOVERY Step 2
+- [x] **6.1** Search for surviving test copies — none found (no git history, no filesystem copies); reconstructing from scratch (`find` in home, /tmp, /var/folders) → PLAN-TEST-RECOVERY Source 3
+- [x] **6.2** Create `tests/conftest.py` + `tests/fixtures/python/` (8 fixture files) → PLAN-TEST-RECOVERY Step 2
 - [ ] **6.3** Write `tests/test_cli.py` (Low difficulty) → PLAN-TEST-RECOVERY Step 4 #1
-- [ ] **6.4** Write `tests/patterns/` tests (7 files: class_metrics, one_class_per_file, naming, tests, test_naming, test_god_classes, open_closed) → PLAN-TEST-RECOVERY Step 4 #2-8,10
-- [ ] **6.5** Write `tests/python_code_style/` tests (3 files: acronym_casing, unused_all_exports, streamline_docstrings) → PLAN-TEST-RECOVERY Step 4 #9,11,15
-- [ ] **6.6** Write `tests/python_testing_patterns/` tests (1 file: test_naming) → PLAN-TEST-RECOVERY Step 4 #6
-- [ ] **6.7** Write `tests/shared/` tests (3 files: naming_conventions, one_class_per_file, scan_tests) → PLAN-TEST-RECOVERY Step 4 #3-5
-- [ ] **6.8** Write `tests/documentor/` tests (4 files: api_doc_validator, doc_staleness_scorer, drift_analyzer, link_checker) → PLAN-TEST-RECOVERY Step 4 #16-19
-- [ ] **6.9** Write remaining pattern tests (dependency_inversion, interface_segregation, liskov_substitution, test_splitter) → PLAN-TEST-RECOVERY Step 4 #12-14
-- [ ] **6.10** Verify: `uv run pytest --cov` — all tests pass, **≥90% coverage per file** → PLAN-TEST-RECOVERY Step 6
-- [ ] **6.11** Verify: `uv run ruff check --fix` + `uv run ty check --fix` + `uv run mypy .` + `uv run vulture` — all green → PLAN-TEST-RECOVERY Step 6
+- [x] **6.4** Write `tests/patterns/` tests (7 files: class_metrics, one_class_per_file, naming, tests, test_naming, test_god_classes, open_closed) → PLAN-TEST-RECOVERY Step 4 #2-8,10
+- [x] **6.5** Write `tests/python_code_style/` tests (3 files: acronym_casing, unused_all_exports, streamline_docstrings) → PLAN-TEST-RECOVERY Step 4 #9,11,15
+- [x] **6.6** Write `tests/python_testing_patterns/` tests (1 file: test_naming) → PLAN-TEST-RECOVERY Step 4 #6
+- [x] **6.7** Write `tests/shared/` tests (3 files: naming_conventions, one_class_per_file, scan_tests) → PLAN-TEST-RECOVERY Step 4 #3-5
+- [x] **6.8** Write `tests/documentor/` tests (4 files: api_doc_validator, doc_staleness_scorer, drift_analyzer, link_checker) → PLAN-TEST-RECOVERY Step 4 #16-19
+- [x] **6.9** Write remaining pattern tests (dependency_inversion, interface_segregation, liskov_substitution, test_splitter) → PLAN-TEST-RECOVERY Step 4 #12-14
+- [x] **6.10** Verify: `uv run pytest --cov` — all tests pass, **≥90% coverage per file** → PLAN-TEST-RECOVERY Step 6
+- [x] **6.11** Verify: `uv run ruff check --fix` + `uv run ty check --fix` + `uv run mypy .` + `uv run vulture` — all green → PLAN-TEST-RECOVERY Step 6
 
 ---
 

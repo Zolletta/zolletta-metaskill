@@ -33,9 +33,10 @@ import argparse
 import ast
 import sys
 from pathlib import Path
+from typing import Any
 
 
-def _get_method_signature(func: ast.FunctionDef | ast.AsyncFunctionDef) -> dict:
+def _get_method_signature(func: ast.FunctionDef | ast.AsyncFunctionDef) -> dict[str, Any]:
     """Extract method signature info."""
     args = func.args
     # Positional args (excluding self/cls)
@@ -95,15 +96,18 @@ def _is_stub_body(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
                 return True
             if isinstance(stmt.value, ast.Constant) and stmt.value.value is None:
                 return True
-        if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant):
-            if stmt.value.value is ...:
-                return True
+        if (
+            isinstance(stmt, ast.Expr)
+            and isinstance(stmt.value, ast.Constant)
+            and stmt.value.value is ...
+        ):
+            return True
     return False
 
 
-def _get_classes(tree: ast.Module) -> dict[str, dict]:
+def _get_classes(tree: ast.Module) -> dict[str, dict[str, Any]]:
     """Extract all classes with their methods and base classes."""
-    classes = {}
+    classes: dict[str, dict[str, Any]] = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.ClassDef):
             methods = {}
@@ -130,9 +134,9 @@ def _get_classes(tree: ast.Module) -> dict[str, dict]:
     return classes
 
 
-def _check_lsp_violations(parent: dict, child: dict) -> list[dict]:
+def _check_lsp_violations(parent: dict[str, Any], child: dict[str, Any]) -> list[dict[str, Any]]:
     """Check LSP violations between parent and child class."""
-    violations = []
+    violations: list[dict[str, Any]] = []
     parent_methods = parent["methods"]
     child_methods = child["methods"]
 
@@ -151,7 +155,10 @@ def _check_lsp_violations(parent: dict, child: dict) -> list[dict]:
                 "class": child["name"],
                 "method": mname,
                 "line": child_sig["line"],
-                "detail": f"requires {child_sig['required_count']} params, parent requires {parent_sig['required_count']}",
+                "detail": (
+                    f"requires {child_sig['required_count']} params, "
+                    f"parent requires {parent_sig['required_count']}"
+                ),
             })
 
         # Check 2: Fewer parameters (can't accept what parent accepts)
@@ -161,7 +168,10 @@ def _check_lsp_violations(parent: dict, child: dict) -> list[dict]:
                 "class": child["name"],
                 "method": mname,
                 "line": child_sig["line"],
-                "detail": f"accepts {len(child_sig['pos_args'])} args, parent accepts {len(parent_sig['pos_args'])}",
+                "detail": (
+                    f"accepts {len(child_sig['pos_args'])} args, "
+                    f"parent accepts {len(parent_sig['pos_args'])}"
+                ),
             })
 
         # Check 3: New exception types
@@ -194,6 +204,7 @@ def _check_lsp_violations(parent: dict, child: dict) -> list[dict]:
 
 
 def main() -> int:
+    """Entry point for the Liskov Substitution Principle validator CLI."""
     parser = argparse.ArgumentParser(
         description="Liskov Substitution Principle (LSP) validator."
     )
@@ -218,7 +229,7 @@ def main() -> int:
         return 1
 
     # Collect all classes across all files
-    all_classes: dict[str, dict] = {}
+    all_classes: dict[str, dict[str, Any]] = {}
     for py in root.rglob("*.py"):
         if "__pycache__" in str(py):
             continue
@@ -232,8 +243,8 @@ def main() -> int:
             all_classes.setdefault(name, info)
 
     # Check each child against its parent
-    violations: list[dict] = []
-    for name, info in all_classes.items():
+    violations: list[dict[str, Any]] = []
+    for _name, info in all_classes.items():
         for base_name in info["bases"]:
             if base_name in all_classes:
                 parent = all_classes[base_name]
@@ -257,7 +268,10 @@ def main() -> int:
                 "extra_required_params": "remove extra required params or make them optional",
                 "fewer_params": "accept *args/**kwargs to maintain substitutability",
                 "new_exceptions": "catch and wrap new exceptions, or declare them in the parent",
-                "stub_override": "don't override if the method doesn't apply — reconsider the hierarchy",
+                "stub_override": (
+                    "don't override if the method doesn't apply — "
+                    "reconsider the hierarchy"
+                ),
             }
             fix = fixes.get(v["type"], "review the override")
             print(f"    Fix: {fix}")

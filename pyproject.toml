@@ -35,6 +35,9 @@ target-version = "py312"
 select = ["E", "W", "F", "I", "B", "C4", "D", "UP", "T20", "SIM"]
 ignore = ["B008", "T201", "D104", "D107", "D203", "D213"]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["D100", "D101", "D102", "D103", "D105"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["zolletta_metaskill"]
 

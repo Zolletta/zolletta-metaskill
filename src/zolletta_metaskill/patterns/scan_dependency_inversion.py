@@ -47,6 +47,7 @@ import argparse
 import ast
 import sys
 from pathlib import Path
+from typing import Any
 
 STDLIB_TYPES = {
     "list", "dict", "set", "frozenset", "tuple", "str", "int", "float",
@@ -79,9 +80,12 @@ def _is_data_class(node: ast.ClassDef) -> bool:
     for dec in node.decorator_list:
         if isinstance(dec, ast.Name) and dec.id in DATA_CLASS_MARKERS:
             return True
-        if isinstance(dec, ast.Call) and isinstance(dec.func, ast.Name):
-            if dec.func.id in DATA_CLASS_MARKERS:
-                return True
+        if (
+            isinstance(dec, ast.Call)
+            and isinstance(dec.func, ast.Name)
+            and dec.func.id in DATA_CLASS_MARKERS
+        ):
+            return True
     for base in node.bases:
         if isinstance(base, ast.Name) and base.id in ("Enum", "IntEnum", "Flag", "IntFlag"):
             return True
@@ -98,10 +102,7 @@ def _is_factory(name: str) -> bool:
 def _is_entry_point(filename: str, patterns: set[str]) -> bool:
     """Check if a file is an entry point / composition root."""
     stem = filename.replace(".py", "")
-    for pattern in patterns:
-        if pattern in stem:
-            return True
-    return False
+    return any(pattern in stem for pattern in patterns)
 
 
 def _is_composition_root(class_node: ast.ClassDef) -> bool:
@@ -121,9 +122,9 @@ def _is_composition_root(class_node: ast.ClassDef) -> bool:
     return False
 
 
-def _extract_created_dependencies(class_node: ast.ClassDef) -> list[dict]:
+def _extract_created_dependencies(class_node: ast.ClassDef) -> list[dict[str, Any]]:
     """Find places where the class instantiates other classes and assigns to self."""
-    violations = []
+    violations: list[dict[str, Any]] = []
 
     for item in class_node.body:
         if not isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -179,9 +180,7 @@ def _is_real_dependency(class_name: str) -> bool:
     if class_name in ("Mock", "MagicMock", "patch", "PropertyMock"):
         return False
     # Skip generic container constructors
-    if class_name in ("list", "dict", "set", "tuple", "frozenset"):
-        return False
-    return True
+    return class_name not in ("list", "dict", "set", "tuple", "frozenset")
 
 
 def _get_constructor_params(class_node: ast.ClassDef) -> set[str]:
@@ -193,13 +192,18 @@ def _get_constructor_params(class_node: ast.ClassDef) -> set[str]:
 
 
 def main() -> int:
+    """Entry point for the Dependency Inversion validator CLI."""
     parser = argparse.ArgumentParser(
-        description="Dependency Inversion validator — detect dependencies created instead of injected."
+        description=(
+            "Dependency Inversion validator — detect dependencies created "
+            "instead of injected."
+        )
     )
     parser.add_argument("directory", nargs="?", default="src",
                         help="Root directory to scan (default: src)")
     parser.add_argument("--entry-points", default="",
-                        help="Comma-separated filename patterns to exclude (default: main,cli,app,...)")
+                        help="Comma-separated filename patterns to exclude "
+                             "(default: main,cli,app,...)")
     parser.add_argument("--skip", action="store_true",
                         help="Skip this check entirely")
     parser.add_argument("--strict", action="store_true",
@@ -218,9 +222,11 @@ def main() -> int:
         print(f"Error: directory '{root}' does not exist", file=sys.stderr)
         return 1
 
-    entry_patterns = set(args.entry_points.split(",")) if args.entry_points else ENTRY_POINT_DEFAULTS
+    entry_patterns = (
+        set(args.entry_points.split(",")) if args.entry_points else ENTRY_POINT_DEFAULTS
+    )
 
-    all_violations: list[dict] = []
+    all_violations: list[dict[str, Any]] = []
     scanned_files = 0
     skipped_files = 0
 
@@ -270,7 +276,10 @@ def main() -> int:
     print(f"\nFiles scanned: {scanned_files}  |  Skipped (entry points): {skipped_files}")
 
     if all_violations:
-        print(f"\n## Dependencies created internally instead of injected ({len(all_violations)} found)\n")
+        print(
+            f"\n## Dependencies created internally instead of injected "
+            f"({len(all_violations)} found)\n"
+        )
         for v in all_violations:
             print(f"  {v['class']}.{v['method']}() creates {v['created']}()")
             print(f"    self.{v['attribute']} = {v['created']}(...)")

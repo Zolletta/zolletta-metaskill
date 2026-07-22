@@ -35,6 +35,7 @@ import ast
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def _extract_all_entries(file_path: Path) -> list[str]:
@@ -57,20 +58,23 @@ def _extract_all_entries(file_path: Path) -> list[str]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Assign):
             for target in node.targets:
-                if isinstance(target, ast.Name) and target.id == "__all__":
-                    if isinstance(node.value, ast.List):
-                        for elt in node.value.elts:
-                            if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
-                                entries.append(elt.value)
-        elif isinstance(node, ast.AugAssign):
-            if (
-                isinstance(node.target, ast.Name)
-                and node.target.id == "__all__"
-                and isinstance(node.value, ast.List)
-            ):
-                for elt in node.value.elts:
-                    if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
-                        entries.append(elt.value)
+                if (
+                    isinstance(target, ast.Name)
+                    and target.id == "__all__"
+                    and isinstance(node.value, ast.List)
+                ):
+                    for elt in node.value.elts:
+                        if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                            entries.append(elt.value)
+        elif (
+            isinstance(node, ast.AugAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id == "__all__"
+            and isinstance(node.value, ast.List)
+        ):
+            for elt in node.value.elts:
+                if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                    entries.append(elt.value)
     return entries
 
 
@@ -118,6 +122,7 @@ def _find_all_files_with_all(src_root: Path, ignore_dirs: set[str]) -> list[tupl
 
 
 def main() -> int:
+    """Entry point for the unused ``__all__`` exports scanner CLI."""
     parser = argparse.ArgumentParser(
         description="Find names in __all__ that are never imported anywhere. "
         "Complements vulture, which treats __all__ entries as used."
@@ -157,7 +162,7 @@ def main() -> int:
 
     # Cross-reference: for each __all__ entry, check if it's imported
     # by any file OTHER than the one that defines it.
-    unused: list[dict] = []
+    unused: list[dict[str, Any]] = []
     total_entries = 0
 
     for file_path, entries in all_files:

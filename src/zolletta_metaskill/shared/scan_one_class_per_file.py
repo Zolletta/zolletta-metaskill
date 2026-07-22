@@ -33,6 +33,7 @@ import argparse
 import ast
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def _snake_to_pascal(name: str) -> str:
@@ -40,7 +41,7 @@ def _snake_to_pascal(name: str) -> str:
     return "".join(word.capitalize() for word in name.split("_"))
 
 
-def scan_file(path: Path) -> dict:
+def scan_file(path: Path) -> dict[str, Any]:
     """Scan a single .py file and return its class info."""
     try:
         tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -56,6 +57,7 @@ def scan_file(path: Path) -> dict:
 
 
 def main() -> int:
+    """Entry point for the one-class-per-file checker CLI."""
     parser = argparse.ArgumentParser(
         description="Check '1 class 1 file, 1 file 1 class' convention."
     )
@@ -95,9 +97,9 @@ def main() -> int:
         print(f"Error: directory '{root}' does not exist", file=sys.stderr)
         return 1
 
-    multi_class: list[dict] = []
+    multi_class: list[dict[str, Any]] = []
     zero_class: list[str] = []
-    name_mismatch: list[dict] = []
+    name_mismatch: list[dict[str, Any]] = []
 
     for py in root.rglob("*.py"):
         if "__pycache__" in str(py):

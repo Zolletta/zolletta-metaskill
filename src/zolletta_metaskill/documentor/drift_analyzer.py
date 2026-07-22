@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Documentation Drift Analyzer
+"""Documentation Drift Analyzer.
 
 Compares git log of code changes against documentation file modification dates
 to identify documentation that has fallen out of sync with the codebase.
@@ -99,9 +99,14 @@ def get_file_last_modified(repo_path: str, file_path: str) -> datetime | None:
     return None
 
 
-def get_files_changed_since(repo_path: str, since_date: str, scope: str = "") -> list[dict[str, str]]:
+def get_files_changed_since(
+    repo_path: str, since_date: str, scope: str = ""
+) -> list[dict[str, str]]:
     """Get files changed since a given date, optionally scoped to a directory."""
-    args = ["log", "--since", since_date, "--name-status", "--pretty=format:", "--diff-filter=ACDMRT"]
+    args = [
+        "log", "--since", since_date, "--name-status",
+        "--pretty=format:", "--diff-filter=ACDMRT",
+    ]
     if scope:
         args += ["--", scope]
     output = run_git(repo_path, args)
@@ -148,7 +153,7 @@ def get_current_version_from_git(repo_path: str) -> str | None:
 def find_doc_files(repo_path: str, patterns: list[str] | None = None) -> list[str]:
     """Find all documentation files in the repository."""
     doc_files = []
-    repo = Path(repo_path)
+    Path(repo_path)
     skip_dirs = {".git", "node_modules", "__pycache__", ".venv", "venv", ".tox", "dist", "build"}
     skip_dirs |= _load_gitignore_patterns(repo_path)
 
@@ -175,7 +180,7 @@ def find_doc_files(repo_path: str, patterns: list[str] | None = None) -> list[st
 
 def find_code_files(repo_path: str, scope: str = "") -> list[str]:
     """Find all code files in the repository."""
-    code_files = []
+    code_files: list[str] = []
     search_path = os.path.join(repo_path, scope) if scope else repo_path
     skip_dirs = {".git", "node_modules", "__pycache__", ".venv", "venv", ".tox", "dist", "build"}
     skip_dirs |= _load_gitignore_patterns(repo_path)
@@ -194,7 +199,9 @@ def find_code_files(repo_path: str, scope: str = "") -> list[str]:
 
 # --- Code-to-Doc Mapping ---
 
-def map_docs_to_code(repo_path: str, doc_files: list[str], code_files: list[str]) -> dict[str, list[str]]:
+def map_docs_to_code(
+    repo_path: str, doc_files: list[str], code_files: list[str]
+) -> dict[str, list[str]]:
     """Map documentation files to the code directories they likely describe."""
     mapping = defaultdict(list)
 
@@ -301,13 +308,18 @@ def detect_drift_for_doc(
     """Detect drift issues for a single documentation file.
 
     Args:
+        repo_path: Absolute path to the git repository root.
+        doc_path: Relative path of the documentation file to analyze.
+        associated_code_dirs: List of code directories associated with this doc.
+        renames: List of ``(old_name, new_name)`` tuples for renamed files/symbols.
+        current_version: Current project version string, if known.
         include_referential: If True, include referential drift (renamed file
             detection). If False (default), only include the edge case where a
             doc references a renamed file but the old name still exists as a
             different file.
 
     """
-    issues = []
+    issues: list[dict[str, Any]] = []
 
     doc_modified = get_file_last_modified(repo_path, doc_path)
     if not doc_modified:
@@ -413,7 +425,8 @@ def detect_drift_for_doc(
                     "category": "referential",
                     "description": (
                         f"References '{old_base}' which was renamed to '{new_base}', "
-                        f"but '{old_base}' still exists as a different file — reference may be stale"
+                        f"but '{old_base}' still exists as a different file "
+                        "— reference may be stale"
                     ),
                     "fix_type": "manual",
                     "details": {"old_path": old_name, "new_path": new_name},
@@ -453,7 +466,10 @@ def detect_drift_for_doc(
                     "file": doc_path,
                     "severity": "medium",
                     "category": "temporal",
-                    "description": f"References version {doc_version}, current is {current_version}",
+                    "description": (
+                        f"References version {doc_version}, "
+                        f"current is {current_version}"
+                    ),
                     "fix_type": "auto",
                     "details": {"doc_version": doc_version, "current_version": current_version},
                 })
@@ -495,7 +511,7 @@ def detect_drift_for_doc(
 
 def check_readme_structure(repo_path: str, doc_path: str) -> list[dict[str, Any]]:
     """Check if a README has expected sections."""
-    issues = []
+    issues: list[dict[str, Any]] = []
     full_path = os.path.join(repo_path, doc_path)
     try:
         with open(full_path, encoding="utf-8", errors="ignore") as f:
@@ -503,14 +519,14 @@ def check_readme_structure(repo_path: str, doc_path: str) -> list[dict[str, Any]
     except OSError:
         return issues
 
-    headings = set()
+    headings: set[str] = set()
     for line in content.splitlines():
         match = re.match(r'^#{1,3}\s+(.+)', line)
         if match:
             headings.add(match.group(1).strip().lower())
 
     expected = {"installation", "usage", "license"}
-    heading_words = set()
+    heading_words: set[str] = set()
     for h in headings:
         heading_words.update(h.split())
 
@@ -571,9 +587,9 @@ def generate_report(
     # Sort by severity
     all_issues.sort(key=lambda x: SEVERITY_ORDER.get(x.get("severity", "info"), 99))
 
-    drifted_files = set(i["file"] for i in all_issues if i["severity"] != "info")
+    drifted_files = {i["file"] for i in all_issues if i["severity"] != "info"}
 
-    report_data = {
+    report_data: dict[str, Any] = {
         "repository": os.path.abspath(repo_path),
         "scan_date": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "summary": {
@@ -591,9 +607,15 @@ def generate_report(
         sev = issue.get("severity", "info")
         cat = issue.get("category", "unknown")
         fix = issue.get("fix_type", "manual")
-        report_data["summary"]["by_severity"][sev] = report_data["summary"]["by_severity"].get(sev, 0) + 1
-        report_data["summary"]["by_category"][cat] = report_data["summary"]["by_category"].get(cat, 0) + 1
-        report_data["summary"]["by_fix_type"][fix] = report_data["summary"]["by_fix_type"].get(fix, 0) + 1
+        report_data["summary"]["by_severity"][sev] = (
+            report_data["summary"]["by_severity"].get(sev, 0) + 1
+        )
+        report_data["summary"]["by_category"][cat] = (
+            report_data["summary"]["by_category"].get(cat, 0) + 1
+        )
+        report_data["summary"]["by_fix_type"][fix] = (
+            report_data["summary"]["by_fix_type"].get(fix, 0) + 1
+        )
 
     if as_json:
         return json.dumps(report_data, indent=2, default=str)
@@ -633,7 +655,11 @@ def generate_report(
     lines.append("FIX TYPE SUMMARY:")
     lines.append("-" * 40)
     for fix_type, count in sorted(report_data["summary"]["by_fix_type"].items()):
-        label = {"auto": "Auto-fixable", "semi": "Semi-automated", "manual": "Manual review"}.get(fix_type, fix_type)
+        label = {
+            "auto": "Auto-fixable",
+            "semi": "Semi-automated",
+            "manual": "Manual review",
+        }.get(fix_type, fix_type)
         lines.append(f"  {label}: {count}")
     lines.append("")
 
@@ -645,7 +671,8 @@ def generate_report(
 
 # --- Main ---
 
-def main():
+def main() -> None:
+    """Entry point for the documentation drift analyzer CLI."""
     parser = argparse.ArgumentParser(
         description="Analyze documentation drift in a git repository",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -676,7 +703,8 @@ Examples:
         "--include-referential",
         action="store_true",
         help="Include broad referential drift detection (renamed files, broken links). "
-             "By default only the edge case (renamed file where old name still exists) is reported. "
+             "By default only the edge case (renamed file where old name still "
+             "exists) is reported. "
              "Use link_checker.py for reliable broken-link detection.",
     )
 
@@ -733,7 +761,10 @@ Examples:
 
     # Filter by severity
     min_sev = SEVERITY_ORDER.get(args.min_severity, 3)
-    filtered = [i for i in all_issues if SEVERITY_ORDER.get(i.get("severity", "info"), 99) <= min_sev]
+    filtered = [
+        i for i in all_issues
+        if SEVERITY_ORDER.get(i.get("severity", "info"), 99) <= min_sev
+    ]
 
     # Report
     report = generate_report(repo_path, filtered, doc_files, as_json=args.json)

@@ -34,9 +34,10 @@ import argparse
 import ast
 import sys
 from pathlib import Path
+from typing import Any
 
 
-def _get_class_info(node: ast.ClassDef) -> dict:
+def _get_class_info(node: ast.ClassDef) -> dict[str, Any]:
     """Extract class info: bases, methods, abstract markers."""
     methods = []
     for item in node.body:
@@ -66,9 +67,12 @@ def _raises_not_implemented(func: ast.FunctionDef | ast.AsyncFunctionDef) -> boo
     for node in ast.walk(func):
         if isinstance(node, ast.Raise) and node.exc:
             exc = node.exc
-            if isinstance(exc, ast.Call) and isinstance(exc.func, ast.Name):
-                if exc.func.id == "NotImplementedError":
-                    return True
+            if (
+                isinstance(exc, ast.Call)
+                and isinstance(exc.func, ast.Name)
+                and exc.func.id == "NotImplementedError"
+            ):
+                return True
             if isinstance(exc, ast.Name) and exc.id == "NotImplementedError":
                 return True
     return False
@@ -94,13 +98,14 @@ def _returns_none_only(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     return False
 
 
-def _is_protocol_or_abc(class_info: dict) -> bool:
+def _is_protocol_or_abc(class_info: dict[str, Any]) -> bool:
     """Check if a class is a Protocol or ABC."""
     bases = class_info["bases"]
     return any(b in ("Protocol", "ABC") for b in bases)
 
 
 def main() -> int:
+    """Entry point for the Interface Segregation Principle validator CLI."""
     parser = argparse.ArgumentParser(
         description="Interface Segregation Principle (ISP) validator."
     )
@@ -127,7 +132,7 @@ def main() -> int:
         return 1
 
     # Collect all classes
-    all_classes: dict[str, dict] = {}  # name -> class_info
+    all_classes: dict[str, dict[str, Any]] = {}  # name -> class_info
     for py in root.rglob("*.py"):
         if "__pycache__" in str(py):
             continue
@@ -152,8 +157,8 @@ def main() -> int:
             if base in protocols:
                 implementers.setdefault(base, []).append(name)
 
-    fat_interfaces: list[dict] = []
-    stub_violations: list[dict] = []
+    fat_interfaces: list[dict[str, Any]] = []
+    stub_violations: list[dict[str, Any]] = []
 
     for proto_name, proto_info in protocols.items():
         method_names = [m["name"] for m in proto_info["methods"]]
@@ -181,7 +186,11 @@ def main() -> int:
                             "method": mname,
                             "file": impl_info["file"],
                             "line": im["line"],
-                            "issue": "raises NotImplementedError" if im["raises_not_implemented"] else "stub (pass/return None)",
+                            "issue": (
+                                "raises NotImplementedError"
+                                if im["raises_not_implemented"]
+                                else "stub (pass/return None)"
+                            ),
                         })
 
     has_violations = bool(fat_interfaces or stub_violations)
@@ -209,7 +218,10 @@ def main() -> int:
             print(f"  {item['implementer']}.{item['method']}() — {item['issue']}")
             print(f"    Protocol: {item['protocol']}")
             print(f"    -> {item['file']}:{item['line']}")
-            print(f"    Fix: split {item['protocol']} so {item['implementer']} only depends on what it needs")
+            print(
+                f"    Fix: split {item['protocol']} so {item['implementer']} "
+                "only depends on what it needs"
+            )
     else:
         print("\n## Implementers stubbing interface methods: none")
 

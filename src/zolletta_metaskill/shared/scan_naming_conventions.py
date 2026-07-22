@@ -48,6 +48,7 @@ import argparse
 import ast
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def _snake_to_pascal(name: str) -> str:
@@ -128,6 +129,7 @@ def _matches_prefix(test_stem_rest: str, prefixes: set[str]) -> str | None:
 
 
 def main() -> int:
+    """Entry point for the naming conventions checker CLI."""
     parser = argparse.ArgumentParser(
         description="Check naming conventions: source file name == class name, "
         "test files named test_<source_stem><suffix>.py."
@@ -198,7 +200,7 @@ def main() -> int:
         return 1
 
     # --- Check 1: source file name == class name ---
-    name_mismatch: list[dict] = []
+    name_mismatch: list[dict[str, Any]] = []
     for py in sorted(src_pkg.rglob("*.py")):
         if any(part in ignore_dirs for part in py.parts):
             continue
@@ -220,7 +222,7 @@ def main() -> int:
 
     # --- Check 2: test file naming convention ---
     source_index = _build_source_index(src_pkg, ignore_dirs)
-    orphan_tests: list[dict] = []
+    orphan_tests: list[dict[str, Any]] = []
 
     for test_py in sorted(test_pkg.rglob("test_*.py")):
         if any(part in ignore_dirs for part in test_py.parts):

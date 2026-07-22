@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Check test function naming against the ``test_<unit>_<scenario>_<expected>``
-convention.
+"""Check test function naming against the ``test_<unit>_<scenario>_<expected>`` convention.
 
 Reports test functions whose name (after stripping the ``test_`` prefix) has
 fewer than ``--min-segments`` underscore-separated segments. The convention
@@ -46,6 +45,7 @@ import ast
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def _count_segments(func_name: str) -> int:
@@ -70,12 +70,16 @@ def _find_test_functions(file_path: Path) -> list[tuple[str, int]]:
 
     results: list[tuple[str, int]] = []
     for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef) and node.name.startswith("test_") or isinstance(node, ast.AsyncFunctionDef) and node.name.startswith("test_"):
+        if (
+            isinstance(node, ast.FunctionDef) and node.name.startswith("test_")
+            or isinstance(node, ast.AsyncFunctionDef) and node.name.startswith("test_")
+        ):
             results.append((node.name, node.lineno))
     return results
 
 
 def main() -> int:
+    """Entry point for the test naming convention checker CLI."""
     parser = argparse.ArgumentParser(
         description="Check test function naming: test_<unit>_<scenario>_<expected>. "
         "Flags functions with fewer than --min-segments segments after test_."
@@ -111,7 +115,7 @@ def main() -> int:
 
     ignore_dirs = {"__pycache__", ".venv", "venv", ".tox", "dist", "build"}
 
-    violations: list[dict] = []
+    violations: list[dict[str, Any]] = []
     total_test_functions = 0
 
     for py in sorted(test_root.rglob("*.py")):

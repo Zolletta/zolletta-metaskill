@@ -48,6 +48,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 # Path to the shipped acronym list — check skill folder first, then src/.
 _SCRIPT_DIR = Path(__file__).resolve().parent
@@ -140,6 +141,7 @@ def _load_acronyms_from_settings(settings_path: Path) -> list[str] | None:
 
 
 def main() -> int:
+    """Entry point for the acronym casing checker CLI."""
     parser = argparse.ArgumentParser(
         description="Check that acronyms in class names stay fully uppercase. "
         "Splits PascalCase names into words and flags any word that "
@@ -184,13 +186,16 @@ def main() -> int:
     else:
         # Start with the shipped list, then merge project-specific acronyms
         combined = set(defaults)
-        settings_path = Path(args.settings) if args.settings else Path(".zolletta-metaskill/settings.json")
+        settings_path = (
+            Path(args.settings) if args.settings
+            else Path(".zolletta-metaskill/settings.json")
+        )
         project_acronyms = _load_acronyms_from_settings(settings_path)
         if project_acronyms:
             combined.update(project_acronyms)
         acronyms = sorted(combined)
 
-    acronym_set = set(acronyms)
+    set(acronyms)
     acronym_lower_map = {a.lower(): a for a in acronyms}
 
     src_root = Path(args.directory)
@@ -200,7 +205,7 @@ def main() -> int:
 
     ignore_dirs = {"__pycache__", ".venv", "venv", ".tox", "dist", "build", "node_modules"}
 
-    violations: list[dict] = []
+    violations: list[dict[str, Any]] = []
     total_classes = 0
 
     for py in sorted(src_root.rglob("*.py")):

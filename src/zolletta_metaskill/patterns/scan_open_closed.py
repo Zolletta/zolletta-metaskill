@@ -37,6 +37,7 @@ import argparse
 import ast
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def _is_type_check(node: ast.AST) -> bool:
@@ -48,13 +49,15 @@ def _is_type_check(node: ast.AST) -> bool:
             return True
     # type(obj) == SomeClass
     if isinstance(node, ast.Compare):
-        if isinstance(node.left, ast.Call) and isinstance(node.left.func, ast.Name):
-            if node.left.func.id == "type":
-                return True
+        if (
+            isinstance(node.left, ast.Call)
+            and isinstance(node.left.func, ast.Name)
+            and node.left.func.id == "type"
+        ):
+            return True
         # obj.__class__.__name__ == "SomeClass"
-        if isinstance(node.left, ast.Attribute):
-            if node.left.attr == "__name__":
-                return True
+        if isinstance(node.left, ast.Attribute) and node.left.attr == "__name__":
+            return True
     # String comparison: obj.type == "something" or obj.__class__.__name__
     if isinstance(node, ast.Compare):
         left = node.left
@@ -114,9 +117,9 @@ def _find_match_on_type(node: ast.Match) -> bool:
     return False
 
 
-def scan_file(path: Path) -> list[dict]:
+def scan_file(path: Path) -> list[dict[str, Any]]:
     """Scan a file for OCP violations."""
-    violations = []
+    violations: list[dict[str, Any]] = []
     try:
         tree = ast.parse(path.read_text(encoding="utf-8"))
     except SyntaxError:
@@ -136,33 +139,32 @@ def scan_file(path: Path) -> list[dict]:
                 })
 
         # getattr dynamic dispatch
-        if isinstance(node, ast.Call):
-            if _is_string_type_dispatch(node):
-                violations.append({
-                    "type": "string_dispatch",
-                    "file": str(path),
-                    "line": node.lineno,
-                    "branches": 0,
-                    "detail": "getattr() with dynamic string — consider polymorphism",
-                })
+        if isinstance(node, ast.Call) and _is_string_type_dispatch(node):
+            violations.append({
+                "type": "string_dispatch",
+                "file": str(path),
+                "line": node.lineno,
+                "branches": 0,
+                "detail": "getattr() with dynamic string — consider polymorphism",
+            })
 
         # match/case on type (Python 3.10+)
-        if isinstance(node, ast.Match):
-            if _find_match_on_type(node):
-                case_count = sum(1 for c in node.cases if isinstance(c.pattern, ast.MatchClass))
-                if case_count >= 3:
-                    violations.append({
-                        "type": "match_on_type",
-                        "file": str(path),
-                        "line": node.lineno,
-                        "branches": case_count,
-                        "detail": f"match/case on type with {case_count} class patterns",
-                    })
+        if isinstance(node, ast.Match) and _find_match_on_type(node):
+            case_count = sum(1 for c in node.cases if isinstance(c.pattern, ast.MatchClass))
+            if case_count >= 3:
+                violations.append({
+                    "type": "match_on_type",
+                    "file": str(path),
+                    "line": node.lineno,
+                    "branches": case_count,
+                    "detail": f"match/case on type with {case_count} class patterns",
+                })
 
     return violations
 
 
 def main() -> int:
+    """Entry point for the Open/Closed Principle validator CLI."""
     parser = argparse.ArgumentParser(
         description="Open/Closed Principle (OCP) validator."
     )
@@ -188,7 +190,7 @@ def main() -> int:
         print(f"Error: directory '{root}' does not exist", file=sys.stderr)
         return 1
 
-    all_violations: list[dict] = []
+    all_violations: list[dict[str, Any]] = []
     for py in root.rglob("*.py"):
         if "__pycache__" in str(py):
             continue

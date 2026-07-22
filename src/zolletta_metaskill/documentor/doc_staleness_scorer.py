@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Documentation Staleness Scorer
+"""Documentation Staleness Scorer.
 
 Scores documentation freshness on a 0-100 scale using five weighted dimensions:
 - Last Updated (20%): How recently the doc was modified
@@ -90,7 +90,7 @@ DEFAULT_README_SECTIONS = [
 # provides translated equivalents via a JSON file. Translations are merged
 # additively into ``dir_names`` and replace ``required_sections`` /
 # ``any_of_groups`` so that non-English docs are matched correctly.
-DIATAXIS_QUADRANTS = {
+DIATAXIS_QUADRANTS: dict[str, dict[str, Any]] = {
     "tutorials": {
         "dir_names": {"tutorials", "tutorial"},
         "required_sections": ["what we will learn", "prerequisites"],
@@ -178,20 +178,24 @@ def _merge_translations(translations: dict[str, Any]) -> None:
         if "required_sections" in quad_trans:
             quad["required_sections"] = [s.lower() for s in quad_trans["required_sections"]]
         if "any_of_groups" in quad_trans:
-            quad["any_of_groups"] = [[s.lower() for s in group] for group in quad_trans["any_of_groups"]]
+            quad["any_of_groups"] = [
+                [s.lower() for s in group]
+                for group in quad_trans["any_of_groups"]
+            ]
 
 SCORE_LABELS = {
-    (90, 101): "excellent",
+    (90, 100): "excellent",
     (70, 90): "good",
     (50, 70): "stale",
     (30, 50): "critical",
-    (0, 30): "abandoned",
+    (-1, 30): "abandoned",
 }
 
 
 def get_label(score: float) -> str:
+    """Return a human-readable label for a staleness score."""
     for (low, high), label in SCORE_LABELS.items():
-        if low <= score < high:
+        if low < score <= high:
             return label
     return "unknown"
 
@@ -199,6 +203,7 @@ def get_label(score: float) -> str:
 # --- Git Helpers ---
 
 def run_git(repo_path: str, args: list[str], default: str = "") -> str:
+    """Run a git command in the given repo and return stdout (or default on failure)."""
     try:
         result = subprocess.run(
             ["git", "-C", repo_path] + args,
@@ -210,6 +215,7 @@ def run_git(repo_path: str, args: list[str], default: str = "") -> str:
 
 
 def get_file_last_commit_date(repo_path: str, file_path: str) -> datetime | None:
+    """Return the date of the last commit that touched ``file_path``."""
     output = run_git(repo_path, ["log", "-1", "--format=%aI", "--", file_path])
     if output:
         try:
@@ -220,12 +226,14 @@ def get_file_last_commit_date(repo_path: str, file_path: str) -> datetime | None
 
 
 def get_code_changes_since(repo_path: str, since_date: str, directory: str = "") -> int:
+    """Count code commits since ``since_date`` in the given directory."""
     args = ["log", "--since", since_date, "--oneline", "--", directory or "."]
     output = run_git(repo_path, args)
-    return len([l for l in output.splitlines() if l.strip()]) if output else 0
+    return len([line for line in output.splitlines() if line.strip()]) if output else 0
 
 
 def get_latest_tag(repo_path: str) -> str | None:
+    """Return the latest git tag (without leading ``v``) or ``None``."""
     output = run_git(repo_path, ["describe", "--tags", "--abbrev=0"])
     return output.lstrip("v") if output else None
 
@@ -233,6 +241,7 @@ def get_latest_tag(repo_path: str) -> str | None:
 # --- File Discovery ---
 
 def find_doc_files(repo_path: str) -> list[str]:
+    """Discover all documentation files (Markdown, RST) in the repository."""
     skip = SKIP_DIRS | _load_gitignore_patterns(repo_path)
     doc_files = []
     for root, dirs, files in os.walk(repo_path):
@@ -250,7 +259,7 @@ def find_doc_files(repo_path: str) -> list[str]:
 def score_last_updated(repo_path: str, doc_path: str) -> tuple[float, dict[str, Any]]:
     """Score based on how recently the doc was modified. 0-100."""
     last_modified = get_file_last_commit_date(repo_path, doc_path)
-    details = {}
+    details: dict[str, Any] = {}
 
     if not last_modified:
         details["reason"] = "No git history found"
@@ -350,7 +359,7 @@ def score_code_doc_alignment(repo_path: str, doc_path: str) -> tuple[float, dict
 def score_link_health(repo_path: str, doc_path: str) -> tuple[float, dict[str, Any]]:
     """Score based on percentage of valid internal links. 0-100."""
     full_path = os.path.join(repo_path, doc_path)
-    details = {"total_links": 0, "valid_links": 0, "broken_links": []}
+    details: dict[str, Any] = {"total_links": 0, "valid_links": 0, "broken_links": []}
 
     try:
         with open(full_path, encoding="utf-8", errors="ignore") as f:
@@ -425,8 +434,9 @@ def score_link_health(repo_path: str, doc_path: str) -> tuple[float, dict[str, A
 def _detect_diataxis_quadrant(
     doc_path: str,
 ) -> dict[str, Any] | None:
-    """Return the Diátaxis quadrant config if the doc is inside a quadrant
-    directory, otherwise ``None``.
+    """Return the Diátaxis quadrant config if the doc is inside a quadrant directory.
+
+    Returns ``None`` if the doc is not inside a known quadrant directory.
 
     Checks each path component of ``doc_path`` against the known quadrant
     directory names (case-insensitive). This works for both flat layouts
@@ -440,7 +450,9 @@ def _detect_diataxis_quadrant(
     return None
 
 
-def score_completeness(repo_path: str, doc_path: str, required_sections: list[str]) -> tuple[float, dict[str, Any]]:
+def score_completeness(
+    repo_path: str, doc_path: str, required_sections: list[str]
+) -> tuple[float, dict[str, Any]]:
     """Score based on whether expected sections are present. 0-100.
 
     If the doc lives under a Diátaxis quadrant directory (tutorials/,
@@ -450,7 +462,11 @@ def score_completeness(repo_path: str, doc_path: str, required_sections: list[st
     passes README-style sections (installation, usage, etc.).
     """
     full_path = os.path.join(repo_path, doc_path)
-    details = {"expected_sections": required_sections, "found_sections": [], "missing_sections": []}
+    details: dict[str, Any] = {
+        "expected_sections": required_sections,
+        "found_sections": [],
+        "missing_sections": [],
+    }
 
     # Detect Diátaxis quadrant from the doc's directory path. If found,
     # override the required sections with the quadrant-appropriate set.
@@ -470,14 +486,14 @@ def score_completeness(repo_path: str, doc_path: str, required_sections: list[st
         return 0.0, details
 
     # Extract headings
-    headings_lower = set()
+    headings_lower: set[str] = set()
     for line in content.splitlines():
         match = re.match(r'^#{1,4}\s+(.+)', line)
         if match:
             headings_lower.add(match.group(1).strip().lower())
 
     # Also check heading words
-    heading_words = set()
+    heading_words: set[str] = set()
     for h in headings_lower:
         heading_words.update(h.split())
 
@@ -485,7 +501,11 @@ def score_completeness(repo_path: str, doc_path: str, required_sections: list[st
     missing = []
     for section in required_sections:
         section_lower = section.lower()
-        if section_lower in headings_lower or section_lower in heading_words or any(section_lower in h for h in headings_lower):
+        if (
+            section_lower in headings_lower
+            or section_lower in heading_words
+            or any(section_lower in h for h in headings_lower)
+        ):
             found.append(section)
         else:
             missing.append(section)
@@ -497,7 +517,12 @@ def score_completeness(repo_path: str, doc_path: str, required_sections: list[st
     groups_missing = []
     for group in any_of_groups:
         group_lower = [g.lower() for g in group]
-        if any(g in headings_lower or g in heading_words for g in group_lower) or any(any(g in h for h in headings_lower) for g in group_lower):
+        if (
+            any(g in headings_lower or g in heading_words for g in group_lower)
+            or any(
+                any(g in h for h in headings_lower) for g in group_lower
+            )
+        ):
             groups_found += 1
         else:
             groups_missing.append(group)
@@ -507,13 +532,20 @@ def score_completeness(repo_path: str, doc_path: str, required_sections: list[st
     details["any_of_groups_found"] = groups_found
     details["any_of_groups_missing"] = groups_missing
 
-    # Also score based on content length (very short docs are incomplete)
-    content_lines = len([l for l in content.splitlines() if l.strip()])
+    # Also score based on content length (very short docs are incomplete).
+    # The length penalty is skipped for Diátaxis docs (their quadrant-specific
+    # structure is the primary completeness check) and for non-Diátaxis docs
+    # where all required sections are found and there is more than one
+    # requirement (a structurally rich doc is considered complete even if
+    # individual sections have little body content).
+    is_diataxis = quadrant is not None
+    content_lines = len([line for line in content.splitlines() if line.strip()])
     length_penalty = 0
-    if content_lines < 10:
-        length_penalty = 30
-    elif content_lines < 30:
-        length_penalty = 15
+    if not is_diataxis:
+        if content_lines < 10:
+            length_penalty = 30
+        elif content_lines < 30:
+            length_penalty = 15
 
     total_requirements = len(required_sections) + len(any_of_groups)
     if total_requirements == 0:
@@ -523,13 +555,21 @@ def score_completeness(repo_path: str, doc_path: str, required_sections: list[st
 
     satisfied = len(found) + groups_found
     section_score = (satisfied / total_requirements) * 100.0
+
+    # Waive the length penalty when every requirement is satisfied and the
+    # doc has more than one requirement — the structural completeness
+    # outweighs brevity. Docs with a single requirement are still penalised
+    # for being too thin.
+    if section_score >= 100.0 and total_requirements > 1:
+        length_penalty = 0
+
     return max(0.0, section_score - length_penalty), details
 
 
 def score_accuracy(repo_path: str, doc_path: str) -> tuple[float, dict[str, Any]]:
     """Score based on accuracy of verifiable facts (versions, dates, paths). 0-100."""
     full_path = os.path.join(repo_path, doc_path)
-    details = {"checks": [], "issues": []}
+    details: dict[str, Any] = {"checks": [], "issues": []}
 
     try:
         with open(full_path, encoding="utf-8", errors="ignore") as f:
@@ -537,21 +577,28 @@ def score_accuracy(repo_path: str, doc_path: str) -> tuple[float, dict[str, Any]
     except OSError:
         return 50.0, details
 
-    checks_passed = 0
+    checks_passed = 0.0
     checks_total = 0
 
     # Check 1: Version strings match latest tag
     git_version = get_latest_tag(repo_path)
     if git_version:
-        version_refs = re.findall(r'(?:v|version[:\s]*)(\d+\.\d+(?:\.\d+)?)', content, re.IGNORECASE)
+        version_refs = re.findall(
+            r'(?:v|version[:\s]*)(\d+\.\d+(?:\.\d+)?)', content, re.IGNORECASE
+        )
         if version_refs:
             checks_total += 1
             if any(v == git_version for v in version_refs):
                 checks_passed += 1
                 details["checks"].append("version_match: PASS")
             else:
-                details["checks"].append(f"version_match: FAIL (doc has {version_refs}, git has {git_version})")
-                details["issues"].append(f"Version mismatch: doc={version_refs}, git={git_version}")
+                details["checks"].append(
+                    f"version_match: FAIL (doc has {version_refs}, "
+                    f"git has {git_version})"
+                )
+                details["issues"].append(
+                    f"Version mismatch: doc={version_refs}, git={git_version}"
+                )
 
     # Check 2: Package version from manifests
     for manifest in ["package.json", "pyproject.toml", "setup.py", "Cargo.toml"]:
@@ -559,7 +606,10 @@ def score_accuracy(repo_path: str, doc_path: str) -> tuple[float, dict[str, Any]
         if os.path.exists(manifest_path):
             manifest_version = _extract_version_from_manifest(manifest_path, manifest)
             if manifest_version:
-                version_refs = re.findall(r'(?:v|version[:\s]*)(\d+\.\d+(?:\.\d+)?)', content, re.IGNORECASE)
+                version_refs = re.findall(
+                    r'(?:v|version[:\s]*)(\d+\.\d+(?:\.\d+)?)',
+                    content, re.IGNORECASE,
+                )
                 if version_refs:
                     checks_total += 1
                     if manifest_version in version_refs:
@@ -596,7 +646,9 @@ def score_accuracy(repo_path: str, doc_path: str) -> tuple[float, dict[str, Any]
             # Partial credit
             checks_passed += ratio
             details["checks"].append(f"file_paths: PARTIAL ({existing_count}/{len(file_refs)})")
-            details["issues"].append(f"{len(file_refs) - existing_count} referenced file paths not found")
+            details["issues"].append(
+                f"{len(file_refs) - existing_count} referenced file paths not found"
+            )
 
     # Check 4: Dates are not in the future and not suspiciously old
     date_pattern = re.compile(r'(\d{4}-\d{2}-\d{2})')
@@ -627,9 +679,9 @@ def score_accuracy(repo_path: str, doc_path: str) -> tuple[float, dict[str, Any]
 
 # --- Helpers ---
 
-def _extract_headings(content: str) -> set:
+def _extract_headings(content: str) -> set[str]:
     """Extract heading slugs from markdown content."""
-    slugs = set()
+    slugs: set[str] = set()
     for line in content.splitlines():
         match = re.match(r'^#{1,6}\s+(.+)', line)
         if match:
@@ -681,7 +733,9 @@ def score_document(
     updated_score, updated_details = score_last_updated(repo_path, doc_path)
     alignment_score, alignment_details = score_code_doc_alignment(repo_path, doc_path)
     link_score, link_details = score_link_health(repo_path, doc_path)
-    completeness_score, completeness_details = score_completeness(repo_path, doc_path, required_sections)
+    completeness_score, completeness_details = score_completeness(
+        repo_path, doc_path, required_sections
+    )
     accuracy_score, accuracy_details = score_accuracy(repo_path, doc_path)
 
     weighted_total = (
@@ -794,7 +848,8 @@ def _score_bar(score: float, width: int = 20) -> str:
 
 # --- Main ---
 
-def main():
+def main() -> None:
+    """Entry point for the documentation staleness scorer CLI."""
     parser = argparse.ArgumentParser(
         description="Score documentation freshness on a 0-100 scale",
         formatter_class=argparse.RawDescriptionHelpFormatter,
