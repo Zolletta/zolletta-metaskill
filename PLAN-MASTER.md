@@ -50,7 +50,7 @@ Both PHP plans touch shared files. This table assigns each file to exactly one p
 - [x] **0.3** Add "Tests required by PLAN-PHP-SUPPORT" section to `PLAN-TEST-RECOVERY.md` — table listing all deferred tests from PLAN-PHP-SUPPORT Phases 1.5, 2.4, 3.5, 6.2 (`common/`, `engines/`, `php_patterns/`)
 - [x] **0.4** Mark PLAN-PHP-SUPPORT Phase 5.1 as superseded — add banner pointing to PLAN-PHP-CODE-STYLE.md
 - [x] **0.5** Document schema `php.code_style` fix in PLAN-PHP-SUPPORT Phase 4.8 — the schema's 3 toggles (`check_naming_conventions`, `check_one_class_per_file`, `check_filename_matches_class`) must be replaced with the 12 configurable toggles from PLAN-PHP-CODE-STYLE Phase 3.1 (`check_union_types`, `check_intersection_types`, `check_enum_methods`, `check_first_class_callables`, `check_readonly_classes`, `check_typed_constants`, `check_override_attribute`, `check_property_hooks`, `check_asymmetric_visibility`, `check_pipe_operator`, `check_array_functions`, `check_string_functions`)
-- [ ] **0.6** Add file ownership table (from above) to both PLAN-PHP-SUPPORT and PLAN-PHP-CODE-STYLE
+- [x] **0.6** Add file ownership table (from above) to both PLAN-PHP-SUPPORT and PLAN-PHP-CODE-STYLE
 
 ---
 

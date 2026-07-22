@@ -33,6 +33,22 @@ Concretely: when a phase of this plan creates `src/zolletta_metaskill/common/mod
 
 This keeps a single execution owner for the whole `tests/` tree and avoids two plans writing into `tests/` concurrently.
 
+## File ownership (shared with PLAN-PHP-CODE-STYLE.md)
+
+Both this plan and PLAN-PHP-CODE-STYLE.md modify shared files. The table below assigns each file to exactly one plan to prevent conflicts. See [PLAN-MASTER.md](PLAN-MASTER.md) for the full orchestration.
+
+| File | Owned by | Phase | Rationale |
+| --- | --- | --- | --- |
+| `setup/SKILL.md` (PHP detection) | This plan | Phase 4 | Has the detailed 9-step detection path |
+| `setup/assets/settings_template.json` | This plan | Phase 4.6 | Already done (`"php": null` present) |
+| `setup/assets/settings.schema.json` | This plan | Phase 4.8 | Needs `php.code_style` toggle fix (3→12) |
+| `docs/reference/settings-schema.md` | This plan | Phase 4.9 | Has the detailed section list |
+| `review/SKILL.md` (PHP rows) | PLAN-PHP-CODE-STYLE | Phase 4.3 | Has the detailed scope table |
+| `SKILL.md` (root, PHP subcommands) | PLAN-PHP-CODE-STYLE | Phase 4.4 | Has the specific changes |
+| `docs/reference/tool-messages.md` | PLAN-PHP-CODE-STYLE | Phase 1.2 | php-pro message |
+| `docs/reference/frontmatter.md` | PLAN-PHP-CODE-STYLE | Phase 0.1 | Wildcard syntax |
+| `PLAN-PHP-SUPPORT.md` (mark 5.1) | PLAN-PHP-CODE-STYLE | Phase 4.6 | Superseded marking |
+
 ## Current state
 
 The repository is a meta-skill with a `src/` package, a set of top-level skill directories, and a Diátaxis `docs/` tree.
