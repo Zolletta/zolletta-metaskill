@@ -58,7 +58,7 @@ Both PHP plans touch shared files. This table assigns each file to exactly one p
 
 > Independent of all other phases. Can run in parallel with Phase 2.
 
-- [ ] **1.1** Create `.install` script (Steps 1–3: copy to `~/.agents/skills/`, symlink into 13 tools) → PLAN-SETUP-COMMAND "What it does"
+- [x] **1.1** Create `.install` script (Steps 1–3: copy to `~/.agents/skills/`, symlink into 13 tools) → PLAN-SETUP-COMMAND "What it does"
 - [ ] **1.2** Update `docs/how-to/install.md` — add `.install` as recommended install method → PLAN-SETUP-COMMAND "Documentation updates"
 - [ ] **1.3** Update `docs/reference/code/scripts.md` — add "Repository scripts" section for `.bump` + `.install` → PLAN-SETUP-COMMAND "Documentation updates"
 - [ ] **1.4** Update `README.md` — add "Installation" section → PLAN-SETUP-COMMAND "Documentation updates"
