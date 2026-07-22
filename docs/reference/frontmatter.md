@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [setup, review, patterns, documentor, external-review, python-code-style, python-testing-patterns]
+skills: [setup, review, patterns, documentor, external-review, python-*]
 ---
 
 # Frontmatter Reference
@@ -44,8 +44,17 @@ Lists the skills that reference or depend on this document. Valid skill names:
 - `external-review` — the external LLM review skill
 - `python-code-style` — the Python code style skill
 - `python-testing-patterns` — the Python testing patterns skill
+- `php-code-style` — the PHP code style skill
+- `php-testing-patterns` — the PHP testing patterns skill
 
-Use the explicit skill list, not `[all]`. This allows tooling to determine which files are affected when a skill changes.
+**Wildcards**: language-specific skills can be referenced with wildcards instead of listing each one individually:
+
+- `python-*` — matches all Python-specific skills (`python-code-style`, `python-testing-patterns`, and any future Python skills)
+- `php-*` — matches all PHP-specific skills (`php-code-style`, `php-testing-patterns`, and any future PHP skills)
+
+Wildcards are **preferred** for language-specific skills; explicit names are still allowed for files that target a single skill only. When a new language-specific skill is added, no docs files need updating if they already use the wildcard.
+
+Use the explicit skill list or wildcards, not `[all]`. This allows tooling to determine which files are affected when a skill changes.
 
 ## Example
 
