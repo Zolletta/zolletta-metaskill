@@ -39,7 +39,8 @@ Read shared guidelines from the meta-skill (parent directory):
 - `../docs/explanation/code/general-principles.md` — SOLID, KISS, composition over inheritance (language-agnostic)
 - `../docs/explanation/documentation/standards.md` — generic doc writing standards (README, API docs, changelogs, ADRs)
 - `../docs/reference/tool-messages.md` — "not installed" messages for the tool-failure handler
-- `../src/zolletta_metaskill/scanners/` — shared scanning scripts
+- `../src/zolletta_metaskill/shared/` — shared scanning scripts
+- `../src/zolletta_metaskill/patterns/` — pattern-specific scanning scripts
 
 **Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
 

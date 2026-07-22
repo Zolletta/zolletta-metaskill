@@ -60,7 +60,7 @@ When a tool is not installed, zolletta-metaskill prints a message explaining why
 | Resource | Path | Contents |
 | --- | --- | --- |
 | References | `docs/` | Code-exploration decision tree, general principles, Python review guide, scripts reference, documentation standards, tool messages, review-mode rules, settings.json schema |
-| Scripts | `src/zolletta_metaskill/scanners/` | Automated scanning scripts used by multiple skills |
+| Scripts | `src/zolletta_metaskill/{patterns,python_code_style,python_testing_patterns,shared}/` | Automated scanning scripts organized by skill |
 
 ## Setup and settings.json
 

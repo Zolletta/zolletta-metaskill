@@ -76,14 +76,14 @@ Classes use `PascalCase`: `UserRepository`, `OrderProcessor`. This is PEP 8 stan
 
 Class names keep acronyms fully uppercase: `HTTPClientFactory`, not `HttpClientFactory`. `APIGateway`, not `ApiGateway`. This is a deliberate convention common in codebases with domain-specific acronyms.
 
-- **Enforcement**: `scan_acronym_casing.py` from `../src/zolletta_metaskill/scanners/` (deterministic). The scanner splits each PascalCase class name into words, checks each word against the configured acronym list, and flags any word that case-insensitively matches an acronym but isn't all-uppercase.
+- **Enforcement**: `scan_acronym_casing.py` from `../src/zolletta_metaskill/python_code_style/` (deterministic). The scanner splits each PascalCase class name into words, checks each word against the configured acronym list, and flags any word that case-insensitively matches an acronym but isn't all-uppercase.
 
 ```bash
-python3 ../src/zolletta_metaskill/scanners/scan_acronym_casing.py src/ --acronyms CI,MR,AST,DI
+python3 ../src/zolletta_metaskill/python_code_style/scan_acronym_casing.py src/ --acronyms CI,MR,AST,DI
 ```
 
 The acronym list is built additively:
-1. **Shipped base**: `src/zolletta_metaskill/scanners/assets/acronyms.json` (common SE acronyms: CI, CD, CICD, HTTP, HTTPS, JSON, SQL, URL, etc.) — always loaded
+1. **Shipped base**: `src/zolletta_metaskill/python_code_style/assets/acronyms.json` (common SE acronyms: CI, CD, CICD, HTTP, HTTPS, JSON, SQL, URL, etc.) — always loaded
 2. **Project-specific**: `python_code_style_rules.acronyms` in `settings.json` — merged with the shipped list (additive, not replacing). Use this for domain-specific acronyms not in the shipped list (e.g. `XML`, `SVG`)
 3. **`--acronyms` CLI flag**: fully replaces both (for testing/debugging only)
 
@@ -159,7 +159,7 @@ Use `from myproject.utils import retry_decorator`, not `from ..utils import retr
 
 Each class lives in its own file. No exceptions for "small helper classes" or "closely related enums" — if they're worth defining, they're worth their own file. This applies to all classes, public or private.
 
-- **Enforcement**: `scan_one_class_per_file.py` from `../src/zolletta_metaskill/scanners/`.
+- **Enforcement**: `scan_one_class_per_file.py` from `../src/zolletta_metaskill/shared/`.
 
 **#9 — Filename matches class name** *(configurable: `check_filename_matches_class`)*
 
@@ -281,7 +281,7 @@ If `vulture` is `false` in `settings.json`, skip dead-code detection.
 **Supplementary check — unused `__all__` exports:** vulture treats every name in `__all__` as "used" (public API export), so it never flags `__all__` entries that are never imported anywhere. This is a known gap. After running vulture, also run:
 
 ```bash
-python3 ../src/zolletta_metaskill/scanners/scan_unused_all_exports.py src/
+python3 ../src/zolletta_metaskill/python_code_style/scan_unused_all_exports.py src/
 ```
 
 This scanner cross-references every `__all__` entry against actual import statements across the source tree. Names listed in `__all__` but never imported by any other module are reported as unused exports. Report these as low-priority findings (same severity as vulture findings).

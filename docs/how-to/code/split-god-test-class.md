@@ -9,14 +9,14 @@ skills: [patterns]
 > **Paths in this document are relative to the Zolletta-MetaSkill project root.**
 > **Language-agnostic**: the procedure below applies to any language. The script referenced is Python-specific; for other languages, follow the same grouping logic manually.
 
-Split a test class that tests multiple SUTs (System Under Test) into per-SUT test files. The `src/zolletta_metaskill/scanners/test_splitter.py` script automates this — it groups test methods by prefix, creates a new test file per SUT, and writes them to a temp folder. The original file is never modified.
+Split a test class that tests multiple SUTs (System Under Test) into per-SUT test files. The `src/zolletta_metaskill/patterns/test_splitter.py` script automates this — it groups test methods by prefix, creates a new test file per SUT, and writes them to a temp folder. The original file is never modified.
 
 ## Prerequisites
 
 - A test class that tests 2+ different source classes (SUTs)
 - Each SUT has its own source file
 - The test class has 20+ test methods
-- The `src/zolletta_metaskill/scanners/test_splitter.py` script from `src/zolletta_metaskill/scanners/`
+- The `src/zolletta_metaskill/patterns/test_splitter.py` script from `src/zolletta_metaskill/patterns/`
 
 ## When NOT to split
 
@@ -28,15 +28,15 @@ Split a test class that tests multiple SUTs (System Under Test) into per-SUT tes
 
 ```bash
 # Step 1: auto-derive prefixes (no mapping needed)
-python3 src/zolletta_metaskill/scanners/test_splitter.py <test_file>
+python3 src/zolletta_metaskill/patterns/test_splitter.py <test_file>
 
 # Step 2: review the proposed mapping, then split with --dry-run
-python3 src/zolletta_metaskill/scanners/test_splitter.py <test_file> \
+python3 src/zolletta_metaskill/patterns/test_splitter.py <test_file> \
     --mapping '{"cache": "Cache", "extract_defaults": "DefaultsExtractor"}' \
     --dry-run
 
 # Step 3: write the split files to .zolletta-metaskill/test_split/<filename>/
-python3 src/zolletta_metaskill/scanners/test_splitter.py <test_file> \
+python3 src/zolletta_metaskill/patterns/test_splitter.py <test_file> \
     --mapping '{"cache": "Cache", "extract_defaults": "DefaultsExtractor"}'
 ```
 

@@ -19,7 +19,7 @@ We need a Python project that has been set up with `/zolletta-metaskill setup`. 
 The skill evaluates test code across six areas, combining always-on structural rules with configurable thresholds:
 
 - **Test isolation** — tests must be independent, with no shared mutable state between them. Each test should clean up after itself. We use fixtures with appropriate scopes (`function`, `module`, `session`) to manage shared resources without coupling tests to each other.
-- **Test naming** — test functions should follow the `test_<unit>_<scenario>_<expected_outcome>` pattern so that the name alone tells us what is being tested. The skill enforces this with the deterministic `src/zolletta_metaskill/scanners/scan_test_naming.py` scanner, which counts underscore-separated segments after the `test_` prefix and flags functions with fewer than the minimum (default: 3). Good names look like `test_create_user_with_valid_data_returns_user`; bad names look like `test_1` or `test_init`.
+- **Test naming** — test functions should follow the `test_<unit>_<scenario>_<expected_outcome>` pattern so that the name alone tells us what is being tested. The skill enforces this with the deterministic `src/zolletta_metaskill/python_testing_patterns/scan_test_naming.py` scanner, which counts underscore-separated segments after the `test_` prefix and flags functions with fewer than the minimum (default: 3). Good names look like `test_create_user_with_valid_data_returns_user`; bad names look like `test_1` or `test_init`.
 - **Coverage gaps** — the skill runs `pytest --cov` and analyses whether code is actually exercised by tests, regardless of whether a dedicated `test_<module>.py` file exists. This is a mandatory step: we never flag a coverage gap based on grep alone.
 - **Mocking patterns** — when a class has no direct test file, the skill traces the call chain to determine whether callers instantiate the class for real (with mocked dependencies) or replace it entirely with a `MagicMock` or `patch`. A real instance means the class is indirectly covered; a full mock means it is not.
 - **Fixture design** — fixtures should use the narrowest scope that makes sense and avoid coupling tests through shared mutable state. The skill checks that fixtures are not leaking state between tests.
@@ -31,7 +31,7 @@ Coverage gap detection is the most involved part of the review because a class w
 
 ### Step 1 — Run coverage and identify structurally missing files
 
-The skill runs `pytest --cov` and then runs `src/zolletta_metaskill/scanners/scan_tests.py` to get the structural "Missing tests" table. Files that appear in this table are candidates — but structural absence does not mean zero coverage.
+The skill runs `pytest --cov` and then runs `src/zolletta_metaskill/shared/scan_tests.py` to get the structural "Missing tests" table. Files that appear in this table are candidates — but structural absence does not mean zero coverage.
 
 ### Step 2 — Check indirect coverage for each candidate
 
@@ -47,7 +47,7 @@ When we do find a genuine gap, we check whether the caller's tests mock the clas
 
 ## Scope boundary with the patterns skill
 
-The `patterns` skill runs `src/zolletta_metaskill/scanners/scan_tests.py`, which produces a "Missing tests" table — a structural check that reports when no `test_<module>.py` file exists for a given source module. That structural finding is owned by `patterns`. The `python-testing-patterns` skill owns coverage analysis only: whether code is actually exercised by tests, not whether a matching test file exists. We do not duplicate the structural check. If `src/zolletta_metaskill/scanners/scan_tests.py` already flagged a file as structurally missing a test, we reference that finding but focus on whether the code is covered through indirect calls or integration tests.
+The `patterns` skill runs `src/zolletta_metaskill/shared/scan_tests.py`, which produces a "Missing tests" table — a structural check that reports when no `test_<module>.py` file exists for a given source module. That structural finding is owned by `patterns`. The `python-testing-patterns` skill owns coverage analysis only: whether code is actually exercised by tests, not whether a matching test file exists. We do not duplicate the structural check. If `src/zolletta_metaskill/shared/scan_tests.py` already flagged a file as structurally missing a test, we reference that finding but focus on whether the code is covered through indirect calls or integration tests.
 
 ## Configurable rule toggles via settings.json
 
@@ -57,7 +57,7 @@ The skill reads its configurable rules from the `python_testing_patterns_rules` 
 | --------------------------------- | --------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `coverage_gap_threshold`          | integer (0–100) | `50`    | Module coverage below this percentage is a candidate gap (combined with the other two conditions from Step 3)                                          |
 | `coverage_well_covered_threshold` | integer (0–100) | `80`    | Module coverage above this percentage is never flagged as a gap, even with no direct test references                                                   |
-| `check_test_naming`               | boolean         | `true`  | When `true`, the skill runs `src/zolletta_metaskill/scanners/scan_test_naming.py` to enforce the `test_<unit>_<scenario>_<expected>` naming convention |
+| `check_test_naming`               | boolean         | `true`  | When `true`, the skill runs `src/zolletta_metaskill/python_testing_patterns/scan_test_naming.py` to enforce the `test_<unit>_<scenario>_<expected>` naming convention |
 
 The remaining rules — AAA pattern, test isolation, mandatory coverage gap detection, and the scope boundary with `patterns` — are always-on and cannot be disabled. When the skill runs as part of a read-only review (for example `/zolletta-metaskill review`), it follows the [review mode](../../../reference/code/review-mode.md) convention: it classifies diagnostics into auto-fixable (informational) and not auto-fixable (findings) without applying fixes.
 

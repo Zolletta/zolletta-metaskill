@@ -40,7 +40,7 @@ All subcommands read from this skill's subdirectories:
 | Resource   | Path                                | Contents                                                                                                        |
 |---|---|---|
 | References | `docs/`                             | Shared guidelines (Diátaxis, review workflow, grading rubric, tool messages)                                    |
-| Scripts    | `src/zolletta_metaskill/scanners/`  | Automated scanning scripts used by multiple skills                                                              |
+| Scripts    | `src/zolletta_metaskill/`           | Scanning scripts organized by skill (patterns/, python_code_style/, python_testing_patterns/, shared/)        |
 | Settings   | `.zolletta-metaskill/settings.json` | Project-wide configuration written by `setup` (language, tool availability, external-review model, reports dir) |
 
 ## Rules
