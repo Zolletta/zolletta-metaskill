@@ -66,7 +66,7 @@ When a tool is not installed, zolletta-metaskill prints a message explaining why
 
 `/zolletta-metaskill setup` creates `.zolletta-metaskill/settings.json` in the project root and adds `.zolletta-metaskill/` to `.gitignore`. The file is read by all other subcommands.
 
-For the full schema, field-by-field documentation, the `python` object (which merges `python.tools`, `python.code_style`, `python.testing`, and the `python.*` configuration fields), the top-level `acronyms` array, and the setup guard staleness check, see [`docs/reference/settings-schema.md`](docs/reference/settings-schema.md).
+For the full schema, field-by-field documentation, the `python` object (which merges `python.tools`, `python.code_style`, `python.testing`, and `python.pyproject_mtime`), the top-level `acronyms` array, and the setup guard staleness check, see [`docs/reference/settings-schema.md`](docs/reference/settings-schema.md).
 
 ### Setup guard
 
@@ -76,7 +76,7 @@ Before dispatching to any subcommand, the meta-skill checks for `.zolletta-metas
 2. If it **does not exist**, run the full setup procedure first.
 3. If the user invoked `/zolletta-metaskill setup` explicitly, run setup and stop.
 
-For Python projects, the guard also performs a **staleness check**: if `pyproject.toml`'s modification time differs from `python.pyproject_mtime` in `settings.json`, the guard re-runs only the pyproject extraction step and patches the `python.*` configuration fields — full setup is not re-run.
+For Python projects, the guard also performs a **staleness check**: if `pyproject.toml`'s modification time differs from `python.pyproject_mtime` in `settings.json`, the guard re-runs only the pyproject extraction step and patches the `python.tools.*` configuration fields — full setup is not re-run.
 
 ### Tool-failure handler
 

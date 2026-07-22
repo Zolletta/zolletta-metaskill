@@ -94,8 +94,8 @@ If the detected language from Step 3 is **not Python**, skip this step entirely 
 
 If the language is **Python**, detect which tools are available. For each tool, check in this order:
 
-1. **Check `pyproject.toml`** — read the `[tool.*]` sections. If a tool has a configuration section (e.g. `[tool.ruff]`, `[tool.mypy]`, `[tool.pytest.ini_options]`, `[tool.vulture]`), mark it as `true` (the project uses it).
-2. **If not found in `pyproject.toml`**, try calling the command — inside the container if `container_name` is set (`docker compose exec <container_name> <command> --version`), otherwise on the host (`<command> --version`). If the command succeeds, mark it as `true`.
+1. **Check `pyproject.toml`** — read the `[tool.*]` sections. If a tool has a configuration section (e.g. `[tool.ruff]`, `[tool.mypy]`, `[tool.pytest.ini_options]`, `[tool.vulture]`), mark it as available (the project uses it).
+2. **If not found in `pyproject.toml`**, try calling the command — inside the container if `container_name` is set (`docker compose exec <container_name> <command> --version`), otherwise on the host (`<command> --version`). If the command succeeds, mark it as available.
 
 The tools to detect:
 
@@ -108,47 +108,43 @@ The tools to detect:
 | `vulture` | `[tool.vulture]`                          | `vulture --version` |
 | `mypy`    | `[tool.mypy]`                             | `mypy --version`    |
 
-Store the results as the `python.tools` subobject in `settings.json` (see Step 8). The remaining `python.*` subobjects (`code_style`, `testing`, and the tool configuration fields) are populated in Step 6.5.
+Store each tool as an object in `python.tools` with an `available` boolean (see Step 8). The per-tool configuration fields are populated in Step 6.5.
 
-> **Do NOT install any tool.** If a tool is not present, set it to `false` and print the corresponding "not installed" message in Step 9.
+> **Do NOT install any tool.** If a tool is not present, set `available: false` and print the corresponding "not installed" message in Step 9.
 
 ### Step 6.5 — Extract Python configuration from pyproject.toml
 
 If the detected language from Step 3 is **not Python**, skip this step entirely and leave `python: null`.
 
-If the language is **Python**, read `pyproject.toml` and extract the effective configuration for each available tool. Record the file's modification time so the setup guard can detect staleness on future runs. All values extracted in this step are written into the `python` object (alongside `python.tools` from Step 6).
+If the language is **Python**, read `pyproject.toml` and extract the effective configuration for each available tool. Record the file's modification time so the setup guard can detect staleness on future runs. All values extracted in this step are written into the `python.tools.<tool>` objects (alongside the `available` flag from Step 6).
 
 1. **Record `pyproject_mtime`** — use `os.path.getmtime("pyproject.toml")` (or equivalent). Store it as a float in `python.pyproject_mtime`.
 
-2. **For each tool that is `true` in `python.tools`** (from Step 6), extract its configuration:
+2. **For each tool that is `available: true` in `python.tools`** (from Step 6), extract its configuration into the same `python.tools.<tool>` object:
 
 | Tool     | If `[tool.*]` section exists                                                                                                                                | If section is absent                                                                                                                                                                                    |
 |---|---|---|
-| `ruff`   | Extract `line-length`, `target-version`, `lint.select`, `lint.ignore` into `python.ruff`                                                                    | Store ruff's built-in defaults: `line_length: 88`, `target_version: "py310"`, `select: ["E4","E7","E9","F"]`, `ignore: []`. Print the ruff "unconfigured" warning from `../docs/reference/tool-messages.md`. |
-| `mypy`   | Extract `python_version`, `strict`, `warn_return_any`, `warn_unused_ignores`, `disallow_untyped_defs`, `disallow_incomplete_defs` into `python.mypy`       | Store mypy's built-in defaults: `strict: false`, `python_version: null` (uses running interpreter). Print the mypy "unconfigured" warning.                                                              |
-| `ty`     | Extract `python-version` (or `environment.python-version`) into `python.ty`                                                                                 | Store ty's built-in defaults: `python_version: null` (detected from environment). Print the ty "unconfigured" warning.                                                                                  |
-| `pytest` | Extract `addopts`, `testpaths`, `minversion` into `python.pytest`                                                                                           | Store pytest's built-in defaults: `addopts: []`, `testpaths: []`, `minversion: null`. Print the pytest "unconfigured" warning.                                                                          |
+| `ruff`   | Extract `line-length` → `line_length`, `target-version` → `target_version`, `lint.select` → `select`, `lint.ignore` → `ignore` into `python.tools.ruff`    | Store ruff's built-in defaults: `line_length: 88`, `target_version: "py310"`, `select: ["E4","E7","E9","F"]`, `ignore: []`. Print the ruff "unconfigured" warning from `../docs/reference/tool-messages.md`. |
+| `mypy`   | Extract `python_version`, `strict`, `warn_return_any`, `warn_unused_ignores`, `disallow_untyped_defs`, `disallow_incomplete_defs` into `python.tools.mypy` | Store mypy's built-in defaults: `strict: false`, `python_version: null` (uses running interpreter). Print the mypy "unconfigured" warning.                                                              |
+| `ty`     | Extract `python-version` (or `environment.python-version`) → `python_version` into `python.tools.ty`                                                       | Store ty's built-in defaults: `python_version: null` (detected from environment). Print the ty "unconfigured" warning.                                                                                  |
+| `pytest` | Extract `addopts`, `testpaths`, `minversion` into `python.tools.pytest`                                                                                     | Store pytest's built-in defaults: `addopts: []`, `testpaths: []`, `minversion: null`. Print the pytest "unconfigured" warning.                                                                          |
 
-3. **Determine `type_checker`** — the tool the review skills should use for type checking:
-   - If `[tool.ty]` is configured in `pyproject.toml` → `"ty"`
-   - Else if `[tool.mypy]` is configured → `"mypy"`
-   - Else if `ty` is available (from Step 6) → `"ty"`
-   - Else if `mypy` is available → `"mypy"`
-   - Else → `null` (type checking is skipped)
+   `uv` and `vulture` have no configuration beyond `available` — leave them as `{ "available": true }`.
 
-   Store the resolved value as `python.type_checker`.
+3. **Type checker resolution** — there is no `type_checker` field in `settings.json`. Review skills resolve the type checker at runtime from tool availability:
+   - If `python.tools.ty.available` is `true` → use ty
+   - Else if `python.tools.mypy.available` is `true` → use mypy
+   - Else → type checking is skipped
 
-4. **Extract top-level values**:
-   - `line_length`: from `[tool.ruff] line-length` if present, else ruff's default `88`. Store as `python.line_length`.
-   - `target_version`: from `[tool.ruff] target-version` if present, else ruff's default `"py310"`. Store as `python.target_version`.
+   This preference order (ty > mypy) is documented in `python-code-style/SKILL.md`.
 
-5. **Never modify `pyproject.toml`.** Setup only reads it. The "unconfigured" warnings are informational — the user decides whether to add a `[tool.*]` section.
+4. **Never modify `pyproject.toml`.** Setup only reads it. The "unconfigured" warnings are informational — the user decides whether to add a `[tool.*]` section.
 
-6. **Write `python.code_style`** — copy the default rule toggles (see Step 8 for the shape). If `settings.json` already exists (re-run of setup), **preserve existing user-customized values** and only add keys that are new (i.e. merge, don't overwrite).
+5. **Write `python.code_style`** — copy the default rule toggles (see Step 8 for the shape). If `settings.json` already exists (re-run of setup), **preserve existing user-customized values** and only add keys that are new (i.e. merge, don't overwrite).
 
    **Extract acronyms from AGENTS.md**: if the project's `AGENTS.md` contains an "Acronyms stay uppercase" naming convention line (matching the pattern `acronyms fully uppercase` followed by a parenthesised list of examples like `APIGateway`, `MRBranchResolver`), extract the uppercase tokens from those examples and store them as the top-level `acronyms` field in `settings.json`. For the example above, the extracted list would be `["API", "MR", "AST"]`. If no such line is found, leave `acronyms` as an empty list — the scanner will use its built-in defaults. The `acronyms` field is **top-level** (not nested under `python`), so it is always present even for non-Python projects.
 
-7. **Write `python.testing`** — copy the default rule toggles (see Step 8 for the shape). Same merge behavior as `python.code_style`: preserve existing user-customized values, only add new keys.
+6. **Write `python.testing`** — copy the default rule toggles (see Step 8 for the shape). Same merge behavior as `python.code_style`: preserve existing user-customized values, only add new keys.
 
 ### Step 6.6 — Detect documentation configuration
 
@@ -185,17 +181,17 @@ Read the [settings template](assets/settings_template.json) and write `.zolletta
 | `documentation`         | Object from Step 6.6 — see below                                                       |
 | `reports_dir`           | `".zolletta-metaskill/reports"`                                                        |
 
-The `python` subobject has this shape (Python only; `null` otherwise). It merges tool availability (`tools`), configurable rule toggles (`code_style`, `testing`), and the effective tool configuration extracted from `pyproject.toml`:
+The `python` subobject has this shape (Python only; `null` otherwise). Each tool in `tools` is an object with an `available` boolean and, for tools that have configuration, the effective config extracted from `pyproject.toml`:
 
 ```json
 {
   "tools": {
-    "uv": true,
-    "ruff": true,
-    "pytest": true,
-    "ty": false,
-    "vulture": false,
-    "mypy": true
+    "uv":      { "available": true },
+    "ruff":    { "available": true, "line_length": 100, "target_version": "py312", "select": ["E","W","F","I","B","UP","SIM"], "ignore": ["E501"] },
+    "pytest":  { "available": true, "addopts": ["-ra"], "testpaths": ["tests"], "minversion": "8.0" },
+    "ty":      { "available": true, "python_version": "3.12" },
+    "vulture": { "available": true },
+    "mypy":    { "available": true, "strict": true, "python_version": "3.12" }
   },
   "code_style": {
     "check_acronym_casing": true,
@@ -213,14 +209,7 @@ The `python` subobject has this shape (Python only; `null` otherwise). It merges
     "coverage_well_covered_threshold": 80,
     "check_test_naming": true
   },
-  "pyproject_mtime": 1718700000.0,
-  "line_length": 100,
-  "target_version": "py312",
-  "type_checker": "ty",
-  "ruff": { "select": ["E","W","F","I","B","UP","SIM"], "ignore": ["E501"] },
-  "mypy": { "strict": true, "python_version": "3.12" },
-  "ty": { "python_version": "3.12" },
-  "pytest": { "addopts": ["-ra"], "testpaths": ["tests"], "minversion": "8.0" }
+  "pyproject_mtime": 1718700000.0
 }
 ```
 
@@ -243,8 +232,8 @@ For each Python tool that **is** available but has **no `[tool.*]` section in `p
 
 This covers:
 - `tokensave_available: false` → tokensave "not installed" message
-- For Python projects, each tool in `python.tools` that is `false` → corresponding "not installed" message
-- For Python projects, each tool in `python.tools` that is `true` but unconfigured → corresponding "unconfigured" warning
+- For Python projects, each tool in `python.tools` with `available: false` → corresponding "not installed" message
+- For Python projects, each tool in `python.tools` with `available: true` but unconfigured → corresponding "unconfigured" warning
 
 (The Python review skills are bundled inside this meta-skill, so no "not installed" message is needed for them.)
 
@@ -269,9 +258,8 @@ Zolletta-metaskill setup complete.
     vulture:                       <yes/no>
     mypy:                          <yes/no>
   Python config:                   (Python only)
-    type_checker:                  <ty/mypy/none>
-    line_length:                   <value>
-    target_version:                <value>
+    ruff line_length:              <value>
+    ruff target_version:           <value>
   Settings file:                   .zolletta-metaskill/settings.json
   Reports directory:               .zolletta-metaskill/reports
 ```

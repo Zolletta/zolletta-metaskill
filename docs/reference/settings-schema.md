@@ -23,12 +23,12 @@ skills:
   "acronyms": ["CITE"],
   "python": {
     "tools": {
-      "uv": true,
-      "ruff": true,
-      "pytest": true,
-      "ty": true,
-      "vulture": true,
-      "mypy": true
+      "uv":      { "available": true },
+      "ruff":    { "available": true, "line_length": 100, "target_version": "py312", "select": ["E", "W", "F", "I", "B", "C4", "D", "UP", "T20", "SIM"], "ignore": ["B008", "T201", "D104", "D107", "D203", "D213"] },
+      "pytest":  { "available": true, "addopts": ["-ra", "--tb=short"], "testpaths": ["tests"], "minversion": "8.0" },
+      "ty":      { "available": true, "python_version": "3.12" },
+      "vulture": { "available": true },
+      "mypy":    { "available": true, "strict": true, "python_version": "3.12" }
     },
     "code_style": {
       "check_acronym_casing": true,
@@ -46,26 +46,7 @@ skills:
       "coverage_well_covered_threshold": 80,
       "check_test_naming": true
     },
-    "pyproject_mtime": 1784223225.47,
-    "line_length": 100,
-    "target_version": "py312",
-    "type_checker": "ty",
-    "ruff": {
-      "select": ["E", "W", "F", "I", "B", "C4", "D", "UP", "T20", "SIM"],
-      "ignore": ["B008", "T201", "D104", "D107", "D203", "D213"]
-    },
-    "mypy": {
-      "strict": true,
-      "python_version": "3.12"
-    },
-    "ty": {
-      "python_version": "3.12"
-    },
-    "pytest": {
-      "addopts": ["-ra", "--tb=short"],
-      "testpaths": ["tests"],
-      "minversion": "8.0"
-    }
+    "pyproject_mtime": 1784223225.47
   },
   "external_review_model": "swe",
   "documentation": {
@@ -100,18 +81,22 @@ skills:
 
 ## `python` — tooling, rules, and configuration
 
-The `python` object merges three concerns into one place: tool availability (`tools`), configurable rule toggles (`code_style`, `testing`), and the effective tool configuration extracted from `pyproject.toml` (the remaining fields). It is `null` for non-Python projects.
+The `python` object merges three concerns into one place: tool availability and configuration (`tools`), configurable rule toggles (`code_style`, `testing`), and `pyproject_mtime` for staleness detection. It is `null` for non-Python projects.
 
-### `python.tools` — tool availability
+### `python.tools` — tool availability and configuration
 
-| Field                  | Type    | Description                    |
-| ---------------------- | ------- | ------------------------------ |
-| `python.tools.uv`      | boolean | `true` if uv is available      |
-| `python.tools.ruff`    | boolean | `true` if ruff is available    |
-| `python.tools.pytest`  | boolean | `true` if pytest is available  |
-| `python.tools.ty`      | boolean | `true` if ty is available      |
-| `python.tools.vulture` | boolean | `true` if vulture is available |
-| `python.tools.mypy`    | boolean | `true` if mypy is available    |
+Each tool is an object with an `available` boolean. Tools that have configuration (ruff, mypy, ty, pytest) also carry their effective config extracted from `pyproject.toml`. When a tool's `[tool.*]` section is absent, setup stores the tool's **real built-in defaults** (not skill-invented fallbacks) and prints an "unconfigured" warning.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `python.tools.uv` | object | `{ "available": boolean }` — uv has no config beyond availability |
+| `python.tools.ruff` | object | `{ "available": boolean, "line_length": integer, "target_version": string, "select": array, "ignore": array }` — effective ruff config |
+| `python.tools.pytest` | object | `{ "available": boolean, "addopts": array, "testpaths": array, "minversion": string or null }` — effective pytest config |
+| `python.tools.ty` | object | `{ "available": boolean, "python_version": string or null }` — effective ty config |
+| `python.tools.vulture` | object | `{ "available": boolean }` — vulture has no config beyond availability |
+| `python.tools.mypy` | object | `{ "available": boolean, "strict": boolean, "python_version": string or null }` — effective mypy config |
+
+> **Type checker resolution**: there is no `type_checker` field. Review skills resolve the type checker at runtime: prefer `ty` if `python.tools.ty.available` is `true`, else `mypy` if `python.tools.mypy.available` is `true`, else skip type checking.
 
 ### `python.code_style` — configurable rule toggles
 
@@ -126,7 +111,7 @@ These control which checks the `python-code-style` skill enforces. All default t
 | `check_public_docstrings` | boolean | `true` | Docstrings | Docstrings required on public classes, methods, functions |
 | `check_docstring_no_type_repeat` | boolean | `true` | Docstrings | No type repetition in docstring Args/Returns |
 | `check_skip_obvious_docstrings` | boolean | `true` | Docstrings | Skip docstrings for obvious one-line functions |
-| `check_line_length` | boolean | `true` | Formatting | Line length from `python.line_length` |
+| `check_line_length` | boolean | `true` | Formatting | Line length from `python.tools.ruff.line_length` |
 | `vulture_min_confidence` | integer | `80` | Dead code | Minimum confidence for vulture findings (0–100) |
 
 > Rules not listed here (naming conventions, import order, private/test function docstring exemptions, type hints for public APIs) are **always-on** and cannot be disabled. See `python-code-style/SKILL.md` → Table 1 for the full list.
@@ -143,24 +128,13 @@ These control which checks the `python-testing-patterns` skill enforces and the 
 
 > Rules not listed here (AAA structure, test isolation, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `python-testing-patterns/SKILL.md` → "Always-on rules" for the full list.
 
-### `python.*` — effective tool configuration
+### `python.pyproject_mtime` — staleness detection
 
-Extracted by setup from `pyproject.toml`. When a tool's `[tool.*]` section is absent, setup stores the tool's **real built-in defaults** (not skill-invented fallbacks) and prints an "unconfigured" warning. The `pyproject_mtime` field records when `pyproject.toml` was last read — the setup guard uses it to detect staleness and trigger a light refresh.
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `python.pyproject_mtime` | float | Modification time of `pyproject.toml` at last extraction (Unix timestamp) |
-| `python.line_length` | integer | Effective line length (from `[tool.ruff] line-length`, or ruff's default `88` if unconfigured) |
-| `python.target_version` | string | Effective target Python version (from `[tool.ruff] target-version`, or ruff's default `"py310"`) |
-| `python.type_checker` | string \| null | Which type checker to use: `"ty"` or `"mypy"` (resolved from config, then availability); `null` if neither |
-| `python.ruff` | object | Effective ruff config: `select` (array), `ignore` (array) |
-| `python.mypy` | object | Effective mypy config: `strict` (bool), `python_version` (string \| null) |
-| `python.ty` | object | Effective ty config: `python_version` (string \| null) |
-| `python.pytest` | object | Effective pytest config: `addopts` (array), `testpaths` (array), `minversion` (string \| null) |
+Modification time of `pyproject.toml` at last extraction (Unix timestamp). The setup guard uses it to detect staleness and trigger a light refresh.
 
 ## Setup guard staleness check
 
-When `settings.json` exists and the project is Python, the setup guard compares `pyproject.toml`'s current modification time against `python.pyproject_mtime`. If they differ, the guard re-runs **only** the pyproject extraction step (Step 6.5 of setup) and patches the `python.*` configuration fields + `python.pyproject_mtime` in `settings.json`. Full setup (language detection, Docker probe, tokensave probe) is not re-run.
+When `settings.json` exists and the project is Python, the setup guard compares `pyproject.toml`'s current modification time against `python.pyproject_mtime`. If they differ, the guard re-runs **only** the pyproject extraction step (Step 6.5 of setup) and patches the `python.tools.*` configuration fields + `python.pyproject_mtime` in `settings.json`. Full setup (language detection, Docker probe, tokensave probe) is not re-run.
 
 ## Tool-failure handler
 

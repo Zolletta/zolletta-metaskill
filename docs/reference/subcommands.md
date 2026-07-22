@@ -27,7 +27,7 @@ Before dispatching to **any** subcommand (including `setup` itself), the meta-sk
 1. If it **exists**, read it and proceed to the requested subcommand.
 2. If it **does not exist**, run the full `setup` procedure first. Once `settings.json` is written, proceed to the requested subcommand.
 3. If the user invoked `/zolletta-metaskill setup` explicitly, run setup and stop — do not dispatch to another subcommand.
-4. **Staleness check (Python projects only)**: if `settings.json` exists and `python` is not `null`, compare `pyproject.toml`'s current modification time against `python.pyproject_mtime`. If they differ, re-run only the pyproject extraction step and patch the `python.*` configuration fields + `python.pyproject_mtime` in `settings.json`.
+4. **Staleness check (Python projects only)**: if `settings.json` exists and `python` is not `null`, compare `pyproject.toml`'s current modification time against `python.pyproject_mtime`. If they differ, re-run only the pyproject extraction step and patch the `python.tools.*` configuration fields + `python.pyproject_mtime` in `settings.json`.
 
 ## Running tools
 
@@ -35,7 +35,7 @@ This convention applies to **every** subcommand that invokes external tools (ruf
 
 - If `container_name` is set in `settings.json` (not `null`), run tools inside the container via `docker compose exec <container_name> <command>`.
 - If `container_name` is `null`, run tools directly on the host.
-- If `python.tools.uv` is `true`, prefer `uv run <command>` to ensure the project environment is used.
+- If `python.tools.uv.available` is `true`, prefer `uv run <command>` to ensure the project environment is used.
 
 Subcommands do not restate this convention — they follow it.
 

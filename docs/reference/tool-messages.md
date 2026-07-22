@@ -18,7 +18,7 @@ These messages must be printed verbatim (or close to it) by any subcommand that 
 
 Shared warnings printed by the `setup` subcommand when a Python tool is **available** (the command exists) but has **no `[tool.*]` section in `pyproject.toml`**. Each warning states the tool's effective built-in defaults (so the review runs against a known configuration) and links to the full options reference so the user can broaden the review if they choose.
 
-These warnings are **informational only** — setup never modifies `pyproject.toml`. The effective defaults are also written into the `python.*` configuration fields in `settings.json` so review subcommands report against the configuration the tool will actually use, not a skill-invented fallback.
+These warnings are **informational only** — setup never modifies `pyproject.toml`. The effective defaults are also written into the `python.tools.*` configuration fields in `settings.json` so review subcommands report against the configuration the tool will actually use, not a skill-invented fallback.
 
 > **Distinguish "absent section" from "present but minimal"**: the warning fires only when the `[tool.*]` section is entirely missing. If the section exists (even with a single key like `line-length = 100`), the tool is considered configured and no warning is printed — the tool merges the user's settings with its own defaults.
 
