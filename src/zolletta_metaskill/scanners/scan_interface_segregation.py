@@ -25,6 +25,7 @@ Options:
     --strict          Exit with code 1 if violations are found
 
 Exit code: 0 if no violations (or --skip), 1 if violations found with --strict.
+
 """
 
 from __future__ import annotations
@@ -198,7 +199,7 @@ def main() -> int:
             impls = implementers.get(item["name"], [])
             if impls:
                 print(f"    Implementers: {', '.join(impls)}")
-            print(f"    Fix: split into smaller, focused protocols")
+            print("    Fix: split into smaller, focused protocols")
     else:
         print(f"\n## Fat interfaces: none (threshold: {args.min_methods} methods)")
 

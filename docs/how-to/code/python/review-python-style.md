@@ -77,8 +77,8 @@ For example, to disable the one-class-per-file check and lower the vulture confi
 
 ## See also
 
-- [Settings schema](../../reference/settings-schema.md)
-- [Review mode](../../reference/code/review-mode.md)
-- [Scripts reference](../../reference/code/scripts.md)
+- [Settings schema](../../../reference/settings-schema.md)
+- [Review mode](../../../reference/code/review-mode.md)
+- [Scripts reference](../../../reference/code/scripts.md)
 - [Review Python tests](review-python-tests.md)
 - [Detect God classes](../detect-god-classes.md)

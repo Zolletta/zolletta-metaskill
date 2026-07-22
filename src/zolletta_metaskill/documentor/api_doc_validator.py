@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-API Documentation Validator
+"""API Documentation Validator
 
 Extracts function and class signatures from Python source files using the ast module
 and compares them against API documentation in markdown files.
@@ -25,9 +24,7 @@ import json
 import os
 import re
 import sys
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
-
+from typing import Any
 
 # --- AST Source Extraction ---
 
@@ -40,12 +37,12 @@ class SourceSignature:
         kind: str,  # "function", "method", "class"
         file_path: str,
         line_number: int,
-        parameters: List[Dict[str, Any]],
-        return_annotation: Optional[str] = None,
-        decorators: Optional[List[str]] = None,
-        docstring: Optional[str] = None,
+        parameters: list[dict[str, Any]],
+        return_annotation: str | None = None,
+        decorators: list[str] | None = None,
+        docstring: str | None = None,
         is_private: bool = False,
-        parent_class: Optional[str] = None,
+        parent_class: str | None = None,
     ):
         self.name = name
         self.kind = kind
@@ -68,7 +65,7 @@ class SourceSignature:
     def is_deprecated(self) -> bool:
         return any("deprecated" in d.lower() for d in self.decorators)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "qualified_name": self.qualified_name,
@@ -83,7 +80,7 @@ class SourceSignature:
         }
 
 
-def _annotation_to_str(node: Optional[ast.expr]) -> Optional[str]:
+def _annotation_to_str(node: ast.expr | None) -> str | None:
     """Convert an AST annotation node to a string representation."""
     if node is None:
         return None
@@ -102,7 +99,7 @@ def _annotation_to_str(node: Optional[ast.expr]) -> Optional[str]:
         return str(type(node).__name__)
 
 
-def _extract_decorator_names(decorator_list: List[ast.expr]) -> List[str]:
+def _extract_decorator_names(decorator_list: list[ast.expr]) -> list[str]:
     """Extract decorator names from AST decorator list."""
     names = []
     for dec in decorator_list:
@@ -118,7 +115,7 @@ def _extract_decorator_names(decorator_list: List[ast.expr]) -> List[str]:
     return names
 
 
-def _extract_parameters(func_node: ast.FunctionDef) -> List[Dict[str, Any]]:
+def _extract_parameters(func_node: ast.FunctionDef) -> list[dict[str, Any]]:
     """Extract parameter information from a function definition."""
     params = []
     args = func_node.args
@@ -131,7 +128,7 @@ def _extract_parameters(func_node: ast.FunctionDef) -> List[Dict[str, Any]]:
     for i, arg in enumerate(args.args):
         if arg.arg == "self" or arg.arg == "cls":
             continue
-        param: Dict[str, Any] = {
+        param: dict[str, Any] = {
             "name": arg.arg,
             "annotation": _annotation_to_str(arg.annotation),
             "has_default": False,
@@ -184,14 +181,14 @@ def _extract_parameters(func_node: ast.FunctionDef) -> List[Dict[str, Any]]:
     return params
 
 
-def extract_signatures(source_path: str, include_private: bool = False) -> List[SourceSignature]:
+def extract_signatures(source_path: str, include_private: bool = False) -> list[SourceSignature]:
     """Extract all function and class signatures from a Python file."""
     signatures = []
     try:
-        with open(source_path, "r", encoding="utf-8", errors="ignore") as f:
+        with open(source_path, encoding="utf-8", errors="ignore") as f:
             source = f.read()
         tree = ast.parse(source, filename=source_path)
-    except (SyntaxError, OSError, IOError):
+    except (SyntaxError, OSError):
         return signatures
 
     rel_path = source_path  # Will be made relative by caller
@@ -264,9 +261,9 @@ def extract_signatures(source_path: str, include_private: bool = False) -> List[
 
 def extract_all_signatures(
     source_dir: str, include_private: bool = False
-) -> Dict[str, List[SourceSignature]]:
+) -> dict[str, list[SourceSignature]]:
     """Extract signatures from all Python files in a directory."""
-    all_sigs: Dict[str, List[SourceSignature]] = {}
+    all_sigs: dict[str, list[SourceSignature]] = {}
     skip_dirs = {"__pycache__", ".venv", "venv", ".git", "node_modules", ".tox"}
 
     for root, dirs, files in os.walk(source_dir):
@@ -287,14 +284,14 @@ def extract_all_signatures(
 
 # --- Documentation Parsing ---
 
-def extract_documented_items(doc_path: str) -> Dict[str, Dict[str, Any]]:
+def extract_documented_items(doc_path: str) -> dict[str, dict[str, Any]]:
     """Extract function/class references from markdown documentation."""
-    items: Dict[str, Dict[str, Any]] = {}
+    items: dict[str, dict[str, Any]] = {}
 
     try:
-        with open(doc_path, "r", encoding="utf-8", errors="ignore") as f:
+        with open(doc_path, encoding="utf-8", errors="ignore") as f:
             content = f.read()
-    except (OSError, IOError):
+    except OSError:
         return items
 
     lines = content.splitlines()
@@ -309,7 +306,7 @@ def extract_documented_items(doc_path: str) -> Dict[str, Dict[str, Any]]:
     param_pattern = re.compile(r'^\s*[-*]\s+`(\w+)`\s*(?:\(([^)]+)\))?\s*(?::|--)?\s*(.*)')
 
     current_item = None
-    current_params: List[Dict[str, Any]] = []
+    current_params: list[dict[str, Any]] = []
 
     for i, line in enumerate(lines):
         # Check for function heading
@@ -372,9 +369,9 @@ def extract_documented_items(doc_path: str) -> Dict[str, Dict[str, Any]]:
 
 def extract_all_documented_items(
     doc_path: str, recursive: bool = False
-) -> Dict[str, Dict[str, Any]]:
+) -> dict[str, dict[str, Any]]:
     """Extract documented items from one or more markdown files."""
-    all_items: Dict[str, Dict[str, Any]] = {}
+    all_items: dict[str, dict[str, Any]] = {}
 
     if os.path.isfile(doc_path):
         return extract_documented_items(doc_path)
@@ -401,21 +398,22 @@ def extract_all_documented_items(
 # --- Validation ---
 
 def validate_api_docs(
-    source_sigs: Dict[str, List[SourceSignature]],
-    documented_items: Dict[str, Dict[str, Any]],
-) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    source_sigs: dict[str, list[SourceSignature]],
+    documented_items: dict[str, dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Compare source signatures against documented items and find mismatches.
 
     Returns:
         A tuple of (issues, suggestions). Issues are real drift (phantom docs,
         param mismatches, deprecations). Suggestions are undocumented items that
         might be worth documenting, prioritized by heuristics.
+
     """
     issues = []
     suggestions = []
 
     # Build lookup of all source signatures by name and qualified name
-    source_by_name: Dict[str, SourceSignature] = {}
+    source_by_name: dict[str, SourceSignature] = {}
     for file_sigs in source_sigs.values():
         for sig in file_sigs:
             source_by_name[sig.name] = sig
@@ -515,12 +513,13 @@ def validate_api_docs(
     return issues, suggestions
 
 
-def _classify_undocumented(sig: SourceSignature) -> Tuple[str, str]:
+def _classify_undocumented(sig: SourceSignature) -> tuple[str, str]:
     """Classify an undocumented item by documentation priority.
 
     Returns:
         A tuple of (priority, reason) where priority is "high", "medium", "low",
         or "skip", and reason explains the classification.
+
     """
     # Skip: __init__.py files, simple enums, constants
     if os.path.basename(sig.file_path) == "__init__.py":
@@ -565,8 +564,8 @@ def _classify_undocumented(sig: SourceSignature) -> Tuple[str, str]:
 # --- Report ---
 
 def generate_report(
-    issues: List[Dict[str, Any]],
-    suggestions: List[Dict[str, Any]],
+    issues: list[dict[str, Any]],
+    suggestions: list[dict[str, Any]],
     source_count: int,
     doc_count: int,
     as_json: bool = False,
@@ -579,9 +578,10 @@ def generate_report(
         suggestions: Undocumented items with priority classification.
         suggest_coverage: If True, include prioritized documentation suggestions
             in the report. If False, only show a summary count of undocumented items.
+
     """
     # Count suggestions by priority
-    sug_by_priority: Dict[str, int] = {}
+    sug_by_priority: dict[str, int] = {}
     for s in suggestions:
         p = s.get("priority", "low")
         sug_by_priority[p] = sug_by_priority.get(p, 0) + 1
@@ -727,7 +727,7 @@ def main():
     elif os.path.isdir(source_path):
         source_sigs = extract_all_signatures(source_path, args.include_private)
     else:
-        print(f"Error: Source path must be a Python file or directory", file=sys.stderr)
+        print("Error: Source path must be a Python file or directory", file=sys.stderr)
         sys.exit(2)
 
     # Extract documented items

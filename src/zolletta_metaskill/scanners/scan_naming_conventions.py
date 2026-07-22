@@ -39,6 +39,7 @@ Arguments:
                      conventions.
 
 Exit code: 0 if no violations (or --skip), 1 if violations found with --strict.
+
 """
 
 from __future__ import annotations
@@ -119,9 +120,7 @@ def _matches_prefix(test_stem_rest: str, prefixes: set[str]) -> str | None:
         # prefix is like "test_cache" — but test_stem_rest is like "cache_operations"
         # (the "test_" has already been stripped). So we compare against prefix[5:].
         bare = prefix[5:]  # strip "test_" from prefix
-        if test_stem_rest == bare:
-            matches.append(prefix)
-        elif test_stem_rest.startswith(bare + "_"):
+        if test_stem_rest == bare or test_stem_rest.startswith(bare + "_"):
             matches.append(prefix)
     if not matches:
         return None
@@ -281,7 +280,7 @@ def main() -> int:
         for item in orphan_tests:
             print(f"  {item['file']}")
             print(f"    Reason: {item['reason']}")
-            print(f"    Expected: test_<source_stem><eventual_suffix>.py")
+            print("    Expected: test_<source_stem><eventual_suffix>.py")
     else:
         print("\n## Test files not matching naming convention: none")
 

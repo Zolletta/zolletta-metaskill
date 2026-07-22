@@ -24,6 +24,7 @@ Options:
     --strict          Exit with code 1 if violations are found
 
 Exit code: 0 if no violations (or --skip), 1 if violations found with --strict.
+
 """
 
 from __future__ import annotations

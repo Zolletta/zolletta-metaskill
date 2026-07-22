@@ -30,6 +30,7 @@ Options:
     --dry-run           Show the proposed split without writing any files.
 
 Exit code: 0 on success, 1 on error.
+
 """
 
 from __future__ import annotations

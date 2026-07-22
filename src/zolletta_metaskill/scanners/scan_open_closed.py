@@ -28,6 +28,7 @@ Options:
     --strict          Exit with code 1 if violations are found
 
 Exit code: 0 if no violations (or --skip), 1 if violations found with --strict.
+
 """
 
 from __future__ import annotations
@@ -209,8 +210,8 @@ def main() -> int:
         for v in filtered:
             print(f"  [{v['type']}] {v['detail']}")
             print(f"    -> {v['file']}:{v['line']}")
-            print(f"    Fix: replace type branching with polymorphism (strategy pattern,")
-            print(f"         plugin registry, or protocol-based dispatch)")
+            print("    Fix: replace type branching with polymorphism (strategy pattern,")
+            print("         plugin registry, or protocol-based dispatch)")
     else:
         print("\n## OCP violations: none")
 

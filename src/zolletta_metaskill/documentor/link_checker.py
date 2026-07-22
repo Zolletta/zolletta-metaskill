@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Markdown Link Checker
+"""Markdown Link Checker
 
 Scans markdown files for links and validates them:
 - Local file references (does the file exist?)
@@ -24,11 +23,10 @@ import json
 import os
 import re
 import sys
-import urllib.request
 import urllib.error
+import urllib.request
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
-
+from typing import Any
 
 # --- Constants ---
 
@@ -55,10 +53,10 @@ class LinkInfo:
         self.link_text = link_text
         self.link_target = link_target
         self.link_type = link_type
-        self.is_valid: Optional[bool] = None
-        self.error: Optional[str] = None
+        self.is_valid: bool | None = None
+        self.error: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "source_file": self.source_file,
             "line": self.line_number,
@@ -91,14 +89,14 @@ def classify_link(target: str) -> str:
     return "local_file"
 
 
-def extract_links(file_path: str, rel_path: str) -> List[LinkInfo]:
+def extract_links(file_path: str, rel_path: str) -> list[LinkInfo]:
     """Extract all links from a markdown file."""
     links = []
 
     try:
-        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+        with open(file_path, encoding="utf-8", errors="ignore") as f:
             lines = f.readlines()
-    except (OSError, IOError):
+    except OSError:
         return links
 
     # Patterns
@@ -171,13 +169,13 @@ def extract_links(file_path: str, rel_path: str) -> List[LinkInfo]:
 
 # --- Heading / Anchor Extraction ---
 
-def extract_headings(file_path: str) -> Set[str]:
+def extract_headings(file_path: str) -> set[str]:
     """Extract all heading anchors from a markdown file."""
     headings = set()
     try:
-        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+        with open(file_path, encoding="utf-8", errors="ignore") as f:
             content = f.read()
-    except (OSError, IOError):
+    except OSError:
         return headings
 
     for line in content.splitlines():
@@ -204,15 +202,15 @@ def slugify_heading(text: str) -> str:
     return text
 
 
-def find_duplicate_anchors(file_path: str) -> List[Tuple[str, int]]:
+def find_duplicate_anchors(file_path: str) -> list[tuple[str, int]]:
     """Find headings that produce duplicate anchors."""
     try:
-        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+        with open(file_path, encoding="utf-8", errors="ignore") as f:
             lines = f.readlines()
-    except (OSError, IOError):
+    except OSError:
         return []
 
-    seen: Dict[str, int] = {}
+    seen: dict[str, int] = {}
     duplicates = []
 
     for i, line in enumerate(lines, 1):
@@ -232,11 +230,10 @@ def find_duplicate_anchors(file_path: str) -> List[Tuple[str, int]]:
 def validate_link(
     link: LinkInfo,
     repo_path: str,
-    heading_cache: Dict[str, Set[str]],
+    heading_cache: dict[str, set[str]],
     check_external: bool = False,
 ) -> None:
     """Validate a single link and set is_valid and error."""
-
     if link.link_type == "external":
         if check_external:
             link.is_valid, link.error = validate_external_url(link.link_target)
@@ -318,14 +315,14 @@ def validate_link(
         link.is_valid = True
 
 
-def _get_headings(file_path: str, cache: Dict[str, Set[str]]) -> Set[str]:
+def _get_headings(file_path: str, cache: dict[str, set[str]]) -> set[str]:
     """Get headings for a file, using cache."""
     if file_path not in cache:
         cache[file_path] = extract_headings(file_path)
     return cache[file_path]
 
 
-def _check_case_insensitive(path: str) -> Optional[str]:
+def _check_case_insensitive(path: str) -> str | None:
     """Check if a file exists with different case. Returns the actual path if found."""
     directory = os.path.dirname(path)
     filename = os.path.basename(path)
@@ -343,7 +340,7 @@ def _check_case_insensitive(path: str) -> Optional[str]:
     return None
 
 
-def validate_external_url(url: str) -> Tuple[bool, Optional[str]]:
+def validate_external_url(url: str) -> tuple[bool, str | None]:
     """Validate an external URL with a HEAD request."""
     try:
         req = urllib.request.Request(url, method="HEAD")
@@ -371,7 +368,7 @@ def validate_external_url(url: str) -> Tuple[bool, Optional[str]]:
 
 # --- File Discovery ---
 
-def find_markdown_files(path: str) -> List[str]:
+def find_markdown_files(path: str) -> list[str]:
     """Find all markdown files under a path."""
     files = []
 
@@ -392,8 +389,8 @@ def find_markdown_files(path: str) -> List[str]:
 # --- Report ---
 
 def generate_report(
-    all_links: List[LinkInfo],
-    duplicate_anchors: Dict[str, List[Tuple[str, int]]],
+    all_links: list[LinkInfo],
+    duplicate_anchors: dict[str, list[tuple[str, int]]],
     broken_only: bool = False,
     as_json: bool = False,
 ) -> str:
@@ -439,7 +436,7 @@ def generate_report(
         lines.append("-" * 60)
 
         # Group by source file
-        by_file: Dict[str, List[LinkInfo]] = {}
+        by_file: dict[str, list[LinkInfo]] = {}
         for link in broken:
             by_file.setdefault(link.source_file, []).append(link)
 
@@ -463,8 +460,8 @@ def generate_report(
         lines.append("No issues found. All links are valid.")
 
     # Type breakdown
-    type_counts: Dict[str, int] = {}
-    broken_type_counts: Dict[str, int] = {}
+    type_counts: dict[str, int] = {}
+    broken_type_counts: dict[str, int] = {}
     for link in all_links:
         type_counts[link.link_type] = type_counts.get(link.link_type, 0) + 1
     for link in broken:
@@ -522,9 +519,9 @@ def main():
         sys.exit(0)
 
     # Extract and validate links
-    all_links: List[LinkInfo] = []
-    heading_cache: Dict[str, Set[str]] = {}
-    duplicate_anchors: Dict[str, List[Tuple[str, int]]] = {}
+    all_links: list[LinkInfo] = []
+    heading_cache: dict[str, set[str]] = {}
+    duplicate_anchors: dict[str, list[tuple[str, int]]] = {}
 
     for md_file in md_files:
         rel_path = os.path.relpath(md_file, repo_path)

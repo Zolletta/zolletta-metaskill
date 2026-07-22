@@ -16,6 +16,7 @@ Options:
     --show-methods    List all method names per class (helps spot mixed SUTs)
 
 Exit code: 0 on success, 1 if no test classes are found.
+
 """
 
 from __future__ import annotations

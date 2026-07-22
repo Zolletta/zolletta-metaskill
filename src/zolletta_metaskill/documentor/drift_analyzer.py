@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Documentation Drift Analyzer
+"""Documentation Drift Analyzer
 
 Compares git log of code changes against documentation file modification dates
 to identify documentation that has fallen out of sync with the codebase.
@@ -26,10 +25,9 @@ import re
 import subprocess
 import sys
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
-
+from typing import Any
 
 # --- Constants ---
 
@@ -67,14 +65,14 @@ def _load_gitignore_patterns(repo_path: str) -> set[str]:
                     name = name.split("/")[-1]
                 if name:
                     patterns.add(name)
-    except (OSError, IOError):
+    except OSError:
         pass
     return patterns
 
 
 # --- Git Helpers ---
 
-def run_git(repo_path: str, args: List[str], default: str = "") -> str:
+def run_git(repo_path: str, args: list[str], default: str = "") -> str:
     """Run a git command and return stdout. Returns default on failure."""
     try:
         result = subprocess.run(
@@ -88,7 +86,7 @@ def run_git(repo_path: str, args: List[str], default: str = "") -> str:
         return default
 
 
-def get_file_last_modified(repo_path: str, file_path: str) -> Optional[datetime]:
+def get_file_last_modified(repo_path: str, file_path: str) -> datetime | None:
     """Get the last git commit date for a file."""
     output = run_git(repo_path, [
         "log", "-1", "--format=%aI", "--", file_path
@@ -101,7 +99,7 @@ def get_file_last_modified(repo_path: str, file_path: str) -> Optional[datetime]
     return None
 
 
-def get_files_changed_since(repo_path: str, since_date: str, scope: str = "") -> List[Dict[str, str]]:
+def get_files_changed_since(repo_path: str, since_date: str, scope: str = "") -> list[dict[str, str]]:
     """Get files changed since a given date, optionally scoped to a directory."""
     args = ["log", "--since", since_date, "--name-status", "--pretty=format:", "--diff-filter=ACDMRT"]
     if scope:
@@ -120,7 +118,7 @@ def get_files_changed_since(repo_path: str, since_date: str, scope: str = "") ->
     return changes
 
 
-def get_renamed_files(repo_path: str, since_date: str) -> List[Tuple[str, str]]:
+def get_renamed_files(repo_path: str, since_date: str) -> list[tuple[str, str]]:
     """Get files that were renamed since a given date."""
     output = run_git(repo_path, [
         "log", "--since", since_date, "--name-status", "--pretty=format:",
@@ -137,7 +135,7 @@ def get_renamed_files(repo_path: str, since_date: str) -> List[Tuple[str, str]]:
     return renames
 
 
-def get_current_version_from_git(repo_path: str) -> Optional[str]:
+def get_current_version_from_git(repo_path: str) -> str | None:
     """Get the latest git tag as a version string."""
     output = run_git(repo_path, ["describe", "--tags", "--abbrev=0"])
     if output:
@@ -147,7 +145,7 @@ def get_current_version_from_git(repo_path: str) -> Optional[str]:
 
 # --- File Discovery ---
 
-def find_doc_files(repo_path: str, patterns: Optional[List[str]] = None) -> List[str]:
+def find_doc_files(repo_path: str, patterns: list[str] | None = None) -> list[str]:
     """Find all documentation files in the repository."""
     doc_files = []
     repo = Path(repo_path)
@@ -175,7 +173,7 @@ def find_doc_files(repo_path: str, patterns: Optional[List[str]] = None) -> List
     return sorted(doc_files)
 
 
-def find_code_files(repo_path: str, scope: str = "") -> List[str]:
+def find_code_files(repo_path: str, scope: str = "") -> list[str]:
     """Find all code files in the repository."""
     code_files = []
     search_path = os.path.join(repo_path, scope) if scope else repo_path
@@ -196,7 +194,7 @@ def find_code_files(repo_path: str, scope: str = "") -> List[str]:
 
 # --- Code-to-Doc Mapping ---
 
-def map_docs_to_code(repo_path: str, doc_files: List[str], code_files: List[str]) -> Dict[str, List[str]]:
+def map_docs_to_code(repo_path: str, doc_files: list[str], code_files: list[str]) -> dict[str, list[str]]:
     """Map documentation files to the code directories they likely describe."""
     mapping = defaultdict(list)
 
@@ -223,9 +221,9 @@ def map_docs_to_code(repo_path: str, doc_files: List[str], code_files: List[str]
     for doc in doc_files:
         doc_full = os.path.join(repo_path, doc)
         try:
-            with open(doc_full, "r", encoding="utf-8", errors="ignore") as f:
+            with open(doc_full, encoding="utf-8", errors="ignore") as f:
                 content = f.read()
-        except (OSError, IOError):
+        except OSError:
             continue
 
         for code in code_files:
@@ -249,19 +247,19 @@ def map_docs_to_code(repo_path: str, doc_files: List[str], code_files: List[str]
 
 # --- Drift Detection ---
 
-def extract_references_from_doc(repo_path: str, doc_path: str) -> Dict[str, Set[str]]:
+def extract_references_from_doc(repo_path: str, doc_path: str) -> dict[str, set[str]]:
     """Extract file references, function names, and version strings from a doc."""
     full_path = os.path.join(repo_path, doc_path)
-    refs: Dict[str, Set[str]] = {
+    refs: dict[str, set[str]] = {
         "files": set(),
         "functions": set(),
         "versions": set(),
         "links": set(),
     }
     try:
-        with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
+        with open(full_path, encoding="utf-8", errors="ignore") as f:
             content = f.read()
-    except (OSError, IOError):
+    except OSError:
         return refs
 
     # File references in markdown links
@@ -295,11 +293,11 @@ def extract_references_from_doc(repo_path: str, doc_path: str) -> Dict[str, Set[
 def detect_drift_for_doc(
     repo_path: str,
     doc_path: str,
-    associated_code_dirs: List[str],
-    renames: List[Tuple[str, str]],
-    current_version: Optional[str],
+    associated_code_dirs: list[str],
+    renames: list[tuple[str, str]],
+    current_version: str | None,
     include_referential: bool = False,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Detect drift issues for a single documentation file.
 
     Args:
@@ -307,6 +305,7 @@ def detect_drift_for_doc(
             detection). If False (default), only include the edge case where a
             doc references a renamed file but the old name still exists as a
             different file.
+
     """
     issues = []
 
@@ -329,7 +328,7 @@ def detect_drift_for_doc(
     # --- Factual drift (per-file): only flag if specific referenced source files changed ---
     # Resolve which referenced files actually exist in the repo
     doc_dir = os.path.dirname(doc_path)
-    referenced_source_files: List[str] = []
+    referenced_source_files: list[str] = []
     for ref_file in refs["files"]:
         if Path(ref_file).suffix.lower() not in CODE_EXTENSIONS:
             continue
@@ -342,7 +341,7 @@ def detect_drift_for_doc(
 
     if referenced_source_files:
         # Check which of these specific files changed since the doc was last updated
-        changed_referenced: List[str] = []
+        changed_referenced: list[str] = []
         for src_file in referenced_source_files:
             changes = get_files_changed_since(repo_path, since_date, src_file)
             if changes:
@@ -460,12 +459,12 @@ def detect_drift_for_doc(
                 })
 
     # Check temporal staleness (days since update)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     # Normalize both datetimes to UTC-aware for safe comparison
     if doc_modified.tzinfo is None:
-        doc_modified_utc = doc_modified.replace(tzinfo=timezone.utc)
+        doc_modified_utc = doc_modified.replace(tzinfo=UTC)
     else:
-        doc_modified_utc = doc_modified.astimezone(timezone.utc)
+        doc_modified_utc = doc_modified.astimezone(UTC)
     days_since = (now - doc_modified_utc).days
     if days_since > 180:
         issues.append({
@@ -494,14 +493,14 @@ def detect_drift_for_doc(
     return issues
 
 
-def check_readme_structure(repo_path: str, doc_path: str) -> List[Dict[str, Any]]:
+def check_readme_structure(repo_path: str, doc_path: str) -> list[dict[str, Any]]:
     """Check if a README has expected sections."""
     issues = []
     full_path = os.path.join(repo_path, doc_path)
     try:
-        with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
+        with open(full_path, encoding="utf-8", errors="ignore") as f:
             content = f.read()
-    except (OSError, IOError):
+    except OSError:
         return issues
 
     headings = set()
@@ -564,8 +563,8 @@ def _version_is_older(v1: str, v2: str) -> bool:
 
 def generate_report(
     repo_path: str,
-    all_issues: List[Dict[str, Any]],
-    doc_files: List[str],
+    all_issues: list[dict[str, Any]],
+    doc_files: list[str],
     as_json: bool = False,
 ) -> str:
     """Generate a drift report."""
@@ -576,7 +575,7 @@ def generate_report(
 
     report_data = {
         "repository": os.path.abspath(repo_path),
-        "scan_date": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "scan_date": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "summary": {
             "total_docs": len(doc_files),
             "drifted_docs": len(drifted_files),

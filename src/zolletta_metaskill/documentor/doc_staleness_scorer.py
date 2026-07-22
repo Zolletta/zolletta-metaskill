@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Documentation Staleness Scorer
+"""Documentation Staleness Scorer
 
 Scores documentation freshness on a 0-100 scale using five weighted dimensions:
 - Last Updated (20%): How recently the doc was modified
@@ -24,10 +23,9 @@ import os
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-
+from typing import Any
 
 # --- Constants ---
 
@@ -66,7 +64,7 @@ def _load_gitignore_patterns(repo_path: str) -> set[str]:
                     name = name.split("/")[-1]
                 if name:
                     patterns.add(name)
-    except (OSError, IOError):
+    except OSError:
         pass
     return patterns
 
@@ -120,7 +118,7 @@ DIATAXIS_QUADRANTS = {
 }
 
 
-def _load_diataxis_translations(path: str) -> Dict[str, Any]:
+def _load_diataxis_translations(path: str) -> dict[str, Any]:
     """Load translated Diátaxis headings and directory names from a JSON file.
 
     The JSON format mirrors ``DIATAXIS_QUADRANTS`` but with translated strings.
@@ -154,7 +152,7 @@ def _load_diataxis_translations(path: str) -> Dict[str, Any]:
     try:
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
-    except (OSError, IOError, json.JSONDecodeError) as exc:
+    except (OSError, json.JSONDecodeError) as exc:
         print(f"Warning: could not load Diátaxis translations from {path}: {exc}", file=sys.stderr)
         return {"readme_sections": None, "quadrants": {}}
 
@@ -163,7 +161,7 @@ def _load_diataxis_translations(path: str) -> Dict[str, Any]:
     return {"readme_sections": readme_sections, "quadrants": quadrants}
 
 
-def _merge_translations(translations: Dict[str, Any]) -> None:
+def _merge_translations(translations: dict[str, Any]) -> None:
     """Merge translated headings/dir names into the global ``DIATAXIS_QUADRANTS``.
 
     - ``dir_names`` are merged additively (English + translated).
@@ -200,7 +198,7 @@ def get_label(score: float) -> str:
 
 # --- Git Helpers ---
 
-def run_git(repo_path: str, args: List[str], default: str = "") -> str:
+def run_git(repo_path: str, args: list[str], default: str = "") -> str:
     try:
         result = subprocess.run(
             ["git", "-C", repo_path] + args,
@@ -211,7 +209,7 @@ def run_git(repo_path: str, args: List[str], default: str = "") -> str:
         return default
 
 
-def get_file_last_commit_date(repo_path: str, file_path: str) -> Optional[datetime]:
+def get_file_last_commit_date(repo_path: str, file_path: str) -> datetime | None:
     output = run_git(repo_path, ["log", "-1", "--format=%aI", "--", file_path])
     if output:
         try:
@@ -227,14 +225,14 @@ def get_code_changes_since(repo_path: str, since_date: str, directory: str = "")
     return len([l for l in output.splitlines() if l.strip()]) if output else 0
 
 
-def get_latest_tag(repo_path: str) -> Optional[str]:
+def get_latest_tag(repo_path: str) -> str | None:
     output = run_git(repo_path, ["describe", "--tags", "--abbrev=0"])
     return output.lstrip("v") if output else None
 
 
 # --- File Discovery ---
 
-def find_doc_files(repo_path: str) -> List[str]:
+def find_doc_files(repo_path: str) -> list[str]:
     skip = SKIP_DIRS | _load_gitignore_patterns(repo_path)
     doc_files = []
     for root, dirs, files in os.walk(repo_path):
@@ -249,7 +247,7 @@ def find_doc_files(repo_path: str) -> List[str]:
 
 # --- Scoring Dimensions ---
 
-def score_last_updated(repo_path: str, doc_path: str) -> Tuple[float, Dict[str, Any]]:
+def score_last_updated(repo_path: str, doc_path: str) -> tuple[float, dict[str, Any]]:
     """Score based on how recently the doc was modified. 0-100."""
     last_modified = get_file_last_commit_date(repo_path, doc_path)
     details = {}
@@ -258,9 +256,9 @@ def score_last_updated(repo_path: str, doc_path: str) -> Tuple[float, Dict[str, 
         details["reason"] = "No git history found"
         return 50.0, details
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if last_modified.tzinfo is None:
-        last_modified = last_modified.replace(tzinfo=timezone.utc)
+        last_modified = last_modified.replace(tzinfo=UTC)
 
     days_ago = (now - last_modified).days
     details["last_modified"] = last_modified.strftime("%Y-%m-%d")
@@ -283,15 +281,15 @@ def score_last_updated(repo_path: str, doc_path: str) -> Tuple[float, Dict[str, 
     return max(0.0, min(100.0, score)), details
 
 
-def score_code_doc_alignment(repo_path: str, doc_path: str) -> Tuple[float, Dict[str, Any]]:
+def score_code_doc_alignment(repo_path: str, doc_path: str) -> tuple[float, dict[str, Any]]:
     """Score based on whether documented items still exist in code. 0-100."""
     full_path = os.path.join(repo_path, doc_path)
     details = {"referenced_files": 0, "existing_files": 0, "referenced_functions": 0}
 
     try:
-        with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
+        with open(full_path, encoding="utf-8", errors="ignore") as f:
             content = f.read()
-    except (OSError, IOError):
+    except OSError:
         return 50.0, details
 
     # Extract file references
@@ -349,15 +347,15 @@ def score_code_doc_alignment(repo_path: str, doc_path: str) -> Tuple[float, Dict
     return ratio * 100.0, details
 
 
-def score_link_health(repo_path: str, doc_path: str) -> Tuple[float, Dict[str, Any]]:
+def score_link_health(repo_path: str, doc_path: str) -> tuple[float, dict[str, Any]]:
     """Score based on percentage of valid internal links. 0-100."""
     full_path = os.path.join(repo_path, doc_path)
     details = {"total_links": 0, "valid_links": 0, "broken_links": []}
 
     try:
-        with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
+        with open(full_path, encoding="utf-8", errors="ignore") as f:
             content = f.read()
-    except (OSError, IOError):
+    except OSError:
         return 100.0, details
 
     doc_dir = os.path.dirname(doc_path)
@@ -404,14 +402,14 @@ def score_link_health(repo_path: str, doc_path: str) -> Tuple[float, Dict[str, A
             if anchor and resolved.endswith((".md", ".rst")):
                 # Validate anchor in target file
                 try:
-                    with open(resolved, "r", encoding="utf-8", errors="ignore") as f:
+                    with open(resolved, encoding="utf-8", errors="ignore") as f:
                         target_content = f.read()
                     headings = _extract_headings(target_content)
                     if _slugify(anchor) in headings:
                         valid += 1
                     else:
                         details["broken_links"].append(link)
-                except (OSError, IOError):
+                except OSError:
                     valid += 1  # Give benefit of doubt
             else:
                 valid += 1
@@ -426,7 +424,7 @@ def score_link_health(repo_path: str, doc_path: str) -> Tuple[float, Dict[str, A
 
 def _detect_diataxis_quadrant(
     doc_path: str,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Return the Diátaxis quadrant config if the doc is inside a quadrant
     directory, otherwise ``None``.
 
@@ -442,7 +440,7 @@ def _detect_diataxis_quadrant(
     return None
 
 
-def score_completeness(repo_path: str, doc_path: str, required_sections: List[str]) -> Tuple[float, Dict[str, Any]]:
+def score_completeness(repo_path: str, doc_path: str, required_sections: list[str]) -> tuple[float, dict[str, Any]]:
     """Score based on whether expected sections are present. 0-100.
 
     If the doc lives under a Diátaxis quadrant directory (tutorials/,
@@ -456,7 +454,7 @@ def score_completeness(repo_path: str, doc_path: str, required_sections: List[st
 
     # Detect Diátaxis quadrant from the doc's directory path. If found,
     # override the required sections with the quadrant-appropriate set.
-    any_of_groups: List[List[str]] = []
+    any_of_groups: list[list[str]] = []
     quadrant = _detect_diataxis_quadrant(doc_path)
     if quadrant is not None:
         required_sections = quadrant.get("required_sections", [])
@@ -466,9 +464,9 @@ def score_completeness(repo_path: str, doc_path: str, required_sections: List[st
         details["any_of_groups"] = any_of_groups
 
     try:
-        with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
+        with open(full_path, encoding="utf-8", errors="ignore") as f:
             content = f.read()
-    except (OSError, IOError):
+    except OSError:
         return 0.0, details
 
     # Extract headings
@@ -487,9 +485,7 @@ def score_completeness(repo_path: str, doc_path: str, required_sections: List[st
     missing = []
     for section in required_sections:
         section_lower = section.lower()
-        if section_lower in headings_lower or section_lower in heading_words:
-            found.append(section)
-        elif any(section_lower in h for h in headings_lower):
+        if section_lower in headings_lower or section_lower in heading_words or any(section_lower in h for h in headings_lower):
             found.append(section)
         else:
             missing.append(section)
@@ -501,9 +497,7 @@ def score_completeness(repo_path: str, doc_path: str, required_sections: List[st
     groups_missing = []
     for group in any_of_groups:
         group_lower = [g.lower() for g in group]
-        if any(g in headings_lower or g in heading_words for g in group_lower):
-            groups_found += 1
-        elif any(any(g in h for h in headings_lower) for g in group_lower):
+        if any(g in headings_lower or g in heading_words for g in group_lower) or any(any(g in h for h in headings_lower) for g in group_lower):
             groups_found += 1
         else:
             groups_missing.append(group)
@@ -532,15 +526,15 @@ def score_completeness(repo_path: str, doc_path: str, required_sections: List[st
     return max(0.0, section_score - length_penalty), details
 
 
-def score_accuracy(repo_path: str, doc_path: str) -> Tuple[float, Dict[str, Any]]:
+def score_accuracy(repo_path: str, doc_path: str) -> tuple[float, dict[str, Any]]:
     """Score based on accuracy of verifiable facts (versions, dates, paths). 0-100."""
     full_path = os.path.join(repo_path, doc_path)
     details = {"checks": [], "issues": []}
 
     try:
-        with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
+        with open(full_path, encoding="utf-8", errors="ignore") as f:
             content = f.read()
-    except (OSError, IOError):
+    except OSError:
         return 50.0, details
 
     checks_passed = 0
@@ -609,11 +603,11 @@ def score_accuracy(repo_path: str, doc_path: str) -> Tuple[float, Dict[str, Any]
     dates_found = date_pattern.findall(content)
     if dates_found:
         checks_total += 1
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         all_ok = True
         for date_str in dates_found:
             try:
-                d = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                d = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=UTC)
                 if d > now:
                     details["issues"].append(f"Future date found: {date_str}")
                     all_ok = False
@@ -652,12 +646,12 @@ def _slugify(text: str) -> str:
     return text
 
 
-def _extract_version_from_manifest(path: str, filename: str) -> Optional[str]:
+def _extract_version_from_manifest(path: str, filename: str) -> str | None:
     """Extract version string from a package manifest."""
     try:
-        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+        with open(path, encoding="utf-8", errors="ignore") as f:
             content = f.read()
-    except (OSError, IOError):
+    except OSError:
         return None
 
     if filename == "package.json":
@@ -680,9 +674,9 @@ def _extract_version_from_manifest(path: str, filename: str) -> Optional[str]:
 def score_document(
     repo_path: str,
     doc_path: str,
-    weights: Dict[str, float],
-    required_sections: List[str],
-) -> Dict[str, Any]:
+    weights: dict[str, float],
+    required_sections: list[str],
+) -> dict[str, Any]:
     """Score a single documentation file across all dimensions."""
     updated_score, updated_details = score_last_updated(repo_path, doc_path)
     alignment_score, alignment_details = score_code_doc_alignment(repo_path, doc_path)
@@ -739,7 +733,7 @@ def score_document(
 
 # --- Report ---
 
-def generate_report(scores: List[Dict[str, Any]], as_json: bool = False) -> str:
+def generate_report(scores: list[dict[str, Any]], as_json: bool = False) -> str:
     """Generate a staleness report from scored documents."""
     if not scores:
         if as_json:

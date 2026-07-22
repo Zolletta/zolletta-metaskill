@@ -49,6 +49,7 @@ Arguments:
                      structure.
 
 Exit code: 0 if no mismatches (or --skip), 1 if mismatches found.
+
 """
 
 from __future__ import annotations
@@ -467,8 +468,8 @@ def main() -> int:
     # Summary
     print("---\n")
     print("## Summary\n")
-    print(f"| Category | Count | Action |")
-    print(f"|---|---|---|")
+    print("| Category | Count | Action |")
+    print("|---|---|---|")
     print(f"| Misnamed tests | {len(misnamed)} | Rename |")
     print(f"| Misplaced tests | {len(misplaced)} | Move |")
     print(f"| Orphaned tests | {total_orphaned} | Delete or investigate |")

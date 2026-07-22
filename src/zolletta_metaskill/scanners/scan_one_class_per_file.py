@@ -24,6 +24,7 @@ Options:
 
 Exit code: 0 if no violations (or --strict not set or --skip), 1 if
            violations found with --strict.
+
 """
 
 from __future__ import annotations
@@ -143,7 +144,7 @@ def main() -> int:
         for item in multi_class:
             print(f"  {item['count']} classes: {', '.join(item['names'])}")
             print(f"    -> {item['file']}")
-            print(f"    Fix: split into one file per class")
+            print("    Fix: split into one file per class")
     else:
         print("\n## Files with 2+ classes: none")
 

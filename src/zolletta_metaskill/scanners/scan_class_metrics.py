@@ -15,6 +15,7 @@ Options:
     --min-lines N   Skip classes shorter than N lines (default: 50)
 
 Exit code: 0 on success, 1 if no classes are found.
+
 """
 
 from __future__ import annotations

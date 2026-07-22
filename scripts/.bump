@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Bump the zolletta-metaskill version across all files.
+#
+# Usage: scripts/.bump --to <version>
+#
+# Updates:
+#   - pyproject.toml (version field)
+#   - src/zolletta_metaskill/__init__.py (__version__)
+#   - SKILL.md (version in front-matter)
+#   - */SKILL.md (version in front-matter)
+#   - setup/assets/settings_template.json (setup_version)
+#   - CHANGELOG.md (if it has an [Unreleased] section)
+
+set -euo pipefail
+
+VERSION=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --to)
+            VERSION="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown argument: $1" >&2
+            exit 1
+            ;;
+    esac
+done
+
+if [[ -z "$VERSION" ]]; then
+    echo "Usage: scripts/.bump --to <version>" >&2
+    exit 1
+fi
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+echo "Bumping version to $VERSION..."
+
+# pyproject.toml
+sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" "$ROOT/pyproject.toml"
+rm -f "$ROOT/pyproject.toml.bak"
+
+# __init__.py
+sed -i.bak "s/^__version__ = \".*\"/__version__ = \"$VERSION\"/" "$ROOT/src/zolletta_metaskill/__init__.py"
+rm -f "$ROOT/src/zolletta_metaskill/__init__.py.bak"
+
+# All SKILL.md files (version in front-matter)
+find "$ROOT" -name "SKILL.md" -not -path "*/.git/*" | while read -r f; do
+    sed -i.bak "s/^version: .*/version: $VERSION/" "$f"
+    rm -f "$f.bak"
+done
+
+# settings_template.json
+sed -i.bak "s/\"setup_version\": \".*\"/\"setup_version\": \"$VERSION\"/" "$ROOT/setup/assets/settings_template.json"
+rm -f "$ROOT/setup/assets/settings_template.json.bak"
+
+echo "Done. Version bumped to $VERSION."
+echo ""
+echo "Files changed:"
+echo "  - pyproject.toml"
+echo "  - src/zolletta_metaskill/__init__.py"
+echo "  - */SKILL.md (all front-matter version fields)"
+echo "  - setup/assets/settings_template.json"
+echo ""
+echo "Review the changes with git diff, then commit."

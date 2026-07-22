@@ -36,6 +36,7 @@ Options:
 
 Exit code: 0 if no violations (or --strict not set or --skip),
            1 if violations found with --strict.
+
 """
 
 from __future__ import annotations
@@ -69,9 +70,7 @@ def _find_test_functions(file_path: Path) -> list[tuple[str, int]]:
 
     results: list[tuple[str, int]] = []
     for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef) and node.name.startswith("test_"):
-            results.append((node.name, node.lineno))
-        elif isinstance(node, ast.AsyncFunctionDef) and node.name.startswith("test_"):
+        if isinstance(node, ast.FunctionDef) and node.name.startswith("test_") or isinstance(node, ast.AsyncFunctionDef) and node.name.startswith("test_"):
             results.append((node.name, node.lineno))
     return results
 

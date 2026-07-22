@@ -37,6 +37,7 @@ Options:
 
 Exit code: 0 if no violations (or --strict not set or --skip),
            1 if violations found with --strict.
+
 """
 
 from __future__ import annotations

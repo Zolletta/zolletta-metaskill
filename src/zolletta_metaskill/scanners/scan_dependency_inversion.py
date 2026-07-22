@@ -38,6 +38,7 @@ Options:
     --strict                   Exit with code 1 if violations are found
 
 Exit code: 0 if no violations (or --skip), 1 if violations found with --strict.
+
 """
 
 from __future__ import annotations
@@ -47,13 +48,12 @@ import ast
 import sys
 from pathlib import Path
 
-
 STDLIB_TYPES = {
     "list", "dict", "set", "frozenset", "tuple", "str", "int", "float",
     "bool", "bytes", "bytearray", "complex", "None", "type", "object",
     "Path", "Decimal", "Fraction", "datetime", "date", "time", "timedelta",
     "OrderedDict", "defaultdict", "Counter", "deque", "ChainMap",
-    "namedtuple", "OrderedDict",
+    "namedtuple",
 }
 
 # Patterns that indicate a value object / data holder, not a service

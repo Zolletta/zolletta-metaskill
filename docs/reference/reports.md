@@ -1,7 +1,16 @@
 ---
 audience: human, ai
 status: stable
-skills: [setup, review, patterns, documentor, external-review, python-code-style, python-testing-patterns]
+skills:
+  [
+    setup,
+    review,
+    patterns,
+    documentor,
+    external-review,
+    python-code-style,
+    python-testing-patterns,
+  ]
 ---
 
 # Reports Reference
@@ -21,7 +30,7 @@ The timestamp format (`YYYY-MM-DD-HH-MM`) is lexicographically sortable, so find
 Each subcommand writes its own report file:
 
 | Subcommand                | Report file                  | Content                                                                                 |
-|---|---|---|
+| ------------------------- | ---------------------------- | --------------------------------------------------------------------------------------- |
 | `patterns`                | `patterns.md`                | God class findings, SOLID violations, coupling analysis, structural convention results  |
 | `documentor`              | `documentor.md`              | Diátaxis compliance findings, drift detection results, staleness scores, link integrity |
 | `python-code-style`       | `python-code-style.md`       | Linting findings, formatting issues, naming violations, docstring gaps, type errors     |
@@ -33,13 +42,13 @@ Each subcommand writes its own report file:
 When running `/zolletta-metaskill review`, the orchestrator produces two additional files:
 
 | File         | Content                                                                                                         |
-|---|---|
+| ------------ | --------------------------------------------------------------------------------------------------------------- |
 | `SUMMARY.md` | Graded summary of all sub-reviews, with links to each specialist report                                         |
 | `TODO.md`    | Aggregated, prioritized TODO list organized by functional priority (dependency changes first, then by severity) |
 
 ## Report format
 
-Each report follows the [report template](../../assets/report_template.md) structure:
+Each report follows the [report template](../../review/assets/summary_template.md) structure:
 
 1. **Grade** at the top (A–F or numeric score)
 2. **Scanning script results** (tables of raw output)

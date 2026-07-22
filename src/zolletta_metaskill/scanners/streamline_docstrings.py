@@ -61,6 +61,7 @@ Options:
 
 Exit code: 0 if no findings (or --skip / non-strict), 1 if findings found
            with --strict.
+
 """
 
 from __future__ import annotations
@@ -109,8 +110,7 @@ DUNDER_METHODS: frozenset[str] = frozenset({
     "__format__", "__lt__", "__le__", "__eq__", "__ne__", "__gt__", "__ge__",
     "__hash__", "__bool__", "__getattr__", "__getattribute__", "__setattr__",
     "__delattr__", "__dir__", "__get__", "__set__", "__delete__", "__set_name__",
-    "__class_getitem__", "__init_subclass__", "__call__", "__len__", "__len__",
-    "__getitem__", "__setitem__", "__delitem__", "__iter__", "__next__",
+    "__class_getitem__", "__init_subclass__", "__call__", "__len__", "__getitem__", "__setitem__", "__delitem__", "__iter__", "__next__",
     "__contains__", "__add__", "__sub__", "__mul__", "__matmul__", "__truediv__",
     "__enter__", "__exit__", "__aenter__", "__aexit__", "__await__",
 })

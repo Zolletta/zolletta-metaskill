@@ -25,6 +25,7 @@ Options:
 
 Exit code: 0 if no unused exports (or --strict not set or --skip),
            1 if unused exports found with --strict.
+
 """
 
 from __future__ import annotations
@@ -32,7 +33,6 @@ from __future__ import annotations
 import argparse
 import ast
 import json
-import os
 import sys
 from pathlib import Path
 
