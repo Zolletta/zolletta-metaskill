@@ -10,8 +10,8 @@ The `documentor` skill includes four drift detection tools. All are Python 3.8+ 
 
 ## Tools
 
-| Tool                      | Purpose                                       | Command                                                              |
-|---|---|---|
+| Tool                      | Purpose                                       | Command                                                                                        |
+| ------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `drift_analyzer.py`       | Full drift analysis between code and docs     | `python src/zolletta_metaskill/documentor/drift_analyzer.py <repo> --min-severity high --json` |
 | `doc_staleness_scorer.py` | Score documentation freshness 0-100           | `python src/zolletta_metaskill/documentor/doc_staleness_scorer.py <repo> --threshold 60`       |
 | `api_doc_validator.py`    | Validate API docs against Python source (AST) | `python src/zolletta_metaskill/documentor/api_doc_validator.py <src> <docs> --recursive`       |
@@ -28,7 +28,7 @@ python src/zolletta_metaskill/documentor/drift_analyzer.py <repo> [--doc-pattern
 ```
 
 | Option                  | Default            | Description                                       |
-|---|---|---|
+| ----------------------- | ------------------ | ------------------------------------------------- |
 | `<repo>`                | (required)         | Repository root path                              |
 | `--doc-patterns`        | `*.md,*.rst,*.txt` | Comma-separated doc file patterns                 |
 | `--scope`               | (all)              | Limit analysis to a specific directory            |
@@ -47,7 +47,7 @@ python src/zolletta_metaskill/documentor/doc_staleness_scorer.py <repo> [--thres
 ```
 
 | Option                | Default    | Description                            |
-|---|---|---|
+| --------------------- | ---------- | -------------------------------------- |
 | `<repo>`              | (required) | Repository root path                   |
 | `--threshold`         | (none)     | Fail if score drops below this value   |
 | `--readme-focus`      | off        | Focus on README-style docs             |
@@ -65,7 +65,7 @@ python src/zolletta_metaskill/documentor/api_doc_validator.py <src> <docs> [--re
 ```
 
 | Option               | Default    | Description                                        |
-|---|---|---|
+| -------------------- | ---------- | -------------------------------------------------- |
 | `<src>`              | (required) | Source directory                                   |
 | `<docs>`             | (required) | Docs file or directory                             |
 | `--recursive`        | off        | Scan docs directory recursively                    |
@@ -84,7 +84,7 @@ python src/zolletta_metaskill/documentor/link_checker.py <repo> [--check-externa
 ```
 
 | Option             | Default    | Description                               |
-|---|---|---|
+| ------------------ | ---------- | ----------------------------------------- |
 | `<repo>`           | (required) | Repository root or specific file          |
 | `--check-external` | off        | Check external URLs (makes HTTP requests) |
 | `--broken-only`    | off        | Only show broken links                    |

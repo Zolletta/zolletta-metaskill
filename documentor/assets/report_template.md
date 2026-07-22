@@ -9,7 +9,7 @@
 ## Summary
 
 | Metric                      | Value                 |
-|---|---|
+| --------------------------- | --------------------- |
 | Documentation files scanned | {{total_docs}}        |
 | Files with drift detected   | {{drifted_docs}}      |
 | Overall staleness score     | {{overall_score}}/100 |
@@ -19,7 +19,7 @@
 ## Staleness Scores
 
 | File          | Score         | Last Updated     | Status     |
-|---|---|---|---|
+| ------------- | ------------- | ---------------- | ---------- |
 | {{file_name}} | {{score}}/100 | {{last_updated}} | {{status}} |
 
 ## Drift Issues
@@ -27,19 +27,19 @@
 ### High Severity
 
 | File     | Issue           | Category     | Fix Type     |
-|---|---|---|---|
+| -------- | --------------- | ------------ | ------------ |
 | {{file}} | {{description}} | {{category}} | {{fix_type}} |
 
 ### Medium Severity
 
 | File     | Issue           | Category     | Fix Type     |
-|---|---|---|---|
+| -------- | --------------- | ------------ | ------------ |
 | {{file}} | {{description}} | {{category}} | {{fix_type}} |
 
 ### Low Severity
 
 | File     | Issue           | Category     | Fix Type     |
-|---|---|---|---|
+| -------- | --------------- | ------------ | ------------ |
 | {{file}} | {{description}} | {{category}} | {{fix_type}} |
 
 ## Auto-Fixable Issues
@@ -63,7 +63,7 @@ The following issues require human judgment:
 ## Score Breakdown
 
 | Dimension          | Weight   | Score                  | Weighted                  |
-|---|---|---|---|
+| ------------------ | -------- | ---------------------- | ------------------------- |
 | Last Updated       | 20%      | {{updated_score}}      | {{updated_weighted}}      |
 | Code-Doc Alignment | 30%      | {{alignment_score}}    | {{alignment_weighted}}    |
 | Link Health        | 15%      | {{link_score}}         | {{link_weighted}}         |

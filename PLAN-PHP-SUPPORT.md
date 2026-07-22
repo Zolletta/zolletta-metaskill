@@ -20,22 +20,22 @@ All 13 scanner scripts use Python's `ast` module directly. No `common/`, no `eng
 
 ### Scanner classification
 
-| Script | Location | Language coupling | Can be language-agnostic? |
-| --- | --- | --- | --- |
-| scan_class_metrics.py | patterns/ | ast (classes, methods, attrs) | Yes — via engine |
-| scan_dependency_inversion.py | patterns/ | ast (Call, Name, Attribute) | Yes — via engine |
-| scan_interface_segregation.py | patterns/ | ast (Protocol, ABC) | Partial — Protocol is Python-specific |
-| scan_liskov_substitution.py | patterns/ | ast (ClassDef, method sigs) | Yes — via engine |
-| scan_open_closed.py | patterns/ | ast (If, isinstance, match) | Partial — isinstance is Python-specific |
-| scan_test_god_classes.py | patterns/ | ast (ClassDef in test files) | Yes — via engine |
-| test_splitter.py | patterns/ | ast (rewrites test files) | Python-only (code generation) |
-| scan_acronym_casing.py | python_code_style/ | ast (comments, docstrings) | Python-only |
-| scan_unused_all_exports.py | python_code_style/ | ast (**all**, imports) | Python-only |
-| streamline_docstrings.py | python_code_style/ | ast (docstrings) | Python-only |
-| scan_test_naming.py | python_testing_patterns/ | ast (test file naming) | Yes — via engine (file-level only) |
-| scan_naming_conventions.py | shared/ | ast (class names vs filenames) | Yes — via engine |
-| scan_one_class_per_file.py | shared/ | ast (ClassDef count) | Yes — via engine |
-| scan_tests.py | shared/ | ast (test dir mirroring) | Yes — file-level only |
+| Script                        | Location                 | Language coupling              | Can be language-agnostic?               |
+| ----------------------------- | ------------------------ | ------------------------------ | --------------------------------------- |
+| scan_class_metrics.py         | patterns/                | ast (classes, methods, attrs)  | Yes — via engine                        |
+| scan_dependency_inversion.py  | patterns/                | ast (Call, Name, Attribute)    | Yes — via engine                        |
+| scan_interface_segregation.py | patterns/                | ast (Protocol, ABC)            | Partial — Protocol is Python-specific   |
+| scan_liskov_substitution.py   | patterns/                | ast (ClassDef, method sigs)    | Yes — via engine                        |
+| scan_open_closed.py           | patterns/                | ast (If, isinstance, match)    | Partial — isinstance is Python-specific |
+| scan_test_god_classes.py      | patterns/                | ast (ClassDef in test files)   | Yes — via engine                        |
+| test_splitter.py              | patterns/                | ast (rewrites test files)      | Python-only (code generation)           |
+| scan_acronym_casing.py        | python_code_style/       | ast (comments, docstrings)     | Python-only                             |
+| scan_unused_all_exports.py    | python_code_style/       | ast (**all**, imports)         | Python-only                             |
+| streamline_docstrings.py      | python_code_style/       | ast (docstrings)               | Python-only                             |
+| scan_test_naming.py           | python_testing_patterns/ | ast (test file naming)         | Yes — via engine (file-level only)      |
+| scan_naming_conventions.py    | shared/                  | ast (class names vs filenames) | Yes — via engine                        |
+| scan_one_class_per_file.py    | shared/                  | ast (ClassDef count)           | Yes — via engine                        |
+| scan_tests.py                 | shared/                  | ast (test dir mirroring)       | Yes — file-level only                   |
 
 **7 scanners can be made fully language-agnostic** via an engine abstraction. **6 scanners are Python-specific** (docstrings, `__all__`, isinstance, Protocol, ABC, code rewriting).
 
@@ -225,15 +225,15 @@ The `main()` function resolves the engine from the registry and calls `engine.pa
 
 ### 3.3 Scanners that stay Python-only (6)
 
-| Scanner | Why it stays Python-only |
-| --- | --- |
-| scan_dependency_inversion.py | Detects `self._dep = Dep()` — Python attribute assignment pattern |
-| scan_interface_segregation.py | Detects `Protocol` and `ABC` — Python-specific abstractions |
-| scan_open_closed.py | Detects `isinstance()`, `type()`, `match/case` — Python patterns |
-| test_splitter.py | Rewrites Python test files (code generation) |
-| scan_acronym_casing.py | Reads Python comments and docstrings |
-| scan_unused_all_exports.py | Reads `__all__` and import tracking — Python-specific |
-| streamline_docstrings.py | Rewrites Python docstrings |
+| Scanner                       | Why it stays Python-only                                          |
+| ----------------------------- | ----------------------------------------------------------------- |
+| scan_dependency_inversion.py  | Detects `self._dep = Dep()` — Python attribute assignment pattern |
+| scan_interface_segregation.py | Detects `Protocol` and `ABC` — Python-specific abstractions       |
+| scan_open_closed.py           | Detects `isinstance()`, `type()`, `match/case` — Python patterns  |
+| test_splitter.py              | Rewrites Python test files (code generation)                      |
+| scan_acronym_casing.py        | Reads Python comments and docstrings                              |
+| scan_unused_all_exports.py    | Reads `__all__` and import tracking — Python-specific             |
+| streamline_docstrings.py      | Rewrites Python docstrings                                        |
 
 These stay in `python_code_style/` and `patterns/` and keep using `ast` directly. They can be ported later if needed.
 

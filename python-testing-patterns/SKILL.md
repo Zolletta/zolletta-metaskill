@@ -68,7 +68,7 @@ If you find a genuine gap, check whether the caller's tests mock the class or us
 ### Always-on rules (cannot be disabled)
 
 | #   | Area      | Name                                                                                                               |
-|---|---|---|
+| --- | --------- | ------------------------------------------------------------------------------------------------------------------ |
 | 1   | Structure | AAA pattern (Arrange, Act, Assert)                                                                                 |
 | 2   | Isolation | Tests must be independent — no shared state, each test cleans up after itself                                      |
 | 3   | Coverage  | Coverage gap detection is mandatory (run `pytest --cov` before flagging any gap)                                   |
@@ -76,11 +76,11 @@ If you find a genuine gap, check whether the caller's tests mock the class or us
 
 ### Configurable settings (stored in `settings.json` under `python.testing`)
 
-| #   | Area     | Name                                                         | Key                               | Default   |
-|---|---|---|---|---|
-| 5   | Coverage | Coverage gap threshold (below X% = gap)                      | `coverage_gap_threshold`          | `50`      |
-| 6   | Coverage | Well-covered threshold (above X% = don't flag)               | `coverage_well_covered_threshold` | `80`      |
-| 7   | Naming   | Test naming convention (`test_<unit>_<scenario>_<expected>`) | `check_test_naming`               | `true`    |
+| #   | Area     | Name                                                         | Key                               | Default |
+| --- | -------- | ------------------------------------------------------------ | --------------------------------- | ------- |
+| 5   | Coverage | Coverage gap threshold (below X% = gap)                      | `coverage_gap_threshold`          | `50`    |
+| 6   | Coverage | Well-covered threshold (above X% = don't flag)               | `coverage_well_covered_threshold` | `80`    |
+| 7   | Naming   | Test naming convention (`test_<unit>_<scenario>_<expected>`) | `check_test_naming`               | `true`  |
 
 ## Detailed rule explanations
 

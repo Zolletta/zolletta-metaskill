@@ -234,12 +234,12 @@ fi
 
 ## Tools Summary
 
-| Tool | Purpose | Lines | Key Feature |
-| --- | --- | --- | --- |
-| `drift_analyzer.py` | Full drift analysis between code and docs | ~550 | Git history comparison with code-to-doc mapping |
-| `doc_staleness_scorer.py` | Score documentation freshness 0-100 | ~450 | Weighted multi-dimensional scoring |
-| `api_doc_validator.py` | Validate API docs against Python source | ~400 | AST-based signature extraction and comparison |
-| `link_checker.py` | Audit all markdown links and anchors | ~400 | Local file, anchor, and cross-document validation |
+| Tool                      | Purpose                                   | Lines | Key Feature                                       |
+| ------------------------- | ----------------------------------------- | ----- | ------------------------------------------------- |
+| `drift_analyzer.py`       | Full drift analysis between code and docs | ~550  | Git history comparison with code-to-doc mapping   |
+| `doc_staleness_scorer.py` | Score documentation freshness 0-100       | ~450  | Weighted multi-dimensional scoring                |
+| `api_doc_validator.py`    | Validate API docs against Python source   | ~400  | AST-based signature extraction and comparison     |
+| `link_checker.py`         | Audit all markdown links and anchors      | ~400  | Local file, anchor, and cross-document validation |
 
 All tools:
 
@@ -263,13 +263,13 @@ python src/zolletta_metaskill/documentor/drift_analyzer.py <repo_path> [options]
 
 **Parameters:**
 
-| Flag | Type | Default | Description |
-| --- | --- | --- | --- |
-| `repo_path` | positional | _(required)_ | Path to the git repository to analyze |
-| `--json` | flag | off | Output the full drift report as JSON |
-| `--min-severity` | choice | `low` | Minimum severity to include in report. Choices: `critical`, `high`, `medium`, `low`, `info` |
-| `--scope` | string | `""` (all) | Limit code analysis to a subdirectory (e.g., `src/`) |
-| `--doc-patterns` | string | `*.md,*.rst,*.txt,*.adoc` | Comma-separated file patterns for documentation discovery |
+| Flag             | Type       | Default                   | Description                                                                                 |
+| ---------------- | ---------- | ------------------------- | ------------------------------------------------------------------------------------------- |
+| `repo_path`      | positional | _(required)_              | Path to the git repository to analyze                                                       |
+| `--json`         | flag       | off                       | Output the full drift report as JSON                                                        |
+| `--min-severity` | choice     | `low`                     | Minimum severity to include in report. Choices: `critical`, `high`, `medium`, `low`, `info` |
+| `--scope`        | string     | `""` (all)                | Limit code analysis to a subdirectory (e.g., `src/`)                                        |
+| `--doc-patterns` | string     | `*.md,*.rst,*.txt,*.adoc` | Comma-separated file patterns for documentation discovery                                   |
 
 **Example:**
 
@@ -296,20 +296,20 @@ python src/zolletta_metaskill/documentor/doc_staleness_scorer.py <repo_path> [op
 
 **Parameters:**
 
-| Flag | Type | Default | Description |
-| --- | --- | --- | --- |
-| `repo_path` | positional | _(required)_ | Path to the git repository to score |
-| `--json` | flag | off | Output the full scoring report as JSON |
-| `--threshold` | float | _(none)_ | Fail with exit code 1 if aggregate score falls below this value |
-| `--readme-focus` | flag | off | Only score README files (filenames starting with `readme`) |
-| `--required-sections` | string | `Installation,Usage,API,Contributing,License` | Comma-separated section names for completeness scoring |
-| `--diataxis-translations` | string | _(none)_ | Path to a JSON file with translated Diátaxis headings and directory names (for non-English documentation). See below for the JSON format. |
-| `--quiet` | flag | off | Only print the aggregate score number (no report) |
-| `--weight-updated` | float | `0.20` | Weight for the "last updated" dimension |
-| `--weight-alignment` | float | `0.30` | Weight for the "code-doc alignment" dimension |
-| `--weight-links` | float | `0.15` | Weight for the "link health" dimension |
-| `--weight-completeness` | float | `0.20` | Weight for the "completeness" dimension |
-| `--weight-accuracy` | float | `0.15` | Weight for the "accuracy" dimension |
+| Flag                      | Type       | Default                                       | Description                                                                                                                               |
+| ------------------------- | ---------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `repo_path`               | positional | _(required)_                                  | Path to the git repository to score                                                                                                       |
+| `--json`                  | flag       | off                                           | Output the full scoring report as JSON                                                                                                    |
+| `--threshold`             | float      | _(none)_                                      | Fail with exit code 1 if aggregate score falls below this value                                                                           |
+| `--readme-focus`          | flag       | off                                           | Only score README files (filenames starting with `readme`)                                                                                |
+| `--required-sections`     | string     | `Installation,Usage,API,Contributing,License` | Comma-separated section names for completeness scoring                                                                                    |
+| `--diataxis-translations` | string     | _(none)_                                      | Path to a JSON file with translated Diátaxis headings and directory names (for non-English documentation). See below for the JSON format. |
+| `--quiet`                 | flag       | off                                           | Only print the aggregate score number (no report)                                                                                         |
+| `--weight-updated`        | float      | `0.20`                                        | Weight for the "last updated" dimension                                                                                                   |
+| `--weight-alignment`      | float      | `0.30`                                        | Weight for the "code-doc alignment" dimension                                                                                             |
+| `--weight-links`          | float      | `0.15`                                        | Weight for the "link health" dimension                                                                                                    |
+| `--weight-completeness`   | float      | `0.20`                                        | Weight for the "completeness" dimension                                                                                                   |
+| `--weight-accuracy`       | float      | `0.15`                                        | Weight for the "accuracy" dimension                                                                                                       |
 
 **Example:**
 
@@ -368,13 +368,13 @@ python src/zolletta_metaskill/documentor/api_doc_validator.py <source_path> <doc
 
 **Parameters:**
 
-| Flag | Type | Default | Description |
-| --- | --- | --- | --- |
-| `source_path` | positional | _(required)_ | Path to a Python source file or directory |
-| `doc_path` | positional | _(required)_ | Path to API documentation file (`.md`) or directory |
-| `--json` | flag | off | Output the validation report as JSON |
-| `--recursive` | flag | off | Recursively scan the doc directory for markdown files |
-| `--include-private` | flag | off | Include `_`-prefixed private functions and classes in validation |
+| Flag                | Type       | Default      | Description                                                      |
+| ------------------- | ---------- | ------------ | ---------------------------------------------------------------- |
+| `source_path`       | positional | _(required)_ | Path to a Python source file or directory                        |
+| `doc_path`          | positional | _(required)_ | Path to API documentation file (`.md`) or directory              |
+| `--json`            | flag       | off          | Output the validation report as JSON                             |
+| `--recursive`       | flag       | off          | Recursively scan the doc directory for markdown files            |
+| `--include-private` | flag       | off          | Include `_`-prefixed private functions and classes in validation |
 
 **Example:**
 
@@ -401,12 +401,12 @@ python src/zolletta_metaskill/documentor/link_checker.py <path> [options]
 
 **Parameters:**
 
-| Flag | Type | Default | Description |
-| --- | --- | --- | --- |
-| `path` | positional | _(required)_ | File or directory to check (single `.md` file or directory for recursive scan) |
-| `--json` | flag | off | Output the link check report as JSON |
-| `--broken-only` | flag | off | Only show broken links in the report (omit valid links from output) |
-| `--check-external` | flag | off | Also validate external URLs via HTTP HEAD requests (slower, makes network requests) |
+| Flag               | Type       | Default      | Description                                                                         |
+| ------------------ | ---------- | ------------ | ----------------------------------------------------------------------------------- |
+| `path`             | positional | _(required)_ | File or directory to check (single `.md` file or directory for recursive scan)      |
+| `--json`           | flag       | off          | Output the link check report as JSON                                                |
+| `--broken-only`    | flag       | off          | Only show broken links in the report (omit valid links from output)                 |
+| `--check-external` | flag       | off          | Also validate external URLs via HTTP HEAD requests (slower, makes network requests) |
 
 **Example:**
 

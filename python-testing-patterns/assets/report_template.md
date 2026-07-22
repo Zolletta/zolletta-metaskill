@@ -16,7 +16,7 @@
 ## Coverage Summary
 
 | Metric                  | Value               |
-|---|---|
+| ----------------------- | ------------------- |
 | Total coverage          | {{total_coverage}}  |
 | Modules scanned         | {{modules_scanned}} |
 | Modules below threshold | {{modules_below}}   |
@@ -26,7 +26,7 @@
 > Only modules below `coverage_gap_threshold` (default 50%) with no direct test references and all callers mocked.
 
 | Module          | Coverage      | Direct Tests | Indirect Coverage | Suggested Fix |
-|---|---|---|---|---|
+| --------------- | ------------- | ------------ | ----------------- | ------------- |
 | {{module_path}} | {{coverage}}% | {{yes_no}}   | {{yes_no}}        | {{fix}}       |
 
 ## Findings
@@ -34,25 +34,25 @@
 ### Critical
 
 | #     | File                   | Test/Symbol | Issue       | Rule     | Suggested Fix |
-|---|---|---|---|---|---|
+| ----- | ---------------------- | ----------- | ----------- | -------- | ------------- |
 | {{n}} | {{file_path}}:{{line}} | {{symbol}}  | {{problem}} | {{rule}} | {{fix}}       |
 
 ### High
 
 | #     | File                   | Test/Symbol | Issue       | Rule     | Suggested Fix |
-|---|---|---|---|---|---|
+| ----- | ---------------------- | ----------- | ----------- | -------- | ------------- |
 | {{n}} | {{file_path}}:{{line}} | {{symbol}}  | {{problem}} | {{rule}} | {{fix}}       |
 
 ### Medium
 
 | #     | File                   | Test/Symbol | Issue       | Rule     | Suggested Fix |
-|---|---|---|---|---|---|
+| ----- | ---------------------- | ----------- | ----------- | -------- | ------------- |
 | {{n}} | {{file_path}}:{{line}} | {{symbol}}  | {{problem}} | {{rule}} | {{fix}}       |
 
 ### Low
 
 | #     | File                   | Test/Symbol | Issue       | Rule     | Suggested Fix |
-|---|---|---|---|---|---|
+| ----- | ---------------------- | ----------- | ----------- | -------- | ------------- |
 | {{n}} | {{file_path}}:{{line}} | {{symbol}}  | {{problem}} | {{rule}} | {{fix}}       |
 
 ## Recommendations

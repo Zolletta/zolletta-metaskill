@@ -24,7 +24,7 @@ All paths are relative to where this SKILL.md is found.
 ## Subcommands
 
 | Subcommand                | Path                               | Scope                                                                                                                                                                   |
-|---|---|---|
+| ------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `setup`                   | `setup/SKILL.md`                   | Project initialization — creates `.zolletta-metaskill/settings.json`, detects language, Docker container, tokensave, and Python tooling                                 |
 | `documentor`              | `documentor/SKILL.md`              | [Diátaxis](https://diataxis.fr/) compliance + drift detection for `.backstage/`                                                                                         |
 | `patterns`                | `patterns/SKILL.md`                | God classes, SOLID, coupling, composition vs inheritance for `src/`                                                                                                     |
@@ -38,9 +38,9 @@ All paths are relative to where this SKILL.md is found.
 All subcommands read from this skill's subdirectories:
 
 | Resource   | Path                                | Contents                                                                                                        |
-|---|---|---|
+| ---------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | References | `docs/`                             | Shared guidelines (Diátaxis, review workflow, grading rubric, tool messages)                                    |
-| Scripts    | `src/zolletta_metaskill/`           | Scanning scripts organized by skill (patterns/, python_code_style/, python_testing_patterns/, shared/)        |
+| Scripts    | `src/zolletta_metaskill/`           | Scanning scripts organized by skill (patterns/, python_code_style/, python_testing_patterns/, shared/)          |
 | Settings   | `.zolletta-metaskill/settings.json` | Project-wide configuration written by `setup` (language, tool availability, external-review model, reports dir) |
 
 ## Rules

@@ -11,7 +11,7 @@ Zolletta-MetaSkill is invoked as `/zolletta-metaskill <subcommand>`. Each subcom
 ## Subcommand table
 
 | Subcommand                | Path                               | Scope                                                                                                                                                                   |
-|---|---|---|
+| ------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `setup`                   | `setup/SKILL.md`                   | Project initialization — creates `.zolletta-metaskill/settings.json`, detects language, Docker container, tokensave, and Python tooling                                 |
 | `documentor`              | `documentor/SKILL.md`              | [Diátaxis](https://diataxis.fr/) compliance + drift detection for the configured documentation directory (default: `docs/`)                                             |
 | `patterns`                | `patterns/SKILL.md`                | God classes, SOLID, coupling, composition vs inheritance for `src/`                                                                                                     |

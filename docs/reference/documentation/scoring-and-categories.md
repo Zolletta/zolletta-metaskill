@@ -12,13 +12,13 @@ Reference for interpreting staleness scores, classifying drift, deciding what to
 
 Documentation freshness is scored on a **0-100 scale** where **100 = perfectly current**. The score is a weighted combination of five dimensions:
 
-| Dimension | Weight | What It Measures |
-| --- | --- | --- |
-| **Last Updated** | 20% | How recently the doc file was modified relative to its associated code |
-| **Code-Doc Alignment** | 30% | Whether documented items (functions, classes, files) still exist and match |
-| **Link Health** | 15% | Percentage of links that resolve correctly |
-| **Completeness** | 20% | Whether expected sections are present and non-empty |
-| **Accuracy** | 15% | Whether version strings, file paths, and other verifiable facts are correct |
+| Dimension              | Weight | What It Measures                                                            |
+| ---------------------- | ------ | --------------------------------------------------------------------------- |
+| **Last Updated**       | 20%    | How recently the doc file was modified relative to its associated code      |
+| **Code-Doc Alignment** | 30%    | Whether documented items (functions, classes, files) still exist and match  |
+| **Link Health**        | 15%    | Percentage of links that resolve correctly                                  |
+| **Completeness**       | 20%    | Whether expected sections are present and non-empty                         |
+| **Accuracy**           | 15%    | Whether version strings, file paths, and other verifiable facts are correct |
 
 **Score interpretation:**
 
@@ -147,15 +147,15 @@ Add staleness scoring to release checklists. Block releases if documentation sco
 
 ## Troubleshooting
 
-| Problem | Cause | Solution |
-| --- | --- | --- |
-| `drift_analyzer.py` reports zero docs found | Repository has non-standard doc extensions or docs are in ignored directories (e.g., `node_modules`, `dist`) | Use `--doc-patterns "*.md,*.rst,*.txt"` to explicitly specify extensions |
-| Staleness scores are unexpectedly low | Docs reference files that were reorganized or moved to new directories | Run `link_checker.py` first to identify broken references, fix them, then re-score |
-| API validator finds no source signatures | Source path points to a non-Python directory or all functions are `_`-prefixed private | Verify `source_path` contains `.py` files; add `--include-private` if the API surface uses private names |
-| Link checker flags valid anchors as broken | Heading text contains special characters, inline code, or emoji that alter the slug | Compare the expected slug (lowercase, special chars stripped, spaces to hyphens) against the actual heading text |
-| Git history comparison shows no changes | Shallow clone lacks full commit history (common in CI) | Clone with `fetch-depth: 0` or pass `--scope` to narrow the analysis window |
-| External URL checks hang or time out | Target servers are slow or block automated HEAD requests | Omit `--check-external` for local-only validation, or run external checks in a separate non-blocking job |
-| Drift report marks everything as `[MANUAL]` | Most detected drift is semantic or architectural, not auto-fixable | This is expected for large refactors; focus on `[AUTO]` and `[SEMI]` items first, then triage `[MANUAL]` items by severity |
+| Problem                                     | Cause                                                                                                        | Solution                                                                                                                   |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `drift_analyzer.py` reports zero docs found | Repository has non-standard doc extensions or docs are in ignored directories (e.g., `node_modules`, `dist`) | Use `--doc-patterns "*.md,*.rst,*.txt"` to explicitly specify extensions                                                   |
+| Staleness scores are unexpectedly low       | Docs reference files that were reorganized or moved to new directories                                       | Run `link_checker.py` first to identify broken references, fix them, then re-score                                         |
+| API validator finds no source signatures    | Source path points to a non-Python directory or all functions are `_`-prefixed private                       | Verify `source_path` contains `.py` files; add `--include-private` if the API surface uses private names                   |
+| Link checker flags valid anchors as broken  | Heading text contains special characters, inline code, or emoji that alter the slug                          | Compare the expected slug (lowercase, special chars stripped, spaces to hyphens) against the actual heading text           |
+| Git history comparison shows no changes     | Shallow clone lacks full commit history (common in CI)                                                       | Clone with `fetch-depth: 0` or pass `--scope` to narrow the analysis window                                                |
+| External URL checks hang or time out        | Target servers are slow or block automated HEAD requests                                                     | Omit `--check-external` for local-only validation, or run external checks in a separate non-blocking job                   |
+| Drift report marks everything as `[MANUAL]` | Most detected drift is semantic or architectural, not auto-fixable                                           | This is expected for large refactors; focus on `[AUTO]` and `[SEMI]` items first, then triage `[MANUAL]` items by severity |
 
 ## Success Criteria
 

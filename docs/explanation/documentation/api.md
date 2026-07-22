@@ -35,7 +35,7 @@ Every public function should document:
 ## API Doc Formats
 
 | Format              | Best For              | Tooling                    |
-|---|---|---|
+| ------------------- | --------------------- | -------------------------- |
 | Docstrings (Python) | Python libraries      | Sphinx, pdoc, mkdocstrings |
 | JSDoc               | JavaScript/TypeScript | TypeDoc, documentation.js  |
 | OpenAPI/Swagger     | REST APIs             | Swagger UI, Redoc          |

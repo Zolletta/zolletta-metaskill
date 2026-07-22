@@ -128,7 +128,7 @@ When checking accuracy, the agent MUST:
 ### Tools
 
 | Tool                      | Purpose                                       | Command                                                                                        |
-|---|---|---|
+| ------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `drift_analyzer.py`       | Full drift analysis between code and docs     | `python src/zolletta_metaskill/documentor/drift_analyzer.py <repo> --min-severity high --json` |
 | `doc_staleness_scorer.py` | Score documentation freshness 0-100           | `python src/zolletta_metaskill/documentor/doc_staleness_scorer.py <repo> --threshold 60`       |
 | `api_doc_validator.py`    | Validate API docs against Python source (AST) | `python src/zolletta_metaskill/documentor/api_doc_validator.py <src> <docs> --recursive`       |
@@ -160,7 +160,7 @@ Load on demand — keep this file lean:
 ### Assets
 
 | Asset                                              | Description                               |
-|---|---|
+| -------------------------------------------------- | ----------------------------------------- |
 | [Report Template](assets/report_template.md)       | Template for drift analysis reports       |
 | [Sample Drift Data](assets/sample_drift_data.json) | Sample JSON for testing and demonstration |
 

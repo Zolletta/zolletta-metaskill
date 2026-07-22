@@ -42,7 +42,7 @@ python3 src/zolletta_metaskill/patterns/test_splitter.py <test_file> \
 ## Options
 
 | Option             | Default                                      | Description                                          |
-|---|---|---|
+| ------------------ | -------------------------------------------- | ---------------------------------------------------- |
 | `<test_file>`      | (required)                                   | Path to the test .py file to split                   |
 | `--mapping <json>` | (none)                                       | JSON file or inline JSON mapping prefix to SUT class |
 | `--out <dir>`      | `.zolletta-metaskill/test_split/<filename>/` | Output directory                                     |
