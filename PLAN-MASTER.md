@@ -46,7 +46,7 @@ Both PHP plans touch shared files. This table assigns each file to exactly one p
 > These are preparatory fixes to make the sub-plans consistent before execution begins.
 
 - [x] **0.1** Consolidate `CHANGELOG.md` — collapse `[1.1.0]` and `[1.0.0]` into a single `[1.0.0]` entry keeping only the "Added" chapter (merge the 1.1.0 multi-language docs content into 1.0.0 Added). Add an `[Unreleased]` placeholder above `[1.0.0]` for this plan's work.
-- [ ] **0.2** Rename `PLAN-SETUP-COMAND.md` → `PLAN-SETUP-COMMAND.md` (fix typo: `git mv`)
+- [x] **0.2** Rename `PLAN-SETUP-COMAND.md` → `PLAN-SETUP-COMMAND.md` (fix typo)
 - [ ] **0.3** Add "Tests required by PLAN-PHP-SUPPORT" section to `PLAN-TEST-RECOVERY.md` — table listing all deferred tests from PLAN-PHP-SUPPORT Phases 1.5, 2.4, 3.5, 6.2 (`common/`, `engines/`, `php_patterns/`)
 - [ ] **0.4** Mark PLAN-PHP-SUPPORT Phase 5.1 as superseded — add banner pointing to PLAN-PHP-CODE-STYLE.md
 - [ ] **0.5** Document schema `php.code_style` fix in PLAN-PHP-SUPPORT Phase 4.8 — the schema's 3 toggles (`check_naming_conventions`, `check_one_class_per_file`, `check_filename_matches_class`) must be replaced with the 12 configurable toggles from PLAN-PHP-CODE-STYLE Phase 3.1 (`check_union_types`, `check_intersection_types`, `check_enum_methods`, `check_first_class_callables`, `check_readonly_classes`, `check_typed_constants`, `check_override_attribute`, `check_property_hooks`, `check_asymmetric_visibility`, `check_pipe_operator`, `check_array_functions`, `check_string_functions`)
