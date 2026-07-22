@@ -39,7 +39,7 @@ Setup detects and records the following:
 | **Python config** | Line length, target version, ruff/mypy/ty/pytest config from `pyproject.toml` | `python.*` fields |
 | **Python code-style rules** | Configurable rule toggles for `python-code-style` | `python.code_style` object |
 | **Python testing rules** | Configurable rule toggles for `python-testing-patterns` | `python.testing` object |
-| **Documentation directory** | `.backstage/` if exists, else `docs/` if exists, else default `docs/` | `documentation.directory` |
+| **Documentation directory** | `.backstage/` if exists, else `docs/` if exists, else default `docs/` | `documentation.dir` |
 
 ### Step 3 — settings.json
 

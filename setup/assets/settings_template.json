@@ -10,6 +10,6 @@
   "reports_dir": ".zolletta-metaskill/reports",
   "documentation": {
     "language": "en",
-    "directory": "docs/"
+    "dir": "docs"
   }
 }

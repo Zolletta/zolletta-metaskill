@@ -12,7 +12,7 @@ Review project documentation for [Diátaxis](https://diataxis.fr/) compliance, d
 
 ## Prerequisites
 
-- A project with a documentation directory (default: `docs/`, configurable via `documentation.directory` in `settings.json`)
+- A project with a documentation directory (default: `docs`, configurable via `documentation.dir` in `settings.json`)
 - The zolletta-metaskill skill installed and available to the agent
 - The project set up with `/zolletta-metaskill setup`
 
@@ -94,4 +94,4 @@ Classify each finding by severity:
 - [Drift detection tools](../../reference/documentation/drift-detection-tools.md) — full reference for drift detection scripts
 - [Scoring and categories](../../reference/documentation/scoring-and-categories.md) — freshness scoring methodology
 - [Documentation standards](../../explanation/documentation/standards.md) — general documentation rules
-- [Settings schema](../../reference/settings-schema.md) — `documentation.directory` configuration
+- [Settings schema](../../reference/settings-schema.md) — `documentation.dir` configuration

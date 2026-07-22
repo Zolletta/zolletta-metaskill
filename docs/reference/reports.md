@@ -15,7 +15,7 @@ skills:
 
 # Reports Reference
 
-All review reports are saved to a timestamped directory under the reports path configured in `settings.json` (default: `.zolletta-metaskill/reports/`).
+All review reports are saved to a timestamped directory under the reports path configured in `settings.json` (default: `.zolletta-metaskill/reports`).
 
 ## Directory structure
 

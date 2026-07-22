@@ -155,9 +155,9 @@ If the language is **Python**, read `pyproject.toml` and extract the effective c
 Determine the project's documentation configuration:
 
 1. **Directory**: check in this order:
-   - If `.backstage/` exists in the project root → `directory: ".backstage/"`
-   - Else if `docs/` exists in the project root → `directory: "docs/"`
-   - Else → `directory: "docs/"` (default — will be created by the `documentor` skill if needed)
+   - If `.backstage/` exists in the project root → `dir: ".backstage"`
+   - Else if `docs/` exists in the project root → `dir: "docs"`
+   - Else → `dir: "docs"` (default — will be created by the `documentor` skill if needed)
 2. **Language**: default to `"en"` (ISO 639-1). If the project has a `documentation.language` preference, use that instead.
 
 Store both values for writing to the `documentation` object in `settings.json`. The `documentor` skill reads these fields to locate the Diátaxis docs tree and translate signpost headings if needed.
@@ -229,7 +229,7 @@ The `documentation` subobject has this shape:
 ```json
 {
   "language": "en",
-  "directory": "docs/"
+  "dir": "docs"
 }
 ```
 
@@ -273,7 +273,7 @@ Zolletta-metaskill setup complete.
     line_length:                   <value>
     target_version:                <value>
   Settings file:                   .zolletta-metaskill/settings.json
-  Reports directory:               .zolletta-metaskill/reports/
+  Reports directory:               .zolletta-metaskill/reports
 ```
 
 If any tools or skills were unavailable, the "not installed" messages from Step 8 will have already been printed above this summary.

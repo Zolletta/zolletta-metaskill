@@ -70,7 +70,7 @@ skills:
   "external_review_model": "swe",
   "documentation": {
     "language": "en",
-    "directory": "docs/"
+    "dir": "docs"
   },
   "reports_dir": ".zolletta-metaskill/reports"
 }
@@ -96,7 +96,7 @@ skills:
 | Field | Type | Description |
 | --- | --- | --- |
 | `documentation.language` | string | ISO 639-1 code for documentation language (default: `"en"`). When not `"en"`, the `documentor` skill translates Diátaxis signpost headings before running the staleness scorer |
-| `documentation.directory` | string | Directory where project documentation lives (default: `"docs/"`). Used by the `documentor` skill to locate the Diátaxis docs tree for drift detection and staleness scoring |
+| `documentation.dir` | string | Directory where project documentation lives (default: `"docs"`). Used by the `documentor` skill to locate the Diátaxis docs tree for drift detection and staleness scoring |
 
 ## `python` — tooling, rules, and configuration
 

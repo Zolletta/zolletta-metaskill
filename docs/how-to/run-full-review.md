@@ -58,7 +58,7 @@ The full review runs in **read-only mode**: no fixes are applied, all tools run 
 | Setting                 | Location                            | Default                        | Description                                   |
 |---|---|---|---|
 | `language`              | `.zolletta-metaskill/settings.json` | (detected)                     | Determines which language-specific skills run |
-| `reports_dir`           | `.zolletta-metaskill/settings.json` | `.zolletta-metaskill/reports/` | Where report folders are created              |
+| `reports_dir`           | `.zolletta-metaskill/settings.json` | `.zolletta-metaskill/reports` | Where report folders are created              |
 | `external_review_model` | `.zolletta-metaskill/settings.json` | `swe`                          | Model for the external review sub-skill       |
 
 ## See also
