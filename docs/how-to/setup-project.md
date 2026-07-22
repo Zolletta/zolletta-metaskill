@@ -29,14 +29,14 @@ The setup procedure runs automatically when any subcommand is invoked and `setti
 
 Setup detects and records the following:
 
-| Detection                   | What it finds                                                                 | Stored as                 |
-|---|---|---|
-| **Project language**        | Python, TypeScript, PHP, Go, Rust, Java, Ruby, C/C++                          | `language`                |
-| **Docker container**        | Service name from `compose.yml` / `docker-compose.yml`                        | `container_name`          |
-| **tokensave**               | Whether the tokensave MCP server is available                                 | `tokensave_available`     |
-| **Python tooling**          | ruff, pytest, ty, vulture, mypy, uv availability                              | `python` object           |
-| **Python config**           | Line length, target version, ruff/mypy/ty/pytest config from `pyproject.toml` | `python_config` object    |
-| **Documentation directory** | `.backstage/` if exists, else `docs/` if exists, else default `docs/`         | `documentation_directory` |
+| Detection | What it finds | Stored as |
+| --- | --- | --- |
+| **Project language** | Python, TypeScript, PHP, Go, Rust, Java, Ruby, C/C++ | `language` |
+| **Docker container** | Service name from `compose.yml` / `docker-compose.yml` | `container_name` |
+| **tokensave** | Whether the tokensave MCP server is available | `tokensave_available` |
+| **Python tooling** | ruff, pytest, ty, vulture, mypy, uv availability | `python` object |
+| **Python config** | Line length, target version, ruff/mypy/ty/pytest config from `pyproject.toml` | `python_config` object |
+| **Documentation directory** | `.backstage/` if exists, else `docs/` if exists, else default `docs/` | `documentation.directory` |
 
 ### Step 3 — settings.json
 
@@ -51,6 +51,7 @@ cat .zolletta-metaskill/settings.json
 ```
 
 Check that:
+
 - `language` matches the project's primary language
 - `container_name` is correct (or `null` if no container)
 - `tokensave_available` is `true` if tokensave is installed

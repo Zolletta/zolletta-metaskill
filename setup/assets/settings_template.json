@@ -26,7 +26,9 @@
     "check_test_naming": true
   },
   "external_review_model": "swe",
-  "documentation_language": "en",
   "reports_dir": ".zolletta-metaskill/reports",
-  "documentation_directory": "docs/"
+  "documentation": {
+    "language": "en",
+    "directory": "docs/"
+  }
 }

@@ -148,15 +148,17 @@ If the language is **Python**, read `pyproject.toml` and extract the effective c
 
 7. **Write `python_testing_patterns_rules`** — copy the default rule toggles from `settings_template.json`. Same merge behavior as `python_code_style_rules`: preserve existing user-customized values, only add new keys.
 
-### Step 6.6 — Detect documentation directory
+### Step 6.6 — Detect documentation configuration
 
-Determine where the project's documentation lives. Check in this order:
+Determine the project's documentation configuration:
 
-1. If `.backstage/` exists in the project root → `documentation_directory: ".backstage/"`
-2. Else if `docs/` exists in the project root → `documentation_directory: "docs/"`
-3. Else → `documentation_directory: "docs/"` (default — will be created by the `documentor` skill if needed)
+1. **Directory**: check in this order:
+   - If `.backstage/` exists in the project root → `directory: ".backstage/"`
+   - Else if `docs/` exists in the project root → `directory: "docs/"`
+   - Else → `directory: "docs/"` (default — will be created by the `documentor` skill if needed)
+2. **Language**: default to `"en"` (ISO 639-1). If the project has a `documentation.language` preference, use that instead.
 
-Store the detected value for writing to `settings.json`. The `documentor` skill reads this field to locate the Diátaxis docs tree for drift detection and staleness scoring.
+Store both values for writing to the `documentation` object in `settings.json`. The `documentor` skill reads these fields to locate the Diátaxis docs tree and translate signpost headings if needed.
 
 ### Step 7 — Set Python skill availability
 
@@ -185,8 +187,7 @@ Read the [settings template](assets/settings_template.json) and write `.zolletta
 | `python_code_style_rules`           | Object from Step 6.5 (Python only; defaults from `settings_template.json`) — see below |
 | `python_testing_patterns_rules`     | Object from Step 6.5 (Python only; defaults from `settings_template.json`) — see below |
 | `external_review_model`             | `"swe"` (default; overridable by front-matter)                                         |
-| `documentation_language`            | `"en"` (default; ISO 639-1 code for documentation language)                            |
-| `documentation_directory`           | Detected from Step 6.6 (`.backstage/` → `docs/` → default `docs/`)                     |
+| `documentation`                     | Object from Step 6.6 — see below                                                       |
 | `reports_dir`                       | `".zolletta-metaskill/reports"`                                                        |
 
 The `python` subobject has this shape:
@@ -214,6 +215,15 @@ The `python_config` subobject has this shape (Python only; `null` otherwise):
   "mypy": { "strict": true, "python_version": "3.12" },
   "ty": { "python_version": "3.12" },
   "pytest": { "addopts": ["-ra"], "testpaths": ["tests"], "minversion": "8.0" }
+}
+```
+
+The `documentation` subobject has this shape:
+
+```json
+{
+  "language": "en",
+  "directory": "docs/"
 }
 ```
 

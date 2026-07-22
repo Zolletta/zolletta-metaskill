@@ -12,7 +12,7 @@ Review project documentation for [Diátaxis](https://diataxis.fr/) compliance, d
 
 ## Prerequisites
 
-- A project with a documentation directory (default: `docs/`, configurable via `documentation_directory` in `settings.json`)
+- A project with a documentation directory (default: `docs/`, configurable via `documentation.directory` in `settings.json`)
 - The zolletta-metaskill skill installed and available to the agent
 - The project set up with `/zolletta-metaskill setup`
 
@@ -84,6 +84,7 @@ This validates API documentation against the actual code signatures.
 ### Step 5 — Review findings
 
 Classify each finding by severity:
+
 - **High** — stale docs for critical features, broken links, missing API docs
 - **Medium** — stale docs for non-critical features, Diátaxis misplacement
 - **Low** — formatting issues, missing frontmatter fields
@@ -93,4 +94,4 @@ Classify each finding by severity:
 - [Drift detection tools](../../reference/documentation/drift-detection-tools.md) — full reference for drift detection scripts
 - [Scoring and categories](../../reference/documentation/scoring-and-categories.md) — freshness scoring methodology
 - [Documentation standards](../../explanation/documentation/standards.md) — general documentation rules
-- [Settings schema](../../reference/settings-schema.md) — `documentation_directory` configuration
+- [Settings schema](../../reference/settings-schema.md) — `documentation.directory` configuration
