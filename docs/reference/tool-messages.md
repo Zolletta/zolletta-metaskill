@@ -10,7 +10,7 @@ Shared messages printed by the `setup` subcommand and the tool-failure handler w
 
 These messages must be printed verbatim (or close to it) by any subcommand that detects a tool is missing — either during setup or via the tool-failure handler.
 
-> **Python skills**: `python-code-style` and `python-testing-patterns` are bundled inside this meta-skill, so they are always available. No "not installed" message is needed for them — the `*_available` flags in `settings.json` only reflect whether the project language is Python.
+> **Python skills**: `python-code-style` and `python-testing-patterns` are bundled inside this meta-skill, so they are always available. No "not installed" message is needed for them.
 
 ---
 
@@ -92,9 +92,9 @@ Homepage: https://github.com/pytest-dev/pytest
 ```text
 ℹ ty is not installed.
 
-ty is a fast Python type checker based on red-knot. Zolletta-metaskill uses it as
-an alternative to mypy for type checking. Without ty, type checking falls
-back to mypy (if available) or is skipped.
+ty is a fast Python type checker based on red-knot. Zolletta-metaskill uses it
+alongside mypy for type checking. Without ty, type checking still runs via
+mypy (if available); if neither is available, type checking is skipped.
 
 Homepage: https://github.com/astral-sh/ty
 ```
@@ -121,9 +121,10 @@ Homepage: https://github.com/jendrikseipp/vulture
 ```text
 ℹ mypy is not installed.
 
-mypy is a static type checker for Python. Zolletta-metaskill uses it to verify
-type annotations and catch type errors before runtime. Without mypy
-(and without ty), the code-style review cannot run type checking.
+mypy is a static type checker for Python. Zolletta-metaskill uses it alongside
+ty to verify type annotations and catch type errors before runtime. Without
+mypy, type checking still runs via ty (if available); if neither is available,
+type checking is skipped.
 
 Homepage: https://github.com/python/mypy
 ```
