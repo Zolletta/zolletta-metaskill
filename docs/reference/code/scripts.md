@@ -82,14 +82,14 @@ python3 src/zolletta_metaskill/shared/scan_tests.py \
     [--ignore-dirs <dir1,dir2,...>] [--skip]
 ```
 
-| Option            | Default                 | Description                                                 |
-| ----------------- | ----------------------- | ----------------------------------------------------------- |
-| `--src`           | `src`                   | Source root directory                                       |
-| `--tests`         | `tests`                 | Test root directory                                         |
-| `--src-package`   | auto-detect             | Package path within `--src`                                 |
-| `--tests-package` | same as `--src-package` | Package path within `--tests`                               |
-| `--ignore-dirs`   | (none)                  | Comma-separated dir names to skip (e.g. `assets,templates`) |
-| `--skip`          | off                     | Skip this check entirely                                    |
+| Option | Default | Description |
+| --- | --- | --- |
+| `--src` | `src` | Source root directory |
+| `--tests` | `tests` | Test root directory |
+| `--src-package` | auto-detect | Package path within `--src` |
+| `--tests-package` | same as `--src-package` | Package path within `--tests` |
+| `--ignore-dirs` | (none) | Comma-separated dir names to skip (e.g. `assets,templates`) |
+| `--skip` | off | Skip this check entirely |
 
 **File matching convention**: `src/.../my_module.py` -> `tests/.../test_my_module*.py`. One source class can have many test files (e.g. `test_cache_operations.py`, `test_cache_getters.py`), so matching is by prefix. Also checks class-name-based prefixes: `src/.../my_module.py` with class `MyClass` -> `tests/.../test_my_class*.py`. Uses longest-prefix matching to avoid false positives (e.g. `test_scenario_writer.py` matches `scenario_writer.py`, not `scenario.py`). When two source files have equal-length prefixes (e.g. two `cache.py` files in different directories), prefers the one in the same directory as the test.
 
@@ -111,15 +111,15 @@ python3 src/zolletta_metaskill/shared/scan_naming_conventions.py \
     [--ignore-dirs <dir1,dir2,...>] [--strict] [--skip]
 ```
 
-| Option            | Default                 | Description                                                 |
-| ----------------- | ----------------------- | ----------------------------------------------------------- |
-| `--src`           | `src`                   | Source root directory                                       |
-| `--tests`         | `tests`                 | Test root directory                                         |
-| `--src-package`   | auto-detect             | Package path within `--src`                                 |
-| `--tests-package` | same as `--src-package` | Package path within `--tests`                               |
-| `--ignore-dirs`   | (none)                  | Comma-separated dir names to skip (e.g. `assets,templates`) |
-| `--strict`        | off                     | Exit with code 1 if violations are found                    |
-| `--skip`          | off                     | Skip this check entirely                                    |
+| Option | Default | Description |
+| --- | --- | --- |
+| `--src` | `src` | Source root directory |
+| `--tests` | `tests` | Test root directory |
+| `--src-package` | auto-detect | Package path within `--src` |
+| `--tests-package` | same as `--src-package` | Package path within `--tests` |
+| `--ignore-dirs` | (none) | Comma-separated dir names to skip (e.g. `assets,templates`) |
+| `--strict` | off | Exit with code 1 if violations are found |
+| `--skip` | off | Skip this check entirely |
 
 **Matching logic**: for each test file `test_cache_operations.py`, the script strips `test_` to get `cache_operations`, then checks if any source file stem in the mirrored directory is a prefix (followed by nothing or by `_`). So `cache.py` matches `cache_operations` (suffix `_operations`), and `cache_operations.py` also matches (no suffix). The longest match wins. Class-name-based prefixes are also checked: source file `my_module.py` with class `MyClass` accepts `test_my_class*.py`.
 
@@ -136,12 +136,12 @@ python3 src/zolletta_metaskill/patterns/scan_dependency_inversion.py <directory>
     [--entry-points <pattern1,pattern2,...>] [--skip] [--strict]
 ```
 
-| Option           | Default                                                     | Description                                  |
-| ---------------- | ----------------------------------------------------------- | -------------------------------------------- |
-| `<directory>`    | `src`                                                       | Root directory to scan                       |
+| Option | Default | Description |
+| --- | --- | --- |
+| `<directory>` | `src` | Root directory to scan |
 | `--entry-points` | `main,cli,app,__main__,myproject,manage,wsgi,asgi,conftest` | Comma-separated filename patterns to exclude |
-| `--skip`         | off                                                         | Skip this check entirely                     |
-| `--strict`       | off                                                         | Exit with code 1 if violations are found     |
+| `--skip` | off | Skip this check entirely |
+| `--strict` | off | Exit with code 1 if violations are found |
 
 **Exclusions**: entry points (composition roots by filename pattern), classes that create DI containers (`make_container()`, `Container()`, etc. — detected semantically as composition roots), dataclasses/NamedTuples/TypedDicts/Enums, factory classes, and stdlib types are automatically excluded.
 
@@ -242,15 +242,16 @@ Checks that acronyms in PascalCase class names stay fully uppercase (e.g. `HTTPC
 python3 src/zolletta_metaskill/python_code_style/scan_acronym_casing.py <directory> [--acronyms <list>] [--strict] [--json] [--skip]
 ```
 
-| Option        | Default                  | Description                                                  |
-| ------------- | ------------------------ | ------------------------------------------------------------ |
-| `<directory>` | `src`                    | Root source directory to scan                                |
-| `--acronyms`  | (from assets + settings) | Comma-separated acronym list (overrides built-in + settings) |
-| `--strict`    | off                      | Exit with code 1 if violations are found                     |
-| `--json`      | off                      | Output as JSON instead of markdown                           |
-| `--skip`      | off                      | Skip this check entirely                                     |
+| Option | Default | Description |
+| --- | --- | --- |
+| `<directory>` | `src` | Root source directory to scan |
+| `--acronyms` | (from assets + settings) | Comma-separated acronym list (overrides built-in + settings) |
+| `--strict` | off | Exit with code 1 if violations are found |
+| `--json` | off | Output as JSON instead of markdown |
+| `--skip` | off | Skip this check entirely |
 
 The acronym list is built additively:
+
 1. **Shipped base**: `python-code-style/assets/acronyms.json` (common SE acronyms: CI, CD, CICD, HTTP, HTTPS, JSON, SQL, URL, etc.) — always loaded
 2. **Project-specific**: the top-level `acronyms` array in `settings.json` — merged with the shipped list (additive, not replacing)
 3. **`--acronyms` CLI flag**: fully replaces both (for testing/debugging only)
@@ -303,3 +304,28 @@ The full scanning workflow runs all scripts in this order:
 12. `scan_acronym_casing.py` — acronym casing convention
 13. For each test God class: `test_splitter.py --dry-run` → review → split
 14. Apply the "reason to change" test to each top candidate from step 1
+
+## Repository Scripts
+
+These are project-management scripts at the repository root, separate from the scanning scripts above.
+
+### `.bump`
+
+Bumps the zolletta-metaskill version across all files.
+
+```bash
+./.bump --to <version>
+```
+
+Updates: `pyproject.toml`, `src/zolletta_metaskill/__init__.py`, all `SKILL.md` front-matter version fields, and `setup/assets/settings_template.json` (`setup_version`).
+
+### `.install`
+
+Installs the skill into `~/.agents/skills/` and symlinks it into every detected AI agent tool's skills directory.
+
+```bash
+./.install           # install/refresh
+./.install --force   # replace real dirs with symlinks
+```
+
+See [Install Zolletta-MetaSkill](../../how-to/install.md) for details.
