@@ -5,73 +5,49 @@ skills:
   [setup, review, patterns, documentor, external-review, python-code-style, python-testing-patterns]
 ---
 
-# Documentation Index
+# Reference Index
 
-The Zolletta-MetaSkill documentation follows the [Diátaxis framework](https://diataxis.fr/), organising content into four quadrants: tutorials, how-to guides, reference, and explanation.
+Technical reference material for zolletta-metaskill. For the full documentation index across all quadrants, see [docs/index.md](../index.md).
 
-## Full tree
+## Tree
 
 ```text
-docs/
-├── tutorials/
-│   └── getting-started.md
-├── how-to/
-│   ├── code/
-│   │   ├── python/
-│   │   │   ├── review-python-style.md
-│   │   │   └── review-python-tests.md
-│   │   ├── detect-god-classes.md
-│   │   ├── review-code-style.md
-│   │   ├── review-test-code.md
-│   │   ├── run-external-review.md
-│   │   └── split-god-test-class.md
-│   ├── documentation/
-│   │   └── review-documentation.md
-│   ├── install.md
-│   ├── run-full-review.md
-│   └── setup-project.md
-├── explanation/
-│   ├── code/
-│   │   ├── php/
-│   │   │   └── php-review-patterns.md
-│   │   ├── python/
-│   │   │   └── python-review-patterns.md
-│   │   ├── false-positive-prevention.md
-│   │   ├── general-principles.md
-│   │   └── structural-conventions.md
-│   └── documentation/
-│       ├── adr.md
-│       ├── api.md
-│       ├── changelog.md
-│       ├── drift-prevention.md
-│       ├── readme.md
-│       └── standards.md
-└── reference/
-    ├── code/
-    │   ├── python/
-    │   │   └── python-code-style.md
-    │   ├── code-exploration.md
-    │   ├── review-mode.md
-    │   ├── scripts.md
-    │   └── tokensave.md
-    ├── documentation/
-    │   ├── drift-detection-tools.md
-    │   ├── operational-rules.md
-    │   ├── scoring-and-categories.md
-    │   └── workflows-and-tools.md
-    ├── frontmatter.md
-    ├── index.md
-    ├── reports.md
-    ├── settings-schema.md
-    ├── subcommands.md
-    └── tool-messages.md
+reference/
+├── code/
+│   ├── python/
+│   │   └── python-code-style.md
+│   ├── code-exploration.md
+│   ├── review-mode.md
+│   ├── scripts.md
+│   └── tokensave.md
+├── documentation/
+│   ├── drift-detection-tools.md
+│   ├── operational-rules.md
+│   ├── scoring-and-categories.md
+│   └── workflows-and-tools.md
+├── frontmatter.md
+├── index.md
+├── reports.md
+├── settings-schema.md
+├── subcommands.md
+└── tool-messages.md
 ```
 
-## Quadrant guide
+## Files
 
-| Quadrant | Purpose | Audience |
-| --- | --- | --- |
-| **Tutorials** | Learning-oriented, step-by-step lessons | Newcomers |
-| **How-to Guides** | Task-oriented, practical steps to achieve a goal | Practitioners |
-| **Reference** | Information-oriented, accurate technical description | Users who need facts |
-| **Explanation** | Understanding-oriented, clarification and background | Readers who want context |
+| File | Description |
+| --- | --- |
+| [code/scripts.md](code/scripts.md) | All scanning scripts: usage, options, examples |
+| [code/review-mode.md](code/review-mode.md) | Read-only review conventions |
+| [code/code-exploration.md](code/code-exploration.md) | tokensave decision tree and task templates |
+| [code/tokensave.md](code/tokensave.md) | tokensave MCP tools reference |
+| [code/python/python-code-style.md](code/python/python-code-style.md) | Python style rules and configurable toggles |
+| [documentation/drift-detection-tools.md](documentation/drift-detection-tools.md) | drift_analyzer, staleness scorer, API validator, link checker |
+| [documentation/workflows-and-tools.md](documentation/workflows-and-tools.md) | Quick start, 5 core workflows, CI recipes |
+| [documentation/scoring-and-categories.md](documentation/scoring-and-categories.md) | Staleness scoring model, drift categories, troubleshooting |
+| [documentation/operational-rules.md](documentation/operational-rules.md) | Tool invocation conventions and drift report format |
+| [settings-schema.md](settings-schema.md) | Full field-by-field reference for `settings.json` |
+| [subcommands.md](subcommands.md) | All zolletta-metaskill subcommands |
+| [frontmatter.md](frontmatter.md) | SKILL.md frontmatter fields |
+| [reports.md](reports.md) | Report file format and templates |
+| [tool-messages.md](tool-messages.md) | "Not installed" messages for the tool-failure handler |
