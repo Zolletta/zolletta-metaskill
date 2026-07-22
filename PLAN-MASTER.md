@@ -90,10 +90,10 @@ Both PHP plans touch shared files. This table assigns each file to exactly one p
 
 > Independent. Creates 3 new explanation docs with PHP + Python examples.
 
-- [ ] **4.1** Create `docs/explanation/code/error-handling.md` (4 rules: custom exceptions, hierarchy, catch specific, finally) → PLAN-PHP-CODE-STYLE 2.1
-- [ ] **4.2** Create `docs/explanation/code/performance.md` (2 rules: lazy loading, generators) → PLAN-PHP-CODE-STYLE 2.2
-- [ ] **4.3** Create `docs/explanation/code/security.md` (4 rules: input validation, output escaping, password hashing, SQL prepared statements) → PLAN-PHP-CODE-STYLE 2.3
-- [ ] **4.4** Update `docs/index.md` — add 3 new rows to Explanation quadrant table → PLAN-PHP-CODE-STYLE 2.4
+- [x] **4.1** Create `docs/explanation/code/error-handling.md` (4 rules: custom exceptions, hierarchy, catch specific, finally) → PLAN-PHP-CODE-STYLE 2.1
+- [x] **4.2** Create `docs/explanation/code/performance.md` (2 rules: lazy loading, generators) → PLAN-PHP-CODE-STYLE 2.2
+- [x] **4.3** Create `docs/explanation/code/security.md` (4 rules: parameterized queries, output escaping, input validation, secrets in env) → PLAN-PHP-CODE-STYLE 2.3
+- [x] **4.4** Update `docs/index.md` — add 3 new rows to Explanation quadrant table → PLAN-PHP-CODE-STYLE 2.4
 
 ---
 

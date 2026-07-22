@@ -99,6 +99,9 @@ The documentation follows the [Diátaxis framework](https://diataxis.fr/), organ
 | [General principles](explanation/code/general-principles.md) | SOLID, KISS, composition over inheritance, God class detection |
 | [Structural conventions](explanation/code/structural-conventions.md) | One class per file, test mirroring, naming, test splitting |
 | [False positive prevention](explanation/code/false-positive-prevention.md) | Suppression rules to avoid noisy reports |
+| [Error handling](explanation/code/error-handling.md) | Custom exceptions, hierarchy, specific catches, finally cleanup |
+| [Performance](explanation/code/performance.md) | Lazy loading, generators for large datasets |
+| [Security](explanation/code/security.md) | Parameterized queries, output escaping, input validation, secrets in env |
 
 ### Language-specific patterns
 
