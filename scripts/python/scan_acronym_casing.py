@@ -3,7 +3,7 @@
 
 Reports class names where a known acronym appears in mixed case or
 lowercase instead of fully uppercase. For example, if ``CI`` is a known
-acronym, ``CiTesterEngine`` is flagged (should be ``CITesterEngine``).
+acronym, ``ApiGateway`` is flagged (should be ``APIGateway``).
 
 The scanner is deterministic: the same input + acronym list always
 produces the same output. This replaces manual review of acronym casing,
@@ -11,8 +11,8 @@ which was non-deterministic.
 
 **Algorithm**:
 
-1. Split each PascalCase class name into words (e.g. ``CITesterEngine``
-   → ``["CI", "Tester", "Engine"]``, ``HttpClientFactory`` →
+1. Split each PascalCase class name into words (e.g. ``APIGateway``
+   → ``["API", "Gateway"]``, ``HttpClientFactory`` →
    ``["Http", "Client", "Factory"]``).
 2. For each word, check if it case-insensitively matches a known acronym.
 3. If it matches but is not all-uppercase, flag it as a violation.
@@ -74,10 +74,10 @@ def _split_pascal_case(name: str) -> list[str]:
     """Split a PascalCase name into words.
 
     Handles acronyms correctly:
-      - ``CITesterEngine`` → ``["CI", "Tester", "Engine"]``
+      - ``APIGateway`` → ``["API", "Gateway"]``
       - ``HTTPClientFactory`` → ``["HTTP", "Client", "Factory"]``
       - ``HttpClientFactory`` → ``["Http", "Client", "Factory"]``
-      - ``CiteDIProvider`` → ``["Cite", "DI", "Provider"]``
+      - ``MyDIProvider`` → ``["My", "DI", "Provider"]``
       - ``MRBranchResolver`` → ``["MR", "Branch", "Resolver"]``
 
     Algorithm:

@@ -33,7 +33,7 @@ Arguments:
 Options:
     --entry-points <patterns>  Comma-separated filename patterns to exclude
                                from checking (default: main,cli,app,__main__,
-                               cite,manage,wsgi,asgi,conftest)
+                               myproject,manage,wsgi,asgi,conftest)
     --skip                     Skip this check entirely
     --strict                   Exit with code 1 if violations are found
 
@@ -58,7 +58,7 @@ STDLIB_TYPES = {
 
 # Patterns that indicate a value object / data holder, not a service
 DATA_CLASS_MARKERS = {"dataclass", "NamedTuple", "TypedDict"}
-ENTRY_POINT_DEFAULTS = {"main", "cli", "app", "__main__", "cite", "manage",
+ENTRY_POINT_DEFAULTS = {"main", "cli", "app", "__main__", "myproject", "manage",
                         "wsgi", "asgi", "conftest"}
 
 # DI container creation function names that indicate a composition root.

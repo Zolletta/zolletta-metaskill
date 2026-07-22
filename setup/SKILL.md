@@ -144,7 +144,7 @@ If the language is **Python**, read `pyproject.toml` and extract the effective c
 
 6. **Write `python_code_style_rules`** — copy the default rule toggles from `settings_template.json`. If `settings.json` already exists (re-run of setup), **preserve existing user-customized values** and only add keys that are new (i.e. merge, don't overwrite).
 
-   **Extract acronyms from AGENTS.md**: if the project's `AGENTS.md` contains an "Acronyms stay uppercase" naming convention line (matching the pattern `acronyms fully uppercase` followed by a parenthesised list of examples like `CITesterEngine`, `MRBranchResolver`), extract the uppercase tokens from those examples and store them as `python_code_style_rules.acronyms`. For the example above, the extracted list would be `["CI", "MR", "AST"]`. If no such line is found, leave `acronyms` as an empty list — the scanner will use its built-in defaults.
+   **Extract acronyms from AGENTS.md**: if the project's `AGENTS.md` contains an "Acronyms stay uppercase" naming convention line (matching the pattern `acronyms fully uppercase` followed by a parenthesised list of examples like `APIGateway`, `MRBranchResolver`), extract the uppercase tokens from those examples and store them as `python_code_style_rules.acronyms`. For the example above, the extracted list would be `["API", "MR", "AST"]`. If no such line is found, leave `acronyms` as an empty list — the scanner will use its built-in defaults.
 
 7. **Write `python_testing_patterns_rules`** — copy the default rule toggles from `settings_template.json`. Same merge behavior as `python_code_style_rules`: preserve existing user-customized values, only add new keys.
 

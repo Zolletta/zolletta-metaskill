@@ -11,7 +11,7 @@
   "setup_version": "1.0.0",
   "setup_timestamp": "2026-07-16T14:30:00",
   "language": "python",
-  "container_name": "cite",
+  "container_name": "myproject",
   "tokensave_available": true,
   "python": {
     "uv": true,
@@ -39,7 +39,7 @@
     },
     "pytest": {
       "addopts": ["-ra", "--tb=short"],
-      "testpaths": ["tests/pepita"],
+      "testpaths": ["tests"],
       "minversion": "8.0"
     }
   },

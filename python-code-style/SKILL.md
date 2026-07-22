@@ -74,7 +74,7 @@ Classes use `PascalCase`: `UserRepository`, `OrderProcessor`. This is PEP 8 stan
 
 **#3 — Acronyms stay uppercase in class names** *(configurable: `check_acronym_casing`)*
 
-Class names keep acronyms fully uppercase: `HTTPClientFactory`, not `HttpClientFactory`. `CITesterEngine`, not `CiTesterEngine`. This is a deliberate convention common in codebases with domain-specific acronyms.
+Class names keep acronyms fully uppercase: `HTTPClientFactory`, not `HttpClientFactory`. `APIGateway`, not `ApiGateway`. This is a deliberate convention common in codebases with domain-specific acronyms.
 
 - **Enforcement**: `scan_acronym_casing.py` from `../scripts/python/` (deterministic). The scanner splits each PascalCase class name into words, checks each word against the configured acronym list, and flags any word that case-insensitively matches an acronym but isn't all-uppercase.
 
@@ -84,7 +84,7 @@ python3 ../scripts/python/scan_acronym_casing.py src/ --acronyms CI,MR,AST,DI
 
 The acronym list is built additively:
 1. **Shipped base**: `scripts/python/assets/acronyms.json` (common SE acronyms: CI, CD, CICD, HTTP, HTTPS, JSON, SQL, URL, etc.) — always loaded
-2. **Project-specific**: `python_code_style_rules.acronyms` in `settings.json` — merged with the shipped list (additive, not replacing). Use this for domain-specific acronyms not in the shipped list (e.g. `CITE`, `PEPITA`)
+2. **Project-specific**: `python_code_style_rules.acronyms` in `settings.json` — merged with the shipped list (additive, not replacing). Use this for domain-specific acronyms not in the shipped list (e.g. `XML`, `SVG`)
 3. **`--acronyms` CLI flag**: fully replaces both (for testing/debugging only)
 
 To configure project-specific acronyms, add them to `settings.json`:
@@ -163,7 +163,7 @@ Each class lives in its own file. No exceptions for "small helper classes" or "c
 
 **#9 — Filename matches class name** *(configurable: `check_filename_matches_class`)*
 
-The filename is the snake_case form of the class name: `user_repository.py` → `UserRepository`, `ci_tester_engine.py` → `CITesterEngine`. Acronyms stay uppercase in the class name but lowercase in the filename.
+The filename is the snake_case form of the class name: `user_repository.py` → `UserRepository`, `api_gateway.py` → `APIGateway`. Acronyms stay uppercase in the class name but lowercase in the filename.
 
 - **Enforcement**: `scan_one_class_per_file.py` + manual review.
 

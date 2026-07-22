@@ -15,7 +15,7 @@ python3 scripts/python/scan_class_metrics.py <directory> [--top N] [--min-lines 
 ```
 
 | Option          | Default | Description                       |
-| -----------------| ---------| -----------------------------------|
+| --------------- | ------- | --------------------------------- |
 | `<directory>`   | `src`   | Root directory to scan            |
 | `--top N`       | 30      | Show only the top N classes       |
 | `--min-lines N` | 50      | Skip classes shorter than N lines |
@@ -128,12 +128,12 @@ python3 scripts/python/scan_dependency_inversion.py <directory>
     [--entry-points <pattern1,pattern2,...>] [--skip] [--strict]
 ```
 
-| Option           | Default                                                | Description                                  |
-| ---------------- | ------------------------------------------------------ | -------------------------------------------- |
-| `<directory>`    | `src`                                                  | Root directory to scan                       |
-| `--entry-points` | `main,cli,app,__main__,cite,manage,wsgi,asgi,conftest` | Comma-separated filename patterns to exclude |
-| `--skip`         | off                                                    | Skip this check entirely                     |
-| `--strict`       | off                                                    | Exit with code 1 if violations are found     |
+| Option           | Default                                                     | Description                                  |
+| ---------------- | ----------------------------------------------------------- | -------------------------------------------- |
+| `<directory>`    | `src`                                                       | Root directory to scan                       |
+| `--entry-points` | `main,cli,app,__main__,myproject,manage,wsgi,asgi,conftest` | Comma-separated filename patterns to exclude |
+| `--skip`         | off                                                         | Skip this check entirely                     |
+| `--strict`       | off                                                         | Exit with code 1 if violations are found     |
 
 **Exclusions**: entry points (composition roots by filename pattern), classes that create DI containers (`make_container()`, `Container()`, etc. — detected semantically as composition roots), dataclasses/NamedTuples/TypedDicts/Enums, factory classes, and stdlib types are automatically excluded.
 
@@ -228,7 +228,7 @@ python3 scripts/python/scan_test_naming.py <directory> [--min-segments N] [--str
 
 ### scan_acronym_casing.py
 
-Checks that acronyms in PascalCase class names stay fully uppercase. Splits each class name into words, checks each word against a configured acronym list, and flags any word that case-insensitively matches an acronym but isn't all-uppercase (e.g. `Ci` in `CiTesterEngine` when `CI` is a known acronym).
+Checks that acronyms in PascalCase class names stay fully uppercase. Splits each class name into words, checks each word against a configured acronym list, and flags any word that case-insensitively matches an acronym but isn't all-uppercase (e.g. `Api` in `ApiGateway` when `API` is a known acronym).
 
 ```bash
 python3 scripts/python/scan_acronym_casing.py <directory> [--acronyms LIST] [--settings PATH] [--strict] [--json] [--skip]
@@ -245,7 +245,7 @@ python3 scripts/python/scan_acronym_casing.py <directory> [--acronyms LIST] [--s
 
 **Acronym list**: the shipped `scripts/python/assets/acronyms.json` (common SE acronyms) is always loaded as the base. Project-specific acronyms from `python_code_style_rules.acronyms` in `settings.json` are **merged** with the shipped list (additive, sorted, unique). The `--acronyms` CLI flag fully replaces both (for testing/debugging).
 
-**How it works**: the scanner uses a regex-based PascalCase splitter that correctly handles acronyms embedded in class names (`HTTPClient` → `["HTTP", "Client"]`, `CiteDIProvider` → `["Cite", "DI", "Provider"]`). For each word, it checks if the word case-insensitively matches a known acronym. If it matches but isn't all-uppercase, it's a violation.
+**How it works**: the scanner uses a regex-based PascalCase splitter that correctly handles acronyms embedded in class names (`HTTPClient` → `["HTTP", "Client"]`, `MyDIProvider` → `["My", "DI", "Provider"]`). For each word, it checks if the word case-insensitively matches a known acronym. If it matches but isn't all-uppercase, it's a violation.
 
 **Why this exists**: manual review of acronym casing was non-deterministic — the AI had to guess which tokens were acronyms and which were regular words. The scanner makes the check objective: the acronym list is the criterion, and it's configurable per project.
 
