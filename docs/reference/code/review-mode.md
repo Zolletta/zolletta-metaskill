@@ -70,5 +70,5 @@ There is **no third bucket** between "finding" and "not a finding." Every diagno
 
 ### vulture
 
-- Run `vulture src/ --min-confidence <value>` (value from `python_code_style_rules.vulture_min_confidence` in `settings.json`).
+- Run `vulture src/ --min-confidence <value>` (value from `python.code_style.vulture_min_confidence` in `settings.json`).
 - All vulture findings are listed as low-priority findings (vulture has false positives, especially for dynamically-accessed methods — review each with judgment before flagging).

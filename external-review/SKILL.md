@@ -1,6 +1,6 @@
 ---
 name: zolletta-metaskill-external-review
-version: 1.1.0
+version: 1.2.0
 license: MIT + Commons Clause
 description: >
   Code review performed by an external LLM on the modified files of a change. Reads global rules (~/.agents/rules/) and the project's AGENTS.md, then reviews only the files touched by the change (git diff). Defaults to the `swe` model; pass another model via the `external_review_model` field in `.zolletta-metaskill/settings.json` or the `model` front-matter field.

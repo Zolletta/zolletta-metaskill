@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "zolletta-metaskill"
-version = "1.1.0"
+version = "1.2.0"
 description = "Generic code review skills with specializations for Python and other languages"
 readme = "README.md"
 license = { text = "MIT + Commons Clause" }

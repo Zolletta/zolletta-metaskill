@@ -1,6 +1,6 @@
 ---
 name: zolletta-metaskill-patterns
-version: 1.1.0
+version: 1.2.0
 license: MIT + Commons Clause
 description: >
   Language-agnostic design pattern analysis with automated class metrics scanning. Detects God classes, SOLID violations, tight coupling, and composition-vs-inheritance issues in Python (via AST scripts) and other languages (via manual principle application). Use when refactoring a God class, evaluating structural quality, or planning a modular architecture. Succeeds and extends python-design-patterns (MIT, wshobson/agents).

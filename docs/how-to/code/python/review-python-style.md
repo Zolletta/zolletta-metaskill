@@ -12,7 +12,7 @@ The `python-code-style` skill inspects Python source for naming conventions, imp
 
 ## Prerequisites
 
-We need a Python project that has been set up with `/zolletta-metaskill setup`. Setup creates `.zolletta-metaskill/settings.json`, which the skill reads to determine tool availability, effective tool configuration, and rule toggles. The skill expects three objects in `settings.json`: `python` (tool availability flags for ruff, mypy, ty, vulture, pytest, uv), `python_config` (effective configuration extracted from `pyproject.toml` — line length, target Python version, type checker selection, ruff select/ignore lists, mypy and ty settings), and `python_code_style_rules` (boolean toggles and the vulture confidence threshold). If `settings.json` is missing or these objects are absent, the skill cannot run — we should run setup first so the configuration is explicit and repeatable.
+We need a Python project that has been set up with `/zolletta-metaskill setup`. Setup creates `.zolletta-metaskill/settings.json`, which the skill reads to determine tool availability, effective tool configuration, and rule toggles. The skill reads from the `python` object in `settings.json`: `python.tools` (availability flags for ruff, mypy, ty, vulture, pytest, uv), the `python.*` configuration fields (effective configuration extracted from `pyproject.toml` — line length, target Python version, type checker selection, ruff select/ignore lists, mypy and ty settings), and `python.code_style` (boolean toggles and the vulture confidence threshold). Project-specific acronyms live in the top-level `acronyms` field. If `settings.json` is missing or these objects are absent, the skill cannot run — we should run setup first so the configuration is explicit and repeatable.
 
 ## What the skill checks
 
@@ -20,15 +20,15 @@ The skill runs a combination of automated tools and manual review checks across 
 
 ### Linting and formatting (ruff)
 
-If `python.ruff` is `true` in `settings.json`, the skill runs `ruff check` for linting and `ruff format --check` for formatting. Ruff enforces the rule set configured in `python_config.ruff.select` and `python_config.ruff.ignore`. The skill does not carry its own ruff configuration — it reads everything from `settings.json`, which setup populated from `pyproject.toml`. Import grouping (stdlib, third-party, local) is enforced automatically when the ruff `I` (isort) rule is selected.
+If `python.tools.ruff` is `true` in `settings.json`, the skill runs `ruff check` for linting and `ruff format --check` for formatting. Ruff enforces the rule set configured in `python.ruff.select` and `python.ruff.ignore`. The skill does not carry its own ruff configuration — it reads everything from `settings.json`, which setup populated from `pyproject.toml`. Import grouping (stdlib, third-party, local) is enforced automatically when the ruff `I` (isort) rule is selected.
 
 ### Type checking (mypy or ty)
 
-The skill runs the configured type checker to verify that all public APIs have type annotations. Which checker runs is determined by `python_config.type_checker` in `settings.json` — it resolves to either `"ty"` or `"mypy"` based on project configuration and tool availability. If `type_checker` is `null` (neither tool is available or configured), the type-checking step is skipped. The type checker runs with `disallow_untyped_defs` or equivalent strictness, so missing annotations on public functions, methods, and classes are reported as findings.
+The skill runs the configured type checker to verify that all public APIs have type annotations. Which checker runs is determined by `python.type_checker` in `settings.json` — it resolves to either `"ty"` or `"mypy"` based on project configuration and tool availability. If `type_checker` is `null` (neither tool is available or configured), the type-checking step is skipped. The type checker runs with `disallow_untyped_defs` or equivalent strictness, so missing annotations on public functions, methods, and classes are reported as findings.
 
 ### Dead code detection (vulture)
 
-If `python.vulture` is `true`, the skill runs `vulture src/ --min-confidence <threshold>` to detect unused code. The confidence threshold comes from `python_code_style_rules.vulture_min_confidence` (default: `80`) — findings below that confidence are not reported. Vulture has known false positives, especially for dynamically-accessed methods, so each finding above the threshold is reviewed with judgment before being flagged. If `python.vulture` is `false`, dead-code detection is skipped entirely. In addition to vulture, the skill runs a supplementary `src/zolletta_metaskill/python_code_style/scan_unused_all_exports.py` scanner that cross-references every `__all__` entry against actual imports across the source tree — vulture treats `__all__` entries as "used" and never flags unused exports, so this scanner closes that gap.
+If `python.tools.vulture` is `true`, the skill runs `vulture src/ --min-confidence <threshold>` to detect unused code. The confidence threshold comes from `python.code_style.vulture_min_confidence` (default: `80`) — findings below that confidence are not reported. Vulture has known false positives, especially for dynamically-accessed methods, so each finding above the threshold is reviewed with judgment before being flagged. If `python.tools.vulture` is `false`, dead-code detection is skipped entirely. In addition to vulture, the skill runs a supplementary `src/zolletta_metaskill/python_code_style/scan_unused_all_exports.py` scanner that cross-references every `__all__` entry against actual imports across the source tree — vulture treats `__all__` entries as "used" and never flags unused exports, so this scanner closes that gap.
 
 ### Naming conventions
 
@@ -56,10 +56,12 @@ When the skill is invoked as part of a read-only review — for example via `/zo
 
 ## How to configure rule toggles
 
-We configure rule toggles by editing the `python_code_style_rules` object in `.zolletta-metaskill/settings.json`. Each configurable rule has a boolean key — set it to `false` to disable that check for the project. The vulture confidence threshold is an integer key (`vulture_min_confidence`) accepting values from 0 to 100. To add project-specific acronyms for the acronym casing check, we add an `acronyms` array to the same object; these are merged additively with the shipped base list, not replacing it.
+We configure rule toggles by editing the `python.code_style` object in `.zolletta-metaskill/settings.json`. Each configurable rule has a boolean key — set it to `false` to disable that check for the project. The vulture confidence threshold is an integer key (`vulture_min_confidence`) accepting values from 0 to 100. To add project-specific acronyms for the acronym casing check, we set the top-level `acronyms` array; these are merged additively with the shipped base list, not replacing it.
 
 ```json
-"python_code_style_rules": {
+"acronyms": ["CI", "MR", "AST", "DI"],
+"python": {
+  "code_style": {
     "check_acronym_casing": true,
     "check_no_relative_imports": true,
     "check_one_class_per_file": true,
@@ -68,8 +70,8 @@ We configure rule toggles by editing the `python_code_style_rules` object in `.z
     "check_docstring_no_type_repeat": true,
     "check_skip_obvious_docstrings": true,
     "check_line_length": true,
-    "vulture_min_confidence": 80,
-    "acronyms": ["CI", "MR", "AST", "DI"]
+    "vulture_min_confidence": 80
+  }
 }
 ```
 

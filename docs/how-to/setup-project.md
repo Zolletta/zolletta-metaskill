@@ -34,8 +34,11 @@ Setup detects and records the following:
 | **Project language** | Python, TypeScript, PHP, Go, Rust, Java, Ruby, C/C++ | `language` |
 | **Docker container** | Service name from `compose.yml` / `docker-compose.yml` | `container_name` |
 | **tokensave** | Whether the tokensave MCP server is available | `tokensave_available` |
-| **Python tooling** | ruff, pytest, ty, vulture, mypy, uv availability | `python` object |
-| **Python config** | Line length, target version, ruff/mypy/ty/pytest config from `pyproject.toml` | `python_config` object |
+| **Acronyms** | Project-specific acronyms extracted from `AGENTS.md` | `acronyms` |
+| **Python tooling** | ruff, pytest, ty, vulture, mypy, uv availability | `python.tools` object |
+| **Python config** | Line length, target version, ruff/mypy/ty/pytest config from `pyproject.toml` | `python.*` fields |
+| **Python code-style rules** | Configurable rule toggles for `python-code-style` | `python.code_style` object |
+| **Python testing rules** | Configurable rule toggles for `python-testing-patterns` | `python.testing` object |
 | **Documentation directory** | `.backstage/` if exists, else `docs/` if exists, else default `docs/` | `documentation.directory` |
 
 ### Step 3 — settings.json
@@ -55,8 +58,9 @@ Check that:
 - `language` matches the project's primary language
 - `container_name` is correct (or `null` if no container)
 - `tokensave_available` is `true` if tokensave is installed
-- `python` object has the correct tool availability flags (Python projects)
-- `python_config` has the correct configuration extracted from `pyproject.toml` (Python projects)
+- `acronyms` lists any project-specific acronyms extracted from `AGENTS.md`
+- `python.tools` has the correct tool availability flags (Python projects)
+- `python.*` has the correct configuration extracted from `pyproject.toml` (Python projects)
 
 ## Re-running setup
 

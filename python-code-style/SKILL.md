@@ -1,6 +1,6 @@
 ---
 name: python-code-style
-version: 1.1.0
+version: 1.2.0
 license: MIT
 description: Python code style, linting, formatting, naming conventions, and documentation standards. Use when writing new code, reviewing style, configuring linters, writing docstrings, or establishing project standards.
 ---
@@ -9,7 +9,7 @@ description: Python code style, linting, formatting, naming conventions, and doc
 
 Consistent code style and clear documentation make codebases maintainable and collaborative. This skill covers modern Python tooling, naming conventions, and documentation standards.
 
-> **Configuration source**: all project-level configuration (line length, target Python version, linting rules, type checking strictness, tool availability) is read from `settings.json` — specifically the `python`, `python_config`, and `python_code_style_rules` objects. These are populated by `setup` from `pyproject.toml`. Do not read `pyproject.toml` directly; do not hardcode fallback defaults. See the parent `SKILL.md` for the setup guard and the shared "Running tools" convention.
+> **Configuration source**: all project-level configuration (line length, target Python version, linting rules, type checking strictness, tool availability) is read from `settings.json` — specifically the `python` object (which merges `python.tools`, `python.code_style`, and the `python.*` configuration fields) and the top-level `acronyms` array. These are populated by `setup` from `pyproject.toml`. Do not read `pyproject.toml` directly; do not hardcode fallback defaults. See the parent `SKILL.md` for the setup guard and the shared "Running tools" convention.
 
 > **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../docs/reference/code/review-mode.md`](../docs/reference/code/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
 
@@ -34,7 +34,7 @@ Consistent code style and clear documentation make codebases maintainable and co
 | 17  | Docstrings | Test functions exempt from docstrings               |
 | 19  | Types      | Type hints required for all public APIs             |
 
-## Table 2 — Configurable settings (stored in `settings.json` under `python_code_style_rules`)
+## Table 2 — Configurable settings (stored in `settings.json` under `python.code_style`)
 
 | #   | Area       | Name                                                      | Key                              | Default   |
 |---|---|---|---|---|
@@ -84,14 +84,12 @@ python3 ../src/zolletta_metaskill/python_code_style/scan_acronym_casing.py src/ 
 
 The acronym list is built additively:
 1. **Shipped base**: `python-code-style/assets/acronyms.json` (common SE acronyms: CI, CD, CICD, HTTP, HTTPS, JSON, SQL, URL, etc.) — always loaded
-2. **Project-specific**: `python_code_style_rules.acronyms` in `settings.json` — merged with the shipped list (additive, not replacing). Use this for domain-specific acronyms not in the shipped list (e.g. `XML`, `SVG`)
+2. **Project-specific**: the top-level `acronyms` array in `settings.json` — merged with the shipped list (additive, not replacing). Use this for domain-specific acronyms not in the shipped list (e.g. `XML`, `SVG`)
 3. **`--acronyms` CLI flag**: fully replaces both (for testing/debugging only)
 
 To configure project-specific acronyms, add them to `settings.json`:
 ```json
-"python_code_style_rules": {
-    "acronyms": ["CI", "MR", "AST", "DI"]
-}
+"acronyms": ["CI", "MR", "AST", "DI"]
 ```
 
 > The scanner is the single source of truth for this rule. Do not manually flag class names that the scanner doesn't flag — the word-splitting + acronym matching is the objective criterion.
@@ -234,16 +232,16 @@ One-line functions where the name and signature are self-explanatory do not need
 
 **#19 — Type hints required for all public APIs** *(always-on)*
 
-All public classes, methods, and functions must include type annotations for parameters and return types. Enforcement is via the configured type checker (`python_config.type_checker`) with `disallow_untyped_defs` or equivalent, plus manual review for the public vs. private distinction.
+All public classes, methods, and functions must include type annotations for parameters and return types. Enforcement is via the configured type checker (`python.type_checker`) with `disallow_untyped_defs` or equivalent, plus manual review for the public vs. private distinction.
 
 ### Formatting
 
 **#20 — Line length from project config** *(configurable: `check_line_length`)*
 
-Line length is read from `python_config.line_length` in `settings.json` (extracted by setup from `[tool.ruff] line-length`, or ruff's built-in default of 88 if unconfigured). The skill does not carry its own fallback. If ruff is available, `ruff format` handles line breaking automatically — do not reformat manually.
+Line length is read from `python.line_length` in `settings.json` (extracted by setup from `[tool.ruff] line-length`, or ruff's built-in default of 88 if unconfigured). The skill does not carry its own fallback. If ruff is available, `ruff format` handles line breaking automatically — do not reformat manually.
 
 ```python
-# Good: readable line breaks (respecting python_config.line_length)
+# Good: readable line breaks (respecting python.line_length)
 def create_user(
     email: str,
     name: str,
@@ -268,15 +266,15 @@ result = (
 
 **#22 — Vulture minimum confidence + unused `__all__` exports** *(configurable: `vulture_min_confidence`)*
 
-If `vulture` is available (`python.vulture: true` in `settings.json`), run it to find unused code:
+If `vulture` is available (`python.tools.vulture: true` in `settings.json`), run it to find unused code:
 
 ```bash
 vulture src/ --min-confidence <vulture_min_confidence>
 ```
 
-The confidence threshold is read from `python_code_style_rules.vulture_min_confidence` in `settings.json` (default: `80`). Findings below this confidence are not reported. Vulture has false positives, especially for dynamically-accessed methods — review each finding above the threshold with judgment before flagging. Report findings as low-priority issues.
+The confidence threshold is read from `python.code_style.vulture_min_confidence` in `settings.json` (default: `80`). Findings below this confidence are not reported. Vulture has false positives, especially for dynamically-accessed methods — review each finding above the threshold with judgment before flagging. Report findings as low-priority issues.
 
-If `vulture` is `false` in `settings.json`, skip dead-code detection.
+If `python.tools.vulture` is `false` in `settings.json`, skip dead-code detection.
 
 **Supplementary check — unused `__all__` exports:** vulture treats every name in `__all__` as "used" (public API export), so it never flags `__all__` entries that are never imported anywhere. This is a known gap. After running vulture, also run:
 

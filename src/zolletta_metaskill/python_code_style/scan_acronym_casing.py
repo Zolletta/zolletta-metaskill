@@ -124,14 +124,14 @@ def _get_class_names(path: Path) -> list[tuple[str, int]]:
 def _load_acronyms_from_settings(settings_path: Path) -> list[str] | None:
     """Load the acronym list from settings.json if present.
 
-    Reads ``python_code_style_rules.acronyms`` — a list of uppercase
+    Reads the top-level ``acronyms`` array — a list of uppercase
     acronym strings. Returns None if the key is absent.
     """
     if not settings_path.exists():
         return None
     try:
         data = json.loads(settings_path.read_text(encoding="utf-8"))
-        acronyms = data.get("python_code_style_rules", {}).get("acronyms")
+        acronyms = data.get("acronyms")
         if isinstance(acronyms, list) and acronyms:
             return [a.upper() for a in acronyms]
     except (json.JSONDecodeError, OSError):
@@ -156,7 +156,7 @@ def main() -> int:
     parser.add_argument(
         "--settings", default=None,
         help="Path to settings.json to read the acronym list from "
-        "(reads python_code_style_rules.acronyms)",
+        "(reads the top-level acronyms array)",
     )
     parser.add_argument("--strict", action="store_true", help="Exit 1 if violations found")
     parser.add_argument("--json", action="store_true", help="Output as JSON")

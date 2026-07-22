@@ -12,7 +12,7 @@ The `python-testing-patterns` skill reviews Python test suites for isolation, na
 
 ## Prerequisites
 
-We need a Python project that has been set up with `/zolletta-metaskill setup`. Setup creates the `.zolletta-metaskill/settings.json` file, which the skill reads to determine tool availability and effective pytest/coverage configuration. Specifically, the skill relies on two objects in `settings.json`: the `python` object (tool availability flags such as `pytest` and `coverage`) and the `python_config` object (effective configuration extracted from `pyproject.toml`, including line length, pytest options, and coverage settings). If `settings.json` is missing or the `python` / `python_config` objects are `null`, the skill cannot determine whether pytest and coverage are installed and will skip coverage analysis. We recommend running setup first so that the configuration is explicit and the setup guard can detect staleness when `pyproject.toml` changes.
+We need a Python project that has been set up with `/zolletta-metaskill setup`. Setup creates the `.zolletta-metaskill/settings.json` file, which the skill reads to determine tool availability and effective pytest/coverage configuration. Specifically, the skill relies on the `python` object in `settings.json`: `python.tools` (tool availability flags such as `pytest` and `coverage`) and the `python.*` configuration fields (effective configuration extracted from `pyproject.toml`, including line length, pytest options, and coverage settings). If `settings.json` is missing or the `python` object is `null`, the skill cannot determine whether pytest and coverage are installed and will skip coverage analysis. We recommend running setup first so that the configuration is explicit and the setup guard can detect staleness when `pyproject.toml` changes.
 
 ## What the skill checks
 
@@ -51,13 +51,13 @@ The `patterns` skill runs `src/zolletta_metaskill/shared/scan_tests.py`, which p
 
 ## Configurable rule toggles via settings.json
 
-The skill reads its configurable rules from the `python_testing_patterns_rules` object in `settings.json`. Three settings are available:
+The skill reads its configurable rules from the `python.testing` object in `settings.json`. Three settings are available:
 
-| Key                               | Type            | Default | Description                                                                                                                                            |
-| --------------------------------- | --------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `coverage_gap_threshold`          | integer (0–100) | `50`    | Module coverage below this percentage is a candidate gap (combined with the other two conditions from Step 3)                                          |
-| `coverage_well_covered_threshold` | integer (0–100) | `80`    | Module coverage above this percentage is never flagged as a gap, even with no direct test references                                                   |
-| `check_test_naming`               | boolean         | `true`  | When `true`, the skill runs `src/zolletta_metaskill/python_testing_patterns/scan_test_naming.py` to enforce the `test_<unit>_<scenario>_<expected>` naming convention |
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `coverage_gap_threshold` | integer (0–100) | `50` | Module coverage below this percentage is a candidate gap (combined with the other two conditions from Step 3) |
+| `coverage_well_covered_threshold` | integer (0–100) | `80` | Module coverage above this percentage is never flagged as a gap, even with no direct test references |
+| `check_test_naming` | boolean | `true` | When `true`, the skill runs `src/zolletta_metaskill/python_testing_patterns/scan_test_naming.py` to enforce the `test_<unit>_<scenario>_<expected>` naming convention |
 
 The remaining rules — AAA pattern, test isolation, mandatory coverage gap detection, and the scope boundary with `patterns` — are always-on and cannot be disabled. When the skill runs as part of a read-only review (for example `/zolletta-metaskill review`), it follows the [review mode](../../../reference/code/review-mode.md) convention: it classifies diagnostics into auto-fixable (informational) and not auto-fixable (findings) without applying fixes.
 
