@@ -3,7 +3,7 @@ name: zolletta-metaskill-setup
 version: 1.2.0
 license: MIT + Commons Clause
 description: >
-  Project initialization for Zolletta-metaskill. Creates the .zolletta-metaskill/ directory, detects the project language, detects Docker container, tests tokensave availability, detects Python tooling, and writes settings.json. Also adds .zolletta-metaskill/ to .gitignore. Run automatically by the setup guard before any subcommand if settings.json is missing, or manually via /zolletta-metaskill setup.
+  Project initialization for Zolletta-metaskill. Creates the .zolletta-metaskill/ directory, detects the project language, detects Docker container, tests tokensave availability, detects Python and PHP tooling, and writes settings.json. Also adds .zolletta-metaskill/ to .gitignore. Run automatically by the setup guard before any subcommand if settings.json is missing, or manually via /zolletta-metaskill setup.
 allowed-tools:
   - read
   - grep
@@ -29,7 +29,7 @@ Initialize the `.zolletta-metaskill/` directory and write `settings.json` so tha
 
 Read shared guidelines from the meta-skill (parent directory):
 
-- `../docs/reference/tool-messages.md` — "not installed" messages for tokensave and Python skills
+- `../docs/reference/tool-messages.md` — "not installed" messages for tokensave, Python skills, and PHP skills
 
 ## Procedure
 
@@ -158,13 +158,83 @@ Determine the project's documentation configuration:
 
 Store both values for writing to the `documentation` object in `settings.json`. The `documentor` skill reads these fields to locate the Diátaxis docs tree and translate signpost headings if needed.
 
-### Step 7 — Python skill availability (no action needed)
+### Step 7 — Detect PHP tooling (PHP projects only)
+
+If the detected language from Step 3 is **not PHP**, skip this step entirely and set `php: null`.
+
+If the language is **PHP**, detect which tools are available. For each tool, check in this order:
+
+1. **Check `composer.json` `require-dev`** — if the tool's package is listed (e.g. `"phpunit/phpunit"`), mark it as available (the project uses it).
+2. **Check for a config file** — if the tool's config file exists in the project root (e.g. `phpunit.xml`, `.php-cs-fixer.php`), mark it as available even if not in `require-dev` (the project intends to use it).
+3. **If not found in `composer.json` or config file**, try calling the command — inside the container if `container_name` is set (`docker compose exec <container_name> vendor/bin/<tool> --version`), otherwise on the host (`vendor/bin/<tool> --version`). If the command succeeds, mark it as available.
+
+The tools to detect:
+
+| Tool           | `composer.json` require-dev package   | Config file(s)                                          | Command                          |
+| -------------- | ------------------------------------- | ------------------------------------------------------- | -------------------------------- |
+| `phpunit`      | `phpunit/phpunit`                     | `phpunit.xml`, `phpunit.dist.xml`                       | `vendor/bin/phpunit --version`   |
+| `phpstan`      | `phpstan/phpstan`                     | `phpstan.neon`, `phpstan.dist.neon`                     | `vendor/bin/phpstan --version`   |
+| `psalm`        | `vimeo/psalm`                         | `psalm.xml`, `psalm.dist.xml`                           | `vendor/bin/psalm --version`     |
+| `php_cs_fixer` | `friendsofphp/php-cs-fixer`           | `.php-cs-fixer.php`, `.php-cs-fixer.dist.php`           | `vendor/bin/php-cs-fixer --version` |
+| `phpcs`        | `squizlabs/php_codesniffer`           | `.phpcs.xml`, `phpcs.xml.dist`, `.phpcs.xml.dist`       | `vendor/bin/phpcs --version`     |
+
+Store each tool as an object in `php.tools` with an `available` boolean (see Step 8). The per-tool configuration fields are populated in Step 7.5.
+
+> **Do NOT install any tool.** If a tool is not present, set `available: false` and print the corresponding "not installed" message in Step 9.
+
+### Step 7.5 — Extract PHP configuration from composer.json and tool config files
+
+If the detected language from Step 3 is **not PHP**, skip this step entirely and leave `php: null`.
+
+If the language is **PHP**, read `composer.json` and each tool's config file, and extract the effective configuration. Record `composer.json`'s modification time so the setup guard can detect staleness on future runs. All values extracted in this step are written into the `php.tools.<tool>` objects (alongside the `available` flag from Step 7) and the `php.autoload` / `php.php_version` fields.
+
+1. **Record `composer_mtime`** — use `os.path.getmtime("composer.json")` (or equivalent). Store as a float in `php.composer_mtime`.
+
+2. **Extract `php_version`** — read `composer.json` `require.php` (e.g. `">=8.2"`, `"^8.1"`, `"8.3"`). Parse the version constraint and store the minimum version as a string in `php.php_version` (e.g. `"8.2"`, `"8.1"`). If `require.php` is absent, store `null` and print a warning (the PHP version is unknown — review skills cannot assume a specific version).
+
+3. **Extract autoload mapping** — read `composer.json` `autoload.psr-4` and `autoload-dev.psr-4`. Store in `php.autoload`:
+
+   ```json
+   "autoload": {
+     "psr-4": { "App\\": "src/" },
+     "psr-4-dev": { "Tests\\": "tests/" }
+   }
+   ```
+
+   If `autoload` or `autoload-dev` is absent, store an empty object for the missing key. The `php-code-style` and `php-testing-patterns` skills use this to resolve namespaces to directories (equivalent to how Python skills use `[tool.hatch.build.targets.wheel] packages`).
+
+4. **For each tool that is `available: true` in `php.tools`** (from Step 7), extract its configuration into the same `php.tools.<tool>` object:
+
+   | Tool           | If config file exists                                                                                                                                                     | If config file is absent                                                                                                                              |
+   | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | `phpunit`      | Parse `phpunit.xml` (XML): extract `bootstrap` → `bootstrap`, `<coverage>` config → `coverage_config`, `<testsuites>` dirs → `testpaths`. Store in `php.tools.phpunit`.   | Store phpunit's built-in defaults: `bootstrap: null`, `testpaths: ["tests"]`, `coverage_config: null`. Print the phpunit "unconfigured" warning.      |
+   | `phpstan`      | Parse `phpstan.neon` (NEON): extract `level` → `level` (0–9), `paths` → `paths`, `memory_limit` → `memory_limit`. Store in `php.tools.phpstan`.                           | Store phpstan's built-in defaults: `level: 0`, `paths: ["src"]`, `memory_limit: null`. Print the phpstan "unconfigured" warning.                       |
+   | `psalm`        | Parse `psalm.xml` (XML): extract `errorLevel` → `error_level` (1–8), `projectFiles` dirs → `paths`. Store in `php.tools.psalm`.                                           | Store psalm's built-in defaults: `error_level: 1`, `paths: ["src"]`. Print the psalm "unconfigured" warning.                                          |
+   | `php_cs_fixer` | Check if `.php-cs-fixer.php` or `.php-cs-fixer.dist.php` exists. Store `config_file: true`. **Do not parse the PHP file** — it is executable PHP code, not a declarative format. The `php-code-style` skill reads it at review time if needed. | Store `config_file: false`. Print the php-cs-fixer "unconfigured" warning (states the built-in default ruleset: `@PSR-12`).                           |
+   | `phpcs`        | Parse `.phpcs.xml` or `phpcs.xml.dist` (XML): extract `standard` → `standard` (e.g. `"PSR12"`, `"Custom"`). Store in `php.tools.phpcs`.                                   | Store phpcs's built-in defaults: `standard: "PSR12"`. Print the phpcs "unconfigured" warning.                                                         |
+
+   > **NEON parsing**: `phpstan.neon` uses the NEON format (a YAML-like syntax). If a NEON parser is not available as a Python dependency, parse it as a simplified YAML subset (key: value, nested via indentation, arrays with `-`). PHPStan config files are typically simple enough for this. If parsing fails, store `level: null` and print a warning that the config could not be read.
+
+5. **Static analysis resolution** — parallel to Python's type checker resolution. There is no `static_analyser` field in `settings.json`. Review skills run all available static analysers:
+   - If `php.tools.phpstan.available` is `true` → run phpstan
+   - If `php.tools.psalm.available` is `true` → run psalm
+   - If neither is available → static analysis is skipped
+
+   When both are available, both run. Findings from each are listed separately. This is documented in `php-code-style/SKILL.md`.
+
+6. **Never modify `composer.json` or any tool config file.** Setup only reads them. The "unconfigured" warnings are informational — the user decides whether to add a config file.
+
+7. **Write `php.code_style`** — copy the default rule toggles (see Step 8 for the shape). If `settings.json` already exists (re-run of setup), **preserve existing user-customized values** and only add keys that are new (merge, don't overwrite). Same merge behavior as `python.code_style`.
+
+8. **Write `php.testing`** — copy the default rule toggles. Same merge behavior.
+
+### Step 7.6 — Python skill availability (no action needed)
 
 The two Python review skills (`python-code-style`, `python-testing-patterns`) are bundled inside Zolletta-metaskill, so they are always available — no probing or `*_available` flags are written to `settings.json`. The `review` subcommand dispatches to them automatically when `language` is `python`.
 
 > **Note**: these skills are adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT License, Copyright (c) 2024 Seth Hobson) and live in `python-code-style/` and `python-testing-patterns/` within this meta-skill.
 
-### Step 7.5 — Detect companion implementation skills
+### Step 7.7 — Detect companion implementation skills
 
 Zolletta-metaskill is a **review** skill — it checks code quality but does not write code. Companion **implementation** skills can be installed separately to provide code generation alongside review. Setup detects their availability and suggests installing them if not present.
 
@@ -193,6 +263,7 @@ Read the [settings template](assets/settings_template.json) and write `.zolletta
 | `tokensave_available`   | Boolean from Step 5                                                     |
 | `acronyms`              | Top-level list from Step 6.5 (extracted from `AGENTS.md`; `[]` if none) |
 | `python`                | Object from Steps 6 + 6.5 (Python only; `null` otherwise) — see below   |
+| `php`                   | Object from Steps 7 + 7.5 (PHP only; `null` otherwise) — see below     |
 | `external_review_model` | `"swe"` (default; overridable by front-matter)                          |
 | `documentation`         | Object from Step 6.6 — see below                                        |
 | `reports_dir`           | `".zolletta-metaskill/reports"`                                         |
@@ -229,6 +300,41 @@ The `python` subobject has this shape (Python only; `null` otherwise). Each tool
 }
 ```
 
+The `php` subobject has this shape (PHP only; `null` otherwise). Each tool in `tools` is an object with an `available` boolean and, for tools that have configuration, the effective config extracted from `composer.json` and tool config files:
+
+```json
+{
+  "tools": {
+    "phpunit": {
+      "available": true,
+      "bootstrap": "vendor/autoload.php",
+      "testpaths": ["tests"],
+      "coverage_config": true
+    },
+    "phpstan": { "available": true, "level": 6, "paths": ["src"], "memory_limit": "256M" },
+    "psalm": { "available": false, "error_level": 1, "paths": ["src"] },
+    "php_cs_fixer": { "available": true, "config_file": true },
+    "phpcs": { "available": false, "standard": "PSR12" }
+  },
+  "code_style": {
+    "check_naming_conventions": true,
+    "check_one_class_per_file": true,
+    "check_filename_matches_class": true
+  },
+  "testing": {
+    "coverage_gap_threshold": 50,
+    "coverage_well_covered_threshold": 80,
+    "check_test_naming": true
+  },
+  "autoload": {
+    "psr-4": { "App\\": "src/" },
+    "psr-4-dev": { "Tests\\": "tests/" }
+  },
+  "php_version": "8.2",
+  "composer_mtime": 1718700000.0
+}
+```
+
 The `documentation` subobject has this shape:
 
 ```json
@@ -246,10 +352,14 @@ For each tool that is **not** available, print the corresponding "not installed"
 
 For each Python tool that **is** available but has **no `[tool.*]` section in `pyproject.toml`** (detected in Step 6.5), print the corresponding "unconfigured" warning from `../docs/reference/tool-messages.md`. The warning states the tool's effective built-in defaults and links to the full options reference.
 
+For each PHP tool that **is** available but has **no config file** (detected in Step 7.5), print the corresponding "unconfigured" warning from `../docs/reference/tool-messages.md`. The warning states the tool's effective built-in defaults and links to the full options reference.
+
 This covers:
 - `tokensave_available: false` → tokensave "not installed" message
 - For Python projects, each tool in `python.tools` with `available: false` → corresponding "not installed" message
 - For Python projects, each tool in `python.tools` with `available: true` but unconfigured → corresponding "unconfigured" warning
+- For PHP projects, each tool in `php.tools` with `available: false` → corresponding "not installed" message
+- For PHP projects, each tool in `php.tools` with `available: true` but unconfigured (no config file) → corresponding "unconfigured" warning
 - For PHP projects, if `php.tools.php_pro_available` is `false` → php-pro "not installed" message
 - For Python projects, if `python.tools.python_development_available` is `false` → python-development "not installed" message
 
@@ -278,6 +388,16 @@ Zolletta-metaskill setup complete.
   Python config:                   (Python only)
     ruff line_length:              <value>
     ruff target_version:           <value>
+  PHP tooling:                     (PHP only)
+    phpunit:                       <yes/no>
+    phpstan:                       <yes/no>
+    psalm:                         <yes/no>
+    php-cs-fixer:                  <yes/no>
+    phpcs:                         <yes/no>
+  PHP config:                      (PHP only)
+    php version:                   <value>
+    phpstan level:                 <value>
+    phpcs standard:                <value>
   Settings file:                   .zolletta-metaskill/settings.json
   Reports directory:               .zolletta-metaskill/reports
 ```
@@ -286,4 +406,4 @@ If any tools or skills were unavailable, the "not installed" messages from Step 
 
 ## Re-running setup
 
-`/zolletta-metaskill setup` can be run at any time to re-detect tools and refresh `settings.json`. The previous `settings.json` is overwritten. This is useful after installing tokensave or Python tooling, after adding/removing a Docker container, or after a project language change.
+`/zolletta-metaskill setup` can be run at any time to re-detect tools and refresh `settings.json`. The previous `settings.json` is overwritten. This is useful after installing tokensave, Python tooling, or PHP tooling, after adding/removing a Docker container, or after a project language change.

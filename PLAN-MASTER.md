@@ -158,12 +158,12 @@ Both PHP plans touch shared files. This table assigns each file to exactly one p
 
 > Extends setup with PHP tooling detection, parallel to Python.
 
-- [ ] **10.1** Update `setup/SKILL.md` Step 7 — detect 5 PHP tools (phpunit, phpstan, psalm, php-cs-fixer, phpcs) → PLAN-PHP-SUPPORT 4.1
-- [ ] **10.2** Update `setup/SKILL.md` Step 7.5 — extract config from declarative files (phpunit.xml, phpstan.neon, psalm.xml, phpcs.xml) + PSR-4 autoload → PLAN-PHP-SUPPORT 4.2
-- [ ] **10.3** Update `setup/SKILL.md` Steps 8/9/10 — write `php` object, print messages, add summary lines → PLAN-PHP-SUPPORT 4.3–4.5
-- [ ] **10.4** Fix `setup/assets/settings.schema.json` `php.code_style` — replace 3 toggles with 12 configurable toggles from PLAN-PHP-CODE-STYLE → PLAN-PHP-SUPPORT 4.8
-- [ ] **10.5** Update `docs/reference/settings-schema.md` — add `php` section → PLAN-PHP-SUPPORT 4.9
-- [ ] **10.6** Update setup guard (root `SKILL.md`) — add PHP staleness check (`composer.json` mtime vs `php.composer_mtime`) → PLAN-PHP-SUPPORT 4.7
+- [x] **10.1** Update `setup/SKILL.md` Step 7 — detect 5 PHP tools (phpunit, phpstan, psalm, php-cs-fixer, phpcs) → PLAN-PHP-SUPPORT 4.1
+- [x] **10.2** Update `setup/SKILL.md` Step 7.5 — extract config from declarative files (phpunit.xml, phpstan.neon, psalm.xml, phpcs.xml) + PSR-4 autoload → PLAN-PHP-SUPPORT 4.2
+- [x] **10.3** Update `setup/SKILL.md` Steps 8/9/10 — write `php` object, print messages, add summary lines → PLAN-PHP-SUPPORT 4.3–4.5
+- [x] **10.4** Fix `setup/assets/settings.schema.json` `php.code_style` — replace 3 toggles with 12 configurable toggles from PLAN-PHP-CODE-STYLE → PLAN-PHP-SUPPORT 4.8
+- [x] **10.5** Update `docs/reference/settings-schema.md` — add `php` section → PLAN-PHP-SUPPORT 4.9
+- [x] **10.6** Update setup guard (root `SKILL.md`) — add PHP staleness check (`composer.json` mtime vs `php.composer_mtime`) → PLAN-PHP-SUPPORT 4.7
 
 ---
 
