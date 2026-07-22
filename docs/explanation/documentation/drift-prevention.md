@@ -1,3 +1,9 @@
+---
+audience: human, ai
+status: stable
+skills: [documentor]
+---
+
 # Drift Prevention Guide
 
 Strategies and patterns for preventing documentation from falling out of sync with code.
@@ -46,7 +52,7 @@ Team processes that ensure docs are updated alongside code changes.
 ### What to Generate
 
 | Source            | Generated Doc     | Tool                              |
-|---|---|---|
+| ----------------- | ----------------- | --------------------------------- |
 | Python docstrings | API reference     | Sphinx, pdoc, mkdocstrings        |
 | TypeScript types  | API reference     | TypeDoc                           |
 | OpenAPI spec      | REST API docs     | Swagger UI, Redoc                 |
@@ -139,38 +145,31 @@ Team processes that ensure docs are updated alongside code changes.
 
 ### Pattern 1: The Renamed Function
 
-**Drift:** Function renamed in code, docs still reference old name.
-**Prevention:** Search docs for old function name as part of rename refactoring. Use IDE "find all references" including markdown files.
+**Drift:** Function renamed in code, docs still reference old name. **Prevention:** Search docs for old function name as part of rename refactoring. Use IDE "find all references" including markdown files.
 
 ### Pattern 2: The Moved File
 
-**Drift:** File moved to new directory, docs link to old path.
-**Prevention:** Run link checker after any file move. Configure IDE to update markdown references on move.
+**Drift:** File moved to new directory, docs link to old path. **Prevention:** Run link checker after any file move. Configure IDE to update markdown references on move.
 
 ### Pattern 3: The Outdated Version
 
-**Drift:** Version bumped in package manifest but not in README/docs.
-**Prevention:** Use a single source of truth for version. Reference it dynamically or add version check to CI.
+**Drift:** Version bumped in package manifest but not in README/docs. **Prevention:** Use a single source of truth for version. Reference it dynamically or add version check to CI.
 
 ### Pattern 4: The Stale Screenshot
 
-**Drift:** UI changed but screenshots in docs show old design.
-**Prevention:** Tag screenshots with the version they depict. Automated screenshot generation in CI for critical flows.
+**Drift:** UI changed but screenshots in docs show old design. **Prevention:** Tag screenshots with the version they depict. Automated screenshot generation in CI for critical flows.
 
 ### Pattern 5: The Accumulated Options
 
-**Drift:** New CLI flags or config options added over time but never documented.
-**Prevention:** Generate configuration/CLI docs from source. Add "doc update" to definition of done for new options.
+**Drift:** New CLI flags or config options added over time but never documented. **Prevention:** Generate configuration/CLI docs from source. Add "doc update" to definition of done for new options.
 
 ### Pattern 6: The Orphaned Section
 
-**Drift:** Feature removed but its documentation section remains.
-**Prevention:** Include feature removal in the PR that removes the code. Search docs for feature name during removal.
+**Drift:** Feature removed but its documentation section remains. **Prevention:** Include feature removal in the PR that removes the code. Search docs for feature name during removal.
 
 ### Pattern 7: The Divergent Example
 
-**Drift:** Code example in docs worked with v1 API but not v2.
-**Prevention:** Extract code examples into testable files. Run example tests in CI. Or use doc-testing tools (doctest, mdx-js).
+**Drift:** Code example in docs worked with v1 API but not v2. **Prevention:** Extract code examples into testable files. Run example tests in CI. Or use doc-testing tools (doctest, mdx-js).
 
 ---
 

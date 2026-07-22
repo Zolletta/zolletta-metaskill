@@ -12,10 +12,10 @@ The `documentor` skill includes four drift detection tools. All are Python 3.8+ 
 
 | Tool                      | Purpose                                       | Command                                                              |
 |---|---|---|
-| `drift_analyzer.py`       | Full drift analysis between code and docs     | `python scripts/drift_analyzer.py <repo> --min-severity high --json` |
-| `doc_staleness_scorer.py` | Score documentation freshness 0-100           | `python scripts/doc_staleness_scorer.py <repo> --threshold 60`       |
-| `api_doc_validator.py`    | Validate API docs against Python source (AST) | `python scripts/api_doc_validator.py <src> <docs> --recursive`       |
-| `link_checker.py`         | Audit all markdown links and anchors          | `python scripts/link_checker.py <repo> --broken-only`                |
+| `drift_analyzer.py`       | Full drift analysis between code and docs     | `python src/zolletta_metaskill/documentor/drift_analyzer.py <repo> --min-severity high --json` |
+| `doc_staleness_scorer.py` | Score documentation freshness 0-100           | `python src/zolletta_metaskill/documentor/doc_staleness_scorer.py <repo> --threshold 60`       |
+| `api_doc_validator.py`    | Validate API docs against Python source (AST) | `python src/zolletta_metaskill/documentor/api_doc_validator.py <src> <docs> --recursive`       |
+| `link_checker.py`         | Audit all markdown links and anchors          | `python src/zolletta_metaskill/documentor/link_checker.py <repo> --broken-only`                |
 
 All tools: Python 3.8+ stdlib only, `--json` and `--help`, non-zero exit codes for CI, any OS.
 
@@ -24,7 +24,7 @@ All tools: Python 3.8+ stdlib only, `--json` and `--help`, non-zero exit codes f
 Full drift analysis between code and documentation. Maps docs to code, compares git histories, detects renamed files, version drift, and structural gaps. Classifies each issue by category, severity, and fix type.
 
 ```bash
-python scripts/drift_analyzer.py <repo> [--doc-patterns "*.md,*.rst,*.txt"] [--scope src/] [--min-severity high] [--include-referential] [--json]
+python src/zolletta_metaskill/documentor/drift_analyzer.py <repo> [--doc-patterns "*.md,*.rst,*.txt"] [--scope src/] [--min-severity high] [--include-referential] [--json]
 ```
 
 | Option                  | Default            | Description                                       |
@@ -43,7 +43,7 @@ python scripts/drift_analyzer.py <repo> [--doc-patterns "*.md,*.rst,*.txt"] [--s
 Scores documentation freshness on a 0-100 scale across five dimensions. Respects `.gitignore`.
 
 ```bash
-python scripts/doc_staleness_scorer.py <repo> [--threshold N] [--readme-focus] [--required-sections "..."] [--json]
+python src/zolletta_metaskill/documentor/doc_staleness_scorer.py <repo> [--threshold N] [--readme-focus] [--required-sections "..."] [--json]
 ```
 
 | Option                | Default    | Description                            |
@@ -61,7 +61,7 @@ Weight customization flags: `--weight-updated`, `--weight-alignment`, `--weight-
 AST-based extraction of Python signatures/classes compared against markdown API docs. Reports real drift (phantom docs, parameter mismatches, deprecations) as issues. Undocumented items are separated as prioritized suggestions.
 
 ```bash
-python scripts/api_doc_validator.py <src> <docs> [--recursive] [--include-private] [--suggest-coverage] [--json]
+python src/zolletta_metaskill/documentor/api_doc_validator.py <src> <docs> [--recursive] [--include-private] [--suggest-coverage] [--json]
 ```
 
 | Option               | Default    | Description                                        |
@@ -80,7 +80,7 @@ Undocumented items do not affect the exit code or issue count.
 Validates all markdown links: local files, anchors, cross-document anchors, images, case-sensitivity, and duplicate anchors. Optional external URL checks.
 
 ```bash
-python scripts/link_checker.py <repo> [--check-external] [--broken-only] [--json]
+python src/zolletta_metaskill/documentor/link_checker.py <repo> [--check-external] [--broken-only] [--json]
 ```
 
 | Option             | Default    | Description                               |

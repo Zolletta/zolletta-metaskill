@@ -30,10 +30,11 @@ Read shared guidelines from the meta-skill (parent directory):
 
 **Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
 
-Local scripts and references are in this skill's own subdirectories:
+Local scripts and references are in these locations:
 
-- `scripts/` — drift detection tools (Python stdlib only)
-- `references/` — drift scoring, workflow, and standards documentation
+- `../src/zolletta_metaskill/documentor/` — drift detection tools (Python stdlib only)
+- `../docs/reference/documentation/` — drift scoring, workflow, and operational rules
+- `../docs/explanation/documentation/` — drift prevention strategies and documentation standards
 - `assets/` — report templates and sample data
 
 ---
@@ -149,11 +150,11 @@ When running automated tools, filter out these known false positive patterns:
 
 Load on demand — keep this file lean:
 
-- **[references/workflows-and-tool-reference.md](references/workflows-and-tool-reference.md)** — quick start, 5 core workflows, GitHub Actions + pre-commit recipes, complete per-tool parameter/output/exit-code reference.
-- **[references/scoring-categories-and-troubleshooting.md](references/scoring-categories-and-troubleshooting.md)** — staleness scoring model and weights, drift categories, auto-fix vs manual-fix classification, troubleshooting.
-- **[references/operational-rules.md](references/operational-rules.md)** — tool invocation conventions, false positive patterns, real drift patterns, workflow order, and drift report conventions.
-- **[../reference/documentation_standards.md](../reference/documentation_standards.md)** — README structure, API docs, changelogs, ADRs, docs-as-code standards — **shared**
-- **[references/drift_prevention_guide.md](references/drift_prevention_guide.md)** — coupling strategies, CI gates, review checklists, prevention patterns.
+- **[docs/reference/documentation/workflows-and-tools.md](../docs/reference/documentation/workflows-and-tools.md)** — quick start, 5 core workflows, GitHub Actions + pre-commit recipes, complete per-tool parameter/output/exit-code reference.
+- **[docs/reference/documentation/scoring-and-categories.md](../docs/reference/documentation/scoring-and-categories.md)** — staleness scoring model and weights, drift categories, auto-fix vs manual-fix classification, troubleshooting.
+- **[docs/reference/documentation/operational-rules.md](../docs/reference/documentation/operational-rules.md)** — tool invocation conventions, false positive patterns, real drift patterns, workflow order, and drift report conventions.
+- **[docs/explanation/documentation/standards.md](../docs/explanation/documentation/standards.md)** — README structure, API docs, changelogs, ADRs, docs-as-code standards — **shared**
+- **[docs/explanation/documentation/drift-prevention.md](../docs/explanation/documentation/drift-prevention.md)** — coupling strategies, CI gates, review checklists, prevention patterns.
 
 ### Assets
 

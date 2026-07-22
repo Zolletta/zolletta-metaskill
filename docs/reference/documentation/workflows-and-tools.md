@@ -1,3 +1,9 @@
+---
+audience: human, ai
+status: stable
+skills: [documentor]
+---
+
 # Workflows & Tool Reference
 
 Read this when running a drift analysis end-to-end, wiring tools into CI, or looking up the exact flags, parameters, output formats, and exit codes for each CLI tool.
@@ -6,22 +12,22 @@ Read this when running a drift analysis end-to-end, wiring tools into CI, or loo
 
 ```bash
 # 1. Run full drift analysis on a repository
-python scripts/drift_analyzer.py /path/to/repo
+python src/zolletta_metaskill/documentor/drift_analyzer.py /path/to/repo
 
 # 2. Score documentation freshness
-python scripts/doc_staleness_scorer.py /path/to/repo
+python src/zolletta_metaskill/documentor/doc_staleness_scorer.py /path/to/repo
 
 # 3. Validate API docs against Python source
-python scripts/api_doc_validator.py /path/to/repo/src /path/to/repo/docs/api.md
+python src/zolletta_metaskill/documentor/api_doc_validator.py /path/to/repo/src /path/to/repo/docs/api.md
 
 # 4. Check all markdown links
-python scripts/link_checker.py /path/to/repo
+python src/zolletta_metaskill/documentor/link_checker.py /path/to/repo
 
 # JSON output for any tool
-python scripts/drift_analyzer.py /path/to/repo --json
+python src/zolletta_metaskill/documentor/drift_analyzer.py /path/to/repo --json
 
 # Set failure threshold for CI
-python scripts/doc_staleness_scorer.py /path/to/repo --threshold 60
+python src/zolletta_metaskill/documentor/doc_staleness_scorer.py /path/to/repo --threshold 60
 ```
 
 All tools support `--help` for full usage details.
@@ -34,19 +40,19 @@ Scan all documentation against code changes since each doc was last updated. Thi
 
 ```bash
 # Basic analysis
-python scripts/drift_analyzer.py /path/to/repo
+python src/zolletta_metaskill/documentor/drift_analyzer.py /path/to/repo
 
 # Analyze with custom doc patterns
-python scripts/drift_analyzer.py /path/to/repo --doc-patterns "*.md,*.rst,*.txt"
+python src/zolletta_metaskill/documentor/drift_analyzer.py /path/to/repo --doc-patterns "*.md,*.rst,*.txt"
 
 # JSON output for tooling
-python scripts/drift_analyzer.py /path/to/repo --json
+python src/zolletta_metaskill/documentor/drift_analyzer.py /path/to/repo --json
 
 # Only show high-severity drift
-python scripts/drift_analyzer.py /path/to/repo --min-severity high
+python src/zolletta_metaskill/documentor/drift_analyzer.py /path/to/repo --min-severity high
 
 # Analyze specific directory
-python scripts/drift_analyzer.py /path/to/repo --scope src/
+python src/zolletta_metaskill/documentor/drift_analyzer.py /path/to/repo --scope src/
 ```
 
 **What it does:**
@@ -90,16 +96,16 @@ Check that API documentation accurately reflects the actual function signatures,
 
 ```bash
 # Validate API docs against source
-python scripts/api_doc_validator.py /path/to/src /path/to/docs/api.md
+python src/zolletta_metaskill/documentor/api_doc_validator.py /path/to/src /path/to/docs/api.md
 
 # Scan entire docs directory
-python scripts/api_doc_validator.py /path/to/src /path/to/docs/ --recursive
+python src/zolletta_metaskill/documentor/api_doc_validator.py /path/to/src /path/to/docs/ --recursive
 
 # JSON output
-python scripts/api_doc_validator.py /path/to/src /path/to/docs/api.md --json
+python src/zolletta_metaskill/documentor/api_doc_validator.py /path/to/src /path/to/docs/api.md --json
 
 # Include private methods in validation
-python scripts/api_doc_validator.py /path/to/src /path/to/docs/ --include-private
+python src/zolletta_metaskill/documentor/api_doc_validator.py /path/to/src /path/to/docs/ --include-private
 ```
 
 **What it detects:**
@@ -121,10 +127,10 @@ Validate README sections against the actual project state. This combines drift a
 
 ```bash
 # Check README health
-python scripts/doc_staleness_scorer.py /path/to/repo --readme-focus
+python src/zolletta_metaskill/documentor/doc_staleness_scorer.py /path/to/repo --readme-focus
 
 # Check with custom sections
-python scripts/doc_staleness_scorer.py /path/to/repo --required-sections "Installation,Usage,API,Contributing,License"
+python src/zolletta_metaskill/documentor/doc_staleness_scorer.py /path/to/repo --required-sections "Installation,Usage,API,Contributing,License"
 ```
 
 **Validates:**
@@ -142,19 +148,19 @@ Check every link in every markdown file -- local file references, anchors, cross
 
 ```bash
 # Check all markdown links
-python scripts/link_checker.py /path/to/repo
+python src/zolletta_metaskill/documentor/link_checker.py /path/to/repo
 
 # Include external URL checks (slower, makes HTTP requests)
-python scripts/link_checker.py /path/to/repo --check-external
+python src/zolletta_metaskill/documentor/link_checker.py /path/to/repo --check-external
 
 # Check specific file
-python scripts/link_checker.py /path/to/repo/README.md
+python src/zolletta_metaskill/documentor/link_checker.py /path/to/repo/README.md
 
 # JSON output
-python scripts/link_checker.py /path/to/repo --json
+python src/zolletta_metaskill/documentor/link_checker.py /path/to/repo --json
 
 # Only show broken links
-python scripts/link_checker.py /path/to/repo --broken-only
+python src/zolletta_metaskill/documentor/link_checker.py /path/to/repo --broken-only
 ```
 
 **What it checks:**
@@ -194,16 +200,16 @@ jobs:
           python-version: "3.11"
 
       - name: Run drift analysis
-        run: python engineering/zolletta-documentor/scripts/drift_analyzer.py . --json > drift-report.json
+        run: python engineering/zolletta-documentor/src/zolletta_metaskill/documentor/drift_analyzer.py . --json > drift-report.json
 
       - name: Check staleness score
-        run: python engineering/zolletta-documentor/scripts/doc_staleness_scorer.py . --threshold 50
+        run: python engineering/zolletta-documentor/src/zolletta_metaskill/documentor/doc_staleness_scorer.py . --threshold 50
 
       - name: Validate API docs
-        run: python engineering/zolletta-documentor/scripts/api_doc_validator.py src/ docs/api.md
+        run: python engineering/zolletta-documentor/src/zolletta_metaskill/documentor/api_doc_validator.py src/ docs/api.md
 
       - name: Check links
-        run: python engineering/zolletta-documentor/scripts/link_checker.py .
+        run: python engineering/zolletta-documentor/src/zolletta_metaskill/documentor/link_checker.py .
 
       - name: Upload drift report
         if: always()
@@ -219,7 +225,7 @@ jobs:
 #!/bin/bash
 # .git/hooks/pre-commit
 # Fail commit if docs are severely stale
-python engineering/zolletta-documentor/scripts/doc_staleness_scorer.py . --threshold 30 --quiet
+python engineering/zolletta-documentor/src/zolletta_metaskill/documentor/doc_staleness_scorer.py . --threshold 30 --quiet
 if [ $? -ne 0 ]; then
     echo "Documentation is critically stale. Update docs before committing."
     exit 1
@@ -228,12 +234,12 @@ fi
 
 ## Tools Summary
 
-| Tool                      | Purpose                                   | Lines | Key Feature                                       |
-|---|---|---|---|
-| `drift_analyzer.py`       | Full drift analysis between code and docs | ~550  | Git history comparison with code-to-doc mapping   |
-| `doc_staleness_scorer.py` | Score documentation freshness 0-100       | ~450  | Weighted multi-dimensional scoring                |
-| `api_doc_validator.py`    | Validate API docs against Python source   | ~400  | AST-based signature extraction and comparison     |
-| `link_checker.py`         | Audit all markdown links and anchors      | ~400  | Local file, anchor, and cross-document validation |
+| Tool | Purpose | Lines | Key Feature |
+| --- | --- | --- | --- |
+| `drift_analyzer.py` | Full drift analysis between code and docs | ~550 | Git history comparison with code-to-doc mapping |
+| `doc_staleness_scorer.py` | Score documentation freshness 0-100 | ~450 | Weighted multi-dimensional scoring |
+| `api_doc_validator.py` | Validate API docs against Python source | ~400 | AST-based signature extraction and comparison |
+| `link_checker.py` | Audit all markdown links and anchors | ~400 | Local file, anchor, and cross-document validation |
 
 All tools:
 
@@ -252,23 +258,23 @@ All tools:
 **Usage:**
 
 ```bash
-python scripts/drift_analyzer.py <repo_path> [options]
+python src/zolletta_metaskill/documentor/drift_analyzer.py <repo_path> [options]
 ```
 
 **Parameters:**
 
-| Flag             | Type       | Default                   | Description                                                                                 |
-|---|---|---|---|
-| `repo_path`      | positional | _(required)_              | Path to the git repository to analyze                                                       |
-| `--json`         | flag       | off                       | Output the full drift report as JSON                                                        |
-| `--min-severity` | choice     | `low`                     | Minimum severity to include in report. Choices: `critical`, `high`, `medium`, `low`, `info` |
-| `--scope`        | string     | `""` (all)                | Limit code analysis to a subdirectory (e.g., `src/`)                                        |
-| `--doc-patterns` | string     | `*.md,*.rst,*.txt,*.adoc` | Comma-separated file patterns for documentation discovery                                   |
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `repo_path` | positional | _(required)_ | Path to the git repository to analyze |
+| `--json` | flag | off | Output the full drift report as JSON |
+| `--min-severity` | choice | `low` | Minimum severity to include in report. Choices: `critical`, `high`, `medium`, `low`, `info` |
+| `--scope` | string | `""` (all) | Limit code analysis to a subdirectory (e.g., `src/`) |
+| `--doc-patterns` | string | `*.md,*.rst,*.txt,*.adoc` | Comma-separated file patterns for documentation discovery |
 
 **Example:**
 
 ```bash
-python scripts/drift_analyzer.py /path/to/repo --min-severity medium --scope src/ --json
+python src/zolletta_metaskill/documentor/drift_analyzer.py /path/to/repo --min-severity medium --scope src/ --json
 ```
 
 **Output Formats:**
@@ -285,30 +291,30 @@ python scripts/drift_analyzer.py /path/to/repo --min-severity medium --scope src
 **Usage:**
 
 ```bash
-python scripts/doc_staleness_scorer.py <repo_path> [options]
+python src/zolletta_metaskill/documentor/doc_staleness_scorer.py <repo_path> [options]
 ```
 
 **Parameters:**
 
-| Flag                      | Type       | Default                                       | Description                                                                                                                               |
-|---|---|---|---|
-| `repo_path`               | positional | _(required)_                                  | Path to the git repository to score                                                                                                       |
-| `--json`                  | flag       | off                                           | Output the full scoring report as JSON                                                                                                    |
-| `--threshold`             | float      | _(none)_                                      | Fail with exit code 1 if aggregate score falls below this value                                                                           |
-| `--readme-focus`          | flag       | off                                           | Only score README files (filenames starting with `readme`)                                                                                |
-| `--required-sections`     | string     | `Installation,Usage,API,Contributing,License` | Comma-separated section names for completeness scoring                                                                                    |
-| `--diataxis-translations` | string     | _(none)_                                      | Path to a JSON file with translated Diátaxis headings and directory names (for non-English documentation). See below for the JSON format. |
-| `--quiet`                 | flag       | off                                           | Only print the aggregate score number (no report)                                                                                         |
-| `--weight-updated`        | float      | `0.20`                                        | Weight for the "last updated" dimension                                                                                                   |
-| `--weight-alignment`      | float      | `0.30`                                        | Weight for the "code-doc alignment" dimension                                                                                             |
-| `--weight-links`          | float      | `0.15`                                        | Weight for the "link health" dimension                                                                                                    |
-| `--weight-completeness`   | float      | `0.20`                                        | Weight for the "completeness" dimension                                                                                                   |
-| `--weight-accuracy`       | float      | `0.15`                                        | Weight for the "accuracy" dimension                                                                                                       |
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `repo_path` | positional | _(required)_ | Path to the git repository to score |
+| `--json` | flag | off | Output the full scoring report as JSON |
+| `--threshold` | float | _(none)_ | Fail with exit code 1 if aggregate score falls below this value |
+| `--readme-focus` | flag | off | Only score README files (filenames starting with `readme`) |
+| `--required-sections` | string | `Installation,Usage,API,Contributing,License` | Comma-separated section names for completeness scoring |
+| `--diataxis-translations` | string | _(none)_ | Path to a JSON file with translated Diátaxis headings and directory names (for non-English documentation). See below for the JSON format. |
+| `--quiet` | flag | off | Only print the aggregate score number (no report) |
+| `--weight-updated` | float | `0.20` | Weight for the "last updated" dimension |
+| `--weight-alignment` | float | `0.30` | Weight for the "code-doc alignment" dimension |
+| `--weight-links` | float | `0.15` | Weight for the "link health" dimension |
+| `--weight-completeness` | float | `0.20` | Weight for the "completeness" dimension |
+| `--weight-accuracy` | float | `0.15` | Weight for the "accuracy" dimension |
 
 **Example:**
 
 ```bash
-python scripts/doc_staleness_scorer.py /path/to/repo --threshold 60 --readme-focus --quiet
+python src/zolletta_metaskill/documentor/doc_staleness_scorer.py /path/to/repo --threshold 60 --readme-focus --quiet
 ```
 
 **Output Formats:**
@@ -325,13 +331,7 @@ For non-English documentation, the agent translates the English signpost heading
 
 ```json
 {
-  "readme_sections": [
-    "installazione",
-    "utilizzo",
-    "api",
-    "contribuire",
-    "licenza"
-  ],
+  "readme_sections": ["installazione", "utilizzo", "api", "contribuire", "licenza"],
   "quadrants": {
     "tutorials": {
       "dir_names": ["tutorials", "tutorial", "guide"],
@@ -363,23 +363,23 @@ For non-English documentation, the agent translates the English signpost heading
 **Usage:**
 
 ```bash
-python scripts/api_doc_validator.py <source_path> <doc_path> [options]
+python src/zolletta_metaskill/documentor/api_doc_validator.py <source_path> <doc_path> [options]
 ```
 
 **Parameters:**
 
-| Flag                | Type       | Default      | Description                                                      |
-|---|---|---|---|
-| `source_path`       | positional | _(required)_ | Path to a Python source file or directory                        |
-| `doc_path`          | positional | _(required)_ | Path to API documentation file (`.md`) or directory              |
-| `--json`            | flag       | off          | Output the validation report as JSON                             |
-| `--recursive`       | flag       | off          | Recursively scan the doc directory for markdown files            |
-| `--include-private` | flag       | off          | Include `_`-prefixed private functions and classes in validation |
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `source_path` | positional | _(required)_ | Path to a Python source file or directory |
+| `doc_path` | positional | _(required)_ | Path to API documentation file (`.md`) or directory |
+| `--json` | flag | off | Output the validation report as JSON |
+| `--recursive` | flag | off | Recursively scan the doc directory for markdown files |
+| `--include-private` | flag | off | Include `_`-prefixed private functions and classes in validation |
 
 **Example:**
 
 ```bash
-python scripts/api_doc_validator.py /path/to/src /path/to/docs/ --recursive --include-private --json
+python src/zolletta_metaskill/documentor/api_doc_validator.py /path/to/src /path/to/docs/ --recursive --include-private --json
 ```
 
 **Output Formats:**
@@ -396,22 +396,22 @@ python scripts/api_doc_validator.py /path/to/src /path/to/docs/ --recursive --in
 **Usage:**
 
 ```bash
-python scripts/link_checker.py <path> [options]
+python src/zolletta_metaskill/documentor/link_checker.py <path> [options]
 ```
 
 **Parameters:**
 
-| Flag               | Type       | Default      | Description                                                                         |
-|---|---|---|---|
-| `path`             | positional | _(required)_ | File or directory to check (single `.md` file or directory for recursive scan)      |
-| `--json`           | flag       | off          | Output the link check report as JSON                                                |
-| `--broken-only`    | flag       | off          | Only show broken links in the report (omit valid links from output)                 |
-| `--check-external` | flag       | off          | Also validate external URLs via HTTP HEAD requests (slower, makes network requests) |
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `path` | positional | _(required)_ | File or directory to check (single `.md` file or directory for recursive scan) |
+| `--json` | flag | off | Output the link check report as JSON |
+| `--broken-only` | flag | off | Only show broken links in the report (omit valid links from output) |
+| `--check-external` | flag | off | Also validate external URLs via HTTP HEAD requests (slower, makes network requests) |
 
 **Example:**
 
 ```bash
-python scripts/link_checker.py /path/to/repo --broken-only --json
+python src/zolletta_metaskill/documentor/link_checker.py /path/to/repo --broken-only --json
 ```
 
 **Output Formats:**

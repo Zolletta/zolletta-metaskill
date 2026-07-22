@@ -1,7 +1,8 @@
 ---
 audience: human, ai
 status: stable
-skills: [setup, review, patterns, documentor, external-review, python-code-style, python-testing-patterns]
+skills:
+  [setup, review, patterns, documentor, external-review, python-code-style, python-testing-patterns]
 ---
 
 # Documentation Index
@@ -42,6 +43,7 @@ docs/
 │       ├── adr.md
 │       ├── api.md
 │       ├── changelog.md
+│       ├── drift-prevention.md
 │       ├── readme.md
 │       └── standards.md
 └── reference/
@@ -55,7 +57,8 @@ docs/
     ├── documentation/
     │   ├── drift-detection-tools.md
     │   ├── operational-rules.md
-    │   └── scoring-and-categories.md
+    │   ├── scoring-and-categories.md
+    │   └── workflows-and-tools.md
     ├── frontmatter.md
     ├── index.md
     ├── reports.md
@@ -66,9 +69,9 @@ docs/
 
 ## Quadrant guide
 
-| Quadrant          | Purpose                                              | Audience                 |
-|---|---|---|
-| **Tutorials**     | Learning-oriented, step-by-step lessons              | Newcomers                |
-| **How-to Guides** | Task-oriented, practical steps to achieve a goal     | Practitioners            |
-| **Reference**     | Information-oriented, accurate technical description | Users who need facts     |
-| **Explanation**   | Understanding-oriented, clarification and background | Readers who want context |
+| Quadrant | Purpose | Audience |
+| --- | --- | --- |
+| **Tutorials** | Learning-oriented, step-by-step lessons | Newcomers |
+| **How-to Guides** | Task-oriented, practical steps to achieve a goal | Practitioners |
+| **Reference** | Information-oriented, accurate technical description | Users who need facts |
+| **Explanation** | Understanding-oriented, clarification and background | Readers who want context |
