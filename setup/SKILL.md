@@ -164,6 +164,22 @@ The two Python review skills (`python-code-style`, `python-testing-patterns`) ar
 
 > **Note**: these skills are adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT License, Copyright (c) 2024 Seth Hobson) and live in `python-code-style/` and `python-testing-patterns/` within this meta-skill.
 
+### Step 7.5 — Detect companion implementation skills
+
+Zolletta-metaskill is a **review** skill — it checks code quality but does not write code. Companion **implementation** skills can be installed separately to provide code generation alongside review. Setup detects their availability and suggests installing them if not present.
+
+1. **For PHP projects** (`language == "php"`):
+   - Check if `~/.agents/skills/php-pro/SKILL.md` exists
+   - Store `php.tools.php_pro_available` boolean (add to `php.tools` object)
+   - If not available, print the php-pro "not installed" message from `../docs/reference/tool-messages.md` in Step 9
+
+2. **For Python projects** (`language == "python"`):
+   - Check if `~/.agents/skills/python-development/SKILL.md` exists
+   - Store `python.tools.python_development_available` boolean (add to `python.tools` object)
+   - If not available, print the python-development "not installed" message from `../docs/reference/tool-messages.md` in Step 9
+
+> **Do NOT install any skill.** Only inform the user. These are suggestions, not requirements.
+
 ### Step 8 — Write settings.json
 
 Read the [settings template](assets/settings_template.json) and write `.zolletta-metaskill/settings.json` with the following fields filled in:
@@ -234,6 +250,8 @@ This covers:
 - `tokensave_available: false` → tokensave "not installed" message
 - For Python projects, each tool in `python.tools` with `available: false` → corresponding "not installed" message
 - For Python projects, each tool in `python.tools` with `available: true` but unconfigured → corresponding "unconfigured" warning
+- For PHP projects, if `php.tools.php_pro_available` is `false` → php-pro "not installed" message
+- For Python projects, if `python.tools.python_development_available` is `false` → python-development "not installed" message
 
 (The Python review skills are bundled inside this meta-skill, so no "not installed" message is needed for them.)
 

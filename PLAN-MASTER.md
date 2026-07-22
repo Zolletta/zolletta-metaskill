@@ -82,7 +82,7 @@ Both PHP plans touch shared files. This table assigns each file to exactly one p
 
 - [x] **3.1** Search skills.sh for Python equivalent of php-pro → PLAN-PHP-CODE-STYLE 1.1 — Found `skillcreatorai/ai-agent-skills/python-development` (314 installs, 1.1K GitHub stars, MIT, security audited). Python 3.12+ with FastAPI, Django, async patterns, pytest, ruff, mypy. Implementation skill — parallel to php-pro.
 - [x] **3.2** Add php-pro + python-development "not installed" messages to `docs/reference/tool-messages.md` → PLAN-PHP-CODE-STYLE 1.2
-- [ ] **3.3** Add php-pro detection to `setup/SKILL.md` (check `~/.agents/skills/php-pro/SKILL.md`, store `php.tools.php_pro_available`) → PLAN-PHP-CODE-STYLE 1.3
+- [x] **3.3** Add php-pro + python-development detection to `setup/SKILL.md` (Step 7.5: check `~/.agents/skills/`, store `*_available` booleans) → PLAN-PHP-CODE-STYLE 1.3
 
 ---
 
