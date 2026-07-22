@@ -181,27 +181,27 @@ For each scanner, read the source file and write tests that cover every branch. 
 
 ### Step 4: Test file reconstruction order (by difficulty)
 
-| #   | File                                 | Difficulty  | Notes                                            |
-| --- | ------------------------------------ | ----------- | ------------------------------------------------ |
-| 1   | `test_cli.py`                        | Low         | CLI is simple, few branches                      |
-| 2   | `test_scan_class_metrics.py`         | Low         | Simple AST scanning, few edge cases              |
-| 3   | `test_scan_one_class_per_file.py`    | Low         | Simple counting logic                            |
-| 4   | `test_scan_naming_conventions.py`    | Medium      | Multiple categories, auto-detection              |
-| 5   | `test_scan_tests.py`                 | Medium      | Directory mirroring logic                        |
-| 6   | `test_scan_test_naming.py`           | Medium      | Naming pattern matching                          |
-| 7   | `test_scan_test_god_classes.py`      | Medium      | Class metrics in test files                      |
-| 8   | `test_scan_acronym_casing.py`        | Medium      | Comment/docstring scanning                       |
-| 9   | `test_scan_unused_all_exports.py`    | Medium      | `__all__` + import tracking                      |
-| 10  | `test_scan_open_closed.py`           | Medium      | OCP detection, multiple patterns                 |
-| 11  | `test_scan_interface_segregation.py` | Medium      | Protocol/ABC analysis                            |
-| 12  | `test_scan_liskov_substitution.py`   | Medium      | Method signature comparison                      |
-| 13  | `test_scan_dependency_inversion.py`  | Medium-Hard | DI detection, many branches                      |
-| 14  | `test_test_splitter.py`              | Medium      | Code generation + file writing                   |
-| 15  | `test_streamline_docstrings.py`      | Hard        | Complex docstring rewriting, many branches       |
-| 16  | `test_doc_staleness_scorer.py`       | Hard        | Scoring algorithm, many factors                  |
-| 17  | `test_api_doc_validator.py`          | Hard        | API doc validation, ~975 lines                   |
-| 18  | `test_link_checker.py`               | Hard        | Link checking, ~1090 lines                       |
-| 19  | `test_drift_analyzer.py`             | Hard        | Git-based drift, ~1250 lines, needs git fixtures |
+| # | File | Difficulty | Notes |
+| --- | --- | --- | --- |
+| 1 | `test_cli.py` | Low | CLI is simple, few branches |
+| 2 | `test_scan_class_metrics.py` | Low | Simple AST scanning, few edge cases |
+| 3 | `test_scan_one_class_per_file.py` | Low | Simple counting logic |
+| 4 | `test_scan_naming_conventions.py` | Medium | Multiple categories, auto-detection |
+| 5 | `test_scan_tests.py` | Medium | Directory mirroring logic |
+| 6 | `test_scan_test_naming.py` | Medium | Naming pattern matching |
+| 7 | `test_scan_test_god_classes.py` | Medium | Class metrics in test files |
+| 8 | `test_scan_acronym_casing.py` | Medium | Comment/docstring scanning |
+| 9 | `test_scan_unused_all_exports.py` | Medium | `__all__` + import tracking |
+| 10 | `test_scan_open_closed.py` | Medium | OCP detection, multiple patterns |
+| 11 | `test_scan_interface_segregation.py` | Medium | Protocol/ABC analysis |
+| 12 | `test_scan_liskov_substitution.py` | Medium | Method signature comparison |
+| 13 | `test_scan_dependency_inversion.py` | Medium-Hard | DI detection, many branches |
+| 14 | `test_test_splitter.py` | Medium | Code generation + file writing |
+| 15 | `test_streamline_docstrings.py` | Hard | Complex docstring rewriting, many branches |
+| 16 | `test_doc_staleness_scorer.py` | Hard | Scoring algorithm, many factors |
+| 17 | `test_api_doc_validator.py` | Hard | API doc validation, ~975 lines |
+| 18 | `test_link_checker.py` | Hard | Link checking, ~1090 lines |
+| 19 | `test_drift_analyzer.py` | Hard | Git-based drift, ~1250 lines, needs git fixtures |
 
 ### Step 5: Git-based test fixtures
 
@@ -336,24 +336,24 @@ Achieved by subagent. No specific test class names recorded.
 
 From the conversation history, these pragmas were added to source files:
 
-| File                       | Line    | Reason                                                                                            |
-| -------------------------- | ------- | ------------------------------------------------------------------------------------------------- |
-| `drift_analyzer.py`        | 553-554 | `except ValueError` in `_parse_version_part` — regex ensures cleaned is digits-only or empty      |
-| `drift_analyzer.py`        | 496-502 | Temporal drift issue — requires a doc older than threshold (hard to test without mocking dates)   |
-| `scan_open_closed.py`      | 94      | `if not isinstance(node, ast.Call)` — annotation is `ast.Call`, truly unreachable                 |
-| `scan_open_closed.py`      | 73      | `while isinstance(current, ast.If)` — `# pragma: no branch` — loop always exits via break         |
-| `streamline_docstrings.py` | 188     | `else: i += 1` in `parse_docstring` — dead code, inner while always consumes all non-header lines |
+| File | Line | Reason |
+| --- | --- | --- |
+| `drift_analyzer.py` | 553-554 | `except ValueError` in `_parse_version_part` — regex ensures cleaned is digits-only or empty |
+| `drift_analyzer.py` | 496-502 | Temporal drift issue — requires a doc older than threshold (hard to test without mocking dates) |
+| `scan_open_closed.py` | 94 | `if not isinstance(node, ast.Call)` — annotation is `ast.Call`, truly unreachable |
+| `scan_open_closed.py` | 73 | `while isinstance(current, ast.If)` — `# pragma: no branch` — loop always exits via break |
+| `streamline_docstrings.py` | 188 | `else: i += 1` in `parse_docstring` — dead code, inner while always consumes all non-header lines |
 
 ---
 
 ## Estimated effort
 
-| Approach                                       | Effort     | Fidelity                                                 |
-| ---------------------------------------------- | ---------- | -------------------------------------------------------- |
-| Find in another session's working copy         | Minutes    | 100% (exact files)                                       |
-| Find in GitHub Actions artifacts               | Minutes    | 100% (exact files)                                       |
-| Reconstruct from conversation history + source | 4-8 hours  | 90-95% (same coverage, different implementation details) |
-| Write from scratch using source only           | 8-16 hours | 90% (same coverage, no history matching)                 |
+| Approach | Effort | Fidelity |
+| --- | --- | --- |
+| Find in another session's working copy | Minutes | 100% (exact files) |
+| Find in GitHub Actions artifacts | Minutes | 100% (exact files) |
+| Reconstruct from conversation history + source | 4-8 hours | 90-95% (same coverage, different implementation details) |
+| Write from scratch using source only | 8-16 hours | 90% (same coverage, no history matching) |
 
 ## Recommended approach
 
@@ -375,3 +375,31 @@ From the conversation history, these pragmas were added to source files:
    - `from zolletta_metaskill.scanners.test_splitter import ...` → `from zolletta_metaskill.patterns.test_splitter import ...`
    - `from zolletta_metaskill.scanners.streamline_docstrings import ...` → `from zolletta_metaskill.python_code_style.streamline_docstrings import ...`
    - `from zolletta_metaskill.scanners.scan_unused_all_exports import ...` → `from zolletta_metaskill.python_code_style.scan_unused_all_exports import ...`
+
+---
+
+## Tests required by PLAN-PHP-SUPPORT
+
+PLAN-PHP-SUPPORT creates new Python source files but defers test creation to this plan (see PLAN-PHP-SUPPORT "Testing policy"). The table below lists every deferred test. Each must be created during Phase 6 of PLAN-MASTER.md, after the core test recovery is complete.
+
+### `common/` (PLAN-PHP-SUPPORT Phase 1.5)
+
+| Test file | Source file | What it must cover |
+| --- | --- | --- |
+| `tests/common/test_models.py` | `src/zolletta_metaskill/common/models.py` | Dataclass construction (`ModuleInfo`, `ClassInfo`, `MethodInfo`, `ImportInfo`), immutability (frozen=True), field defaults, optional fields (`all_exports=None`, `docstring=None`), `has_syntax_error` flag |
+| `tests/common/test_registry.py` | `src/zolletta_metaskill/common/registry.py` | `register_engine()` + `get_engine()` round-trip, unknown language raises, `get_engine_for_file()` by extension, `available_languages()` list, duplicate registration |
+
+### `engines/` (PLAN-PHP-SUPPORT Phase 2.4)
+
+| Test file | Source file | What it must cover |
+| --- | --- | --- |
+| `tests/engines/test_python_engine.py` | `src/zolletta_metaskill/engines/python_engine.py` | `parse_module()` on various Python constructs (classes, methods, imports, `__all__`, `ast.Raise`, ABC/Protocol bases, `@staticmethod`, `_` prefix visibility), `is_test_file()` (filename + class name), `file_extensions()`, `is_source_file()`, syntax error handling |
+| `tests/engines/test_php_engine.py` | `src/zolletta_metaskill/engines/php_engine.py` | `parse_module()` on PHP fixtures (class_declaration, method_declaration, use_declaration, interface_declaration, trait_declaration, abstract_modifier, static_modifier, visibility), `is_test_file()` (`*Test.php`), `file_extensions()`, PSR-4 autoload mapping. Fixtures: `tests/fixtures/php/src/` with sample classes, interfaces, traits |
+
+### `php_patterns/` (PLAN-PHP-SUPPORT Phase 6.2)
+
+| Test file | Source file | What it must cover |
+| --- | --- | --- |
+| `tests/php_patterns/test_scan_php_dependency_inversion.py` | `src/zolletta_metaskill/php_patterns/scan_php_dependency_inversion.py` | `new` in constructors (DIP violation), composition root exclusion, factory pattern exclusion, report-only mode, `__pycache__` skip. Fixtures: `tests/fixtures/php/src/` with violation examples |
+| `tests/php_patterns/test_scan_php_interface_segregation.py` | `src/zolletta_metaskill/php_patterns/scan_php_interface_segregation.py` | Fat interfaces (many methods), partial implementers (subset of methods used), interface with few implementers (not a violation), report-only mode |
+| `tests/php_patterns/test_scan_php_open_closed.py` | `src/zolletta_metaskill/php_patterns/scan_php_open_closed.py` | `instanceof` chains (OCP violation), if/elseif type ladders, match expression on type, no type-check (clean), report-only mode |
