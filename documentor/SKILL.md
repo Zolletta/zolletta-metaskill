@@ -26,7 +26,7 @@ Read shared guidelines from the meta-skill (parent directory):
 - `../reference/documentation_standards.md` — generic doc writing standards (README, API docs, changelogs, ADRs)
 - `../reference/general-principles.md` — SOLID, KISS, composition over inheritance (language-agnostic)
 - `../reference/tool-messages.md` — "not installed" messages for the tool-failure handler
-- `../scripts/python/` — shared scanning scripts
+- `../src/zolletta_metaskill/scanners/` — shared scanning scripts
 
 **Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
 
@@ -127,10 +127,10 @@ When checking accuracy, the agent MUST:
 
 | Tool | Purpose | Command |
 |------|---------|---------|
-| `drift_analyzer.py` | Full drift analysis between code and docs | `python scripts/drift_analyzer.py <repo> --min-severity high --json` |
-| `doc_staleness_scorer.py` | Score documentation freshness 0-100 | `python scripts/doc_staleness_scorer.py <repo> --threshold 60` |
-| `api_doc_validator.py` | Validate API docs against Python source (AST) | `python scripts/api_doc_validator.py <src> <docs> --recursive` |
-| `link_checker.py` | Audit all markdown links and anchors | `python scripts/link_checker.py <repo> --broken-only` |
+| `drift_analyzer.py` | Full drift analysis between code and docs | `python src/zolletta_metaskill/documentor/drift_analyzer.py <repo> --min-severity high --json` |
+| `doc_staleness_scorer.py` | Score documentation freshness 0-100 | `python src/zolletta_metaskill/documentor/doc_staleness_scorer.py <repo> --threshold 60` |
+| `api_doc_validator.py` | Validate API docs against Python source (AST) | `python src/zolletta_metaskill/documentor/api_doc_validator.py <src> <docs> --recursive` |
+| `link_checker.py` | Audit all markdown links and anchors | `python src/zolletta_metaskill/documentor/link_checker.py <repo> --broken-only` |
 
 All tools: Python 3.8+ stdlib only, `--json` and `--help`, non-zero exit codes for CI, any OS.
 

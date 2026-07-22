@@ -1,6 +1,6 @@
 # Scripts Reference
 
-All scripts live in `scripts/python/` and are designed for Python codebases. They use the `ast` module for static analysis — no code execution required.
+All scripts live in `src/zolletta_metaskill/scanners/` and are designed for Python codebases. They use the `ast` module for static analysis — no code execution required.
 
 Every script supports `--skip` (exit 0 with "SKIPPED" message) for projects that intentionally don't follow a given convention. Scripts that report violations also support `--strict` (exit code 1 if violations found).
 
@@ -11,7 +11,7 @@ Every script supports `--skip` (exit 0 with "SKIPPED" message) for projects that
 Scans all `.py` files and reports every class sorted by line count, with method count, public method count, and `self.*` attribute count.
 
 ```bash
-python3 scripts/python/scan_class_metrics.py <directory> [--top N] [--min-lines N]
+python3 src/zolletta_metaskill/scanners/scan_class_metrics.py <directory> [--top N] [--min-lines N]
 ```
 
 | Option          | Default | Description                       |
@@ -29,7 +29,7 @@ Use the output to identify candidates, then read the code to apply the "reason t
 Scans test files and reports test classes sorted by size, with method count and method names. Detects test classes that test multiple unrelated SUTs.
 
 ```bash
-python3 scripts/python/scan_test_god_classes.py <directory> [--top N] [--show-methods]
+python3 src/zolletta_metaskill/scanners/scan_test_god_classes.py <directory> [--top N] [--show-methods]
 ```
 
 | Option           | Default | Description                                             |
@@ -45,7 +45,7 @@ python3 scripts/python/scan_test_god_classes.py <directory> [--top N] [--show-me
 Checks the "1 class 1 file, 1 file 1 class" convention. Reports files with 2+ classes, files with 0 classes (non-`__init__.py`), and class names that don't match the filename.
 
 ```bash
-python3 scripts/python/scan_one_class_per_file.py <directory> [--strict] [--ignore-zero] [--skip]
+python3 src/zolletta_metaskill/scanners/scan_one_class_per_file.py <directory> [--strict] [--ignore-zero] [--skip]
 ```
 
 | Option          | Default | Description                                         |
@@ -68,7 +68,7 @@ Checks that the test directory structure mirrors the source directory structure.
 5. **Indirect references** — test files that reference classes from source files without a direct test. Informative only: shows which test files provide indirect coverage for otherwise untested source files.
 
 ```bash
-python3 scripts/python/scan_tests.py \
+python3 src/zolletta_metaskill/scanners/scan_tests.py \
     --src <src_root> --tests <test_root> \
     [--src-package <name>] [--tests-package <name>] \
     [--ignore-dirs <dir1,dir2,...>] [--skip]
@@ -97,7 +97,7 @@ Checks two naming conventions in a single pass:
 2. **Test file naming** — every `test_*.py` file must follow `test_<source_stem><eventual_suffix>.py`, where `<source_stem>` is the stem of a source file (or the snake_case form of a source class name) in the mirrored source directory. Test files that don't match any source file or class are reported as orphan/misnamed.
 
 ```bash
-python3 scripts/python/scan_naming_conventions.py \
+python3 src/zolletta_metaskill/scanners/scan_naming_conventions.py \
     --src <src_root> --tests <test_root> \
     [--src-package <name>] [--tests-package <name>] \
     [--ignore-dirs <dir1,dir2,...>] [--strict] [--skip]
@@ -124,7 +124,7 @@ python3 scripts/python/scan_naming_conventions.py \
 Detects classes that instantiate their dependencies internally (`self.x = SomeClass(...)`) instead of receiving them as constructor parameters. Excludes entry points, dataclasses, factories, and stdlib types.
 
 ```bash
-python3 scripts/python/scan_dependency_inversion.py <directory>
+python3 src/zolletta_metaskill/scanners/scan_dependency_inversion.py <directory>
     [--entry-points <pattern1,pattern2,...>] [--skip] [--strict]
 ```
 
@@ -142,7 +142,7 @@ python3 scripts/python/scan_dependency_inversion.py <directory>
 Detects fat interfaces — Protocols/ABCs with many methods where implementers stub or raise NotImplementedError for methods they don't need.
 
 ```bash
-python3 scripts/python/scan_interface_segregation.py <directory> [--min-methods N] [--skip] [--strict]
+python3 src/zolletta_metaskill/scanners/scan_interface_segregation.py <directory> [--min-methods N] [--skip] [--strict]
 ```
 
 | Option            | Default | Description                                  |
@@ -159,7 +159,7 @@ python3 scripts/python/scan_interface_segregation.py <directory> [--min-methods 
 Detects type-based branching (if/elif isinstance ladders, match/case on type, getattr string dispatch) that should be replaced with polymorphism.
 
 ```bash
-python3 scripts/python/scan_open_closed.py <directory> [--min-branches N] [--skip] [--strict]
+python3 src/zolletta_metaskill/scanners/scan_open_closed.py <directory> [--min-branches N] [--skip] [--strict]
 ```
 
 | Option             | Default | Description                              |
@@ -174,7 +174,7 @@ python3 scripts/python/scan_open_closed.py <directory> [--min-branches N] [--ski
 Detects subclass methods that break substitutability: incompatible signatures, new exception types, empty-body overrides.
 
 ```bash
-python3 scripts/python/scan_liskov_substitution.py <directory> [--skip] [--strict]
+python3 src/zolletta_metaskill/scanners/scan_liskov_substitution.py <directory> [--skip] [--strict]
 ```
 
 | Option        | Default | Description                              |
@@ -192,7 +192,7 @@ python3 scripts/python/scan_liskov_substitution.py <directory> [--skip] [--stric
 Finds names listed in `__all__` that are never imported by any other module in the source tree. Complements vulture, which treats `__all__` entries as "used" (public API exports) and therefore never flags them as dead code — even when no module ever imports them.
 
 ```bash
-python3 scripts/python/scan_unused_all_exports.py <directory> [--strict] [--json] [--skip]
+python3 src/zolletta_metaskill/scanners/scan_unused_all_exports.py <directory> [--strict] [--json] [--skip]
 ```
 
 | Option        | Default | Description                                  |
@@ -211,7 +211,7 @@ python3 scripts/python/scan_unused_all_exports.py <directory> [--strict] [--json
 Checks test function names against the `test_<unit>_<scenario>_<expected>` convention. Flags functions with fewer than `--min-segments` underscore-separated segments after the `test_` prefix. This is a deterministic replacement for manual review of test function names.
 
 ```bash
-python3 scripts/python/scan_test_naming.py <directory> [--min-segments N] [--strict] [--json] [--skip]
+python3 src/zolletta_metaskill/scanners/scan_test_naming.py <directory> [--min-segments N] [--strict] [--json] [--skip]
 ```
 
 | Option             | Default | Description                              |
@@ -231,7 +231,7 @@ python3 scripts/python/scan_test_naming.py <directory> [--min-segments N] [--str
 Checks that acronyms in PascalCase class names stay fully uppercase. Splits each class name into words, checks each word against a configured acronym list, and flags any word that case-insensitively matches an acronym but isn't all-uppercase (e.g. `Api` in `ApiGateway` when `API` is a known acronym).
 
 ```bash
-python3 scripts/python/scan_acronym_casing.py <directory> [--acronyms LIST] [--settings PATH] [--strict] [--json] [--skip]
+python3 src/zolletta_metaskill/scanners/scan_acronym_casing.py <directory> [--acronyms LIST] [--settings PATH] [--strict] [--json] [--skip]
 ```
 
 | Option            | Default    | Description                                                         |
@@ -243,7 +243,7 @@ python3 scripts/python/scan_acronym_casing.py <directory> [--acronyms LIST] [--s
 | `--json`          | off        | Output as JSON instead of markdown                                  |
 | `--skip`          | off        | Skip this check entirely                                            |
 
-**Acronym list**: the shipped `scripts/python/assets/acronyms.json` (common SE acronyms) is always loaded as the base. Project-specific acronyms from `python_code_style_rules.acronyms` in `settings.json` are **merged** with the shipped list (additive, sorted, unique). The `--acronyms` CLI flag fully replaces both (for testing/debugging).
+**Acronym list**: the shipped `src/zolletta_metaskill/scanners/assets/acronyms.json` (common SE acronyms) is always loaded as the base. Project-specific acronyms from `python_code_style_rules.acronyms` in `settings.json` are **merged** with the shipped list (additive, sorted, unique). The `--acronyms` CLI flag fully replaces both (for testing/debugging).
 
 **How it works**: the scanner uses a regex-based PascalCase splitter that correctly handles acronyms embedded in class names (`HTTPClient` → `["HTTP", "Client"]`, `MyDIProvider` → `["My", "DI", "Provider"]`). For each word, it checks if the word case-insensitively matches a known acronym. If it matches but isn't all-uppercase, it's a violation.
 
@@ -257,15 +257,15 @@ Splits a God test class into per-SUT test files. Groups test methods by prefix, 
 
 ```bash
 # Step 1: auto-derive prefixes (no mapping needed)
-python3 scripts/python/test_splitter.py <test_file>
+python3 src/zolletta_metaskill/scanners/test_splitter.py <test_file>
 
 # Step 2: review the proposed mapping, then split with --dry-run
-python3 scripts/python/test_splitter.py <test_file> \
+python3 src/zolletta_metaskill/scanners/test_splitter.py <test_file> \
     --mapping '{"cache": "Cache", "extract_defaults": "DefaultsExtractor"}' \
     --dry-run
 
 # Step 3: write the split files to .zolletta-metaskill/test_split/<filename>/
-python3 scripts/python/test_splitter.py <test_file> \
+python3 src/zolletta_metaskill/scanners/test_splitter.py <test_file> \
     --mapping '{"cache": "Cache", "extract_defaults": "DefaultsExtractor"}'
 ```
 

@@ -122,10 +122,10 @@ If a module shows coverage above this percentage, do not flag it as a coverage g
 Test functions should follow the pattern `test_<unit>_<scenario>_<expected_outcome>`. The name should be descriptive enough to understand what is being tested without reading the body.
 
 - **Default**: `true`
-- **Enforcement**: `scan_test_naming.py` from `../scripts/python/` (deterministic). The scanner counts underscore-separated segments after the `test_` prefix and flags functions with fewer than `--min-segments` (default: 3). This replaces manual review, which was non-deterministic and produced different violation counts on each run.
+- **Enforcement**: `scan_test_naming.py` from `../src/zolletta_metaskill/scanners/` (deterministic). The scanner counts underscore-separated segments after the `test_` prefix and flags functions with fewer than `--min-segments` (default: 3). This replaces manual review, which was non-deterministic and produced different violation counts on each run.
 
 ```bash
-python3 ../scripts/python/scan_test_naming.py tests/ --min-segments 3
+python3 ../src/zolletta_metaskill/scanners/scan_test_naming.py tests/ --min-segments 3
 ```
 
 **Good names**: `test_create_user_with_valid_data_returns_user`, `test_login_fails_with_invalid_password`
