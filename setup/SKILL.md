@@ -131,12 +131,12 @@ If the language is **Python**, read `pyproject.toml` and extract the effective c
 
    `uv` and `vulture` have no configuration beyond `available` — leave them as `{ "available": true }`.
 
-3. **Type checker resolution** — there is no `type_checker` field in `settings.json`. Review skills resolve the type checker at runtime from tool availability:
-   - If `python.tools.ty.available` is `true` → use ty
-   - Else if `python.tools.mypy.available` is `true` → use mypy
-   - Else → type checking is skipped
+3. **Type checker resolution** — there is no `type_checker` field in `settings.json`. Review skills run all available type checkers:
+   - If `python.tools.ty.available` is `true` → run ty
+   - If `python.tools.mypy.available` is `true` → run mypy
+   - If neither is available → type checking is skipped
 
-   This preference order (ty > mypy) is documented in `python-code-style/SKILL.md`.
+   When both are available, both run. Findings from each are listed separately. This is documented in `python-code-style/SKILL.md`.
 
 4. **Never modify `pyproject.toml`.** Setup only reads it. The "unconfigured" warnings are informational — the user decides whether to add a `[tool.*]` section.
 

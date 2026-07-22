@@ -24,7 +24,7 @@ If `python.tools.ruff.available` is `true` in `settings.json`, the skill runs `r
 
 ### Type checking (mypy or ty)
 
-The skill runs the configured type checker to verify that all public APIs have type annotations. The type checker is resolved at runtime: prefer `ty` if `python.tools.ty.available` is `true`, else `mypy` if `python.tools.mypy.available` is `true`, else the type-checking step is skipped. The type checker runs with `disallow_untyped_defs` or equivalent strictness, so missing annotations on public functions, methods, and classes are reported as findings.
+The skill runs all available type checkers to verify that all public APIs have type annotations. Run `ty` if `python.tools.ty.available` is `true` and `mypy` if `python.tools.mypy.available` is `true` — when both are available, both run. If neither is available, the type-checking step is skipped. Each type checker runs with `disallow_untyped_defs` or equivalent strictness, so missing annotations on public functions, methods, and classes are reported as findings.
 
 ### Dead code detection (vulture)
 

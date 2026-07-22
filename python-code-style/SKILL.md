@@ -232,7 +232,7 @@ One-line functions where the name and signature are self-explanatory do not need
 
 **#19 — Type hints required for all public APIs** *(always-on)*
 
-All public classes, methods, and functions must include type annotations for parameters and return types. Enforcement is via the configured type checker with `disallow_untyped_defs` or equivalent, plus manual review for the public vs. private distinction. The type checker is resolved at runtime: prefer `ty` if `python.tools.ty.available` is `true`, else `mypy` if `python.tools.mypy.available` is `true`, else skip type checking.
+All public classes, methods, and functions must include type annotations for parameters and return types. Enforcement is via the available type checkers with `disallow_untyped_defs` or equivalent, plus manual review for the public vs. private distinction. Run `ty` if `python.tools.ty.available` is `true` and `mypy` if `python.tools.mypy.available` is `true` — when both are available, both run. If neither is available, type checking is skipped.
 
 ### Formatting
 

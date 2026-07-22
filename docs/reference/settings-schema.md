@@ -23,12 +23,23 @@ skills:
   "acronyms": ["CITE"],
   "python": {
     "tools": {
-      "uv":      { "available": true },
-      "ruff":    { "available": true, "line_length": 100, "target_version": "py312", "select": ["E", "W", "F", "I", "B", "C4", "D", "UP", "T20", "SIM"], "ignore": ["B008", "T201", "D104", "D107", "D203", "D213"] },
-      "pytest":  { "available": true, "addopts": ["-ra", "--tb=short"], "testpaths": ["tests"], "minversion": "8.0" },
-      "ty":      { "available": true, "python_version": "3.12" },
+      "uv": { "available": true },
+      "ruff": {
+        "available": true,
+        "line_length": 100,
+        "target_version": "py312",
+        "select": ["E", "W", "F", "I", "B", "C4", "D", "UP", "T20", "SIM"],
+        "ignore": ["B008", "T201", "D104", "D107", "D203", "D213"]
+      },
+      "pytest": {
+        "available": true,
+        "addopts": ["-ra", "--tb=short"],
+        "testpaths": ["tests"],
+        "minversion": "8.0"
+      },
+      "ty": { "available": true, "python_version": "3.12" },
       "vulture": { "available": true },
-      "mypy":    { "available": true, "strict": true, "python_version": "3.12" }
+      "mypy": { "available": true, "strict": true, "python_version": "3.12" }
     },
     "code_style": {
       "check_acronym_casing": true,
@@ -96,7 +107,7 @@ Each tool is an object with an `available` boolean. Tools that have configuratio
 | `python.tools.vulture` | object | `{ "available": boolean }` — vulture has no config beyond availability |
 | `python.tools.mypy` | object | `{ "available": boolean, "strict": boolean, "python_version": string or null }` — effective mypy config |
 
-> **Type checker resolution**: there is no `type_checker` field. Review skills resolve the type checker at runtime: prefer `ty` if `python.tools.ty.available` is `true`, else `mypy` if `python.tools.mypy.available` is `true`, else skip type checking.
+> **Type checker resolution**: there is no `type_checker` field. Review skills run all available type checkers: `ty` if `python.tools.ty.available` is `true`, `mypy` if `python.tools.mypy.available` is `true`. When both are available, both run. If neither is available, type checking is skipped.
 
 ### `python.code_style` — configurable rule toggles
 
