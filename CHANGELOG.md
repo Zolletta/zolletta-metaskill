@@ -4,15 +4,31 @@ All notable changes to the Zolletta-metaskill skill family are documented in thi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - 2026-07-17
+## [Unreleased]
 
 ### Added
 
-#### Multi-language documentation support
+- `.install` script — one-command installer that copies the skill to `~/.agents/skills/` and symlinks it into every detected agent tool's skills directory
+- Frontmatter wildcard syntax (`python-*`, `php-*`) for the `skills:` field — language-specific skills no longer need to be listed individually
+- `php-pro` companion skill suggestion — when a PHP project is detected, setup prints a "not installed" message suggesting php-pro as an implementation skill
+- Language-agnostic explanation docs: `docs/explanation/code/error-handling.md`, `docs/explanation/code/performance.md`, `docs/explanation/code/security.md` — 10 rules promoted from php-best-practices with both PHP and Python examples
+- `php-code-style` skill — 33 PHP-specific rules (21 always-on + 12 configurable, version-gated by detected `php_version`)
+- `php-testing-patterns` skill — PHPUnit naming, mirroring, coverage gaps, mocking, data providers
+- `LanguageEngine` protocol + `ModuleInfo` language-neutral data model in `src/zolletta_metaskill/common/`
+- `PythonEngine` (wraps `ast`) and `PHPEngine` (wraps tree-sitter) in `src/zolletta_metaskill/engines/`
+- 7 language-agnostic scanners refactored to consume `ModuleInfo` instead of `ast` directly
+- PHP-specific SOLID scanners in `src/zolletta_metaskill/php_patterns/` (DIP, ISP, OCP via `instanceof` chains)
+- PHP tooling detection in setup (phpunit, phpstan, psalm, php-cs-fixer, phpcs) with `php` object in `settings.json`
+- `setup/assets/settings.schema.json` — machine-readable JSON Schema (draft 2020-12) for `settings.json`
+- `tree-sitter` / `tree-sitter-php` optional dependencies (`pip install zolletta-metaskill[php]`)
+- Recovered test suite — 846+ tests at ≥90% coverage per file
 
-- **`documentation_language` field in `settings.json`** — ISO 639-1 code (default: `"en"`). When not English, the `documentor` skill translates the Diátaxis signpost headings before running the staleness scorer
-- **`--diataxis-translations` flag in `doc_staleness_scorer.py`** — accepts a JSON file with translated directory names and section headings. Directory names are merged additively (English + translated), section headings are replaced (translated is authoritative). Also supports translated README section defaults
-- **English signposts as translation keys** — the built-in English strings (`"tutorials"`, `"prerequisites"`, `"what we will learn"`, etc.) act as signposts. The agent translates each to the documentation language and writes the translations to a JSON file. This keeps the scorer deterministic while supporting any language
+### Changed
+
+- Scanners in `shared/` and `patterns/` now depend on `LanguageEngine` + `ModuleInfo` instead of Python `ast` directly
+- `settings.json` `php.code_style` toggles expanded from 3 to 12 configurable rules matching the php-code-style skill
+- "Supported languages" line updated from "Python / Others (Work in progress)" to "Python, PHP / Others (Work in progress)"
+- Setup guard extended with PHP staleness check (`composer.json` mtime vs `php.composer_mtime`)
 
 ## [1.0.0] - 2026-07-17
 
@@ -33,6 +49,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 #### Documentation review
 
 - **Documentation review** — structure, accuracy, consistency, and freshness checks with automated drift detection (staleness scoring, broken links, API doc validation). Supports [Diátaxis](https://diataxis.fr/)-structured docs (detects quadrant directories and applies appropriate completeness checks) and falls back to README-style sections for other layouts
+- **Multi-language documentation support** — `documentation_language` field in `settings.json` (ISO 639-1 code, default: `"en"`). When not English, the `documentor` skill translates the Diátaxis signpost headings before running the staleness scorer. `--diataxis-translations` flag in `doc_staleness_scorer.py` accepts a JSON file with translated directory names and section headings
 
 #### Design pattern analysis
 
