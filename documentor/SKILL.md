@@ -22,10 +22,10 @@ Derived from the [Diátaxis Documentation Expert](https://github.com/github/awes
 
 Read shared guidelines from the meta-skill (parent directory):
 
-- `../reference/code-exploration.md` — code graph tools (tokensave) decision tree
-- `../reference/documentation_standards.md` — generic doc writing standards (README, API docs, changelogs, ADRs)
-- `../reference/general-principles.md` — SOLID, KISS, composition over inheritance (language-agnostic)
-- `../reference/tool-messages.md` — "not installed" messages for the tool-failure handler
+- `../docs/reference/code/code-exploration.md` — code graph tools (tokensave) decision tree
+- `../docs/explanation/documentation/standards.md` — generic doc writing standards (README, API docs, changelogs, ADRs)
+- `../docs/explanation/code/general-principles.md` — SOLID, KISS, composition over inheritance (language-agnostic)
+- `../docs/reference/tool-messages.md` — "not installed" messages for the tool-failure handler
 - `../src/zolletta_metaskill/scanners/` — shared scanning scripts
 
 **Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
@@ -175,7 +175,7 @@ Load on demand — keep this file lean:
    - `api_doc_validator.py` — API doc accuracy against source (AST)
    - `drift_analyzer.py` — full drift analysis
    - `doc_staleness_scorer.py` — freshness score
-   - **Non-English documentation**: if `documentation_language` in `settings.json` is not `"en"`, translate the English signpost headings and directory names before running the staleness scorer. Write a JSON file (see `--diataxis-translations` in `reference/scripts.md` for the format) with the translated equivalents and pass it via `--diataxis-translations <path>`. The English signposts (e.g. `"tutorials"`, `"prerequisites"`, `"what we will learn"`) are the keys — translate each to the documentation language. Also translate the README section defaults (`installation`, `usage`, `api`, `contributing`, `license`) and include them as `readme_sections` in the JSON.
+   - **Non-English documentation**: if `documentation_language` in `settings.json` is not `"en"`, translate the English signpost headings and directory names before running the staleness scorer. Write a JSON file (see `--diataxis-translations` in `docs/reference/code/scripts.md` for the format) with the translated equivalents and pass it via `--diataxis-translations <path>`. The English signposts (e.g. `"tutorials"`, `"prerequisites"`, `"what we will learn"`) are the keys — translate each to the documentation language. Also translate the README section defaults (`installation`, `usage`, `api`, `contributing`, `license`) and include them as `readme_sections` in the JSON.
 3. **Filter false positives** using the rules above.
 4. **Inventory docs:** List all `.md` files in `.backstage/` and classify by Diátaxis quadrant.
 5. **Review each document** against the Diátaxis compliance checklist (this is a doc-internal check — no source reading needed).

@@ -39,7 +39,7 @@ All subcommands read from this skill's subdirectories:
 
 | Resource   | Path                                | Contents                                                                                                        |
 |---|---|---|
-| References | `reference/`                        | Shared guidelines (Diátaxis, review workflow, grading rubric, tool messages)                                    |
+| References | `docs/`                             | Shared guidelines (Diátaxis, review workflow, grading rubric, tool messages)                                    |
 | Scripts    | `src/zolletta_metaskill/scanners/`  | Automated scanning scripts used by multiple skills                                                              |
 | Settings   | `.zolletta-metaskill/settings.json` | Project-wide configuration written by `setup` (language, tool availability, external-review model, reports dir) |
 
@@ -74,7 +74,7 @@ When any subcommand calls a tokensave MCP tool and receives a **tool-not-found**
 
 1. **Update `settings.json`**: set `tokensave_available: false`.
    Use the `edit` tool to update `.zolletta-metaskill/settings.json` in place.
-2. **Print the "not installed" message**: read the tokensave message from [`reference/tool-messages.md`](reference/tool-messages.md) and print it. The message explains why zolletta-metaskill benefits from the tool and links to the project homepage. **Do NOT install anything.**
+2. **Print the "not installed" message**: read the tokensave message from [`docs/reference/tool-messages.md`](docs/reference/tool-messages.md) and print it. The message explains why zolletta-metaskill benefits from the tool and links to the project homepage. **Do NOT install anything.**
 3. **Continue with fallback**: proceed using grep + targeted reads instead of the graph tool. Do not abort the subcommand — the review can still complete, just with reduced coverage.
 
 This handler applies to every subcommand that uses tokensave (`patterns`, `documentor`, `external-review`, `review`). Each subcommand's SKILL.md links back to this section.

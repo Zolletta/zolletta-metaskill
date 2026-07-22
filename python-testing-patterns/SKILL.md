@@ -11,7 +11,7 @@ Review skill for Python test code: test isolation, naming, coverage gaps, mockin
 
 > **Configuration source**: all project-level configuration (tool availability, effective pytest/coverage config) is read from `settings.json` — specifically the `python` and `python_config` objects. Rule toggles are in `python_testing_patterns_rules`. See the parent `SKILL.md` for the setup guard and the shared "Running tools" convention.
 
-> **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../reference/review-mode.md`](../reference/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
+> **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../docs/reference/code/review-mode.md`](../docs/reference/code/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
 
 ## When to Use This Skill
 

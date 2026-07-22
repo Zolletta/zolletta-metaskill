@@ -28,7 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - **Project setup** — auto-detects language, Docker container, tokensave availability, and Python tooling (uv, ruff, pytest, ty, vulture, mypy). Creates `.zolletta-metaskill/settings.json` with effective tool configuration extracted from `pyproject.toml`. Prints helpful "not installed" messages for missing tools — never installs anything
 - **Setup guard** — every subcommand checks for `settings.json` before running. If missing, setup runs automatically. For Python projects, a staleness check re-extracts `pyproject.toml` configuration when the file changes — no full re-setup needed
-- **Settings schema documentation** — full field-by-field reference for `settings.json` at `reference/settings-schema.md`, covering tool availability, effective configuration, and all configurable rule toggles
+- **Settings schema documentation** — full field-by-field reference for `settings.json` at `docs/reference/settings-schema.md`, covering tool availability, effective configuration, and all configurable rule toggles
 
 #### Documentation review
 
@@ -65,4 +65,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 #### Reports and references
 
 - **Report templates** — each skill ships a markdown report template with grade, tool results, severity tables, and recommendations. The zolletta-metaskill logo is embedded as a base64 data URI in every report footer
-- **Shared references** — code-exploration decision tree, general review principles, documentation standards, tool messages, review-mode rules, and scripts reference — all in `reference/`, linked from every skill
+- **Shared references** — code-exploration decision tree, general review principles, documentation standards, tool messages, review-mode rules, and scripts reference — all in `docs/`, linked from every skill

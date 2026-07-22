@@ -11,7 +11,7 @@ Consistent code style and clear documentation make codebases maintainable and co
 
 > **Configuration source**: all project-level configuration (line length, target Python version, linting rules, type checking strictness, tool availability) is read from `settings.json` — specifically the `python`, `python_config`, and `python_code_style_rules` objects. These are populated by `setup` from `pyproject.toml`. Do not read `pyproject.toml` directly; do not hardcode fallback defaults. See the parent `SKILL.md` for the setup guard and the shared "Running tools" convention.
 
-> **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../reference/review-mode.md`](../reference/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
+> **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../docs/reference/code/review-mode.md`](../docs/reference/code/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
 
 ## When to Use This Skill
 

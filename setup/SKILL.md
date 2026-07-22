@@ -29,7 +29,7 @@ Initialize the `.zolletta-metaskill/` directory and write `settings.json` so tha
 
 Read shared guidelines from the meta-skill (parent directory):
 
-- `../reference/tool-messages.md` — "not installed" messages for tokensave and Python skills
+- `../docs/reference/tool-messages.md` — "not installed" messages for tokensave and Python skills
 
 ## Procedure
 
@@ -124,7 +124,7 @@ If the language is **Python**, read `pyproject.toml` and extract the effective c
 
 | Tool     | If `[tool.*]` section exists                                                                                                                                | If section is absent                                                                                                                                                                                    |
 |---|---|---|
-| `ruff`   | Extract `line-length`, `target-version`, `lint.select`, `lint.ignore` into `python_config.ruff`                                                             | Store ruff's built-in defaults: `line_length: 88`, `target_version: "py310"`, `select: ["E4","E7","E9","F"]`, `ignore: []`. Print the ruff "unconfigured" warning from `../reference/tool-messages.md`. |
+| `ruff`   | Extract `line-length`, `target-version`, `lint.select`, `lint.ignore` into `python_config.ruff`                                                             | Store ruff's built-in defaults: `line_length: 88`, `target_version: "py310"`, `select: ["E4","E7","E9","F"]`, `ignore: []`. Print the ruff "unconfigured" warning from `../docs/reference/tool-messages.md`. |
 | `mypy`   | Extract `python_version`, `strict`, `warn_return_any`, `warn_unused_ignores`, `disallow_untyped_defs`, `disallow_incomplete_defs` into `python_config.mypy` | Store mypy's built-in defaults: `strict: false`, `python_version: null` (uses running interpreter). Print the mypy "unconfigured" warning.                                                              |
 | `ty`     | Extract `python-version` (or `environment.python-version`) into `python_config.ty`                                                                          | Store ty's built-in defaults: `python_version: null` (detected from environment). Print the ty "unconfigured" warning.                                                                                  |
 | `pytest` | Extract `addopts`, `testpaths`, `minversion` into `python_config.pytest`                                                                                    | Store pytest's built-in defaults: `addopts: []`, `testpaths: []`, `minversion: null`. Print the pytest "unconfigured" warning.                                                                          |
@@ -247,9 +247,9 @@ Use the `write` tool to create the file. The JSON must be valid and pretty-print
 
 ### Step 9 — Print "not installed" and "unconfigured" messages
 
-For each tool that is **not** available, print the corresponding "not installed" message from `../reference/tool-messages.md`. The message explains why zolletta-metaskill benefits from the tool and links to the project homepage (where applicable).
+For each tool that is **not** available, print the corresponding "not installed" message from `../docs/reference/tool-messages.md`. The message explains why zolletta-metaskill benefits from the tool and links to the project homepage (where applicable).
 
-For each Python tool that **is** available but has **no `[tool.*]` section in `pyproject.toml`** (detected in Step 6.5), print the corresponding "unconfigured" warning from `../reference/tool-messages.md`. The warning states the tool's effective built-in defaults and links to the full options reference.
+For each Python tool that **is** available but has **no `[tool.*]` section in `pyproject.toml`** (detected in Step 6.5), print the corresponding "unconfigured" warning from `../docs/reference/tool-messages.md`. The warning states the tool's effective built-in defaults and links to the full options reference.
 
 This covers:
 - `tokensave_available: false` → tokensave "not installed" message

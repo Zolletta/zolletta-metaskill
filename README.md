@@ -37,36 +37,36 @@ The first time you run any subcommand in a project, the **setup guard** automati
 
 ## Subcommands
 
-| Subcommand                | Scope                                                                                                                                                                                |
-|---|---|
-| `setup`                   | Project initialization — creates `settings.json`, detects language, Docker container, tokensave, Python tooling, and extracts effective tool configuration from `pyproject.toml`     |
-| `review`                  | Full project review orchestrator — runs general + language-specific skills as parallel subagents, produces graded SUMMARY.md and aggregated TODO.md with links to specialist reports |
-| `patterns`                | God classes, SOLID violations, coupling, composition vs inheritance for `src/`                                                                                                       |
-| `documentor`              | [Diátaxis](https://diataxis.fr/) compliance + drift detection for `.backstage/`                                                                                                      |
-| `external-review`         | External-LLM code review on modified files only (default model: `swe`)                                                                                                               |
-| `python-code-style`       | Python source code style review (ruff, mypy, naming, docstrings, type annotations) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)                        |
-| `python-testing-patterns` | Python test code review (isolation, naming, coverage gaps, mocking, fixtures, AAA structure) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)              |
+| Subcommand | Scope |
+| --- | --- |
+| `setup` | Project initialization — creates `settings.json`, detects language, Docker container, tokensave, Python tooling, and extracts effective tool configuration from `pyproject.toml` |
+| `review` | Full project review orchestrator — runs general + language-specific skills as parallel subagents, produces graded SUMMARY.md and aggregated TODO.md with links to specialist reports |
+| `patterns` | God classes, SOLID violations, coupling, composition vs inheritance for `src/` |
+| `documentor` | [Diátaxis](https://diataxis.fr/) compliance + drift detection for `.backstage/` |
+| `external-review` | External-LLM code review on modified files only (default model: `swe`) |
+| `python-code-style` | Python source code style review (ruff, mypy, naming, docstrings, type annotations) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT) |
+| `python-testing-patterns` | Python test code review (isolation, naming, coverage gaps, mocking, fixtures, AAA structure) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT) |
 
 ## Tools leveraged if available
 
-| Tool      | Homepage                                      | Why zolletta-metaskill benefits                                                                                                                                                                                                                |
-|---|---|---|
+| Tool | Homepage | Why zolletta-metaskill benefits |
+| --- | --- | --- |
 | tokensave | https://github.com/aovestdipaperino/tokensave | Semantic code-graph index (symbols, call/callee, impact radius). Used by patterns, documentor, review, external-review to understand code without reading full files, assess blast radius, verify documented symbols, and find affected tests. |
 
 When a tool is not installed, zolletta-metaskill prints a message explaining why it would benefit from the tool and links to the homepage. It does **not** install anything.
 
 ## Shared resources
 
-| Resource   | Path                               | Contents                                                                                                                                                                    |
-|---|---|---|
-| References | `reference/`                       | Code-exploration decision tree, general principles, Python review guide, scripts reference, documentation standards, tool messages, review-mode rules, settings.json schema |
-| Scripts    | `src/zolletta_metaskill/scanners/` | Automated scanning scripts used by multiple skills                                                                                                                          |
+| Resource | Path | Contents |
+| --- | --- | --- |
+| References | `docs/` | Code-exploration decision tree, general principles, Python review guide, scripts reference, documentation standards, tool messages, review-mode rules, settings.json schema |
+| Scripts | `src/zolletta_metaskill/scanners/` | Automated scanning scripts used by multiple skills |
 
 ## Setup and settings.json
 
 `/zolletta-metaskill setup` creates `.zolletta-metaskill/settings.json` in the project root and adds `.zolletta-metaskill/` to `.gitignore`. The file is read by all other subcommands.
 
-For the full schema, field-by-field documentation, the `python_config`, `python_code_style_rules`, and `python_testing_patterns_rules` blocks, and the setup guard staleness check, see [`reference/settings-schema.md`](reference/settings-schema.md).
+For the full schema, field-by-field documentation, the `python_config`, `python_code_style_rules`, and `python_testing_patterns_rules` blocks, and the setup guard staleness check, see [`docs/reference/settings-schema.md`](docs/reference/settings-schema.md).
 
 ### Setup guard
 
@@ -83,7 +83,7 @@ For Python projects, the guard also performs a **staleness check**: if `pyprojec
 If any subcommand calls a tokensave MCP tool and receives a tool-not-found / server-not-found error, it:
 
 1. Updates `tokensave_available` in `settings.json` to `false`
-2. Prints the "not installed" message from `reference/tool-messages.md`
+2. Prints the "not installed" message from `docs/reference/tool-messages.md`
 3. Continues with grep + targeted reads as fallback (for graph tools). Python skills (`python-code-style`, `python-testing-patterns`) are bundled inside this meta-skill and are always available — the "not found" case does not apply to them.
 
 ## Reports
