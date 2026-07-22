@@ -2,45 +2,17 @@
 
 from __future__ import annotations
 
-import ast
 import sys
 from pathlib import Path
 
 import pytest
 
+from zolletta_metaskill.common.models import Finding
 from zolletta_metaskill.patterns.scan_test_god_classes import (
-    _get_class_end,
     main,
     scan_file,
+    scan_module,
 )
-
-
-def _parse_class(source: str) -> ast.ClassDef:
-    """Parse source and return the first ClassDef."""
-    tree = ast.parse(source)
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ClassDef):
-            return node
-    raise AssertionError("No class found in source")
-
-
-class TestGetClassEnd:
-    def test_simple_class(self) -> None:
-        node = _parse_class("class TestFoo:\n    pass\n")
-        assert _get_class_end(node) == 2
-
-    def test_class_with_methods(self) -> None:
-        source = (
-            "class TestFoo:\n    def test_a(self):\n        pass\n"
-            "    def test_b(self):\n        pass\n"
-        )
-        node = _parse_class(source)
-        assert _get_class_end(node) == 5
-
-    def test_class_with_nested_class(self) -> None:
-        source = "class TestOuter:\n    class Inner:\n        pass\n"
-        node = _parse_class(source)
-        assert _get_class_end(node) == 3
 
 
 class TestScanFile:
@@ -53,27 +25,34 @@ class TestScanFile:
         results = scan_file(f)
         assert len(results) == 1
         r = results[0]
-        assert r["class"] == "TestFoo"
-        assert r["file"] == str(f)
-        assert r["lines"] == 5
-        assert r["methods"] == 2
-        assert r["method_names"] == ["test_a", "test_b"]
-        assert r["start"] == 1
-        assert r["end"] == 5
+        assert isinstance(r, Finding)
+        assert r.file == str(f)
+        assert r.line == 1
+        assert r.category == "test_god_class"
+        assert "class=TestFoo" in r.description
+        assert "lines=5" in r.description
+        assert "methods=2" in r.description
+        assert "method_names=test_a,test_b" in r.description
+        assert "start=1" in r.description
+        assert "end=5" in r.description
 
     def test_file_with_async_methods(self, tmp_path: Path) -> None:
         f = tmp_path / "test_mod.py"
         f.write_text("class TestFoo:\n    async def test_async(self):\n        pass\n")
         results = scan_file(f)
         assert len(results) == 1
-        assert results[0]["methods"] == 1
+        assert "methods=1" in results[0].description
 
     def test_file_with_multiple_classes(self, tmp_path: Path) -> None:
         f = tmp_path / "test_mod.py"
         f.write_text("class TestFoo:\n    pass\nclass TestBar:\n    pass\n")
         results = scan_file(f)
         assert len(results) == 2
-        names = {r["class"] for r in results}
+        names = set()
+        for r in results:
+            assert "class=" in r.description
+            part = r.description.split("class=")[1].split(" ")[0]
+            names.add(part)
         assert names == {"TestFoo", "TestBar"}
 
     def test_empty_file(self, tmp_path: Path) -> None:
@@ -99,14 +78,43 @@ class TestScanFile:
         f.write_text("class Helper:\n    def helper_method(self):\n        pass\n")
         results = scan_file(f)
         assert len(results) == 1
-        assert results[0]["class"] == "Helper"
-        assert results[0]["method_names"] == ["helper_method"]
+        assert "class=Helper" in results[0].description
+        assert "method_names=helper_method" in results[0].description
 
     def test_nested_class(self, tmp_path: Path) -> None:
+        """ModuleInfo only contains top-level classes, not nested ones."""
         f = tmp_path / "test_mod.py"
         f.write_text("class TestOuter:\n    class Inner:\n        pass\n")
         results = scan_file(f)
-        assert len(results) == 2
+        # Only the top-level class is reported (ModuleInfo limitation)
+        assert len(results) == 1
+        assert "class=TestOuter" in results[0].description
+
+
+class TestScanModule:
+    def test_returns_findings(self, tmp_path: Path) -> None:
+        from zolletta_metaskill.common.models import ClassInfo, MethodInfo, ModuleInfo
+
+        f = tmp_path / "test_mod.py"
+        module = ModuleInfo(
+            path=f,
+            language="python",
+            classes=[
+                ClassInfo(
+                    name="TestFoo",
+                    lineno=1,
+                    end_lineno=5,
+                    methods=[
+                        MethodInfo(name="test_a", lineno=2, end_lineno=3),
+                        MethodInfo(name="test_b", lineno=4, end_lineno=5),
+                    ],
+                ),
+            ],
+        )
+        results = scan_module(module)
+        assert len(results) == 1
+        assert isinstance(results[0], Finding)
+        assert results[0].category == "test_god_class"
 
 
 class TestMain:

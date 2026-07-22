@@ -10,6 +10,7 @@ from zolletta_metaskill.common.models import (
 )
 from zolletta_metaskill.common.registry import (
     available_languages,
+    ensure_engine,
     get_engine,
     get_engine_for_file,
     register_engine,
@@ -23,6 +24,7 @@ __all__ = [
     "MethodInfo",
     "ModuleInfo",
     "available_languages",
+    "ensure_engine",
     "get_engine",
     "get_engine_for_file",
     "register_engine",

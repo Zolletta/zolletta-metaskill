@@ -41,11 +41,22 @@ Exit code: 0 if no violations (or --strict not set or --skip),
 from __future__ import annotations
 
 import argparse
-import ast
 import json
 import sys
 from pathlib import Path
 from typing import Any
+
+from zolletta_metaskill.common.models import Finding, ModuleInfo
+from zolletta_metaskill.common.registry import (
+    ensure_engine,
+    get_engine_for_file,
+)
+from zolletta_metaskill.engines.python_engine import PythonEngine
+
+
+def _ensure_python_engine() -> None:
+    """Ensure the PythonEngine is registered."""
+    ensure_engine(PythonEngine())
 
 
 def _count_segments(func_name: str) -> int:
@@ -62,20 +73,109 @@ def _count_segments(func_name: str) -> int:
 
 
 def _find_test_functions(file_path: Path) -> list[tuple[str, int]]:
-    """Return (function_name, line_number) for every test_ function in a file."""
-    try:
-        tree = ast.parse(file_path.read_text(encoding="utf-8"))
-    except SyntaxError:
+    """Return (function_name, line_number) for every test_ function in a file.
+
+    Uses the registered language engine to parse the file.  Both top-level
+    test functions and test methods inside classes are discovered.
+    """
+    _ensure_python_engine()
+    engine = get_engine_for_file(file_path)
+    if engine is None:
+        return []
+    module = engine.parse_module(file_path)
+    if module.has_syntax_error:
         return []
 
     results: list[tuple[str, int]] = []
-    for node in ast.walk(tree):
-        if (
-            isinstance(node, ast.FunctionDef) and node.name.startswith("test_")
-            or isinstance(node, ast.AsyncFunctionDef) and node.name.startswith("test_")
-        ):
-            results.append((node.name, node.lineno))
+    for func in module.functions:
+        if func.name.startswith("test_"):
+            results.append((func.name, func.lineno))
+    for cls in module.classes:
+        for method in cls.methods:
+            if method.name.startswith("test_"):
+                results.append((method.name, method.lineno))
     return results
+
+
+def scan_module(module: ModuleInfo, min_segments: int = 3) -> list[Finding]:
+    """Scan a parsed module for test-naming convention violations.
+
+    Args:
+        module: The :class:`ModuleInfo` produced by an engine.
+        min_segments: Minimum number of underscore-separated segments
+            required after the ``test_`` prefix.
+
+    Returns:
+        A list of :class:`Finding` objects with category ``"test_naming"``.
+
+    """
+    if module.has_syntax_error:
+        return []
+
+    findings: list[Finding] = []
+    file_path = str(module.path)
+
+    for func in module.functions:
+        if not func.name.startswith("test_"):
+            continue
+        segments = _count_segments(func.name)
+        if segments < min_segments:
+            findings.append(
+                Finding(
+                    file=file_path,
+                    line=func.lineno,
+                    category="test_naming",
+                    severity="medium",
+                    description=(
+                        f"Test function '{func.name}' has {segments} segments, "
+                        f"expected >= {min_segments}"
+                    ),
+                    fix_type="manual",
+                )
+            )
+
+    for cls in module.classes:
+        for method in cls.methods:
+            if not method.name.startswith("test_"):
+                continue
+            segments = _count_segments(method.name)
+            if segments < min_segments:
+                findings.append(
+                    Finding(
+                        file=file_path,
+                        line=method.lineno,
+                        category="test_naming",
+                        severity="medium",
+                        description=(
+                            f"Test method '{method.name}' has {segments} segments, "
+                            f"expected >= {min_segments}"
+                        ),
+                        fix_type="manual",
+                    )
+                )
+
+    return findings
+
+
+def scan_file(path: Path, min_segments: int = 3) -> list[Finding]:
+    """Backward-compatible wrapper that uses the registry to get an engine.
+
+    Args:
+        path: Path to a test file.
+        min_segments: Minimum number of underscore-separated segments
+            required after the ``test_`` prefix.
+
+    Returns:
+        A list of :class:`Finding` objects (empty if no engine matches or
+        the file has a syntax error).
+
+    """
+    _ensure_python_engine()
+    engine = get_engine_for_file(path)
+    if engine is None:
+        return []
+    module = engine.parse_module(path)
+    return scan_module(module, min_segments)
 
 
 def main() -> int:
@@ -100,6 +200,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    _ensure_python_engine()
     if args.skip:
         if not args.json:
             print("=" * 70)

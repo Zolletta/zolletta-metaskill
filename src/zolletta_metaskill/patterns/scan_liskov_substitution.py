@@ -30,112 +30,73 @@ Exit code: 0 if no violations (or --skip), 1 if violations found with --strict.
 from __future__ import annotations
 
 import argparse
-import ast
 import sys
 from pathlib import Path
 from typing import Any
 
+from zolletta_metaskill.common.models import ClassInfo, Finding, ModuleInfo
+from zolletta_metaskill.common.registry import (
+    ensure_engine,
+    get_engine_for_file,
+)
+from zolletta_metaskill.engines.python_engine import PythonEngine
 
-def _get_method_signature(func: ast.FunctionDef | ast.AsyncFunctionDef) -> dict[str, Any]:
-    """Extract method signature info."""
-    args = func.args
-    # Positional args (excluding self/cls)
-    pos_args = [a.arg for a in args.args[1:]]  # skip self/cls
-    defaults_count = len(args.defaults)
-    required_count = len(pos_args) - defaults_count
-    has_vararg = args.vararg is not None
-    has_kwarg = args.kwarg is not None
+
+def _ensure_python_engine() -> None:
+    """Ensure the PythonEngine is registered."""
+    ensure_engine(PythonEngine())
+
+
+def _build_class_info(cls: ClassInfo) -> dict[str, Any]:
+    """Build an internal info dict from a :class:`ClassInfo`.
+
+    The dict format is consumed by :func:`_check_lsp_violations`.
+
+    Args:
+        cls: The :class:`ClassInfo` to convert.
+
+    Returns:
+        A dict with ``name``, ``line``, ``bases``, and ``methods`` keys.
+
+    """
+    methods: dict[str, dict[str, Any]] = {}
+    for m in cls.methods:
+        methods[m.name] = {
+            "sig": {
+                "name": m.name,
+                "line": m.lineno,
+                "pos_args": list(m.params),
+                "required_count": len(m.params),
+                "defaults_count": 0,
+                "has_vararg": False,
+                "has_kwarg": False,
+                "returns_annotation": m.return_type,
+            },
+            "raised": set(m.raises),
+            "is_stub": False,
+        }
+    # Normalise base names: ``animals.Animal`` → ``Animal``
+    bases = [base.rsplit(".", 1)[-1] for base in cls.bases]
     return {
-        "name": func.name,
-        "line": func.lineno,
-        "pos_args": pos_args,
-        "required_count": required_count,
-        "defaults_count": defaults_count,
-        "has_vararg": has_vararg,
-        "has_kwarg": has_kwarg,
-        "returns_annotation": _get_return_annotation(func),
+        "name": cls.name,
+        "line": cls.lineno,
+        "bases": bases,
+        "methods": methods,
     }
 
 
-def _get_return_annotation(func: ast.FunctionDef | ast.AsyncFunctionDef) -> str | None:
-    """Get return type annotation as string."""
-    if func.returns is None:
-        return None
-    try:
-        return ast.unparse(func.returns)
-    except Exception:
-        return None
-
-
-def _get_raised_exceptions(func: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
-    """Find all exception types raised in a method."""
-    raised = set()
-    for node in ast.walk(func):
-        if isinstance(node, ast.Raise) and node.exc:
-            exc = node.exc
-            if isinstance(exc, ast.Call) and isinstance(exc.func, ast.Name):
-                raised.add(exc.func.id)
-            elif isinstance(exc, ast.Name):
-                raised.add(exc.id)
-    return raised
-
-
-def _is_stub_body(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
-    """Check if method body is just pass/return None/... (Ellipsis)."""
-    body = func.body
-    if (body and isinstance(body[0], ast.Expr)
-            and isinstance(body[0].value, ast.Constant)
-            and isinstance(body[0].value.value, str)):
-        body = body[1:]
-    if len(body) == 1:
-        stmt = body[0]
-        if isinstance(stmt, ast.Pass):
-            return True
-        if isinstance(stmt, ast.Return):
-            if stmt.value is None:
-                return True
-            if isinstance(stmt.value, ast.Constant) and stmt.value.value is None:
-                return True
-        if (
-            isinstance(stmt, ast.Expr)
-            and isinstance(stmt.value, ast.Constant)
-            and stmt.value.value is ...
-        ):
-            return True
-    return False
-
-
-def _get_classes(tree: ast.Module) -> dict[str, dict[str, Any]]:
-    """Extract all classes with their methods and base classes."""
-    classes: dict[str, dict[str, Any]] = {}
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ClassDef):
-            methods = {}
-            for item in node.body:
-                if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    methods[item.name] = {
-                        "sig": _get_method_signature(item),
-                        "raised": _get_raised_exceptions(item),
-                        "is_stub": _is_stub_body(item),
-                        "node": item,
-                    }
-            bases = []
-            for base in node.bases:
-                if isinstance(base, ast.Name):
-                    bases.append(base.id)
-                elif isinstance(base, ast.Attribute):
-                    bases.append(base.attr)
-            classes[node.name] = {
-                "name": node.name,
-                "line": node.lineno,
-                "bases": bases,
-                "methods": methods,
-            }
-    return classes
-
-
 def _check_lsp_violations(parent: dict[str, Any], child: dict[str, Any]) -> list[dict[str, Any]]:
-    """Check LSP violations between parent and child class."""
+    """Check LSP violations between parent and child class.
+
+    Args:
+        parent: Parent class info dict (from :func:`_build_class_info`).
+        child: Child class info dict (from :func:`_build_class_info`).
+
+    Returns:
+        A list of violation dicts with keys ``type``, ``class``, ``method``,
+        ``line``, and ``detail``.
+
+    """
     violations: list[dict[str, Any]] = []
     parent_methods = parent["methods"]
     child_methods = child["methods"]
@@ -203,6 +164,64 @@ def _check_lsp_violations(parent: dict[str, Any], child: dict[str, Any]) -> list
     return violations
 
 
+def scan_module(module: ModuleInfo) -> list[Finding]:
+    """Check LSP violations within a single :class:`ModuleInfo`.
+
+    Only violations where both the parent and child class are defined in the
+    same module are reported. Cross-file violations require a global class
+    registry and are handled by :func:`main`.
+
+    Args:
+        module: The parsed module to inspect.
+
+    Returns:
+        A list of :class:`Finding` objects for each LSP violation.
+
+    """
+    classes: dict[str, dict[str, Any]] = {}
+    for cls in module.classes:
+        classes[cls.name] = _build_class_info(cls)
+
+    findings: list[Finding] = []
+    for cls in module.classes:
+        info = classes[cls.name]
+        for base_name in info["bases"]:
+            if base_name in classes:
+                parent = classes[base_name]
+                lsp_violations = _check_lsp_violations(parent, info)
+                for v in lsp_violations:
+                    findings.append(Finding(
+                        file=str(module.path),
+                        line=v["line"],
+                        category="lsp_violation",
+                        severity="high",
+                        description=(
+                            f"[{v['type']}] {v['class']}.{v['method']}() — "
+                            f"{v['detail']} (parent: {base_name})"
+                        ),
+                        fix_type="manual",
+                    ))
+    return findings
+
+
+def scan_file(path: Path) -> list[Finding]:
+    """Backward-compatible wrapper that uses the registry to get an engine.
+
+    Args:
+        path: Path to a Python source file.
+
+    Returns:
+        A list of :class:`Finding` objects for LSP violations in the file.
+
+    """
+    _ensure_python_engine()
+    engine = get_engine_for_file(path)
+    if engine is None:
+        return []
+    module = engine.parse_module(path)
+    return scan_module(module)
+
+
 def main() -> int:
     """Entry point for the Liskov Substitution Principle validator CLI."""
     parser = argparse.ArgumentParser(
@@ -216,6 +235,7 @@ def main() -> int:
                         help="Exit with code 1 if violations are found")
     args = parser.parse_args()
 
+    _ensure_python_engine()
     if args.skip:
         print("=" * 70)
         print("LISKOV SUBSTITUTION (LSP) — VALIDATION REPORT")
@@ -233,14 +253,16 @@ def main() -> int:
     for py in root.rglob("*.py"):
         if "__pycache__" in str(py):
             continue
-        try:
-            tree = ast.parse(py.read_text(encoding="utf-8"))
-        except SyntaxError:
+        engine = get_engine_for_file(py)
+        if engine is None:
             continue
-        classes = _get_classes(tree)
-        for name, info in classes.items():
+        module = engine.parse_module(py)
+        if module.has_syntax_error:
+            continue
+        for cls in module.classes:
+            info = _build_class_info(cls)
             info["file"] = str(py.relative_to(root))
-            all_classes.setdefault(name, info)
+            all_classes.setdefault(cls.name, info)
 
     # Check each child against its parent
     violations: list[dict[str, Any]] = []

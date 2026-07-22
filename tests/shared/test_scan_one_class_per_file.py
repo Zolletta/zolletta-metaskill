@@ -7,10 +7,13 @@ from pathlib import Path
 
 import pytest
 
+from zolletta_metaskill.common.models import Finding
+from zolletta_metaskill.common.registry import get_engine_for_file
 from zolletta_metaskill.shared.scan_one_class_per_file import (
     _snake_to_pascal,
     main,
     scan_file,
+    scan_module,
 )
 
 
@@ -39,60 +42,131 @@ class TestSnakeToPascal:
 
 
 class TestScanFile:
-    """Tests for scan_file()."""
+    """Tests for scan_file() — now returns list[Finding]."""
 
-    def test_single_class(self, tmp_path: Path) -> None:
+    def test_single_class_no_violation(self, tmp_path: Path) -> None:
+        """A file with one class matching the filename produces no findings."""
         f = tmp_path / "user.py"
         f.write_text("class User:\n    pass\n")
-        info = scan_file(f)
-        assert info["error"] is False
-        assert len(info["classes"]) == 1
-        assert info["classes"][0]["name"] == "User"
-        assert info["classes"][0]["line"] == 1
+        findings = scan_file(f)
+        assert findings == []
 
     def test_multiple_classes(self, tmp_path: Path) -> None:
+        """A file with 2+ classes produces a multi_class finding."""
         f = tmp_path / "multi.py"
-        f.write_text("class Foo:\n    pass\n\nclass Bar:\n    pass\n")
-        info = scan_file(f)
-        assert info["error"] is False
-        names = [c["name"] for c in info["classes"]]
-        assert names == ["Foo", "Bar"]
+        f.write_text("class Foo:\n    pass\nclass Bar:\n    pass\n")
+        findings = scan_file(f)
+        assert len(findings) == 1
+        assert findings[0].category == "multi_class"
+        assert findings[0].severity == "high"
+        assert "Foo" in findings[0].description
+        assert "Bar" in findings[0].description
+        assert "2 classes" in findings[0].description
 
     def test_zero_classes(self, tmp_path: Path) -> None:
+        """A file with no classes produces a zero_class finding."""
         f = tmp_path / "utils.py"
         f.write_text("def helper():\n    return 42\n")
-        info = scan_file(f)
-        assert info["error"] is False
-        assert info["classes"] == []
+        findings = scan_file(f)
+        assert len(findings) == 1
+        assert findings[0].category == "zero_class"
+        assert findings[0].severity == "low"
 
-    def test_syntax_error(self, tmp_path: Path) -> None:
+    def test_syntax_error_returns_empty(self, tmp_path: Path) -> None:
+        """A syntax-error file produces no findings (skipped)."""
         f = tmp_path / "bad.py"
         f.write_text("def broken(:\n")
-        info = scan_file(f)
-        assert info["error"] is True
-        assert info["classes"] == []
+        findings = scan_file(f)
+        assert findings == []
 
-    def test_nested_class(self, tmp_path: Path) -> None:
+    def test_nested_class_treated_as_single(self, tmp_path: Path) -> None:
+        """Nested classes are not counted by the engine (only top-level).
+
+        The file has one top-level class 'Outer' with a nested 'Inner'.
+        Since only 'Outer' is counted, this is a name_mismatch (Outer != Nested).
+        """
         f = tmp_path / "nested.py"
         f.write_text("class Outer:\n    class Inner:\n        pass\n")
-        info = scan_file(f)
-        assert info["error"] is False
-        names = [c["name"] for c in info["classes"]]
-        assert "Outer" in names
-        assert "Inner" in names
+        findings = scan_file(f)
+        assert len(findings) == 1
+        assert findings[0].category == "name_mismatch"
+        assert "Outer" in findings[0].description
 
     def test_empty_file(self, tmp_path: Path) -> None:
+        """An empty file produces a zero_class finding."""
         f = tmp_path / "empty.py"
         f.write_text("")
-        info = scan_file(f)
-        assert info["error"] is False
-        assert info["classes"] == []
+        findings = scan_file(f)
+        assert len(findings) == 1
+        assert findings[0].category == "zero_class"
 
-    def test_file_path_in_result(self, tmp_path: Path) -> None:
+    def test_file_path_in_finding(self, tmp_path: Path) -> None:
+        """The finding's file field matches the path."""
         f = tmp_path / "thing.py"
-        f.write_text("class Thing:\n    pass\n")
-        info = scan_file(f)
-        assert info["file"] == str(f)
+        f.write_text("class WrongName:\n    pass\n")
+        findings = scan_file(f)
+        assert len(findings) == 1
+        assert findings[0].file == str(f)
+
+    def test_name_mismatch(self, tmp_path: Path) -> None:
+        """A class name that doesn't match the filename produces a finding."""
+        f = tmp_path / "user.py"
+        f.write_text("class WrongName:\n    pass\n")
+        findings = scan_file(f)
+        assert len(findings) == 1
+        assert findings[0].category == "name_mismatch"
+        assert findings[0].severity == "medium"
+        assert "WrongName" in findings[0].description
+        assert "User" in findings[0].description  # expected name
+
+    def test_class_name_matches_filename(self, tmp_path: Path) -> None:
+        """A class name matching the PascalCase filename produces no findings."""
+        f = tmp_path / "user_account.py"
+        f.write_text("class UserAccount:\n    pass\n")
+        findings = scan_file(f)
+        assert findings == []
+
+    def test_class_name_equals_stem(self, tmp_path: Path) -> None:
+        """Class name == file stem (snake_case) is also accepted."""
+        f = tmp_path / "user.py"
+        f.write_text("class user:\n    pass\n")
+        findings = scan_file(f)
+        assert findings == []
+
+
+class TestScanModule:
+    """Tests for scan_module() with ModuleInfo directly."""
+
+    def test_syntax_error_module(self, tmp_path: Path) -> None:
+        """A module with has_syntax_error returns no findings."""
+        engine = get_engine_for_file(tmp_path / "bad.py")
+        assert engine is not None
+        module = engine.parse_module(tmp_path / "bad.py")
+        # parse_module on a non-existent file returns has_syntax_error=True
+        assert module.has_syntax_error
+        assert scan_module(module) == []
+
+    def test_multi_class_finding(self, tmp_path: Path) -> None:
+        """Two top-level classes produce a multi_class finding."""
+        f = tmp_path / "multi.py"
+        f.write_text("class Foo:\n    pass\nclass Bar:\n    pass\n")
+        engine = get_engine_for_file(f)
+        assert engine is not None
+        module = engine.parse_module(f)
+        findings = scan_module(module)
+        assert len(findings) == 1
+        assert findings[0].category == "multi_class"
+
+    def test_returns_finding_objects(self, tmp_path: Path) -> None:
+        """scan_module returns Finding dataclass instances."""
+        f = tmp_path / "utils.py"
+        f.write_text("def helper():\n    return 1\n")
+        engine = get_engine_for_file(f)
+        assert engine is not None
+        module = engine.parse_module(f)
+        findings = scan_module(module)
+        assert len(findings) == 1
+        assert isinstance(findings[0], Finding)
 
 
 class TestMain:

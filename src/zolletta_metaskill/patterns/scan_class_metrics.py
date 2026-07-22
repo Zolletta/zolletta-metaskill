@@ -21,59 +21,98 @@ Exit code: 0 on success, 1 if no classes are found.
 from __future__ import annotations
 
 import argparse
-import ast
 import sys
 from pathlib import Path
 from typing import Any
 
-
-def _get_class_end(node: ast.ClassDef) -> int:
-    """Return the last line number of a class (including nested nodes)."""
-    return max(getattr(n, "lineno", node.lineno) for n in ast.walk(node))
-
-
-def _count_self_attrs(node: ast.ClassDef) -> int:
-    """Count distinct self.* attribute accesses in a class."""
-    attrs: set[str] = set()
-    for n in ast.walk(node):
-        if (
-            isinstance(n, ast.Attribute)
-            and isinstance(n.value, ast.Name)
-            and n.value.id == "self"
-        ):
-            attrs.add(n.attr)
-    return len(attrs)
+from zolletta_metaskill.common.models import Finding, ModuleInfo
+from zolletta_metaskill.common.registry import (
+    ensure_engine,
+    get_engine_for_file,
+)
+from zolletta_metaskill.engines.python_engine import PythonEngine
 
 
-def scan_file(path: Path) -> list[dict[str, Any]]:
-    """Scan a single .py file and return class metric dicts."""
-    try:
-        tree = ast.parse(path.read_text(encoding="utf-8"))
-    except SyntaxError:
-        return []
+def _ensure_python_engine() -> None:
+    """Ensure the PythonEngine is registered."""
+    ensure_engine(PythonEngine())
 
-    results = []
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.ClassDef):
-            continue
-        start = node.lineno
-        end = _get_class_end(node)
-        methods = [
-            n for n in node.body
-            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
-        ]
-        public = [m for m in methods if not m.name.startswith("_")]
+
+def _class_metrics(module: ModuleInfo) -> list[dict[str, Any]]:
+    """Compute raw class metric dicts from a :class:`ModuleInfo`.
+
+    Args:
+        module: The parsed module to inspect.
+
+    Returns:
+        A list of dicts with keys ``file``, ``class``, ``lines``, ``methods``,
+        ``public``, ``attrs``, ``start``, and ``end``.
+
+    """
+    results: list[dict[str, Any]] = []
+    for cls in module.classes:
+        start = cls.lineno
+        end = cls.end_lineno
+        lines = end - start + 1
+        methods = len(cls.methods)
+        public = sum(1 for m in cls.methods if m.is_public)
+        attrs = len(cls.attributes)
         results.append({
-            "file": str(path),
-            "class": node.name,
-            "lines": end - start + 1,
-            "methods": len(methods),
-            "public": len(public),
-            "attrs": _count_self_attrs(node),
+            "file": str(module.path),
+            "class": cls.name,
+            "lines": lines,
+            "methods": methods,
+            "public": public,
+            "attrs": attrs,
             "start": start,
             "end": end,
         })
     return results
+
+
+def scan_module(module: ModuleInfo) -> list[Finding]:
+    """Scan a :class:`ModuleInfo` and return class metric findings.
+
+    Args:
+        module: The parsed module to inspect.
+
+    Returns:
+        A list of :class:`Finding` objects, one per class.
+
+    """
+    findings: list[Finding] = []
+    for r in _class_metrics(module):
+        findings.append(Finding(
+            file=r["file"],
+            line=r["start"],
+            category="class_metrics",
+            severity="low",
+            description=(
+                f"class={r['class']} lines={r['lines']} "
+                f"methods={r['methods']} public={r['public']} "
+                f"attrs={r['attrs']} start={r['start']} end={r['end']}"
+            ),
+            fix_type="skip",
+        ))
+    return findings
+
+
+def scan_file(path: Path) -> list[Finding]:
+    """Backward-compatible wrapper that uses the registry to get an engine.
+
+    Args:
+        path: Path to a Python source file.
+
+    Returns:
+        A list of :class:`Finding` objects for each class in the file.
+
+    """
+    _ensure_python_engine()
+    engine = get_engine_for_file(path)
+    if engine is None:
+        return []
+    module = engine.parse_module(path)
+    return scan_module(module)
 
 
 def main() -> int:
@@ -101,6 +140,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    _ensure_python_engine()
     root = Path(args.directory)
     if not root.exists():
         print(f"Error: directory '{root}' does not exist", file=sys.stderr)
@@ -108,7 +148,11 @@ def main() -> int:
 
     all_results: list[dict[str, Any]] = []
     for py in root.rglob("*.py"):
-        all_results.extend(scan_file(py))
+        engine = get_engine_for_file(py)
+        if engine is None:
+            continue
+        module = engine.parse_module(py)
+        all_results.extend(_class_metrics(module))
 
     if not all_results:
         print(f"No classes found in {root}", file=sys.stderr)

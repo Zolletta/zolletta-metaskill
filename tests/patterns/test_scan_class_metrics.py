@@ -2,87 +2,17 @@
 
 from __future__ import annotations
 
-import ast
 import sys
 from pathlib import Path
 
 import pytest
 
+from zolletta_metaskill.common.models import Finding
 from zolletta_metaskill.patterns.scan_class_metrics import (
-    _count_self_attrs,
-    _get_class_end,
     main,
     scan_file,
+    scan_module,
 )
-
-
-def _parse_class(source: str) -> ast.ClassDef:
-    """Parse source and return the first ClassDef."""
-    tree = ast.parse(source)
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ClassDef):
-            return node
-    raise AssertionError("No class found in source")
-
-
-class TestGetClassEnd:
-    def test_simple_class(self) -> None:
-        node = _parse_class("class Foo:\n    pass\n")
-        assert _get_class_end(node) == 2
-
-    def test_class_with_methods(self) -> None:
-        source = (
-            "class Foo:\n    def bar(self):\n        return 1\n"
-            "    def baz(self):\n        return 2\n"
-        )
-        node = _parse_class(source)
-        assert _get_class_end(node) == 5
-
-    def test_class_with_nested_class(self) -> None:
-        source = "class Outer:\n    class Inner:\n        pass\n"
-        node = _parse_class(source)
-        assert _get_class_end(node) == 3
-
-    def test_class_with_decorators(self) -> None:
-        source = "class Foo:\n    x = 1\n    y = 2\n    z = 3\n"
-        node = _parse_class(source)
-        assert _get_class_end(node) == 4
-
-
-class TestCountSelfAttrs:
-    def test_no_attrs(self) -> None:
-        node = _parse_class("class Foo:\n    def bar(self):\n        pass\n")
-        assert _count_self_attrs(node) == 0
-
-    def test_single_attr(self) -> None:
-        node = _parse_class("class Foo:\n    def bar(self):\n        self.x = 1\n")
-        assert _count_self_attrs(node) == 1
-
-    def test_multiple_distinct_attrs(self) -> None:
-        source = (
-            "class Foo:\n    def bar(self):\n        self.x = 1\n"
-            "        self.y = 2\n        self.z = 3\n"
-        )
-        node = _parse_class(source)
-        assert _count_self_attrs(node) == 3
-
-    def test_duplicate_attrs_counted_once(self) -> None:
-        source = (
-            "class Foo:\n    def bar(self):\n        self.x = 1\n"
-            "    def baz(self):\n        self.x = 2\n"
-        )
-        node = _parse_class(source)
-        assert _count_self_attrs(node) == 1
-
-    def test_attr_access_not_assignment(self) -> None:
-        source = "class Foo:\n    def bar(self):\n        return self.value + self.other\n"
-        node = _parse_class(source)
-        assert _count_self_attrs(node) == 2
-
-    def test_non_self_attrs_ignored(self) -> None:
-        source = "class Foo:\n    def bar(self, other):\n        other.x = 1\n        self.y = 2\n"
-        node = _parse_class(source)
-        assert _count_self_attrs(node) == 1
 
 
 class TestScanFile:
@@ -92,14 +22,17 @@ class TestScanFile:
         results = scan_file(f)
         assert len(results) == 1
         r = results[0]
-        assert r["class"] == "Foo"
-        assert r["file"] == str(f)
-        assert r["lines"] == 3
-        assert r["methods"] == 1
-        assert r["public"] == 1
-        assert r["attrs"] == 1
-        assert r["start"] == 1
-        assert r["end"] == 3
+        assert isinstance(r, Finding)
+        assert r.file == str(f)
+        assert r.line == 1
+        assert r.category == "class_metrics"
+        assert "class=Foo" in r.description
+        assert "lines=3" in r.description
+        assert "methods=1" in r.description
+        assert "public=1" in r.description
+        assert "attrs=1" in r.description
+        assert "start=1" in r.description
+        assert "end=3" in r.description
 
     def test_file_with_private_methods(self, tmp_path: Path) -> None:
         f = tmp_path / "mod.py"
@@ -109,29 +42,37 @@ class TestScanFile:
         )
         results = scan_file(f)
         assert len(results) == 1
-        assert results[0]["methods"] == 2
-        assert results[0]["public"] == 1
+        assert "methods=2" in results[0].description
+        assert "public=1" in results[0].description
 
     def test_file_with_async_methods(self, tmp_path: Path) -> None:
         f = tmp_path / "mod.py"
         f.write_text("class Foo:\n    async def bar(self):\n        pass\n")
         results = scan_file(f)
         assert len(results) == 1
-        assert results[0]["methods"] == 1
+        assert "methods=1" in results[0].description
 
     def test_file_with_multiple_classes(self, tmp_path: Path) -> None:
         f = tmp_path / "mod.py"
         f.write_text("class Foo:\n    pass\nclass Bar:\n    pass\n")
         results = scan_file(f)
         assert len(results) == 2
-        names = {r["class"] for r in results}
+        names = set()
+        for r in results:
+            # Extract class name from description "class=NAME ..."
+            assert "class=" in r.description
+            part = r.description.split("class=")[1].split(" ")[0]
+            names.add(part)
         assert names == {"Foo", "Bar"}
 
     def test_file_with_nested_class(self, tmp_path: Path) -> None:
+        """ModuleInfo only contains top-level classes, not nested ones."""
         f = tmp_path / "mod.py"
         f.write_text("class Outer:\n    class Inner:\n        pass\n")
         results = scan_file(f)
-        assert len(results) == 2
+        # Only the top-level class is reported (ModuleInfo limitation)
+        assert len(results) == 1
+        assert "class=Outer" in results[0].description
 
     def test_empty_file(self, tmp_path: Path) -> None:
         f = tmp_path / "empty.py"
@@ -150,6 +91,29 @@ class TestScanFile:
         f.write_text("def foo():\n    return 1\n")
         results = scan_file(f)
         assert results == []
+
+
+class TestScanModule:
+    def test_returns_findings(self, tmp_path: Path) -> None:
+        from zolletta_metaskill.common.models import ClassInfo, MethodInfo, ModuleInfo
+
+        f = tmp_path / "mod.py"
+        module = ModuleInfo(
+            path=f,
+            language="python",
+            classes=[
+                ClassInfo(
+                    name="Foo",
+                    lineno=1,
+                    end_lineno=3,
+                    methods=[MethodInfo(name="bar", lineno=2, end_lineno=3)],
+                ),
+            ],
+        )
+        results = scan_module(module)
+        assert len(results) == 1
+        assert isinstance(results[0], Finding)
+        assert results[0].category == "class_metrics"
 
 
 class TestMain:

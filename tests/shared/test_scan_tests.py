@@ -63,11 +63,13 @@ class TestGetClassNames:
         assert _get_class_names(f) == []
 
     def test_nested_class(self, tmp_path: Path) -> None:
+        """Only top-level classes are returned (engine does not walk into nested)."""
         f = tmp_path / "nested.py"
         f.write_text("class Outer:\n    class Inner:\n        pass\n")
         names = _get_class_names(f)
         assert "Outer" in names
-        assert "Inner" in names
+        # Inner is nested inside Outer — the engine only extracts top-level classes
+        assert "Inner" not in names
 
 
 class TestAutoDetectPackage:

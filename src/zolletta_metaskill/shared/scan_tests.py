@@ -55,10 +55,20 @@ Exit code: 0 if no mismatches (or --skip), 1 if mismatches found.
 from __future__ import annotations
 
 import argparse
-import ast
 import sys
 from pathlib import Path
 from typing import Any
+
+from zolletta_metaskill.common.registry import (
+    ensure_engine,
+    get_engine_for_file,
+)
+from zolletta_metaskill.engines.python_engine import PythonEngine
+
+
+def _ensure_python_engine() -> None:
+    """Ensure the PythonEngine is registered."""
+    ensure_engine(PythonEngine())
 
 
 def _pascal_to_snake(name: str) -> str:
@@ -67,12 +77,19 @@ def _pascal_to_snake(name: str) -> str:
 
 
 def _get_class_names(path: Path) -> list[str]:
-    """Return class names defined in a .py file."""
-    try:
-        tree = ast.parse(path.read_text(encoding="utf-8"))
-    except SyntaxError:
+    """Return top-level class names defined in a source file.
+
+    Uses the registered language engine to parse the file, so no ``ast``
+    import is needed here.
+    """
+    _ensure_python_engine()
+    engine = get_engine_for_file(path)
+    if engine is None:
         return []
-    return [n.name for n in ast.walk(tree) if isinstance(n, ast.ClassDef)]
+    module = engine.parse_module(path)
+    if module.has_syntax_error:
+        return []
+    return [cls.name for cls in module.classes]
 
 
 def _auto_detect_package(src_root: Path) -> str | None:
@@ -174,6 +191,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    _ensure_python_engine()
     if args.skip:
         print("# Test Structure Mirror — SKIPPED (--skip flag)\n")
         return 0

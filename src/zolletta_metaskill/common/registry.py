@@ -66,6 +66,22 @@ def available_languages() -> list[str]:
     return sorted(_ENGINES.keys())
 
 
+def ensure_engine(engine: LanguageEngine) -> None:
+    """Register *engine* if its language is not already registered.
+
+    Unlike :func:`register_engine`, this is idempotent: if an engine for
+    the same language is already registered, it does nothing (and does not
+    raise).  This makes it safe to call from scanner entry points every
+    time, even after :func:`clear_registry` has been used in tests.
+
+    Args:
+        engine: An instance implementing :class:`LanguageEngine`.
+
+    """
+    if engine.language not in _ENGINES:
+        _ENGINES[engine.language] = engine
+
+
 def clear_registry() -> None:
     """Remove all registered engines (primarily for testing)."""
     _ENGINES.clear()

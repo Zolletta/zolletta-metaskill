@@ -30,10 +30,20 @@ Exit code: 0 if no violations (or --strict not set or --skip), 1 if
 from __future__ import annotations
 
 import argparse
-import ast
 import sys
 from pathlib import Path
-from typing import Any
+
+from zolletta_metaskill.common.models import Finding, ModuleInfo
+from zolletta_metaskill.common.registry import (
+    ensure_engine,
+    get_engine_for_file,
+)
+from zolletta_metaskill.engines.python_engine import PythonEngine
+
+
+def _ensure_python_engine() -> None:
+    """Ensure the PythonEngine is registered."""
+    ensure_engine(PythonEngine())
 
 
 def _snake_to_pascal(name: str) -> str:
@@ -41,19 +51,87 @@ def _snake_to_pascal(name: str) -> str:
     return "".join(word.capitalize() for word in name.split("_"))
 
 
-def scan_file(path: Path) -> dict[str, Any]:
-    """Scan a single .py file and return its class info."""
-    try:
-        tree = ast.parse(path.read_text(encoding="utf-8"))
-    except SyntaxError:
-        return {"file": str(path), "classes": [], "error": True}
+def scan_module(module: ModuleInfo) -> list[Finding]:
+    """Scan a parsed module and return findings for class-structure violations.
 
-    classes = [
-        {"name": n.name, "line": n.lineno}
-        for n in ast.walk(tree)
-        if isinstance(n, ast.ClassDef)
-    ]
-    return {"file": str(path), "classes": classes, "error": False}
+    Args:
+        module: The :class:`ModuleInfo` produced by an engine.
+
+    Returns:
+        A list of :class:`Finding` objects.  Categories:
+        ``"multi_class"`` (2+ classes), ``"zero_class"`` (no classes),
+        ``"name_mismatch"`` (class name != filename).
+
+    """
+    if module.has_syntax_error:
+        return []
+
+    classes = module.classes
+    file_path = str(module.path)
+
+    if len(classes) > 1:
+        names = ", ".join(c.name for c in classes)
+        return [
+            Finding(
+                file=file_path,
+                line=classes[0].lineno,
+                category="multi_class",
+                severity="high",
+                description=f"{len(classes)} classes: {names}",
+                fix_type="manual",
+            )
+        ]
+
+    if len(classes) == 0:
+        return [
+            Finding(
+                file=file_path,
+                line=0,
+                category="zero_class",
+                severity="low",
+                description="No classes (utility/helper module)",
+                fix_type="skip",
+            )
+        ]
+
+    # Exactly 1 class — check name match
+    cls = classes[0]
+    expected_pascal = _snake_to_pascal(module.path.stem)
+    if cls.name != expected_pascal and cls.name != module.path.stem:
+        return [
+            Finding(
+                file=file_path,
+                line=cls.lineno,
+                category="name_mismatch",
+                severity="medium",
+                description=(
+                    f"Class '{cls.name}' doesn't match filename. "
+                    f"Expected '{expected_pascal}' (or rename file to match class)"
+                ),
+                fix_type="manual",
+            )
+        ]
+
+    return []
+
+
+def scan_file(path: Path) -> list[Finding]:
+    """Backward-compatible wrapper that uses the registry to get an engine.
+
+    Args:
+        path: Path to a source file.
+
+    Returns:
+        A list of :class:`Finding` objects (empty if no engine matches or
+        the file has a syntax error).
+
+    """
+    _ensure_python_engine()
+    engine = get_engine_for_file(path)
+    if engine is None:
+        return []
+    module = engine.parse_module(path)
+    return scan_module(module)
 
 
 def main() -> int:
@@ -85,6 +163,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    _ensure_python_engine()
     if args.skip:
         print("=" * 70)
         print("1 CLASS 1 FILE, 1 FILE 1 CLASS — VALIDATION REPORT")
@@ -97,43 +176,20 @@ def main() -> int:
         print(f"Error: directory '{root}' does not exist", file=sys.stderr)
         return 1
 
-    multi_class: list[dict[str, Any]] = []
-    zero_class: list[str] = []
-    name_mismatch: list[dict[str, Any]] = []
-
+    all_findings: list[Finding] = []
     for py in root.rglob("*.py"):
         if "__pycache__" in str(py):
             continue
         if py.name == "__init__.py":
             continue
+        all_findings.extend(scan_file(py))
 
-        info = scan_file(py)
-        if info.get("error"):
-            continue
+    if args.ignore_zero:
+        all_findings = [f for f in all_findings if f.category != "zero_class"]
 
-        classes = info["classes"]
-        rel_path = str(py.relative_to(root))
-
-        if len(classes) > 1:
-            multi_class.append({
-                "file": rel_path,
-                "count": len(classes),
-                "names": [c["name"] for c in classes],
-            })
-        elif len(classes) == 0:
-            if not args.ignore_zero:
-                zero_class.append(rel_path)
-        else:
-            # Exactly 1 class — check name match
-            cls = classes[0]
-            expected_pascal = _snake_to_pascal(py.stem)
-            if cls["name"] != expected_pascal and cls["name"] != py.stem:
-                name_mismatch.append({
-                    "file": rel_path,
-                    "class": cls["name"],
-                    "line": cls["line"],
-                    "expected": expected_pascal,
-                })
+    multi_class = [f for f in all_findings if f.category == "multi_class"]
+    zero_class = [f for f in all_findings if f.category == "zero_class"]
+    name_mismatch = [f for f in all_findings if f.category == "name_mismatch"]
 
     has_violations = bool(multi_class or name_mismatch or zero_class)
 
@@ -143,19 +199,20 @@ def main() -> int:
 
     if multi_class:
         print(f"\n## Files with 2+ classes ({len(multi_class)} files)\n")
-        for item in multi_class:
-            print(f"  {item['count']} classes: {', '.join(item['names'])}")
-            print(f"    -> {item['file']}")
+        for f in multi_class:
+            rel = str(Path(f.file).relative_to(root))
+            print(f"  {f.description}")
+            print(f"    -> {rel}")
             print("    Fix: split into one file per class")
     else:
         print("\n## Files with 2+ classes: none")
 
     if name_mismatch:
         print(f"\n## Class name != filename ({len(name_mismatch)} files)\n")
-        for item in name_mismatch:
-            print(f"  {item['class']} (line {item['line']})")
-            print(f"    -> {item['file']}")
-            print(f"    Expected: {item['expected']} (or rename file to {item['class']})")
+        for f in name_mismatch:
+            rel = str(Path(f.file).relative_to(root))
+            print(f"  {f.description} (line {f.line})")
+            print(f"    -> {rel}")
     else:
         print("\n## Class name != filename: none")
 
@@ -163,7 +220,8 @@ def main() -> int:
         if zero_class:
             print(f"\n## Files with 0 classes ({len(zero_class)} files)\n")
             for f in zero_class:
-                print(f"  {f}")
+                rel = str(Path(f.file).relative_to(root))
+                print(f"  {rel}")
             if not args.strict:
                 print("  (Low severity — utility/helper modules. Use --ignore-zero to hide.)")
         else:

@@ -14,10 +14,12 @@ from pathlib import Path
 
 import pytest
 
+from zolletta_metaskill.common.models import Finding
 from zolletta_metaskill.python_testing_patterns.scan_test_naming import (
     _count_segments,
     _find_test_functions,
     main,
+    scan_file,
 )
 
 # ---------------------------------------------------------------------------
@@ -105,7 +107,7 @@ class TestFindTestFunctions:
         assert result == [("test_fetch_with_valid_url_returns_data", 1)]
 
     def test_finds_nested_test_functions(self, tmp_path: Path) -> None:
-        """``ast.walk`` descends into nested scopes, finding inner test_ defs."""
+        """Only top-level test functions are found (engine does not walk into nested scopes)."""
         f = tmp_path / "test_nested.py"
         f.write_text(
             "def test_outer_with_context_does_thing():\n"
@@ -116,7 +118,8 @@ class TestFindTestFunctions:
         result = _find_test_functions(f)
         names = [name for name, _ in result]
         assert "test_outer_with_context_does_thing" in names
-        assert "test_inner_helper" in names
+        # Inner function is nested — the engine only extracts top-level functions
+        assert "test_inner_helper" not in names
 
     def test_ignores_non_test_functions(self, tmp_path: Path) -> None:
         """Functions not starting with ``test_`` are excluded."""
@@ -609,6 +612,60 @@ class TestMainMixedScenarios:
         assert rc == 0
         data = json.loads(capsys.readouterr().out)
         assert data["violations"][0]["file"] == str(Path("pkg") / "test_bad.py")
+
+
+# ---------------------------------------------------------------------------
+# scan_module / scan_file
+# ---------------------------------------------------------------------------
+
+
+class TestScanModule:
+    """``scan_module`` consumes ``ModuleInfo`` and returns ``list[Finding]``."""
+
+    def test_returns_finding_objects(self, tmp_path: Path) -> None:
+        """Violations are returned as ``Finding`` dataclass instances."""
+        f = tmp_path / "test_bad.py"
+        write_test_file(f, "def test_init():\n    assert True\n")
+        findings = scan_file(f)
+        assert len(findings) == 1
+        assert isinstance(findings[0], Finding)
+        assert findings[0].category == "test_naming"
+        assert findings[0].severity == "medium"
+        assert "test_init" in findings[0].description
+
+    def test_no_violation_for_compliant_name(self, tmp_path: Path) -> None:
+        """A compliant test function name produces no findings."""
+        f = tmp_path / "test_good.py"
+        write_test_file(f, "def test_unit_scenario_expected():\n    assert True\n")
+        findings = scan_file(f)
+        assert findings == []
+
+    def test_custom_min_segments(self, tmp_path: Path) -> None:
+        """``min_segments`` is respected by ``scan_file``."""
+        f = tmp_path / "test_edge.py"
+        write_test_file(f, "def test_unit_scenario_expected():\n    assert True\n")
+        # 3 segments — fine at default 3, violation at 4
+        assert scan_file(f, min_segments=3) == []
+        assert len(scan_file(f, min_segments=4)) == 1
+
+    def test_syntax_error_returns_empty(self, tmp_path: Path) -> None:
+        """A syntax-error file produces no findings."""
+        f = tmp_path / "test_broken.py"
+        f.write_text("def test_foo(:\n    pass\n")
+        assert scan_file(f) == []
+
+    def test_finds_test_methods_in_classes(self, tmp_path: Path) -> None:
+        """Test methods inside classes are also found by scan_file."""
+        f = tmp_path / "test_class.py"
+        write_test_file(
+            f,
+            "class TestFoo:\n"
+            "    def test_init(self):\n"
+            "        assert True\n",
+        )
+        findings = scan_file(f)
+        assert len(findings) == 1
+        assert "test_init" in findings[0].description
 
 
 # ---------------------------------------------------------------------------

@@ -149,8 +149,8 @@ Both PHP plans touch shared files. This table assigns each file to exactly one p
 
 > **DEPENDS on Phase 6** (tests must exist first — refactoring changes scanner signatures). **DEPENDS on Phase 8** (engines must exist to produce `ModuleInfo`).
 
-- [ ] **9.1** Refactor 7 agnostic scanners (`scan_class_metrics`, `scan_test_god_classes`, `scan_naming_conventions`, `scan_one_class_per_file`, `scan_tests`, `scan_test_naming`, `scan_liskov_substitution`) → PLAN-PHP-SUPPORT 3.1–3.2
-- [ ] **9.2** Update tests for refactored scanners → PLAN-PHP-SUPPORT 3.5
+- [x] **9.1** Refactor 7 agnostic scanners (`scan_class_metrics`, `scan_test_god_classes`, `scan_naming_conventions`, `scan_one_class_per_file`, `scan_tests`, `scan_test_naming`, `scan_liskov_substitution`) → PLAN-PHP-SUPPORT 3.1–3.2
+- [x] **9.2** Update tests for refactored scanners → PLAN-PHP-SUPPORT 3.5
 
 ---
 
