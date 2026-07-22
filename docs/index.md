@@ -5,6 +5,8 @@ skills:
   [setup, review, patterns, documentor, external-review, python-code-style, python-testing-patterns]
 ---
 
+![zolletta-metaskill](../assets/zolletta-meta-skill-192.png)
+
 # Zolletta-MetaSkill Documentation
 
 The documentation follows the [Diátaxis framework](https://diataxis.fr/), organising content into four quadrants: tutorials, how-to guides, reference, and explanation.

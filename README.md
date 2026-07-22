@@ -35,6 +35,8 @@ All files in `~/.agents/rules/` are the single source of truth for their domain 
 
 The first time you run any subcommand in a project, the **setup guard** automatically runs `/zolletta-metaskill setup` if `.zolletta-metaskill/settings.json` does not exist.
 
+New to zolletta-metaskill? Read the [getting started tutorial](docs/tutorials/getting-started.md). For the full documentation index, see [`docs/index.md`](docs/index.md).
+
 ## Subcommands
 
 | Subcommand | Scope |
@@ -59,7 +61,7 @@ When a tool is not installed, zolletta-metaskill prints a message explaining why
 
 | Resource | Path | Contents |
 | --- | --- | --- |
-| References | `docs/` | Code-exploration decision tree, general principles, Python review guide, scripts reference, documentation standards, tool messages, review-mode rules, settings.json schema |
+| Documentation | [`docs/`](docs/index.md) | Tutorials, how-to guides, reference, and explanation — see [`docs/index.md`](docs/index.md) for the full index |
 | Scripts | `src/zolletta_metaskill/{patterns,python_code_style,python_testing_patterns,shared}/` | Automated scanning scripts organized by skill |
 
 ## Setup and settings.json
