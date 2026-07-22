@@ -69,21 +69,21 @@ rm -f "$CANONICAL_DEST/.coverage" "$CANONICAL_DEST/coverage.xml" "$CANONICAL_DES
 
 Hardcoded mapping (confirmed from each tool's official docs):
 
-| Tool        | Global dir check      | Skills subdir | Symlink target                                  |
-| ----------- | --------------------- | ------------- | ----------------------------------------------- |
-| Claude Code | `~/.claude`           | `skills`      | `~/.claude/skills/zolletta-metaskill`           |
-| Cursor      | `~/.cursor`           | `skills`      | `~/.cursor/skills/zolletta-metaskill`           |
-| Gemini CLI  | `~/.gemini`           | `skills`      | `~/.gemini/skills/zolletta-metaskill`           |
-| Devin       | `~/.config/devin`     | `skills`      | `~/.config/devin/skills/zolletta-metaskill`     |
-| Windsurf    | `~/.codeium/windsurf` | `skills`      | `~/.codeium/windsurf/skills/zolletta-metaskill` |
-| Cline       | `~/.cline`            | `skills`      | `~/.cline/skills/zolletta-metaskill`            |
-| Roo Code    | `~/.roo`              | `skills`      | `~/.roo/skills/zolletta-metaskill`              |
-| Continue    | `~/.continue`         | `skills`      | `~/.continue/skills/zolletta-metaskill`         |
-| Kiro        | `~/.kiro`             | `skills`      | `~/.kiro/skills/zolletta-metaskill`             |
-| Goose       | `~/.config/goose`     | `skills`      | `~/.config/goose/skills/zolletta-metaskill`     |
-| Junie       | `~/.junie`            | `skills`      | `~/.junie/skills/zolletta-metaskill`            |
-| Augment     | `~/.augment`          | `skills`      | `~/.augment/skills/zolletta-metaskill`          |
-| Trae        | `~/.trae`             | `skills`      | `~/.trae/skills/zolletta-metaskill`             |
+| Tool | Global dir check | Skills subdir | Symlink target |
+| --- | --- | --- | --- |
+| Claude Code | `~/.claude` | `skills` | `~/.claude/skills/zolletta-metaskill` |
+| Cursor | `~/.cursor` | `skills` | `~/.cursor/skills/zolletta-metaskill` |
+| Gemini CLI | `~/.gemini` | `skills` | `~/.gemini/skills/zolletta-metaskill` |
+| Devin | `~/.config/devin` | `skills` | `~/.config/devin/skills/zolletta-metaskill` |
+| Windsurf | `~/.codeium/windsurf` | `skills` | `~/.codeium/windsurf/skills/zolletta-metaskill` |
+| Cline | `~/.cline` | `skills` | `~/.cline/skills/zolletta-metaskill` |
+| Roo Code | `~/.roo` | `skills` | `~/.roo/skills/zolletta-metaskill` |
+| Continue | `~/.continue` | `skills` | `~/.continue/skills/zolletta-metaskill` |
+| Kiro | `~/.kiro` | `skills` | `~/.kiro/skills/zolletta-metaskill` |
+| Goose | `~/.config/goose` | `skills` | `~/.config/goose/skills/zolletta-metaskill` |
+| Junie | `~/.junie` | `skills` | `~/.junie/skills/zolletta-metaskill` |
+| Augment | `~/.augment` | `skills` | `~/.augment/skills/zolletta-metaskill` |
+| Trae | `~/.trae` | `skills` | `~/.trae/skills/zolletta-metaskill` |
 
 **Native `~/.agents/skills/` readers (no symlink needed):** Codex, Pi, Kilo Code — they read the canonical copy from step 2 directly.
 
@@ -108,13 +108,13 @@ Print a summary table: tool name, status (symlinked / skipped / not installed / 
 
 After `.install` is written, update the relevant docs so users discover the script. Files to touch:
 
-| File                             | Action | What changes                                                                                                                                                                                                                        |
-| -------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs/how-to/install.md`         | Update | Add `.install` as the recommended install method (above the manual clone/symlink options). Document `./.install` and `./.install --force`, the symlink model, and the list of supported tools. Keep the manual options as fallback. |
-| `docs/reference/code/scripts.md` | Update | Add a "Repository scripts" section (separate from the scanning scripts) documenting `.bump` (version bump) and `.install` (skill installer): usage, options, what each touches, safety notes.                                       |
-| `README.md`                      | Update | Add an "Installation" section (currently absent) pointing to `./.install` as the one-command install and to `docs/how-to/install.md` for details. Mention `.bump` for contributors.                                                 |
-| `docs/index.md`                  | Update | Refresh the Install row description to mention the `.install` script ("Install zolletta-metaskill via `.install` or manual clone/symlink").                                                                                         |
-| `CHANGELOG.md`                   | Update | Add an entry under `[Unreleased]` (or a new version section) for the `.install` script and the documentation updates.                                                                                                               |
+| File | Action | What changes |
+| --- | --- | --- |
+| `docs/how-to/install.md` | Update | Add `.install` as the recommended install method (above the manual clone/symlink options). Document `./.install` and `./.install --force`, the symlink model, and the list of supported tools. Keep the manual options as fallback. |
+| `docs/reference/code/scripts.md` | Update | Add a "Repository scripts" section (separate from the scanning scripts) documenting `.bump` (version bump) and `.install` (skill installer): usage, options, what each touches, safety notes. |
+| `README.md` | Update | Add an "Installation" section (currently absent) pointing to `./.install` as the one-command install and to `docs/how-to/install.md` for details. Mention `.bump` for contributors. |
+| `docs/index.md` | Update | Refresh the Install row description to mention the `.install` script ("Install Zolletta-metaskill via `.install` or manual clone/symlink"). |
+| `CHANGELOG.md` | Update | Add an entry under `[Unreleased]` (or a new version section) for the `.install` script and the documentation updates. |
 
 ### Notes
 

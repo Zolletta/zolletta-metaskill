@@ -8,7 +8,7 @@ skills: [patterns, documentor, review, external-review, python-*]
 
 > **Paths in this document are relative to the Zolletta-MetaSkill project root.**
 
-Tokensave is a semantic code-graph MCP server that provides instant exploration, impact analysis, and symbol search from a pre-built knowledge graph. It is the primary code exploration tool for all zolletta-metaskill review skills.
+Tokensave is a semantic code-graph MCP server that provides instant exploration, impact analysis, and symbol search from a pre-built knowledge graph. It is the primary code exploration tool for all Zolletta-metaskill review skills.
 
 ## MANDATORY: No Explore Agents When Tokensave Is Available
 

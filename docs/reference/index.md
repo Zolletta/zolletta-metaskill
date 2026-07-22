@@ -6,7 +6,7 @@ skills: [setup, review, patterns, documentor, external-review, python-*]
 
 # Reference Index
 
-Technical reference material for zolletta-metaskill. For the full documentation index across all quadrants, see [docs/index.md](../index.md).
+Technical reference material for Zolletta-metaskill. For the full documentation index across all quadrants, see [docs/index.md](../index.md).
 
 ## Tree
 
@@ -46,7 +46,7 @@ reference/
 | [documentation/scoring-and-categories.md](documentation/scoring-and-categories.md) | Staleness scoring model, drift categories, troubleshooting |
 | [documentation/operational-rules.md](documentation/operational-rules.md) | Tool invocation conventions and drift report format |
 | [settings-schema.md](settings-schema.md) | Full field-by-field reference for `settings.json` |
-| [subcommands.md](subcommands.md) | All zolletta-metaskill subcommands |
+| [subcommands.md](subcommands.md) | All Zolletta-metaskill subcommands |
 | [frontmatter.md](frontmatter.md) | SKILL.md frontmatter fields |
 | [reports.md](reports.md) | Report file format and templates |
 | [tool-messages.md](tool-messages.md) | "Not installed" messages for the tool-failure handler |

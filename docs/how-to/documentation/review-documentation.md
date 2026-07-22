@@ -13,7 +13,7 @@ Review project documentation for [Diátaxis](https://diataxis.fr/) compliance, d
 ## Prerequisites
 
 - A project with a documentation directory (default: `docs`, configurable via `documentation.dir` in `settings.json`)
-- The zolletta-metaskill skill installed and available to the agent
+- The Zolletta-metaskill skill installed and available to the agent
 - The project set up with `/zolletta-metaskill setup`
 
 ## What the review checks

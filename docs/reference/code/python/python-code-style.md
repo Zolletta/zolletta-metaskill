@@ -8,7 +8,7 @@ skills: [python-*, review, patterns]
 
 > **Paths in this document are relative to the Zolletta-MetaSkill project root.**
 
-Python-specific coding conventions and code-style workflow. These rules are the single source of truth — the zolletta-metaskill review skills enforce them and only narrow behavior for the review context.
+Python-specific coding conventions and code-style workflow. These rules are the single source of truth — the Zolletta-metaskill review skills enforce them and only narrow behavior for the review context.
 
 ## 1. Environment setup
 

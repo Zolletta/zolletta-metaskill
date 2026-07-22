@@ -11,7 +11,7 @@ Run a code review on the modified files of a change using an external LLM that f
 ## Prerequisites
 
 - A git repository with uncommitted or committed-but-unreviewed changes
-- The zolletta-metaskill skill installed and available to the agent
+- The Zolletta-metaskill skill installed and available to the agent
 - Global rules present in `~/.agents/` (markdown files covering language, style, and documentation conventions)
 
 ## Steps
@@ -41,6 +41,7 @@ Read the following to build the review context:
 Send the modified files and the review context to an external LLM. The default model is `swe`; override via `external_review_model` in `.zolletta-metaskill/settings.json` or in the skill's front-matter.
 
 The external reviewer should:
+
 - Follow the global rules and project AGENTS.md exactly
 - Review only the modified files (not the entire codebase)
 - Report findings with severity, file, line number, and suggested fix
@@ -52,9 +53,9 @@ The external reviewer writes its findings to a markdown report in the timestampe
 
 ## Configuration
 
-| Setting                 | Location                            | Default | Description                                  |
-| ----------------------- | ----------------------------------- | ------- | -------------------------------------------- |
-| `external_review_model` | `.zolletta-metaskill/settings.json` | `swe`   | The external LLM model to use for the review |
+| Setting | Location | Default | Description |
+| --- | --- | --- | --- |
+| `external_review_model` | `.zolletta-metaskill/settings.json` | `swe` | The external LLM model to use for the review |
 
 ## See also
 

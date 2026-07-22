@@ -516,7 +516,7 @@ Add the following messages to `docs/reference/tool-messages.md`:
 - `php_cs_fixer` (unconfigured) — states defaults: `@PSR-12` ruleset, `config_file: false`
 - `phpcs` (unconfigured) — states defaults: `standard: "PSR12"`
 
-Each message follows the same structure as the Python ones: explains why zolletta-metaskill benefits from the tool, states the effective defaults, and links to the tool's documentation.
+Each message follows the same structure as the Python ones: explains why Zolletta-metaskill benefits from the tool, states the effective defaults, and links to the tool's documentation.
 
 ### 4.5 Update Step 10 — Summary
 

@@ -6,7 +6,7 @@ skills: [setup]
 
 # Tool "not installed" messages
 
-Shared messages printed by the `setup` subcommand and the tool-failure handler when a tool is not available. Each message explains **why zolletta-metaskill benefits from the tool** and links to the project homepage (where applicable).
+Shared messages printed by the `setup` subcommand and the tool-failure handler when a tool is not available. Each message explains **why Zolletta-metaskill benefits from the tool** and links to the project homepage (where applicable).
 
 These messages must be printed verbatim (or close to it) by any subcommand that detects a tool is missing — either during setup or via the tool-failure handler.
 
@@ -36,7 +36,7 @@ relationships, impact radius). Zolletta-metaskill uses it to:
   - verify documented symbols exist without grep (documentor)
   - find affected tests after a change (review, external-review)
 
-Without tokensave, zolletta-metaskill falls back to grep + targeted reads (slower,
+Without tokensave, Zolletta-metaskill falls back to grep + targeted reads (slower,
 higher token usage).
 
 Homepage: https://github.com/aovestdipaperino/tokensave
@@ -51,7 +51,7 @@ Homepage: https://github.com/aovestdipaperino/tokensave
 
 uv is a fast Python package manager and project manager. Zolletta-metaskill uses it
 to run Python tools (ruff, mypy, pytest) in the project environment.
-Without uv, zolletta-metaskill falls back to calling tools directly.
+Without uv, Zolletta-metaskill falls back to calling tools directly.
 
 Homepage: https://github.com/astral-sh/uv
 ```

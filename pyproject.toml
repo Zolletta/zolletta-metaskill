@@ -20,6 +20,10 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Quality Assurance",
 ]
+dependencies = [
+    "tree-sitter>=0.26.0",
+    "tree-sitter-php>=0.24.1",
+]
 
 [project.urls]
 Homepage = "https://github.com/Zolletta/zolletta-metaskill"

@@ -6,7 +6,7 @@ skills: [setup]
 
 # Install Zolletta-MetaSkill
 
-Install the zolletta-metaskill skill family so it is available to the AI agent.
+Install the Zolletta-metaskill skill family so it is available to the AI agent.
 
 ## Prerequisites
 

@@ -13,7 +13,7 @@ Run a comprehensive code review that combines all available review skills in par
 ## Prerequisites
 
 - A project set up with `/zolletta-metaskill setup` (`.zolletta-metaskill/settings.json` must exist)
-- The zolletta-metaskill skill installed and available to the agent
+- The Zolletta-metaskill skill installed and available to the agent
 
 ## Steps
 
@@ -30,11 +30,13 @@ The orchestrator reads `language` from `settings.json` and determines which skil
 The orchestrator runs skills in parallel batches:
 
 **General skills (always run):**
+
 - `patterns` — God classes, SOLID, coupling, structural conventions
 - `documentor` — Diátaxis compliance, drift detection, freshness scoring
 - `external-review` — external-LLM review of modified files
 
 **Language-specific skills (run when language matches):**
+
 - `python-code-style` — Python source code style (ruff, mypy, naming, docstrings)
 - `python-testing-patterns` — Python test code review (isolation, coverage, mocking)
 
@@ -55,11 +57,11 @@ The full review runs in **read-only mode**: no fixes are applied, all tools run 
 
 ## Configuration
 
-| Setting                 | Location                            | Default                       | Description                                   |
-| ----------------------- | ----------------------------------- | ----------------------------- | --------------------------------------------- |
-| `language`              | `.zolletta-metaskill/settings.json` | (detected)                    | Determines which language-specific skills run |
-| `reports_dir`           | `.zolletta-metaskill/settings.json` | `.zolletta-metaskill/reports` | Where report folders are created              |
-| `external_review_model` | `.zolletta-metaskill/settings.json` | `swe`                         | Model for the external review sub-skill       |
+| Setting | Location | Default | Description |
+| --- | --- | --- | --- |
+| `language` | `.zolletta-metaskill/settings.json` | (detected) | Determines which language-specific skills run |
+| `reports_dir` | `.zolletta-metaskill/settings.json` | `.zolletta-metaskill/reports` | Where report folders are created |
+| `external_review_model` | `.zolletta-metaskill/settings.json` | `swe` | Model for the external review sub-skill |
 
 ## See also
 

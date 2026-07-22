@@ -31,8 +31,8 @@ The documentation follows the [Diátaxis framework](https://diataxis.fr/), organ
 
 | Document | Description |
 | --- | --- |
-| [Install](how-to/install.md) | Install zolletta-metaskill via `.install` or manual clone/symlink |
-| [Set up a project](how-to/setup-project.md) | Configure zolletta-metaskill for a new project |
+| [Install](how-to/install.md) | Install Zolletta-metaskill via `.install` or manual clone/symlink |
+| [Set up a project](how-to/setup-project.md) | Configure Zolletta-metaskill for a new project |
 | [Run a full review](how-to/run-full-review.md) | Execute the complete review pipeline |
 
 ### Code review
@@ -84,7 +84,7 @@ The documentation follows the [Diátaxis framework](https://diataxis.fr/), organ
 | Document | Description |
 | --- | --- |
 | [Settings schema](reference/settings-schema.md) | Full field-by-field reference for `settings.json` |
-| [Subcommands](reference/subcommands.md) | All zolletta-metaskill subcommands |
+| [Subcommands](reference/subcommands.md) | All Zolletta-metaskill subcommands |
 | [Frontmatter](reference/frontmatter.md) | SKILL.md frontmatter fields |
 | [Reports](reference/reports.md) | Report file format and templates |
 | [Tool messages](reference/tool-messages.md) | "Not installed" messages for the tool-failure handler |

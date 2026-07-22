@@ -311,7 +311,7 @@ These are project-management scripts at the repository root, separate from the s
 
 ### `.bump`
 
-Bumps the zolletta-metaskill version across all files.
+Bumps the Zolletta-metaskill version across all files.
 
 ```bash
 ./.bump --to <version>

@@ -139,9 +139,9 @@ Both PHP plans touch shared files. This table assigns each file to exactly one p
 
 > PythonEngine wraps `ast`; PHPEngine wraps tree-sitter.
 
-- [ ] **8.1** Create `src/zolletta_metaskill/engines/python_engine.py` → PLAN-PHP-SUPPORT 2.2
-- [ ] **8.2** Create `src/zolletta_metaskill/engines/php_engine.py` → PLAN-PHP-SUPPORT 2.3
-- [ ] **8.3** Register deferred tests in PLAN-TEST-RECOVERY → PLAN-PHP-SUPPORT 2.4
+- [x] **8.1** Create `src/zolletta_metaskill/engines/python_engine.py` → PLAN-PHP-SUPPORT 2.2
+- [x] **8.2** Create `src/zolletta_metaskill/engines/php_engine.py` → PLAN-PHP-SUPPORT 2.3
+- [x] **8.3** Register deferred tests in PLAN-TEST-RECOVERY → PLAN-PHP-SUPPORT 2.4
 
 ---
 

@@ -2,15 +2,15 @@
 
 ## Goal
 
-Extend zolletta-metaskill with a native `php-code-style` skill based on the 51 rules from the external `php-best-practices` skill (MIT, v2.1.0, by php-community), adapted to zolletta-metaskill's architecture:
+Extend Zolletta-metaskill with a native `php-code-style` skill based on the 51 rules from the external `php-best-practices` skill (MIT, v2.1.0, by php-community), adapted to Zolletta-metaskill's architecture:
 
-- **8 rules already covered** by existing zolletta-metaskill scanners/docs → eliminated (no duplication).
+- **8 rules already covered** by existing Zolletta-metaskill scanners/docs → eliminated (no duplication).
 - **10 rules are language-agnostic** in nature → promoted to 3 new general explanation docs (error-handling, performance, security) with both PHP and Python examples.
 - **33 rules are PHP-specific** → confined to the new `php-code-style/` skill, version-gated by detected `php_version`.
 
 Additionally:
 
-- **Suggest `php-pro`** (MIT, v1.1.0, by Jeffallan) as a companion implementation skill when a PHP project is detected. php-pro is an implementation skill (writes PHP 8.3+ code, Laravel/Symfony, PHPUnit/Pest, PHPStan level 9), not a review skill — zolletta-metaskill can only suggest installing it, not integrate it into the review workflow.
+- **Suggest `php-pro`** (MIT, v1.1.0, by Jeffallan) as a companion implementation skill when a PHP project is detected. php-pro is an implementation skill (writes PHP 8.3+ code, Laravel/Symfony, PHPUnit/Pest, PHPStan level 9), not a review skill — Zolletta-metaskill can only suggest installing it, not integrate it into the review workflow.
 - **Search for a Python equivalent** of php-pro on skills.sh and, if found, add a parallel suggestion for Python projects.
 - **Restructure frontmatter** to support `python-*` and `php-*` wildcards in the `skills:` field, so language-specific skills don't need to be listed individually.
 
@@ -36,7 +36,7 @@ Both this plan and PLAN-PHP-SUPPORT.md modify shared files. The table below assi
 
 ## Rule classification (51 → 43 new rules)
 
-### Already covered by zolletta-metaskill (8 rules — eliminated)
+### Already covered by Zolletta-metaskill (8 rules — eliminated)
 
 | Rule | php-best-practices ID | Covered by |
 | --- | --- | --- |
@@ -261,7 +261,7 @@ Report template matching `patterns/assets/report_template.md` format:
 - Tool results section (PHPStan, PHPCS, php-cs-fixer output if available)
 - Findings by severity (Critical, High, Medium, Low) — same table format
 - Recommendations section
-- Footer with zolletta-metaskill branding
+- Footer with Zolletta-metaskill branding
 
 ---
 
@@ -389,7 +389,7 @@ Mark Phase 5.1 as superseded:
 
 ## Risks / Considerations
 
-- **php-pro is an implementation skill, not review** — zolletta-metaskill can only suggest installing it, not integrate it into the review workflow. The suggestion is informational only.
+- **php-pro is an implementation skill, not review** — Zolletta-metaskill can only suggest installing it, not integrate it into the review workflow. The suggestion is informational only.
 - **Version-gated rules** — PHP 8.0–8.5 features must be gated by detected `php_version`. Rules for newer versions are silently skipped (not flagged) when the project targets an older PHP version. The skill prints a summary of skipped rules.
 - **Depends on PLAN-PHP-SUPPORT.md Phases 1–4** — `php-code-style/SKILL.md` can be written first (manual review guidance with grep-based detection), with automated tree-sitter scanners added later when `PhpEngine` is ready (Phase 2.3 of PLAN-PHP-SUPPORT.md).
 - **10 promoted rules need Python examples** — the source material (php-best-practices) is PHP-only. Python examples must be written from scratch for `error-handling.md`, `performance.md`, and `security.md`.

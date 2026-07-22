@@ -81,5 +81,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Reports and references
 
-- **Report templates** — each skill ships a markdown report template with grade, tool results, severity tables, and recommendations. The zolletta-metaskill logo is embedded as a base64 data URI in every report footer
+- **Report templates** — each skill ships a markdown report template with grade, tool results, severity tables, and recommendations. The Zolletta-metaskill logo is embedded as a base64 data URI in every report footer
 - **Shared references** — code-exploration decision tree, general review principles, documentation standards, tool messages, review-mode rules, and scripts reference — all in `docs/`, linked from every skill

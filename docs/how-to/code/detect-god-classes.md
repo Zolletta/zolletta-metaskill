@@ -8,12 +8,12 @@ skills: [patterns]
 
 > **Paths in this document are relative to the Zolletta-MetaSkill project root.**
 
-Identify God classes, missing tests, dependency-inversion violations, and other structural design problems in an object-oriented codebase using the zolletta-metaskill patterns workflow. The approach is two-phase: automated triage with scanning scripts, then principle-based judgment to distinguish true God classes from long-but-cohesive classes.
+Identify God classes, missing tests, dependency-inversion violations, and other structural design problems in an object-oriented codebase using the Zolletta-metaskill patterns workflow. The approach is two-phase: automated triage with scanning scripts, then principle-based judgment to distinguish true God classes from long-but-cohesive classes.
 
 ## Prerequisites
 
 - A codebase with `src/` and `tests/` directories (scripts use the `ast` module — no code execution required)
-- The zolletta-metaskill skill installed and available to the agent
+- The Zolletta-metaskill skill installed and available to the agent
 - The scanning scripts at `src/zolletta_metaskill/{patterns,shared,python_code_style,python_testing_patterns}/` (or `scripts/python/` in the baseline layout)
 
 ## Phase 1 — Automated triage

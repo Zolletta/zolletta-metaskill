@@ -10,7 +10,7 @@ Welcome to Zolletta-MetaSkill — a family of generic code review skills with sp
 
 ## What we will learn
 
-- How to install zolletta-metaskill
+- How to install Zolletta-metaskill
 - How to set up a project for reviews
 - How to run a full review and read the report
 - How to run individual review skills

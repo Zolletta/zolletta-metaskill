@@ -35,7 +35,7 @@ All files in `~/.agents/rules/` are the single source of truth for their domain 
 
 The first time you run any subcommand in a project, the **setup guard** automatically runs `/zolletta-metaskill setup` if `.zolletta-metaskill/settings.json` does not exist.
 
-New to zolletta-metaskill? Read the [getting started tutorial](docs/tutorials/getting-started.md). For the full documentation index, see [`docs/index.md`](docs/index.md).
+New to Zolletta-metaskill? Read the [getting started tutorial](docs/tutorials/getting-started.md). For the full documentation index, see [`docs/index.md`](docs/index.md).
 
 ## Installation
 
@@ -67,11 +67,11 @@ Use `./.bump --to <version>` to bump the version across `pyproject.toml`, `__ini
 
 ## Tools leveraged if available
 
-| Tool | Homepage | Why zolletta-metaskill benefits |
+| Tool | Homepage | Why Zolletta-metaskill benefits |
 | --- | --- | --- |
 | tokensave | https://github.com/aovestdipaperino/tokensave | Semantic code-graph index (symbols, call/callee, impact radius). Used by patterns, documentor, review, external-review to understand code without reading full files, assess blast radius, verify documented symbols, and find affected tests. |
 
-When a tool is not installed, zolletta-metaskill prints a message explaining why it would benefit from the tool and links to the homepage. It does **not** install anything.
+When a tool is not installed, Zolletta-metaskill prints a message explaining why it would benefit from the tool and links to the homepage. It does **not** install anything.
 
 ## Shared resources
 

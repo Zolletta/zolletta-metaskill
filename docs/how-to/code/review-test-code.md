@@ -13,7 +13,7 @@ Review test suites for isolation, naming, coverage gaps, mocking patterns, fixtu
 ## Prerequisites
 
 - A project that has been set up with `/zolletta-metaskill setup`
-- The zolletta-metaskill skill installed and available to the agent
+- The Zolletta-metaskill skill installed and available to the agent
 
 ## What the review checks
 

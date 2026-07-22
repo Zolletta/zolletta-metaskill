@@ -3,7 +3,7 @@ name: zolletta-metaskill-setup
 version: 1.2.0
 license: MIT + Commons Clause
 description: >
-  Project initialization for zolletta-metaskill. Creates the .zolletta-metaskill/ directory, detects the project language, detects Docker container, tests tokensave availability, detects Python tooling, and writes settings.json. Also adds .zolletta-metaskill/ to .gitignore. Run automatically by the setup guard before any subcommand if settings.json is missing, or manually via /zolletta-metaskill setup.
+  Project initialization for Zolletta-metaskill. Creates the .zolletta-metaskill/ directory, detects the project language, detects Docker container, tests tokensave availability, detects Python tooling, and writes settings.json. Also adds .zolletta-metaskill/ to .gitignore. Run automatically by the setup guard before any subcommand if settings.json is missing, or manually via /zolletta-metaskill setup.
 allowed-tools:
   - read
   - grep
@@ -160,7 +160,7 @@ Store both values for writing to the `documentation` object in `settings.json`. 
 
 ### Step 7 — Python skill availability (no action needed)
 
-The two Python review skills (`python-code-style`, `python-testing-patterns`) are bundled inside zolletta-metaskill, so they are always available — no probing or `*_available` flags are written to `settings.json`. The `review` subcommand dispatches to them automatically when `language` is `python`.
+The two Python review skills (`python-code-style`, `python-testing-patterns`) are bundled inside Zolletta-metaskill, so they are always available — no probing or `*_available` flags are written to `settings.json`. The `review` subcommand dispatches to them automatically when `language` is `python`.
 
 > **Note**: these skills are adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT License, Copyright (c) 2024 Seth Hobson) and live in `python-code-style/` and `python-testing-patterns/` within this meta-skill.
 
@@ -242,7 +242,7 @@ Use the `write` tool to create the file. The JSON must be valid and pretty-print
 
 ### Step 9 — Print "not installed" and "unconfigured" messages
 
-For each tool that is **not** available, print the corresponding "not installed" message from `../docs/reference/tool-messages.md`. The message explains why zolletta-metaskill benefits from the tool and links to the project homepage (where applicable).
+For each tool that is **not** available, print the corresponding "not installed" message from `../docs/reference/tool-messages.md`. The message explains why Zolletta-metaskill benefits from the tool and links to the project homepage (where applicable).
 
 For each Python tool that **is** available but has **no `[tool.*]` section in `pyproject.toml`** (detected in Step 6.5), print the corresponding "unconfigured" warning from `../docs/reference/tool-messages.md`. The warning states the tool's effective built-in defaults and links to the full options reference.
 
