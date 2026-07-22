@@ -37,32 +37,48 @@ The first time you run any subcommand in a project, the **setup guard** automati
 
 New to zolletta-metaskill? Read the [getting started tutorial](docs/tutorials/getting-started.md). For the full documentation index, see [`docs/index.md`](docs/index.md).
 
+## Installation
+
+### One-command installer (recommended)
+
+```bash
+git clone https://github.com/Zolletta/zolletta-metaskill.git
+cd zolletta-metaskill
+./.install
+```
+
+The `.install` script copies the skill to `~/.agents/skills/zolletta-metaskill` and symlinks it into every detected AI agent tool's skills directory (Claude Code, Cursor, Gemini CLI, Devin, Windsurf, and others). See [`docs/how-to/install.md`](docs/how-to/install.md) for details and manual alternatives.
+
+### For contributors
+
+Use `./.bump --to <version>` to bump the version across `pyproject.toml`, `__init__.py`, all `SKILL.md` files, and `settings_template.json`.
+
 ## Subcommands
 
-| Subcommand                | Scope                                                                                                                                                                                |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `setup`                   | Project initialization — creates `settings.json`, detects language, Docker container, tokensave, Python tooling, and extracts effective tool configuration from `pyproject.toml`     |
-| `review`                  | Full project review orchestrator — runs general + language-specific skills as parallel subagents, produces graded SUMMARY.md and aggregated TODO.md with links to specialist reports |
-| `patterns`                | God classes, SOLID violations, coupling, composition vs inheritance for `src/`                                                                                                       |
-| `documentor`              | [Diátaxis](https://diataxis.fr/) compliance + drift detection for `.backstage/`                                                                                                      |
-| `external-review`         | External-LLM code review on modified files only (default model: `swe`)                                                                                                               |
-| `python-code-style`       | Python source code style review (ruff, mypy, naming, docstrings, type annotations) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)                        |
-| `python-testing-patterns` | Python test code review (isolation, naming, coverage gaps, mocking, fixtures, AAA structure) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)              |
+| Subcommand | Scope |
+| --- | --- |
+| `setup` | Project initialization — creates `settings.json`, detects language, Docker container, tokensave, Python tooling, and extracts effective tool configuration from `pyproject.toml` |
+| `review` | Full project review orchestrator — runs general + language-specific skills as parallel subagents, produces graded SUMMARY.md and aggregated TODO.md with links to specialist reports |
+| `patterns` | God classes, SOLID violations, coupling, composition vs inheritance for `src/` |
+| `documentor` | [Diátaxis](https://diataxis.fr/) compliance + drift detection for `.backstage/` |
+| `external-review` | External-LLM code review on modified files only (default model: `swe`) |
+| `python-code-style` | Python source code style review (ruff, mypy, naming, docstrings, type annotations) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT) |
+| `python-testing-patterns` | Python test code review (isolation, naming, coverage gaps, mocking, fixtures, AAA structure) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT) |
 
 ## Tools leveraged if available
 
-| Tool      | Homepage                                      | Why zolletta-metaskill benefits                                                                                                                                                                                                                |
-| --------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tool | Homepage | Why zolletta-metaskill benefits |
+| --- | --- | --- |
 | tokensave | https://github.com/aovestdipaperino/tokensave | Semantic code-graph index (symbols, call/callee, impact radius). Used by patterns, documentor, review, external-review to understand code without reading full files, assess blast radius, verify documented symbols, and find affected tests. |
 
 When a tool is not installed, zolletta-metaskill prints a message explaining why it would benefit from the tool and links to the homepage. It does **not** install anything.
 
 ## Shared resources
 
-| Resource      | Path                                                                                  | Contents                                                                                                       |
-| ------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Documentation | [`docs/`](docs/index.md)                                                              | Tutorials, how-to guides, reference, and explanation — see [`docs/index.md`](docs/index.md) for the full index |
-| Scripts       | `src/zolletta_metaskill/{patterns,python_code_style,python_testing_patterns,shared}/` | Automated scanning scripts organized by skill                                                                  |
+| Resource | Path | Contents |
+| --- | --- | --- |
+| Documentation | [`docs/`](docs/index.md) | Tutorials, how-to guides, reference, and explanation — see [`docs/index.md`](docs/index.md) for the full index |
+| Scripts | `src/zolletta_metaskill/{patterns,python_code_style,python_testing_patterns,shared}/` | Automated scanning scripts organized by skill |
 
 ## Setup and settings.json
 

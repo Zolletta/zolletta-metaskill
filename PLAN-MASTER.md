@@ -61,7 +61,7 @@ Both PHP plans touch shared files. This table assigns each file to exactly one p
 - [x] **1.1** Create `.install` script (Steps 1–3: copy to `~/.agents/skills/`, symlink into 13 tools) → PLAN-SETUP-COMMAND "What it does"
 - [x] **1.2** Update `docs/how-to/install.md` — add `.install` as recommended install method → PLAN-SETUP-COMMAND "Documentation updates"
 - [x] **1.3** Update `docs/reference/code/scripts.md` — add "Repository scripts" section for `.bump` + `.install` → PLAN-SETUP-COMMAND "Documentation updates"
-- [ ] **1.4** Update `README.md` — add "Installation" section → PLAN-SETUP-COMMAND "Documentation updates"
+- [x] **1.4** Update `README.md` — add "Installation" section → PLAN-SETUP-COMMAND "Documentation updates"
 - [ ] **1.5** Update `docs/index.md` — refresh Install row → PLAN-SETUP-COMMAND "Documentation updates"
 - [ ] **1.6** Update `CHANGELOG.md` — add `.install` script entry to `[Unreleased]` (will become `[2.0.0]`) → PLAN-SETUP-COMMAND "Documentation updates"
 
