@@ -50,3 +50,17 @@ Following the Diataxis framework:
 | **Explanation**   | Understanding-oriented | Clarification, background, reasoning     |
 
 Each type serves a different need. A healthy project has all four.
+
+## Markdown formatting
+
+### Tables
+
+When writing GitHub-flavored markdown tables, use compact separator rows with no inner spaces and no alignment colons:
+
+```markdown
+| Header A | Header B | Header C |
+| -------- | -------- | -------- |
+| cell     | cell     | cell     |
+```
+
+Never use spaced or colon-padded separators like `| --- |`, `|:---|`, or `| ---: |`.
