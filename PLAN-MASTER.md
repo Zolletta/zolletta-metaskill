@@ -101,8 +101,8 @@ Both PHP plans touch shared files. This table assigns each file to exactly one p
 
 > Independent. Creates the skill files (manual review guidance, no tree-sitter dependency).
 
-- [ ] **5.1** Create `php-code-style/SKILL.md` (33 rules: 21 always-on + 12 configurable, version-gated) → PLAN-PHP-CODE-STYLE 3.1
-- [ ] **5.2** Create `php-code-style/assets/report_template.md` → PLAN-PHP-CODE-STYLE 3.2
+- [x] **5.1** Create `php-code-style/SKILL.md` (33 rules: 21 always-on + 12 configurable, version-gated) → PLAN-PHP-CODE-STYLE 3.1
+- [x] **5.2** Create `php-code-style/assets/report_template.md` → PLAN-PHP-CODE-STYLE 3.2
 
 ---
 
