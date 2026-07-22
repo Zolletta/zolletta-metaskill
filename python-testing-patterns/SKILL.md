@@ -128,8 +128,7 @@ Test functions should follow the pattern `test_<unit>_<scenario>_<expected_outco
 python3 ../src/zolletta_metaskill/python_testing_patterns/scan_test_naming.py tests/ --min-segments 3
 ```
 
-**Good names**: `test_create_user_with_valid_data_returns_user`, `test_login_fails_with_invalid_password`
-**Bad names**: `test_1`, `test_user`, `test_function`, `test_init`, `test_to_dict`
+**Good names**: `test_create_user_with_valid_data_returns_user`, `test_login_fails_with_invalid_password` **Bad names**: `test_1`, `test_user`, `test_function`, `test_init`, `test_to_dict`
 
 > The scanner is the single source of truth for this rule. Do not manually flag test names that the scanner doesn't flag — the segment count is the objective criterion. If the team disagrees with the threshold, change `--min-segments` in the skill invocation, not the scanner output.
 

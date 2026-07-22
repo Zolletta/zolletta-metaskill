@@ -1,7 +1,7 @@
 # TODO — Review {{timestamp}}
 
-**Project:** {{project_name}}
-**Language:** {{language}}
+- **Project:** {{project_name}}
+- **Language:** {{language}}
 
 ## Detailed reports
 

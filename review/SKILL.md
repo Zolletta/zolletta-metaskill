@@ -43,8 +43,7 @@ Read shared guidelines from the meta-skill (parent directory):
 
 **Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
 
-**Respond in the same language the user used to invoke you.** If the user wrote in Italian,
-respond in Italian. If in English, respond in English. And so on for any other language.
+**Respond in the same language the user used to invoke you.** If the user wrote in Italian, respond in Italian. If in English, respond in English. And so on for any other language.
 
 ## Procedure
 

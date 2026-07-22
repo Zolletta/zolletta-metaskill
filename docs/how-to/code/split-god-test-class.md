@@ -6,8 +6,7 @@ skills: [patterns]
 
 # Split a God test class
 
-> **Paths in this document are relative to the Zolletta-MetaSkill project root.**
-> **Language-agnostic**: the procedure below applies to any language. The script referenced is Python-specific; for other languages, follow the same grouping logic manually.
+> **Paths in this document are relative to the Zolletta-MetaSkill project root.** **Language-agnostic**: the procedure below applies to any language. The script referenced is Python-specific; for other languages, follow the same grouping logic manually.
 
 Split a test class that tests multiple SUTs (System Under Test) into per-SUT test files. The `src/zolletta_metaskill/patterns/test_splitter.py` script automates this — it groups test methods by prefix, creates a new test file per SUT, and writes them to a temp folder. The original file is never modified.
 

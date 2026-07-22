@@ -65,3 +65,19 @@ When writing GitHub-flavored markdown tables, use compact separator rows with no
 ```
 
 Never use spaced or colon-padded separators like `| --- |`, `|:---|`, or `| ---: |`. Column content must be padded with spaces so that every pipe character in the same column is on the same character position.
+
+### No artificial line breaks
+
+Each paragraph must be written on a single line. Never hard-wrap prose at a fixed column width — markdown renders single newlines as spaces, so wrapped lines are artificial breaks that make the source harder to edit and diff. A paragraph is any run of consecutive non-blank lines that are not headings, list items, blockquotes, code fences, tables, or HTML. Join all lines in such a run into one line.
+
+The same rule applies inside blockquotes: a blockquote paragraph is a run of consecutive non-blank `>` lines. Join them into a single `>` line.
+
+To separate distinct ideas, use a blank line (creating a new paragraph) or a list — never a mid-paragraph line break.
+
+### No artificial line breaks
+
+Each paragraph must be written on a single line. Never hard-wrap prose at a fixed column width — markdown renders single newlines as spaces, so wrapped lines are artificial breaks that make the source harder to edit and diff. A paragraph is any run of consecutive non-blank lines that are not headings, list items, blockquotes, code fences, tables, or HTML. Join all lines in such a run into one line.
+
+The same rule applies inside blockquotes: a blockquote paragraph is a run of consecutive non-blank `>` lines. Join them into a single `>` line.
+
+To separate distinct ideas, use a blank line (creating a new paragraph) or a list — never a mid-paragraph line break.
