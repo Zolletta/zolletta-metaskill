@@ -202,3 +202,41 @@ markers, and filterwarnings.
 
 See all available options at: https://docs.pytest.org/en/stable/reference/reference.html#ini-options-ref
 ```
+
+---
+
+# Companion skill "not installed" messages
+
+These messages are printed by `setup` when a companion **implementation** skill is not installed. Zolletta-metaskill is a **review** skill — it checks code quality but does not write code. For projects that need code generation alongside review, a companion implementation skill can be installed separately.
+
+## php-pro (PHP projects only)
+
+```text
+ℹ php-pro is not installed.
+
+php-pro is a companion implementation skill for PHP projects. It writes
+PHP 8.3+ code with strict typing, Laravel/Symfony patterns, PHPUnit/Pest
+tests, and PHPStan level 9 verification. Zolletta-metaskill is a review
+skill — it checks code quality but does not write code. For projects
+that need PHP code generation alongside review, install php-pro:
+
+  npx skills add jeffallan/claude-skills@php-pro -g -y
+
+Homepage: https://skills.sh/jeffallan/claude-skills/php-pro
+```
+
+## python-development (Python projects only)
+
+```text
+ℹ python-development is not installed.
+
+python-development is a companion implementation skill for Python projects.
+It writes Python 3.12+ code with FastAPI, Django, async patterns, pytest,
+ruff, and mypy. Zolletta-metaskill is a review skill — it checks code
+quality but does not write code. For projects that need Python code
+generation alongside review, install python-development:
+
+  npx skills add skillcreatorai/ai-agent-skills@python-development -g -y
+
+Homepage: https://skills.sh/skillcreatorai/ai-agent-skills/python-development
+```
