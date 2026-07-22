@@ -15,7 +15,7 @@ python3 src/zolletta_metaskill/scanners/scan_class_metrics.py <directory> [--top
 ```
 
 | Option          | Default | Description                       |
-| --------------- | ------- | --------------------------------- |
+|---|---|---|
 | `<directory>`   | `src`   | Root directory to scan            |
 | `--top N`       | 30      | Show only the top N classes       |
 | `--min-lines N` | 50      | Skip classes shorter than N lines |
@@ -33,7 +33,7 @@ python3 src/zolletta_metaskill/scanners/scan_test_god_classes.py <directory> [--
 ```
 
 | Option           | Default | Description                                             |
-| ---------------- | ------- | ------------------------------------------------------- |
+|---|---|---|
 | `<directory>`    | `tests` | Root directory to scan                                  |
 | `--top N`        | 30      | Show only the top N classes                             |
 | `--show-methods` | off     | List all method names per class (helps spot mixed SUTs) |
@@ -49,7 +49,7 @@ python3 src/zolletta_metaskill/scanners/scan_one_class_per_file.py <directory> [
 ```
 
 | Option          | Default | Description                                         |
-| --------------- | ------- | --------------------------------------------------- |
+|---|---|---|
 | `<directory>`   | `src`   | Root directory to scan                              |
 | `--strict`      | off     | Exit with code 1 if violations are found            |
 | `--ignore-zero` | off     | Don't report files with 0 classes (utility modules) |
@@ -75,7 +75,7 @@ python3 src/zolletta_metaskill/scanners/scan_tests.py \
 ```
 
 | Option            | Default                 | Description                                                 |
-| ----------------- | ----------------------- | ----------------------------------------------------------- |
+|---|---|---|
 | `--src`           | `src`                   | Source root directory                                       |
 | `--tests`         | `tests`                 | Test root directory                                         |
 | `--src-package`   | auto-detect             | Package path within `--src`                                 |
@@ -104,7 +104,7 @@ python3 src/zolletta_metaskill/scanners/scan_naming_conventions.py \
 ```
 
 | Option            | Default                 | Description                                                 |
-| ----------------- | ----------------------- | ----------------------------------------------------------- |
+|---|---|---|
 | `--src`           | `src`                   | Source root directory                                       |
 | `--tests`         | `tests`                 | Test root directory                                         |
 | `--src-package`   | auto-detect             | Package path within `--src`                                 |
@@ -129,7 +129,7 @@ python3 src/zolletta_metaskill/scanners/scan_dependency_inversion.py <directory>
 ```
 
 | Option           | Default                                                     | Description                                  |
-| ---------------- | ----------------------------------------------------------- | -------------------------------------------- |
+|---|---|---|
 | `<directory>`    | `src`                                                       | Root directory to scan                       |
 | `--entry-points` | `main,cli,app,__main__,myproject,manage,wsgi,asgi,conftest` | Comma-separated filename patterns to exclude |
 | `--skip`         | off                                                         | Skip this check entirely                     |
@@ -146,7 +146,7 @@ python3 src/zolletta_metaskill/scanners/scan_interface_segregation.py <directory
 ```
 
 | Option            | Default | Description                                  |
-| ----------------- | ------- | -------------------------------------------- |
+|---|---|---|
 | `<directory>`     | `src`   | Root directory to scan                       |
 | `--min-methods N` | 5       | Minimum abstract method count to flag as fat |
 | `--skip`          | off     | Skip this check entirely                     |
@@ -163,7 +163,7 @@ python3 src/zolletta_metaskill/scanners/scan_open_closed.py <directory> [--min-b
 ```
 
 | Option             | Default | Description                              |
-| ------------------ | ------- | ---------------------------------------- |
+|---|---|---|
 | `<directory>`      | `src`   | Root directory to scan                   |
 | `--min-branches N` | 3       | Minimum type-check branches to flag      |
 | `--skip`           | off     | Skip this check entirely                 |
@@ -178,7 +178,7 @@ python3 src/zolletta_metaskill/scanners/scan_liskov_substitution.py <directory> 
 ```
 
 | Option        | Default | Description                              |
-| ------------- | ------- | ---------------------------------------- |
+|---|---|---|
 | `<directory>` | `src`   | Root directory to scan                   |
 | `--skip`      | off     | Skip this check entirely                 |
 | `--strict`    | off     | Exit with code 1 if violations are found |
@@ -196,7 +196,7 @@ python3 src/zolletta_metaskill/scanners/scan_unused_all_exports.py <directory> [
 ```
 
 | Option        | Default | Description                                  |
-| ------------- | ------- | -------------------------------------------- |
+|---|---|---|
 | `<directory>` | `src`   | Root source directory to scan                |
 | `--strict`    | off     | Exit with code 1 if unused exports are found |
 | `--json`      | off     | Output as JSON instead of markdown           |
@@ -215,7 +215,7 @@ python3 src/zolletta_metaskill/scanners/scan_test_naming.py <directory> [--min-s
 ```
 
 | Option             | Default | Description                              |
-| ------------------ | ------- | ---------------------------------------- |
+|---|---|---|
 | `<directory>`      | `tests` | Root test directory to scan              |
 | `--min-segments N` | 3       | Minimum segments after `test_` prefix    |
 | `--strict`         | off     | Exit with code 1 if violations are found |
@@ -235,7 +235,7 @@ python3 src/zolletta_metaskill/scanners/scan_acronym_casing.py <directory> [--ac
 ```
 
 | Option            | Default    | Description                                                         |
-| ----------------- | ---------- | ------------------------------------------------------------------- |
+|---|---|---|
 | `<directory>`     | `src`      | Root source directory to scan                                       |
 | `--acronyms LIST` | (built-in) | Comma-separated acronym list (overrides settings.json and defaults) |
 | `--settings PATH` | (auto)     | Path to settings.json to read `python_code_style_rules.acronyms`    |
@@ -270,7 +270,7 @@ python3 src/zolletta_metaskill/scanners/test_splitter.py <test_file> \
 ```
 
 | Option             | Default                                      | Description                                               |
-| ------------------ | -------------------------------------------- | --------------------------------------------------------- |
+|---|---|---|
 | `<test_file>`      | (required)                                   | Path to the test .py file to split                        |
 | `--mapping <json>` | (none)                                       | JSON file or inline JSON mapping prefix to SUT class name |
 | `--out <dir>`      | `.zolletta-metaskill/test_split/<filename>/` | Output directory                                          |

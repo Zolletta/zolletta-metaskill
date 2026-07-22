@@ -68,7 +68,7 @@ Every public function should document:
 ### API Doc Formats
 
 | Format              | Best For              | Tooling                    |
-| ------------------- | --------------------- | -------------------------- |
+|---|---|---|
 | Docstrings (Python) | Python libraries      | Sphinx, pdoc, mkdocstrings |
 | JSDoc               | JavaScript/TypeScript | TypeDoc, documentation.js  |
 | OpenAPI/Swagger     | REST APIs             | Swagger UI, Redoc          |
@@ -201,7 +201,7 @@ project/
 Following the Diataxis framework:
 
 | Type              | Purpose                | Approach                                 |
-| ----------------- | ---------------------- | ---------------------------------------- |
+|---|---|---|
 | **Tutorials**     | Learning-oriented      | Step-by-step lessons, hands-on           |
 | **How-to Guides** | Task-oriented          | Practical steps to achieve a goal        |
 | **Reference**     | Information-oriented   | Accurate, complete technical description |

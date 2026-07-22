@@ -20,22 +20,22 @@ The timestamp format (`YYYY-MM-DD-HH-MM`) is lexicographically sortable, so find
 
 Each subcommand writes its own report file:
 
-| Subcommand | Report file | Content |
-|------------|-------------|---------|
-| `patterns` | `patterns.md` | God class findings, SOLID violations, coupling analysis, structural convention results |
-| `documentor` | `documentor.md` | Diátaxis compliance findings, drift detection results, staleness scores, link integrity |
-| `python-code-style` | `python-code-style.md` | Linting findings, formatting issues, naming violations, docstring gaps, type errors |
-| `python-testing-patterns` | `python-testing-patterns.md` | Coverage gaps, test isolation issues, naming violations, fixture design findings |
-| `external-review` | `external-review.md` | External LLM review of modified files |
+| Subcommand                | Report file                  | Content                                                                                 |
+|---|---|---|
+| `patterns`                | `patterns.md`                | God class findings, SOLID violations, coupling analysis, structural convention results  |
+| `documentor`              | `documentor.md`              | Diátaxis compliance findings, drift detection results, staleness scores, link integrity |
+| `python-code-style`       | `python-code-style.md`       | Linting findings, formatting issues, naming violations, docstring gaps, type errors     |
+| `python-testing-patterns` | `python-testing-patterns.md` | Coverage gaps, test isolation issues, naming violations, fixture design findings        |
+| `external-review`         | `external-review.md`         | External LLM review of modified files                                                   |
 
 ## Orchestrator output
 
 When running `/zolletta-metaskill review`, the orchestrator produces two additional files:
 
-| File | Content |
-|------|---------|
-| `SUMMARY.md` | Graded summary of all sub-reviews, with links to each specialist report |
-| `TODO.md` | Aggregated, prioritized TODO list organized by functional priority (dependency changes first, then by severity) |
+| File         | Content                                                                                                         |
+|---|---|
+| `SUMMARY.md` | Graded summary of all sub-reviews, with links to each specialist report                                         |
+| `TODO.md`    | Aggregated, prioritized TODO list organized by functional priority (dependency changes first, then by severity) |
 
 ## Report format
 

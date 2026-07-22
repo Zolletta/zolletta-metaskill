@@ -45,14 +45,14 @@ Team processes that ensure docs are updated alongside code changes.
 
 ### What to Generate
 
-| Source | Generated Doc | Tool |
-|--------|--------------|------|
-| Python docstrings | API reference | Sphinx, pdoc, mkdocstrings |
-| TypeScript types | API reference | TypeDoc |
-| OpenAPI spec | REST API docs | Swagger UI, Redoc |
-| CLI argparse | Command reference | argparse --help, click |
-| Database schema | ERD / schema docs | SchemaSpy, dbdocs |
-| Git log | Changelog draft | git-cliff, conventional-changelog |
+| Source            | Generated Doc     | Tool                              |
+|---|---|---|
+| Python docstrings | API reference     | Sphinx, pdoc, mkdocstrings        |
+| TypeScript types  | API reference     | TypeDoc                           |
+| OpenAPI spec      | REST API docs     | Swagger UI, Redoc                 |
+| CLI argparse      | Command reference | argparse --help, click            |
+| Database schema   | ERD / schema docs | SchemaSpy, dbdocs                 |
+| Git log           | Changelog draft   | git-cliff, conventional-changelog |
 
 ### What NOT to Generate
 

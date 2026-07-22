@@ -382,7 +382,7 @@ grep -c "public function\|private function\|protected function" src/MyClass.php
 ### Domain reference table
 
 | Domain         | Examples                                           |
-| -------------- | -------------------------------------------------- |
+|---|---|
 | HTTP/API       | request parsing, response formatting, status codes |
 | Business logic | validation, domain rules, calculations             |
 | Data access    | SQL, ORM calls, cache reads/writes                 |

@@ -77,7 +77,7 @@ skills: [setup, review, patterns, documentor, external-review, python-code-style
 ## Top-level fields
 
 | Field                               | Type              | Description                                                                                                                                                                    |
-| ----------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+|---|---|---|
 | `setup_version`                     | string            | Matches the skill version that wrote the file                                                                                                                                  |
 | `setup_timestamp`                   | string (ISO 8601) | Timestamp of the last setup run                                                                                                                                                |
 | `language`                          | string            | Detected project language (`python`, `php`, `go`, `rust`, etc.)                                                                                                                |
@@ -91,13 +91,13 @@ skills: [setup, review, patterns, documentor, external-review, python-code-style
 | `python_testing_patterns_rules`     | object            | Configurable rule toggles for the `python-testing-patterns` skill — see below                                                                                                  |
 | `external_review_model`             | string            | Default model for `external-review` (overridable by front-matter)                                                                                                              |
 | `documentation_language`            | string            | ISO 639-1 code for documentation language (default: `"en"`). When not `"en"`, the `documentor` skill translates Diátaxis signpost headings before running the staleness scorer |
-| `documentation_directory`           | string            | Directory where project documentation lives (default: `"docs/"`). Used by the `documentor` skill to locate the Diátaxis docs tree for drift detection and staleness scoring     |
+| `documentation_directory`           | string            | Directory where project documentation lives (default: `"docs/"`). Used by the `documentor` skill to locate the Diátaxis docs tree for drift detection and staleness scoring    |
 | `reports_dir`                       | string            | Directory where review reports are saved                                                                                                                                       |
 
 ## `python` — tool availability
 
 | Field            | Type    | Description                    |
-| ---------------- | ------- | ------------------------------ |
+|---|---|---|
 | `python.uv`      | boolean | `true` if uv is available      |
 | `python.ruff`    | boolean | `true` if ruff is available    |
 | `python.pytest`  | boolean | `true` if pytest is available  |
@@ -110,7 +110,7 @@ skills: [setup, review, patterns, documentor, external-review, python-code-style
 Extracted by setup from `pyproject.toml`. When a tool's `[tool.*]` section is absent, setup stores the tool's **real built-in defaults** (not skill-invented fallbacks) and prints an "unconfigured" warning. The `pyproject_mtime` field records when `pyproject.toml` was last read — the setup guard uses it to detect staleness and trigger a light refresh.
 
 | Field             | Type           | Description                                                                                                |
-| ----------------- | -------------- | ---------------------------------------------------------------------------------------------------------- |
+|---|---|---|
 | `pyproject_mtime` | float          | Modification time of `pyproject.toml` at last extraction (Unix timestamp)                                  |
 | `line_length`     | integer        | Effective line length (from `[tool.ruff] line-length`, or ruff's default `88` if unconfigured)             |
 | `target_version`  | string         | Effective target Python version (from `[tool.ruff] target-version`, or ruff's default `"py310"`)           |
@@ -125,7 +125,7 @@ Extracted by setup from `pyproject.toml`. When a tool's `[tool.*]` section is ab
 These control which checks the `python-code-style` skill enforces. All default to `true` (or `80` for the confidence threshold). Set to `false` to disable a check for the project.
 
 | Key                              | Type    | Default | Area       | Rule                                                         |
-| -------------------------------- | ------- | ------- | ---------- | ------------------------------------------------------------ |
+|---|---|---|---|---|
 | `check_acronym_casing`           | boolean | `true`  | Naming     | Acronyms stay uppercase in class names (`HTTPClientFactory`) |
 | `check_no_relative_imports`      | boolean | `true`  | Imports    | Absolute imports only, no relative imports                   |
 | `check_one_class_per_file`       | boolean | `true`  | Structure  | One class per file (all classes, not just public)            |
@@ -143,7 +143,7 @@ These control which checks the `python-code-style` skill enforces. All default t
 These control which checks the `python-testing-patterns` skill enforces and the coverage thresholds it uses.
 
 | Key                               | Type    | Default | Area     | Rule                                                         |
-| --------------------------------- | ------- | ------- | -------- | ------------------------------------------------------------ |
+|---|---|---|---|---|
 | `coverage_gap_threshold`          | integer | `50`    | Coverage | Coverage below this % is a gap (0–100)                       |
 | `coverage_well_covered_threshold` | integer | `80`    | Coverage | Coverage above this % is well-covered — do not flag (0–100)  |
 | `check_test_naming`               | boolean | `true`  | Naming   | Test naming convention (`test_<unit>_<scenario>_<expected>`) |

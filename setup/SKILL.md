@@ -55,16 +55,16 @@ mkdir -p .zolletta-metaskill
 
 Determine the project's primary language by checking for language markers in the project root (the current working directory):
 
-| Marker(s)                                                        | Language             |
-| ---------------------------------------------------------------- | -------------------- |
-| `pyproject.toml`, `setup.py`, `setup.cfg`, `requirements*.txt`, `Pipfile`, `uv.lock` | Python           |
-| `package.json`, `tsconfig.json`, `deno.json`                     | TypeScript/JavaScript|
-| `composer.json`                                                  | PHP                  |
-| `go.mod`                                                         | Go                   |
-| `Cargo.toml`                                                     | Rust                 |
-| `pom.xml`, `build.gradle`                                        | Java/Kotlin          |
-| `Gemfile`, `*.gemspec`                                           | Ruby                 |
-| `CMakeLists.txt`, `Makefile` with `.c`/`.cpp` sources            | C/C++               |
+| Marker(s)                                                                            | Language              |
+|---|---|
+| `pyproject.toml`, `setup.py`, `setup.cfg`, `requirements*.txt`, `Pipfile`, `uv.lock` | Python                |
+| `package.json`, `tsconfig.json`, `deno.json`                                         | TypeScript/JavaScript |
+| `composer.json`                                                                      | PHP                   |
+| `go.mod`                                                                             | Go                    |
+| `Cargo.toml`                                                                         | Rust                  |
+| `pom.xml`, `build.gradle`                                                            | Java/Kotlin           |
+| `Gemfile`, `*.gemspec`                                                               | Ruby                  |
+| `CMakeLists.txt`, `Makefile` with `.c`/`.cpp` sources                                | C/C++                 |
 
 1. If no marker is found, inspect the source directory for the most common file extension.
 2. If the language cannot be determined, ask the user with `ask_user_question`.
@@ -99,14 +99,14 @@ If the language is **Python**, detect which tools are available. For each tool, 
 
 The tools to detect:
 
-| Tool | pyproject.toml section | Command |
-| ---- | ---------------------- | ------- |
-| `uv` | n/a (check `[project]` or `uv.lock` file) | `uv --version` |
-| `ruff` | `[tool.ruff]` | `ruff --version` |
-| `pytest` | `[tool.pytest.ini_options]` | `pytest --version` |
-| `ty` | `[tool.ty]` | `ty --version` |
-| `vulture` | `[tool.vulture]` | `vulture --version` |
-| `mypy` | `[tool.mypy]` | `mypy --version` |
+| Tool      | pyproject.toml section                    | Command             |
+|---|---|---|
+| `uv`      | n/a (check `[project]` or `uv.lock` file) | `uv --version`      |
+| `ruff`    | `[tool.ruff]`                             | `ruff --version`    |
+| `pytest`  | `[tool.pytest.ini_options]`               | `pytest --version`  |
+| `ty`      | `[tool.ty]`                               | `ty --version`      |
+| `vulture` | `[tool.vulture]`                          | `vulture --version` |
+| `mypy`    | `[tool.mypy]`                             | `mypy --version`    |
 
 Store the results as a `python` subobject in `settings.json` (see Step 8).
 
@@ -122,12 +122,12 @@ If the language is **Python**, read `pyproject.toml` and extract the effective c
 
 2. **For each tool that is `true` in the `python` object** (from Step 6), extract its configuration:
 
-   | Tool | If `[tool.*]` section exists | If section is absent |
-   | ---- | ---------------------------- | -------------------- |
-   | `ruff` | Extract `line-length`, `target-version`, `lint.select`, `lint.ignore` into `python_config.ruff` | Store ruff's built-in defaults: `line_length: 88`, `target_version: "py310"`, `select: ["E4","E7","E9","F"]`, `ignore: []`. Print the ruff "unconfigured" warning from `../reference/tool-messages.md`. |
-   | `mypy` | Extract `python_version`, `strict`, `warn_return_any`, `warn_unused_ignores`, `disallow_untyped_defs`, `disallow_incomplete_defs` into `python_config.mypy` | Store mypy's built-in defaults: `strict: false`, `python_version: null` (uses running interpreter). Print the mypy "unconfigured" warning. |
-   | `ty` | Extract `python-version` (or `environment.python-version`) into `python_config.ty` | Store ty's built-in defaults: `python_version: null` (detected from environment). Print the ty "unconfigured" warning. |
-   | `pytest` | Extract `addopts`, `testpaths`, `minversion` into `python_config.pytest` | Store pytest's built-in defaults: `addopts: []`, `testpaths: []`, `minversion: null`. Print the pytest "unconfigured" warning. |
+| Tool     | If `[tool.*]` section exists                                                                                                                                | If section is absent                                                                                                                                                                                    |
+|---|---|---|
+| `ruff`   | Extract `line-length`, `target-version`, `lint.select`, `lint.ignore` into `python_config.ruff`                                                             | Store ruff's built-in defaults: `line_length: 88`, `target_version: "py310"`, `select: ["E4","E7","E9","F"]`, `ignore: []`. Print the ruff "unconfigured" warning from `../reference/tool-messages.md`. |
+| `mypy`   | Extract `python_version`, `strict`, `warn_return_any`, `warn_unused_ignores`, `disallow_untyped_defs`, `disallow_incomplete_defs` into `python_config.mypy` | Store mypy's built-in defaults: `strict: false`, `python_version: null` (uses running interpreter). Print the mypy "unconfigured" warning.                                                              |
+| `ty`     | Extract `python-version` (or `environment.python-version`) into `python_config.ty`                                                                          | Store ty's built-in defaults: `python_version: null` (detected from environment). Print the ty "unconfigured" warning.                                                                                  |
+| `pytest` | Extract `addopts`, `testpaths`, `minversion` into `python_config.pytest`                                                                                    | Store pytest's built-in defaults: `addopts: []`, `testpaths: []`, `minversion: null`. Print the pytest "unconfigured" warning.                                                                          |
 
 3. **Determine `type_checker`** — the tool the review skills should use for type checking:
    - If `[tool.ty]` is configured in `pyproject.toml` → `"ty"`
@@ -161,22 +161,22 @@ The two Python review skills (`python-code-style`, `python-testing-patterns`) ar
 
 Read the [settings template](assets/settings_template.json) and write `.zolletta-metaskill/settings.json` with the following fields filled in:
 
-| Field                            | Source                                          |
-| -------------------------------- | ----------------------------------------------- |
-| `setup_version`                  | `"1.0.0"` (matches the skill version)           |
-| `setup_timestamp`                | Current timestamp in ISO 8601 (`date -u +%Y-%m-%dT%H:%M:%S`) |
-| `language`                       | Detected language from Step 3                   |
-| `container_name`                 | Container name from Step 4 (`null` if no Docker) |
-| `tokensave_available`            | Boolean from Step 5                             |
-| `python`                         | Object from Step 6 (Python only; `null` otherwise) — see below |
-| `python_config`                  | Object from Step 6.5 (Python only; `null` otherwise) — see below |
-| `python_code_style_available`    | Boolean from Step 7 (Python only; `false` otherwise) |
-| `python_testing_patterns_available` | Boolean from Step 7 (Python only; `false` otherwise) |
-| `python_code_style_rules`        | Object from Step 6.5 (Python only; defaults from `settings_template.json`) — see below |
-| `python_testing_patterns_rules`  | Object from Step 6.5 (Python only; defaults from `settings_template.json`) — see below |
-| `external_review_model`          | `"swe"` (default; overridable by front-matter) |
-| `documentation_language`         | `"en"` (default; ISO 639-1 code for documentation language) |
-| `reports_dir`                    | `".zolletta-metaskill/reports"`                 |
+| Field                               | Source                                                                                 |
+|---|---|
+| `setup_version`                     | `"1.0.0"` (matches the skill version)                                                  |
+| `setup_timestamp`                   | Current timestamp in ISO 8601 (`date -u +%Y-%m-%dT%H:%M:%S`)                           |
+| `language`                          | Detected language from Step 3                                                          |
+| `container_name`                    | Container name from Step 4 (`null` if no Docker)                                       |
+| `tokensave_available`               | Boolean from Step 5                                                                    |
+| `python`                            | Object from Step 6 (Python only; `null` otherwise) — see below                         |
+| `python_config`                     | Object from Step 6.5 (Python only; `null` otherwise) — see below                       |
+| `python_code_style_available`       | Boolean from Step 7 (Python only; `false` otherwise)                                   |
+| `python_testing_patterns_available` | Boolean from Step 7 (Python only; `false` otherwise)                                   |
+| `python_code_style_rules`           | Object from Step 6.5 (Python only; defaults from `settings_template.json`) — see below |
+| `python_testing_patterns_rules`     | Object from Step 6.5 (Python only; defaults from `settings_template.json`) — see below |
+| `external_review_model`             | `"swe"` (default; overridable by front-matter)                                         |
+| `documentation_language`            | `"en"` (default; ISO 639-1 code for documentation language)                            |
+| `reports_dir`                       | `".zolletta-metaskill/reports"`                                                        |
 
 The `python` subobject has this shape:
 

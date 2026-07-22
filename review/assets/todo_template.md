@@ -8,7 +8,7 @@
 For full findings (file paths, line numbers, impact, suggested fixes), see the specialist reports:
 
 | Area            | Report file                                |
-| --------------- | ------------------------------------------ |
+|---|---|
 | Design patterns | [patterns.md](patterns.md)                 |
 | Documentation   | [documentor.md](documentor.md)             |
 | {{lang_area_1}} | [{{lang_skill_1}}.md]({{lang_skill_1}}.md) |
@@ -62,8 +62,8 @@ For full findings (file paths, line numbers, impact, suggested fixes), see the s
 ## Previous review status
 
 | #          | Item           | Status                                    |
-| ---------- | -------------- | ----------------------------------------- |
-| {{prev_n}} | {{prev_title}} | ✅ Done / ⚠️ Partially done / ❌ Not done |
+|---|---|---|
+| {{prev_n}} | {{prev_title}} | ✅ Done / ⚠️ Partially done / ❌ Not done   |
 
 ---
 

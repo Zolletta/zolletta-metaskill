@@ -55,12 +55,13 @@ Each type serves a different need. A healthy project has all four.
 
 ### Tables
 
-When writing GitHub-flavored markdown tables, use compact separator rows with no inner spaces and no alignment colons:
+When writing GitHub-flavored markdown tables, use compact separator rows with no inner spaces and no alignment colons, and align columns so pipes line up vertically:
 
 ```markdown
 | Header A | Header B | Header C |
 | -------- | -------- | -------- |
 | cell     | cell     | cell     |
+| longer   | longer   | longer   |
 ```
 
-Never use spaced or colon-padded separators like `| --- |`, `|:---|`, or `| ---: |`.
+Never use spaced or colon-padded separators like `| --- |`, `|:---|`, or `| ---: |`. Column content must be padded with spaces so that every pipe character in the same column is on the same character position.

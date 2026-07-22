@@ -229,7 +229,7 @@ fi
 ## Tools Summary
 
 | Tool                      | Purpose                                   | Lines | Key Feature                                       |
-| ------------------------- | ----------------------------------------- | ----- | ------------------------------------------------- |
+|---|---|---|---|
 | `drift_analyzer.py`       | Full drift analysis between code and docs | ~550  | Git history comparison with code-to-doc mapping   |
 | `doc_staleness_scorer.py` | Score documentation freshness 0-100       | ~450  | Weighted multi-dimensional scoring                |
 | `api_doc_validator.py`    | Validate API docs against Python source   | ~400  | AST-based signature extraction and comparison     |
@@ -258,7 +258,7 @@ python scripts/drift_analyzer.py <repo_path> [options]
 **Parameters:**
 
 | Flag             | Type       | Default                   | Description                                                                                 |
-| ---------------- | ---------- | ------------------------- | ------------------------------------------------------------------------------------------- |
+|---|---|---|---|
 | `repo_path`      | positional | _(required)_              | Path to the git repository to analyze                                                       |
 | `--json`         | flag       | off                       | Output the full drift report as JSON                                                        |
 | `--min-severity` | choice     | `low`                     | Minimum severity to include in report. Choices: `critical`, `high`, `medium`, `low`, `info` |
@@ -291,7 +291,7 @@ python scripts/doc_staleness_scorer.py <repo_path> [options]
 **Parameters:**
 
 | Flag                      | Type       | Default                                       | Description                                                                                                                               |
-| ------------------------- | ---------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+|---|---|---|---|
 | `repo_path`               | positional | _(required)_                                  | Path to the git repository to score                                                                                                       |
 | `--json`                  | flag       | off                                           | Output the full scoring report as JSON                                                                                                    |
 | `--threshold`             | float      | _(none)_                                      | Fail with exit code 1 if aggregate score falls below this value                                                                           |
@@ -369,7 +369,7 @@ python scripts/api_doc_validator.py <source_path> <doc_path> [options]
 **Parameters:**
 
 | Flag                | Type       | Default      | Description                                                      |
-| ------------------- | ---------- | ------------ | ---------------------------------------------------------------- |
+|---|---|---|---|
 | `source_path`       | positional | _(required)_ | Path to a Python source file or directory                        |
 | `doc_path`          | positional | _(required)_ | Path to API documentation file (`.md`) or directory              |
 | `--json`            | flag       | off          | Output the validation report as JSON                             |
@@ -402,7 +402,7 @@ python scripts/link_checker.py <path> [options]
 **Parameters:**
 
 | Flag               | Type       | Default      | Description                                                                         |
-| ------------------ | ---------- | ------------ | ----------------------------------------------------------------------------------- |
+|---|---|---|---|
 | `path`             | positional | _(required)_ | File or directory to check (single `.md` file or directory for recursive scan)      |
 | `--json`           | flag       | off          | Output the link check report as JSON                                                |
 | `--broken-only`    | flag       | off          | Only show broken links in the report (omit valid links from output)                 |

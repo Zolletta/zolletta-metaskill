@@ -23,30 +23,30 @@ Consistent code style and clear documentation make codebases maintainable and co
 
 ## Table 1 — Always-on rules (cannot be disabled)
 
-| # | Area | Name |
-|---|------|------|
-| 1 | Naming | Descriptive snake_case filenames, no abbreviations |
-| 2 | Naming | PascalCase class names |
-| 4 | Naming | snake_case functions and variables |
-| 5 | Naming | SCREAMING_SNAKE_CASE module-level constants |
-| 6 | Imports | Grouped import order (stdlib → third-party → local) |
-| 13 | Docstrings | Private functions exempt from docstrings |
-| 17 | Docstrings | Test functions exempt from docstrings |
-| 19 | Types | Type hints required for all public APIs |
+| #   | Area       | Name                                                |
+|---|---|---|
+| 1   | Naming     | Descriptive snake_case filenames, no abbreviations  |
+| 2   | Naming     | PascalCase class names                              |
+| 4   | Naming     | snake_case functions and variables                  |
+| 5   | Naming     | SCREAMING_SNAKE_CASE module-level constants         |
+| 6   | Imports    | Grouped import order (stdlib → third-party → local) |
+| 13  | Docstrings | Private functions exempt from docstrings            |
+| 17  | Docstrings | Test functions exempt from docstrings               |
+| 19  | Types      | Type hints required for all public APIs             |
 
 ## Table 2 — Configurable settings (stored in `settings.json` under `python_code_style_rules`)
 
-| # | Area | Name | Key | Default |
-|---|------|------|-----|---------|
-| 3 | Naming | Acronyms stay uppercase in class names | `check_acronym_casing` | `true` |
-| 7 | Imports | Absolute imports only, no relative imports | `check_no_relative_imports` | `true` |
-| 8 | Structure | One class per file | `check_one_class_per_file` | `true` |
-| 9 | Structure | Filename matches class name | `check_filename_matches_class` | `true` |
-| 12 | Docstrings | Docstrings required on public classes, methods, functions | `check_public_docstrings` | `true` |
-| 14 | Docstrings | No type repetition in docstring Args/Returns | `check_docstring_no_type_repeat` | `true` |
-| 18 | Docstrings | Skip docstrings for obvious one-line functions | `check_skip_obvious_docstrings` | `true` |
-| 20 | Formatting | Line length from project config | `check_line_length` | `true` |
-| 22 | Dead code | Vulture minimum confidence + unused `__all__` exports | `vulture_min_confidence` | `80` |
+| #   | Area       | Name                                                      | Key                              | Default   |
+|---|---|---|---|---|
+| 3   | Naming     | Acronyms stay uppercase in class names                    | `check_acronym_casing`           | `true`    |
+| 7   | Imports    | Absolute imports only, no relative imports                | `check_no_relative_imports`      | `true`    |
+| 8   | Structure  | One class per file                                        | `check_one_class_per_file`       | `true`    |
+| 9   | Structure  | Filename matches class name                               | `check_filename_matches_class`   | `true`    |
+| 12  | Docstrings | Docstrings required on public classes, methods, functions | `check_public_docstrings`        | `true`    |
+| 14  | Docstrings | No type repetition in docstring Args/Returns              | `check_docstring_no_type_repeat` | `true`    |
+| 18  | Docstrings | Skip docstrings for obvious one-line functions            | `check_skip_obvious_docstrings`  | `true`    |
+| 20  | Formatting | Line length from project config                           | `check_line_length`              | `true`    |
+| 22  | Dead code  | Vulture minimum confidence + unused `__all__` exports     | `vulture_min_confidence`         | `80`      |
 
 ## Detailed rule explanations
 

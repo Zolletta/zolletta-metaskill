@@ -69,11 +69,11 @@ The `patterns` skill runs the structural test scanner, which produces a "Missing
 
 The review reads its configurable rules from the `settings.json` file. The available settings are:
 
-| Key                               | Type            | Default | Description                                                                 |
-| -----------------------------------| -----------------| ---------| ---------------------------------------------------------------------------|
-| `coverage_gap_threshold`          | integer (0–100) | `50`    | Module coverage below this percentage is a candidate gap                   |
-| `coverage_well_covered_threshold` | integer (0–100) | `80`    | Module coverage above this percentage is never flagged as a gap            |
-| `check_test_naming`               | boolean         | `true`  | When `true`, enforce the test naming convention                            |
+| Key                                 | Type              | Default   | Description                                                                 |
+|---|---|---|---|
+| `coverage_gap_threshold`            | integer (0–100)   | `50`      | Module coverage below this percentage is a candidate gap                    |
+| `coverage_well_covered_threshold`   | integer (0–100)   | `80`      | Module coverage above this percentage is never flagged as a gap             |
+| `check_test_naming`                 | boolean           | `true`    | When `true`, enforce the test naming convention                             |
 
 The remaining rules — AAA pattern, test isolation, mandatory coverage gap detection, and the scope boundary with `patterns` — are always-on and cannot be disabled.
 

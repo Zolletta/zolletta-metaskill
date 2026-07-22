@@ -10,14 +10,14 @@ Zolletta-MetaSkill is invoked as `/zolletta-metaskill <subcommand>`. Each subcom
 
 ## Subcommand table
 
-| Subcommand | Path | Scope |
-|------------|------|-------|
-| `setup` | `setup/SKILL.md` | Project initialization — creates `.zolletta-metaskill/settings.json`, detects language, Docker container, tokensave, and Python tooling |
-| `documentor` | `documentor/SKILL.md` | [Diátaxis](https://diataxis.fr/) compliance + drift detection for the configured documentation directory (default: `docs/`) |
-| `patterns` | `patterns/SKILL.md` | God classes, SOLID, coupling, composition vs inheritance for `src/` |
-| `external-review` | `external-review/SKILL.md` | External-LLM code review on modified files only (default model: `swe`, override via `external_review_model` in `settings.json` or front-matter) |
-| `review` | `review/SKILL.md` | Orchestrator — reads language from `settings.json`, runs general + language-specific skills in parallel batches, aggregates reports |
-| `python-code-style` | `python-code-style/SKILL.md` | Python source code style review (ruff, mypy, naming, docstrings, type annotations) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT) |
+| Subcommand                | Path                               | Scope                                                                                                                                                                   |
+|---|---|---|
+| `setup`                   | `setup/SKILL.md`                   | Project initialization — creates `.zolletta-metaskill/settings.json`, detects language, Docker container, tokensave, and Python tooling                                 |
+| `documentor`              | `documentor/SKILL.md`              | [Diátaxis](https://diataxis.fr/) compliance + drift detection for the configured documentation directory (default: `docs/`)                                             |
+| `patterns`                | `patterns/SKILL.md`                | God classes, SOLID, coupling, composition vs inheritance for `src/`                                                                                                     |
+| `external-review`         | `external-review/SKILL.md`         | External-LLM code review on modified files only (default model: `swe`, override via `external_review_model` in `settings.json` or front-matter)                         |
+| `review`                  | `review/SKILL.md`                  | Orchestrator — reads language from `settings.json`, runs general + language-specific skills in parallel batches, aggregates reports                                     |
+| `python-code-style`       | `python-code-style/SKILL.md`       | Python source code style review (ruff, mypy, naming, docstrings, type annotations) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)           |
 | `python-testing-patterns` | `python-testing-patterns/SKILL.md` | Python test code review (isolation, naming, coverage gaps, mocking, fixtures, AAA structure) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT) |
 
 ## Setup guard

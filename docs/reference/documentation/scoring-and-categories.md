@@ -12,23 +12,23 @@ Reference for interpreting staleness scores, classifying drift, deciding what to
 
 Documentation freshness is scored on a **0-100 scale** where **100 = perfectly current**. The score is a weighted combination of five dimensions:
 
-| Dimension | Weight | What It Measures |
-|-----------|--------|------------------|
-| **Last Updated** | 20% | How recently the doc file was modified relative to its associated code |
-| **Code-Doc Alignment** | 30% | Whether documented items (functions, classes, files) still exist and match |
-| **Link Health** | 15% | Percentage of links that resolve correctly |
-| **Completeness** | 20% | Whether expected sections are present and non-empty |
-| **Accuracy** | 15% | Whether version strings, file paths, and other verifiable facts are correct |
+| Dimension              | Weight   | What It Measures                                                            |
+|---|---|---|
+| **Last Updated**       | 20%      | How recently the doc file was modified relative to its associated code      |
+| **Code-Doc Alignment** | 30%      | Whether documented items (functions, classes, files) still exist and match  |
+| **Link Health**        | 15%      | Percentage of links that resolve correctly                                  |
+| **Completeness**       | 20%      | Whether expected sections are present and non-empty                         |
+| **Accuracy**           | 15%      | Whether version strings, file paths, and other verifiable facts are correct |
 
 **Score interpretation:**
 
-| Score | Label | Action |
-|-------|-------|--------|
-| 90-100 | Excellent | No action needed |
-| 70-89 | Good | Minor updates recommended |
-| 50-69 | Stale | Updates needed before next release |
-| 30-49 | Critical | Immediate attention required |
-| 0-29 | Abandoned | Full rewrite likely needed |
+| Score   | Label     | Action                             |
+|---|---|---|
+| 90-100  | Excellent | No action needed                   |
+| 70-89   | Good      | Minor updates recommended          |
+| 50-69   | Stale     | Updates needed before next release |
+| 30-49   | Critical  | Immediate attention required       |
+| 0-29    | Abandoned | Full rewrite likely needed         |
 
 **Customization:**
 

@@ -52,9 +52,9 @@ The external reviewer writes its findings to a markdown report in the timestampe
 
 ## Configuration
 
-| Setting | Location | Default | Description |
-|---------|----------|---------|-------------|
-| `external_review_model` | `.zolletta-metaskill/settings.json` | `swe` | The external LLM model to use for the review |
+| Setting                 | Location                            | Default   | Description                                  |
+|---|---|---|---|
+| `external_review_model` | `.zolletta-metaskill/settings.json` | `swe`     | The external LLM model to use for the review |
 
 ## See also
 

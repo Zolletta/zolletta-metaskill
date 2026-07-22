@@ -66,9 +66,9 @@ docs/
 
 ## Quadrant guide
 
-| Quadrant | Purpose | Audience |
-|----------|---------|----------|
-| **Tutorials** | Learning-oriented, step-by-step lessons | Newcomers |
-| **How-to Guides** | Task-oriented, practical steps to achieve a goal | Practitioners |
-| **Reference** | Information-oriented, accurate technical description | Users who need facts |
-| **Explanation** | Understanding-oriented, clarification and background | Readers who want context |
+| Quadrant          | Purpose                                              | Audience                 |
+|---|---|---|
+| **Tutorials**     | Learning-oriented, step-by-step lessons              | Newcomers                |
+| **How-to Guides** | Task-oriented, practical steps to achieve a goal     | Practitioners            |
+| **Reference**     | Information-oriented, accurate technical description | Users who need facts     |
+| **Explanation**   | Understanding-oriented, clarification and background | Readers who want context |

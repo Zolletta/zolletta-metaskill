@@ -7,7 +7,7 @@
 ## Grades by area
 
 | Area            | Skill            | Grade                    | Trend                |
-| --------------- | ---------------- | ------------------------ | -------------------- |
+|---|---|---|---|
 | Design patterns | patterns         | {{patterns_grade}}/100   | {{patterns_trend}}   |
 | Documentation   | documentor       | {{documentor_grade}}/100 | {{documentor_trend}} |
 | {{lang_area_1}} | {{lang_skill_1}} | {{lang_grade_1}}/100     | {{lang_trend_1}}     |
@@ -38,7 +38,7 @@
 For full findings, see the specialist reports:
 
 | Area            | Report file                                |
-| --------------- | ------------------------------------------ |
+|---|---|
 | Design patterns | [patterns.md](patterns.md)                 |
 | Documentation   | [documentor.md](documentor.md)             |
 | {{lang_area_1}} | [{{lang_skill_1}}.md]({{lang_skill_1}}.md) |

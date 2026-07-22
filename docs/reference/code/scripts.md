@@ -22,11 +22,11 @@ Scans all `.py` files and reports every class sorted by line count, with method 
 python3 src/zolletta_metaskill/scanners/scan_class_metrics.py <directory> [--top N] [--min-lines N]
 ```
 
-| Option          | Default | Description                       |
-| -----------------| ---------| -----------------------------------|
-| `<directory>`   | `src`   | Root directory to scan            |
-| `--top N`       | 30      | Show only the top N classes       |
-| `--min-lines N` | 50      | Skip classes shorter than N lines |
+| Option            | Default   | Description                         |
+|---|---|---|
+| `<directory>`     | `src`     | Root directory to scan              |
+| `--top N`         | 30        | Show only the top N classes         |
+| `--min-lines N`   | 50        | Skip classes shorter than N lines   |
 
 **Output**: a table with columns `LINES`, `ALL` (methods), `PUB` (public methods), `ATTRS` (`self.*` attributes), `CLASS`, and `file:start-end`.
 
@@ -41,7 +41,7 @@ python3 src/zolletta_metaskill/scanners/scan_test_god_classes.py <directory> [--
 ```
 
 | Option           | Default | Description                                             |
-| ---------------- | ------- | ------------------------------------------------------- |
+|---|---|---|
 | `<directory>`    | `tests` | Root directory to scan                                  |
 | `--top N`        | 30      | Show only the top N classes                             |
 | `--show-methods` | off     | List all method names per class (helps spot mixed SUTs) |
@@ -57,7 +57,7 @@ python3 src/zolletta_metaskill/scanners/scan_one_class_per_file.py <directory> [
 ```
 
 | Option          | Default | Description                                         |
-| --------------- | ------- | --------------------------------------------------- |
+|---|---|---|
 | `<directory>`   | `src`   | Root directory to scan                              |
 | `--strict`      | off     | Exit with code 1 if violations are found            |
 | `--ignore-zero` | off     | Don't report files with 0 classes (utility modules) |
@@ -83,7 +83,7 @@ python3 src/zolletta_metaskill/scanners/scan_tests.py \
 ```
 
 | Option            | Default                 | Description                                                 |
-| ----------------- | ----------------------- | ----------------------------------------------------------- |
+|---|---|---|
 | `--src`           | `src`                   | Source root directory                                       |
 | `--tests`         | `tests`                 | Test root directory                                         |
 | `--src-package`   | auto-detect             | Package path within `--src`                                 |
@@ -112,7 +112,7 @@ python3 src/zolletta_metaskill/scanners/scan_naming_conventions.py \
 ```
 
 | Option            | Default                 | Description                                                 |
-| ----------------- | ----------------------- | ----------------------------------------------------------- |
+|---|---|---|
 | `--src`           | `src`                   | Source root directory                                       |
 | `--tests`         | `tests`                 | Test root directory                                         |
 | `--src-package`   | auto-detect             | Package path within `--src`                                 |
@@ -136,12 +136,12 @@ python3 src/zolletta_metaskill/scanners/scan_dependency_inversion.py <directory>
     [--entry-points <pattern1,pattern2,...>] [--skip] [--strict]
 ```
 
-| Option           | Default                                                | Description                                  |
-| ---------------- | ------------------------------------------------------ | -------------------------------------------- |
-| `<directory>`    | `src`                                                  | Root directory to scan                       |
+| Option           | Default                                                     | Description                                  |
+|---|---|---|
+| `<directory>`    | `src`                                                       | Root directory to scan                       |
 | `--entry-points` | `main,cli,app,__main__,myproject,manage,wsgi,asgi,conftest` | Comma-separated filename patterns to exclude |
-| `--skip`         | off                                                    | Skip this check entirely                     |
-| `--strict`       | off                                                    | Exit with code 1 if violations are found     |
+| `--skip`         | off                                                         | Skip this check entirely                     |
+| `--strict`       | off                                                         | Exit with code 1 if violations are found     |
 
 **Exclusions**: entry points (composition roots by filename pattern), classes that create DI containers (`make_container()`, `Container()`, etc. — detected semantically as composition roots), dataclasses/NamedTuples/TypedDicts/Enums, factory classes, and stdlib types are automatically excluded.
 
@@ -154,7 +154,7 @@ python3 src/zolletta_metaskill/scanners/scan_interface_segregation.py <directory
 ```
 
 | Option            | Default | Description                                  |
-| ----------------- | ------- | -------------------------------------------- |
+|---|---|---|
 | `<directory>`     | `src`   | Root directory to scan                       |
 | `--min-methods N` | 5       | Minimum abstract method count to flag as fat |
 | `--skip`          | off     | Skip this check entirely                     |
@@ -171,7 +171,7 @@ python3 src/zolletta_metaskill/scanners/scan_open_closed.py <directory> [--min-b
 ```
 
 | Option             | Default | Description                              |
-| ------------------ | ------- | ---------------------------------------- |
+|---|---|---|
 | `<directory>`      | `src`   | Root directory to scan                   |
 | `--min-branches N` | 3       | Minimum type-check branches to flag      |
 | `--skip`           | off     | Skip this check entirely                 |
@@ -186,7 +186,7 @@ python3 src/zolletta_metaskill/scanners/scan_liskov_substitution.py <directory> 
 ```
 
 | Option        | Default | Description                              |
-| ------------- | ------- | ---------------------------------------- |
+|---|---|---|
 | `<directory>` | `src`   | Root directory to scan                   |
 | `--skip`      | off     | Skip this check entirely                 |
 | `--strict`    | off     | Exit with code 1 if violations are found |
@@ -204,7 +204,7 @@ python3 src/zolletta_metaskill/scanners/scan_unused_all_exports.py <directory> [
 ```
 
 | Option        | Default | Description                                  |
-| ------------- | ------- | -------------------------------------------- |
+|---|---|---|
 | `<directory>` | `src`   | Root source directory to scan                |
 | `--strict`    | off     | Exit with code 1 if unused exports are found |
 | `--json`      | off     | Output as JSON instead of markdown           |
@@ -223,7 +223,7 @@ python3 src/zolletta_metaskill/scanners/scan_test_naming.py <directory> [--min-s
 ```
 
 | Option             | Default | Description                              |
-| ------------------ | ------- | ---------------------------------------- |
+|---|---|---|
 | `<directory>`      | `tests` | Root test directory to scan              |
 | `--min-segments N` | 3       | Minimum segments after `test_` prefix    |
 | `--strict`         | off     | Exit with code 1 if violations are found |
@@ -242,13 +242,13 @@ Checks that acronyms in PascalCase class names stay fully uppercase (e.g. `HTTPC
 python3 src/zolletta_metaskill/scanners/scan_acronym_casing.py <directory> [--acronyms <list>] [--strict] [--json] [--skip]
 ```
 
-| Option        | Default | Description                              |
-| ------------- | ------- | ---------------------------------------- |
-| `<directory>` | `src`   | Root source directory to scan            |
+| Option        | Default                  | Description                                                  |
+|---|---|---|
+| `<directory>` | `src`                    | Root source directory to scan                                |
 | `--acronyms`  | (from assets + settings) | Comma-separated acronym list (overrides built-in + settings) |
-| `--strict`    | off     | Exit with code 1 if violations are found |
-| `--json`      | off     | Output as JSON instead of markdown       |
-| `--skip`      | off     | Skip this check entirely                 |
+| `--strict`    | off                      | Exit with code 1 if violations are found                     |
+| `--json`      | off                      | Output as JSON instead of markdown                           |
+| `--skip`      | off                      | Skip this check entirely                                     |
 
 The acronym list is built additively:
 1. **Shipped base**: `src/zolletta_metaskill/scanners/assets/acronyms.json` (common SE acronyms: CI, CD, CICD, HTTP, HTTPS, JSON, SQL, URL, etc.) — always loaded
@@ -263,11 +263,11 @@ Automates splitting a test God class that tests multiple SUTs into per-SUT test 
 python3 src/zolletta_metaskill/scanners/test_splitter.py <test_file> [--dry-run] [--output-dir <dir>]
 ```
 
-| Option          | Default | Description                                      |
-| --------------- | ------- | ------------------------------------------------ |
-| `<test_file>`   | (req)   | Path to the test file to split                   |
-| `--dry-run`     | off     | Show what would be split without writing files   |
-| `--output-dir`  | same dir | Directory to write split files to               |
+| Option          | Default  | Description                                      |
+|---|---|---|
+| `<test_file>`   | (req)    | Path to the test file to split                   |
+| `--dry-run`     | off      | Show what would be split without writing files   |
+| `--output-dir`  | same dir | Directory to write split files to                |
 
 **What the splitter handles automatically**:
 

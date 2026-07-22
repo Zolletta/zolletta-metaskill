@@ -38,7 +38,7 @@ The first time you run any subcommand in a project, the **setup guard** automati
 ## Subcommands
 
 | Subcommand                | Scope                                                                                                                                                                                |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+|---|---|
 | `setup`                   | Project initialization — creates `settings.json`, detects language, Docker container, tokensave, Python tooling, and extracts effective tool configuration from `pyproject.toml`     |
 | `review`                  | Full project review orchestrator — runs general + language-specific skills as parallel subagents, produces graded SUMMARY.md and aggregated TODO.md with links to specialist reports |
 | `patterns`                | God classes, SOLID violations, coupling, composition vs inheritance for `src/`                                                                                                       |
@@ -50,7 +50,7 @@ The first time you run any subcommand in a project, the **setup guard** automati
 ## Tools leveraged if available
 
 | Tool      | Homepage                                      | Why zolletta-metaskill benefits                                                                                                                                                                                                                |
-| --------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|---|---|---|
 | tokensave | https://github.com/aovestdipaperino/tokensave | Semantic code-graph index (symbols, call/callee, impact radius). Used by patterns, documentor, review, external-review to understand code without reading full files, assess blast radius, verify documented symbols, and find affected tests. |
 
 When a tool is not installed, zolletta-metaskill prints a message explaining why it would benefit from the tool and links to the homepage. It does **not** install anything.
@@ -58,7 +58,7 @@ When a tool is not installed, zolletta-metaskill prints a message explaining why
 ## Shared resources
 
 | Resource   | Path                               | Contents                                                                                                                                                                    |
-| ---------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|---|---|---|
 | References | `reference/`                       | Code-exploration decision tree, general principles, Python review guide, scripts reference, documentation standards, tool messages, review-mode rules, settings.json schema |
 | Scripts    | `src/zolletta_metaskill/scanners/` | Automated scanning scripts used by multiple skills                                                                                                                          |
 
