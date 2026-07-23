@@ -217,7 +217,7 @@ Both PHP plans touch shared files. This table assigns each file to exactly one p
 - [x] **15.5** Verify `settings.schema.json` validates against template, Python settings, and PHP settings — schema and template aligned
 - [x] **15.6** Populate `CHANGELOG.md` `[Unreleased]` → `[2.0.0]` — consolidate all work from this plan (Phases 1–14) into Added/Changed/Fixed chapters under `[2.0.0]`
 - [x] **15.7** Bump version to `2.0.0` via `./.bump --to 2.0.0`
-- [ ] **15.8** Final commit + push
+- [x] **15.8** Final commit + push
 
 ---
 
