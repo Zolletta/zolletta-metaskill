@@ -31,7 +31,7 @@ The documentation follows the [Diátaxis framework](https://diataxis.fr/), organ
 
 | Document | Description |
 | --- | --- |
-| [Install](how-to/install.md) | Install Zolletta-metaskill via `.install` or manual clone/symlink |
+| [Install](how-to/install.md) | Install Zolletta-metaskill via `install.sh` or manual clone/symlink |
 | [Set up a project](how-to/setup-project.md) | Configure Zolletta-metaskill for a new project |
 | [Run a full review](how-to/run-full-review.md) | Execute the complete review pipeline |
 

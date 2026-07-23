@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- `.install` script — one-command installer that copies the skill to `~/.agents/skills/` and symlinks it into every detected agent tool's skills directory
+- `install.sh` script — one-command installer that copies the skill to `~/.agents/skills/` and symlinks it into every detected agent tool's skills directory
 - Frontmatter wildcard syntax (`python-*`, `php-*`) for the `skills:` field — language-specific skills no longer need to be listed individually
 - `php-pro` companion skill suggestion — when a PHP project is detected, setup prints a "not installed" message suggesting php-pro as an implementation skill
 - Language-agnostic explanation docs: `docs/explanation/code/error-handling.md`, `docs/explanation/code/performance.md`, `docs/explanation/code/security.md` — 10 rules promoted from php-best-practices with both PHP and Python examples

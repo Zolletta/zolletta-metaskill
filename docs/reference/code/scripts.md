@@ -422,13 +422,13 @@ Bumps the Zolletta-metaskill version across all files.
 
 Updates: `pyproject.toml`, `src/zolletta_metaskill/__init__.py`, all `SKILL.md` front-matter version fields, and `setup/assets/settings_template.json` (`setup_version`).
 
-### `.install`
+### `install.sh`
 
 Installs the skill into `~/.agents/skills/` and symlinks it into every detected AI agent tool's skills directory.
 
 ```bash
-./.install           # install/refresh
-./.install --force   # replace real dirs with symlinks
+./install.sh           # install/refresh
+./install.sh --force   # replace real dirs with symlinks
 ```
 
 See [Install Zolletta-MetaSkill](../../how-to/install.md) for details.

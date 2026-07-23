@@ -57,10 +57,10 @@ pip install zolletta-metaskill[php]
 ```bash
 git clone https://github.com/Zolletta/zolletta-metaskill.git
 cd zolletta-metaskill
-./.install
+./install.sh
 ```
 
-The `.install` script copies the skill to `~/.agents/skills/zolletta-metaskill` and symlinks it into every detected AI agent tool's skills directory (Claude Code, Cursor, Gemini CLI, Devin, Windsurf, and others). See [`docs/how-to/install.md`](docs/how-to/install.md) for details and manual alternatives.
+The `install.sh` script copies the skill to `~/.agents/skills/zolletta-metaskill` and symlinks it into every detected AI agent tool's skills directory (Claude Code, Cursor, Gemini CLI, Devin, Windsurf, and others). See [`docs/how-to/install.md`](docs/how-to/install.md) for details and manual alternatives.
 
 ### For contributors
 

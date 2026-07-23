@@ -4,7 +4,7 @@ A bash script to add to the **project root** (next to the existing `.bump`), so 
 
 ---
 
-## `.install`
+## `install.sh`
 
 An installer script that copies the skill to `~/.agents/skills/` and symlinks it into every detected agent tool's skills directory.
 
@@ -17,14 +17,14 @@ Project root, as a sibling of `.bump`:
 ```
 zolletta-metaskill/
 ├── .bump        # existing version bump script
-└── .install     # this script
+└── install.sh     # this script
 ```
 
 ### Usage
 
 ```bash
-./.install           # install/refresh
-./.install --force   # replace real dirs with symlinks
+./install.sh           # install/refresh
+./install.sh --force   # replace real dirs with symlinks
 ```
 
 ### What it does
@@ -106,28 +106,28 @@ Print a summary table: tool name, status (symlinked / skipped / not installed / 
 
 ## Documentation updates
 
-After `.install` is written, update the relevant docs so users discover the script. Files to touch:
+After `install.sh` is written, update the relevant docs so users discover the script. Files to touch:
 
 | File | Action | What changes |
 | --- | --- | --- |
-| `docs/how-to/install.md` | Update | Add `.install` as the recommended install method (above the manual clone/symlink options). Document `./.install` and `./.install --force`, the symlink model, and the list of supported tools. Keep the manual options as fallback. |
-| `docs/reference/code/scripts.md` | Update | Add a "Repository scripts" section (separate from the scanning scripts) documenting `.bump` (version bump) and `.install` (skill installer): usage, options, what each touches, safety notes. |
-| `README.md` | Update | Add an "Installation" section (currently absent) pointing to `./.install` as the one-command install and to `docs/how-to/install.md` for details. Mention `.bump` for contributors. |
-| `docs/index.md` | Update | Refresh the Install row description to mention the `.install` script ("Install Zolletta-metaskill via `.install` or manual clone/symlink"). |
-| `CHANGELOG.md` | Update | Add an entry under `[Unreleased]` (or a new version section) for the `.install` script and the documentation updates. |
+| `docs/how-to/install.md` | Update | Add `install.sh` as the recommended install method (above the manual clone/symlink options). Document `./install.sh` and `./install.sh --force`, the symlink model, and the list of supported tools. Keep the manual options as fallback. |
+| `docs/reference/code/scripts.md` | Update | Add a "Repository scripts" section (separate from the scanning scripts) documenting `.bump` (version bump) and `install.sh` (skill installer): usage, options, what each touches, safety notes. |
+| `README.md` | Update | Add an "Installation" section (currently absent) pointing to `./install.sh` as the one-command install and to `docs/how-to/install.md` for details. Mention `.bump` for contributors. |
+| `docs/index.md` | Update | Refresh the Install row description to mention the `install.sh` script ("Install Zolletta-metaskill via `install.sh` or manual clone/symlink"). |
+| `CHANGELOG.md` | Update | Add an entry under `[Unreleased]` (or a new version section) for the `install.sh` script and the documentation updates. |
 
 ### Notes
 
-- `docs/how-to/install.md` currently only documents manual `git clone` and `ln -s`. The `.install` script automates both the canonical copy and the per-tool symlinks, so it should become the primary path.
-- `docs/reference/code/scripts.md` is scoped to scanning scripts under `src/`. The repo-root `.bump` and `.install` are project-management scripts, not scanning scripts — add them as a distinct section rather than mixing them in.
-- The README has no Installation section at all today; this is a gap regardless of `.install`.
+- `docs/how-to/install.md` currently only documents manual `git clone` and `ln -s`. The `install.sh` script automates both the canonical copy and the per-tool symlinks, so it should become the primary path.
+- `docs/reference/code/scripts.md` is scoped to scanning scripts under `src/`. The repo-root `.bump` and `install.sh` are project-management scripts, not scanning scripts — add them as a distinct section rather than mixing them in.
+- The README has no Installation section at all today; this is a gap regardless of `install.sh`.
 - Cross-link: `install.md` → `scripts.md` (reference), and `README.md` → `install.md` (how-to).
 
 ---
 
 ## Critical safety note
 
-The first implementation of `.install` used `rm -rf "$CANONICAL_DEST"` before copying, to get "clean destination" semantics. Because the repo lives directly at `~/.agents/skills/zolletta-metaskill`, `CANONICAL_DEST` resolved to the same path as the repo root. The `rm -rf` deleted the entire repository including `.git/`, destroying unpushed work.
+The first implementation of `install.sh` used `rm -rf "$CANONICAL_DEST"` before copying, to get "clean destination" semantics. Because the repo lives directly at `~/.agents/skills/zolletta-metaskill`, `CANONICAL_DEST` resolved to the same path as the repo root. The `rm -rf` deleted the entire repository including `.git/`, destroying unpushed work.
 
 **Rules for the reimplementation:**
 

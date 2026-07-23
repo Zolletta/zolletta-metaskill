@@ -4,12 +4,12 @@ This is the **single entry point** for executing all pending work. It orchestrat
 
 | Sub-plan | Scope |
 | --- | --- |
-| [`PLAN-SETUP-COMMAND.md`](PLAN-SETUP-COMMAND.md) | `.install` bash script + docs |
+| [`PLAN-SETUP-COMMAND.md`](PLAN-SETUP-COMMAND.md) | `install.sh` bash script + docs |
 | [`PLAN-TEST-RECOVERY.md`](PLAN-TEST-RECOVERY.md) | Recover 846 lost tests + deferred tests from PHP-SUPPORT |
 | [`PLAN-PHP-SUPPORT.md`](PLAN-PHP-SUPPORT.md) | Language-agnostic infrastructure, engines, scanner refactoring, PHP setup, PHP SOLID scanners |
 | [`PLAN-PHP-CODE-STYLE.md`](PLAN-PHP-CODE-STYLE.md) | php-code-style skill (33 rules), frontmatter wildcards, php-pro suggestion, agnostic explanation docs |
 
-`plan-to-recover.md` (lowercase) is **deleted** — all its phases were completed except tests (→ PLAN-TEST-RECOVERY) and `.install` (→ PLAN-SETUP-COMMAND).
+`plan-to-recover.md` (lowercase) is **deleted** — all its phases were completed except tests (→ PLAN-TEST-RECOVERY) and `install.sh` (→ PLAN-SETUP-COMMAND).
 
 ---
 
@@ -54,16 +54,16 @@ Both PHP plans touch shared files. This table assigns each file to exactly one p
 
 ---
 
-## Phase 1 — `.install` script (PLAN-SETUP-COMMAND)
+## Phase 1 — `install.sh` script (PLAN-SETUP-COMMAND)
 
 > Independent of all other phases. Can run in parallel with Phase 2.
 
-- [x] **1.1** Create `.install` script (Steps 1–3: copy to `~/.agents/skills/`, symlink into 13 tools) → PLAN-SETUP-COMMAND "What it does"
-- [x] **1.2** Update `docs/how-to/install.md` — add `.install` as recommended install method → PLAN-SETUP-COMMAND "Documentation updates"
-- [x] **1.3** Update `docs/reference/code/scripts.md` — add "Repository scripts" section for `.bump` + `.install` → PLAN-SETUP-COMMAND "Documentation updates"
+- [x] **1.1** Create `install.sh` script (Steps 1–3: copy to `~/.agents/skills/`, symlink into 13 tools) → PLAN-SETUP-COMMAND "What it does"
+- [x] **1.2** Update `docs/how-to/install.md` — add `install.sh` as recommended install method → PLAN-SETUP-COMMAND "Documentation updates"
+- [x] **1.3** Update `docs/reference/code/scripts.md` — add "Repository scripts" section for `.bump` + `install.sh` → PLAN-SETUP-COMMAND "Documentation updates"
 - [x] **1.4** Update `README.md` — add "Installation" section → PLAN-SETUP-COMMAND "Documentation updates"
 - [x] **1.5** Update `docs/index.md` — refresh Install row → PLAN-SETUP-COMMAND "Documentation updates"
-- [x] **1.6** Update `CHANGELOG.md` — add `.install` script entry to `[Unreleased]` (will become `[2.0.0]`) → PLAN-SETUP-COMMAND "Documentation updates"
+- [x] **1.6** Update `CHANGELOG.md` — add `install.sh` script entry to `[Unreleased]` (will become `[2.0.0]`) → PLAN-SETUP-COMMAND "Documentation updates"
 
 ---
 
@@ -226,7 +226,7 @@ Both PHP plans touch shared files. This table assigns each file to exactly one p
 ```
 Phase 0 (fix inconsistencies) ──────────────────────────────────────┐
                                                                      │
-Phase 1 (.install)          ──────────────────────────────────────┐  │
+Phase 1 (install.sh)          ──────────────────────────────────────┐  │
 Phase 2 (frontmatter)       ───────────────────────────────────┐  │  │
 Phase 3 (php-pro)           ────────────────────────────────┐   │  │  │
 Phase 4 (explanation docs)  ────────────────────────────┐   │   │  │  │

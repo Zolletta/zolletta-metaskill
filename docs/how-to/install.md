@@ -17,15 +17,15 @@ Install the Zolletta-metaskill skill family so it is available to the AI agent.
 
 ### Option 1 — One-command installer (recommended)
 
-Clone the repository and run the `.install` script:
+Clone the repository and run the `install.sh` script:
 
 ```bash
 git clone https://github.com/Zolletta/zolletta-metaskill.git
 cd zolletta-metaskill
-./.install
+./install.sh
 ```
 
-The `.install` script:
+The `install.sh` script:
 
 1. Copies the skill to `~/.agents/skills/zolletta-metaskill` (excluding `.git/`, `.venv/`, caches, and other generated files)
 2. Symlinks it into every detected AI agent tool's skills directory
@@ -53,7 +53,7 @@ Native `~/.agents/skills/` readers (Codex, Pi, Kilo Code) need no symlink — th
 To replace an existing real directory with a symlink:
 
 ```bash
-./.install --force
+./install.sh --force
 ```
 
 ### Option 2 — Clone into the skills directory
@@ -88,4 +88,4 @@ After installing, run `/zolletta-metaskill setup` in each project where we want 
 
 - [Set up a project](setup-project.md) — initialize a project for reviews
 - [Getting started](../tutorials/getting-started.md) — end-to-end walkthrough
-- [Repository scripts](../reference/code/scripts.md) — `.bump` and `.install` reference
+- [Repository scripts](../reference/code/scripts.md) — `.bump` and `install.sh` reference
