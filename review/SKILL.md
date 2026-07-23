@@ -103,10 +103,12 @@ Launch **one subagent per command**, all in parallel as background subagents (`i
 | -------- | ------------------------- | ----------------------------------------------------------------------------- |
 | Python   | `python-code-style`       | Style, linting, formatting, naming, docstrings, type annotations              |
 | Python   | `python-testing-patterns` | Test isolation, naming, coverage gaps, mocking, fixture design, AAA structure |
+| PHP      | `php-code-style`          | PSR-12, naming, one class per file, PHPDoc, type declarations                 |
+| PHP      | `php-testing-patterns`    | PHPUnit naming, mirroring, coverage gaps, mocking, data providers             |
 
 > When support for other languages is added, extend this table with the corresponding skills.
 
-**Checking skill availability**: the Python review skills (`python-code-style`, `python-testing-patterns`) are bundled inside this meta-skill, so they are always available — no `*_available` flags are read from `settings.json`. Dispatch to them when `language` is `python`; skip them otherwise. The SUMMARY.md and TODO.md should note any area that was not reviewed (non-Python project). No "Skill not found" handling is needed.
+**Checking skill availability**: the Python review skills (`python-code-style`, `python-testing-patterns`) and the PHP review skills (`php-code-style`, `php-testing-patterns`) are bundled inside this meta-skill, so they are always available — no `*_available` flags are read from `settings.json`. Dispatch to them when `language` is `python` or `php` respectively; skip them otherwise. The SUMMARY.md and TODO.md should note any area that was not reviewed (non-Python/PHP project). No "Skill not found" handling is needed.
 
 **Skill scopes:**
 

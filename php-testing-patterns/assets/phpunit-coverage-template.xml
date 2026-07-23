@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PHPUnit coverage configuration template for zolletta-metaskill php-testing-patterns.
+
+  Copy this file to phpunit.xml (or phpunit.xml.dist) in the project root and
+  adjust the paths below to match your project's PSR-4 autoloading layout.
+
+  This template enables text, HTML, and Clover coverage output so the review
+  skill can parse coverage data in whichever format is most convenient.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache">
+
+  <!-- Test directories — mirror src/ per PSR-4 -->
+  <testsuites>
+    <testsuite name="Unit">
+      <directory>tests/Unit</directory>
+    </testsuite>
+    <testsuite name="Feature">
+      <directory>tests/Feature</directory>
+    </testsuite>
+    <testsuite name="Integration">
+      <directory>tests/Integration</directory>
+    </testsuite>
+  </testsuites>
+
+  <!-- Coverage configuration -->
+  <coverage>
+    <!-- Report formats — enable the ones you need -->
+    <report>
+      <text outputFile="php://stdout"/>
+      <html outputDirectory=".zolletta-metaskill/reports/coverage/html"/>
+      <clover outputFile=".zolletta-metaskill/reports/coverage/clover.xml"/>
+    </report>
+  </coverage>
+
+  <!-- Source directories to measure coverage on -->
+  <source>
+    <include>
+      <directory>src</directory>
+    </include>
+    <exclude>
+      <directory>src/Entity</directory>
+      <file>src/Kernel.php</file>
+    </exclude>
+  </source>
+
+</phpunit>

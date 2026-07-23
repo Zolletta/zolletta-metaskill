@@ -112,7 +112,7 @@ Both PHP plans touch shared files. This table assigns each file to exactly one p
 
 - [x] **6.1** Search for surviving test copies — none found (no git history, no filesystem copies); reconstructing from scratch (`find` in home, /tmp, /var/folders) → PLAN-TEST-RECOVERY Source 3
 - [x] **6.2** Create `tests/conftest.py` + `tests/fixtures/python/` (8 fixture files) → PLAN-TEST-RECOVERY Step 2
-- [ ] **6.3** Write `tests/test_cli.py` (Low difficulty) → PLAN-TEST-RECOVERY Step 4 #1
+- [x] **6.3** ~~Write `tests/test_cli.py`~~ — N/A: `src/zolletta_metaskill/cli.py` was lost and never recreated; each scanner has its own `main()` entry point, making a unified CLI redundant → PLAN-TEST-RECOVERY Step 4 #1
 - [x] **6.4** Write `tests/patterns/` tests (7 files: class_metrics, one_class_per_file, naming, tests, test_naming, test_god_classes, open_closed) → PLAN-TEST-RECOVERY Step 4 #2-8,10
 - [x] **6.5** Write `tests/python_code_style/` tests (3 files: acronym_casing, unused_all_exports, streamline_docstrings) → PLAN-TEST-RECOVERY Step 4 #9,11,15
 - [x] **6.6** Write `tests/python_testing_patterns/` tests (1 file: test_naming) → PLAN-TEST-RECOVERY Step 4 #6
@@ -171,11 +171,11 @@ Both PHP plans touch shared files. This table assigns each file to exactly one p
 
 > Creates php-testing-patterns skill and wires both PHP skills into review/root.
 
-- [ ] **11.1** Create `php-testing-patterns/SKILL.md` + `php-testing-patterns/assets/phpunit-coverage-template.xml` → PLAN-PHP-SUPPORT 5.2
-- [ ] **11.2** Update `review/SKILL.md` — add PHP rows to language-specific table → PLAN-PHP-CODE-STYLE 4.3
-- [ ] **11.3** Update root `SKILL.md` — add `php-code-style` + `php-testing-patterns` to subcommand table, update "Supported languages" line → PLAN-PHP-CODE-STYLE 4.4
-- [ ] **11.4** Update `setup/assets/settings_template.json` — confirm `"php": null` present (already done, verify) → PLAN-PHP-CODE-STYLE 4.1
-- [ ] **11.5** Mark PLAN-PHP-SUPPORT Phase 5.1 as superseded in the file → PLAN-PHP-CODE-STYLE 4.6
+- [x] **11.1** Create `php-testing-patterns/SKILL.md` + `php-testing-patterns/assets/phpunit-coverage-template.xml` → PLAN-PHP-SUPPORT 5.2
+- [x] **11.2** Update `review/SKILL.md` — add PHP rows to language-specific table → PLAN-PHP-CODE-STYLE 4.3
+- [x] **11.3** Update root `SKILL.md` — add `php-code-style` + `php-testing-patterns` to subcommand table, update "Supported languages" line → PLAN-PHP-CODE-STYLE 4.4
+- [x] **11.4** Update `setup/assets/settings_template.json` — confirm `"php": null` present (already done, verify) → PLAN-PHP-CODE-STYLE 4.1
+- [x] **11.5** Mark PLAN-PHP-SUPPORT Phase 5.1 as superseded in the file → PLAN-PHP-CODE-STYLE 4.6
 
 ---
 
@@ -183,10 +183,10 @@ Both PHP plans touch shared files. This table assigns each file to exactly one p
 
 > **DEPENDS on Phase 8** (PHPEngine must exist).
 
-- [ ] **12.1** Create `src/zolletta_metaskill/php_patterns/scan_php_dependency_inversion.py` → PLAN-PHP-SUPPORT 6.1
-- [ ] **12.2** Create `src/zolletta_metaskill/php_patterns/scan_php_interface_segregation.py` → PLAN-PHP-SUPPORT 6.1
-- [ ] **12.3** Create `src/zolletta_metaskill/php_patterns/scan_php_open_closed.py` → PLAN-PHP-SUPPORT 6.1
-- [ ] **12.4** Register deferred tests in PLAN-TEST-RECOVERY → PLAN-PHP-SUPPORT 6.2
+- [x] **12.1** Create `src/zolletta_metaskill/php_patterns/scan_php_dependency_inversion.py` → PLAN-PHP-SUPPORT 6.1
+- [x] **12.2** Create `src/zolletta_metaskill/php_patterns/scan_php_interface_segregation.py` → PLAN-PHP-SUPPORT 6.1
+- [x] **12.3** Create `src/zolletta_metaskill/php_patterns/scan_php_open_closed.py` → PLAN-PHP-SUPPORT 6.1
+- [x] **12.4** Register deferred tests in PLAN-TEST-RECOVERY → PLAN-PHP-SUPPORT 6.2
 
 ---
 
@@ -254,27 +254,3 @@ Phase 15 (final verification) ◄── deps: ALL ──────────
 ```
 
 **Parallelizable:** Phases 1–5 can run in parallel with each other and with Phase 6. **Critical path:** Phase 0 → Phase 6 → Phase 7 → Phase 8 → Phase 9 → Phase 15.
-
----
-
-## Progress tracking
-
-| Phase                      | Steps  | Completed | Status          |
-| -------------------------- | ------ | --------- | --------------- |
-| 0 — Fix inconsistencies    | 6      | 0/6       | Not started     |
-| 1 — .install script        | 6      | 0/6       | Not started     |
-| 2 — Frontmatter wildcards  | 2      | 0/2       | Not started     |
-| 3 — php-pro suggestion     | 3      | 0/3       | Not started     |
-| 4 — Explanation docs       | 4      | 0/4       | Not started     |
-| 5 — php-code-style skill   | 2      | 0/2       | Not started     |
-| 6 — Test recovery          | 11     | 0/11      | Not started     |
-| 7 — Common infrastructure  | 4      | 0/4       | Not started     |
-| 8 — Engines                | 3      | 0/3       | Not started     |
-| 9 — Refactor scanners      | 2      | 0/2       | Blocked by 6, 8 |
-| 10 — PHP setup detection   | 6      | 0/6       | Not started     |
-| 11 — PHP skills            | 5      | 0/5       | Not started     |
-| 12 — PHP SOLID scanners    | 4      | 0/4       | Blocked by 8    |
-| 13 — Documentation updates | 4      | 0/4       | Not started     |
-| 14 — Dependencies and CI   | 2      | 0/2       | Not started     |
-| 15 — Final verification    | 8      | 0/8       | Blocked by all  |
-| **Total**                  | **72** | **0/72**  |                 |

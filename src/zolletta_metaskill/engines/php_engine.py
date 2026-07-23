@@ -24,7 +24,7 @@ from zolletta_metaskill.common.models import (
 )
 
 if TYPE_CHECKING:
-    from tree_sitter import Node, Parser  # type: ignore[import-not-found]
+    from tree_sitter import Node, Parser, Tree  # type: ignore[import-not-found]
 
 __all__ = ["PHPEngine"]
 
@@ -182,6 +182,30 @@ class PHPEngine:
             docstring=None,
             has_syntax_error=has_syntax_error,
         )
+
+    def parse_raw(self, path: Path) -> tuple[Tree, bytes]:
+        """Parse the PHP file at *path* and return the raw tree-sitter tree.
+
+        This is used by PHP-specific scanners that need direct access to the
+        tree-sitter AST (e.g. to detect ``new`` expressions or ``instanceof``
+        chains that are not captured in :class:`ModuleInfo`).
+
+        Args:
+            path: Path to a ``.php`` source file.
+
+        Returns:
+            A tuple of ``(Tree, source_bytes)``.  The source bytes are needed
+            to extract text from individual nodes via
+            ``source[node.start_byte:node.end_byte]``.
+
+        Raises:
+            ImportError: If ``tree-sitter-php`` is not installed.
+
+        """
+        parser = self._get_parser()
+        source = path.read_bytes()
+        tree = parser.parse(source)
+        return tree, source
 
     # -- Internal: parser setup --------------------------------------------
 

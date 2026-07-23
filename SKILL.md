@@ -32,6 +32,8 @@ All paths are relative to where this SKILL.md is found.
 | `review`                  | `review/SKILL.md`                  | Orchestrator — reads language from `settings.json`, runs general + language-specific skills in parallel batches, aggregates reports                                     |
 | `python-code-style`       | `python-code-style/SKILL.md`       | Python source code style review (ruff, mypy, naming, docstrings, type annotations) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)           |
 | `python-testing-patterns` | `python-testing-patterns/SKILL.md` | Python test code review (isolation, naming, coverage gaps, mocking, fixtures, AAA structure) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT) |
+| `php-code-style`          | `php-code-style/SKILL.md`          | PHP source code style review (PSR-12, naming, one class per file, PHPDoc, type declarations)                                           |
+| `php-testing-patterns`    | `php-testing-patterns/SKILL.md`    | PHP test code review (PHPUnit naming, mirroring, coverage gaps, mocking, data providers)                                              |
 
 ## Shared resources
 
@@ -80,7 +82,7 @@ When any subcommand calls a tokensave MCP tool and receives a **tool-not-found**
 
 This handler applies to every subcommand that uses tokensave (`patterns`, `documentor`, `external-review`, `review`). Each subcommand's SKILL.md links back to this section.
 
-> **Python skills**: `python-code-style` and `python-testing-patterns` are bundled inside this meta-skill, so they are always available — the "not found" case does not apply. The `*_available` flags in `settings.json` only reflect whether the project language is Python.
+> **Bundled language skills**: `python-code-style`, `python-testing-patterns`, `php-code-style`, and `php-testing-patterns` are bundled inside this meta-skill, so they are always available — the "not found" case does not apply. The `*_available` flags in `settings.json` only reflect whether the project language is Python or PHP.
 
 ## Dispatch
 
