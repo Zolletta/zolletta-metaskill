@@ -12,11 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Frontmatter wildcard syntax (`python-*`, `php-*`) for the `skills:` field — language-specific skills no longer need to be listed individually
 - `php-pro` companion skill suggestion — when a PHP project is detected, setup prints a "not installed" message suggesting php-pro as an implementation skill
 - Language-agnostic explanation docs: `docs/explanation/code/error-handling.md`, `docs/explanation/code/performance.md`, `docs/explanation/code/security.md` — 10 rules promoted from php-best-practices with both PHP and Python examples
-- `php-code-style` skill — 33 PHP-specific rules (21 always-on + 12 configurable, version-gated by detected `php_version`)
-- `php-testing-patterns` skill — PHPUnit naming, mirroring, coverage gaps, mocking, data providers
-- `LanguageEngine` protocol + `ModuleInfo` language-neutral data model in `src/zolletta_metaskill/common/`
-- `PythonEngine` (wraps `ast`) and `PHPEngine` (wraps tree-sitter) in `src/zolletta_metaskill/engines/`
-- 7 language-agnostic scanners refactored to consume `ModuleInfo` instead of `ast` directly
+- **PHP language support** — `PHPEngine` (tree-sitter-php), PHP SOLID scanners (`scan_php_dependency_inversion`, `scan_php_interface_segregation`, `scan_php_open_closed`), `php-code-style` skill (33 PHP-specific rules: 21 always-on + 12 configurable, version-gated by detected `php_version`), `php-testing-patterns` skill (PHPUnit naming, mirroring, coverage gaps, mocking, data providers)
+- **Language-neutral common infrastructure** — `ModuleInfo` data model, `LanguageEngine` protocol, and engine registry (`register_engine` / `get_engine` / `get_engine_for_file` / `ensure_engine` / `available_languages`) in `src/zolletta_metaskill/common/`
+- **`PythonEngine`** wrapping the `ast` module in `src/zolletta_metaskill/engines/`
+- **`PHPEngine`** wrapping tree-sitter with the tree-sitter-php grammar in `src/zolletta_metaskill/engines/` — includes `parse_raw()` for scanners needing direct tree-sitter AST access
 - PHP-specific SOLID scanners in `src/zolletta_metaskill/php_patterns/` (DIP, ISP, OCP via `instanceof` chains)
 - PHP tooling detection in setup (phpunit, phpstan, psalm, php-cs-fixer, phpcs) with `php` object in `settings.json`
 - `setup/assets/settings.schema.json` — machine-readable JSON Schema (draft 2020-12) for `settings.json`
@@ -25,8 +24,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
-- Scanners in `shared/` and `patterns/` now depend on `LanguageEngine` + `ModuleInfo` instead of Python `ast` directly
-- `settings.json` `php.code_style` toggles expanded from 3 to 12 configurable rules matching the php-code-style skill
+- **7 scanners refactored** to consume `ModuleInfo` via the `LanguageEngine` protocol instead of Python `ast` directly — scanners in `shared/` and `patterns/` are now language-agnostic
+- **Setup detection now supports PHP** — detects `composer.json`, PSR-4 autoload mappings, PHPStan, PHPUnit, Psalm, PHP CS Fixer, and PHPCS configuration
+- **Settings schema extended** with a `php` configuration section (`php.code_style` toggles expanded from 3 to 12 configurable rules matching the php-code-style skill, `php.composer_mtime` for staleness checks)
 - "Supported languages" line updated from "Python / Others (Work in progress)" to "Python, PHP / Others (Work in progress)"
 - Setup guard extended with PHP staleness check (`composer.json` mtime vs `php.composer_mtime`)
 

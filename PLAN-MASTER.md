@@ -194,17 +194,17 @@ Both PHP plans touch shared files. This table assigns each file to exactly one p
 
 > All targets already exist — extend, do not recreate.
 
-- [ ] **13.1** Update `docs/reference/code/scripts.md` — add PHP scanners, `LanguageEngine` protocol section → PLAN-PHP-SUPPORT 7.1
-- [ ] **13.2** Expand `docs/explanation/code/php/php-review-patterns.md` — add SOLID violation examples from new scanners → PLAN-PHP-SUPPORT 7.2
-- [ ] **13.3** Update `README.md` — list PHP as supported, mention `tree-sitter-php` → PLAN-PHP-SUPPORT 7.3
-- [ ] **13.4** Update `CHANGELOG.md` — add PHP support entries to `[Unreleased]` (will become `[2.0.0]` in Phase 15.6) → PLAN-PHP-SUPPORT 7.6
+- [x] **13.1** Update `docs/reference/code/scripts.md` — add PHP scanners, `LanguageEngine` protocol section → PLAN-PHP-SUPPORT 7.1
+- [x] **13.2** Expand `docs/explanation/code/php/php-review-patterns.md` — add SOLID violation examples from new scanners → PLAN-PHP-SUPPORT 7.2
+- [x] **13.3** Update `README.md` — list PHP as supported, mention `tree-sitter-php` → PLAN-PHP-SUPPORT 7.3
+- [x] **13.4** Update `CHANGELOG.md` — add PHP support entries to `[Unreleased]` (will become `[2.0.0]` in Phase 15.6) → PLAN-PHP-SUPPORT 7.6
 
 ---
 
 ## Phase 14 — Dependencies and CI (PLAN-PHP-SUPPORT Phase 8)
 
-- [ ] **14.1** Add optional dependencies to `pyproject.toml`: `[project.optional-dependencies] php = ["tree-sitter>=0.21", "tree-sitter-php>=0.23"]` → PLAN-PHP-SUPPORT 8.1
-- [ ] **14.2** Add CI matrix entry for PHP extra (if CI exists) → PLAN-PHP-SUPPORT 8.2
+- [x] **14.1** Add optional dependencies to `pyproject.toml`: `[project.optional-dependencies] php = ["tree-sitter>=0.21", "tree-sitter-php>=0.23"]` → PLAN-PHP-SUPPORT 8.1
+- [x] **14.2** Add CI matrix entry for PHP extra (if CI exists) → PLAN-PHP-SUPPORT 8.2 — N/A: no CI workflows exist (lost in git history, not recovered)
 
 ---
 

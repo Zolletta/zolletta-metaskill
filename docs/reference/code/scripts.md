@@ -6,9 +6,9 @@ skills: [patterns]
 
 # Scripts Reference
 
-> **Language-agnostic**: the scanning workflow applies to any project. The scripts currently support Python via its `ast` module. For PHP and other languages, apply the principles manually by reading the code — the scripts are a triage accelerator, not a requirement.
+> **Language-agnostic**: the scanning workflow applies to any project. The scripts support Python (via its `ast` module) and PHP (via tree-sitter-php). For other languages, apply the principles manually by reading the code — the scripts are a triage accelerator, not a requirement.
 
-All scripts live in per-skill subfolders under `src/zolletta_metaskill/` (`patterns/`, `python_code_style/`, `python_testing_patterns/`, `shared/`) and are designed for Python codebases. They use the `ast` module for static analysis — no code execution required.
+All scripts live in per-skill subfolders under `src/zolletta_metaskill/` (`patterns/`, `php_patterns/`, `python_code_style/`, `python_testing_patterns/`, `shared/`). Language-agnostic scanners consume a `ModuleInfo` data model produced by a `LanguageEngine` — no code execution required.
 
 Every script supports `--skip` (exit 0 with "SKIPPED" message) for projects that intentionally don't follow a given convention. Scripts that report violations also support `--strict` (exit code 1 if violations found).
 
@@ -193,6 +193,106 @@ python3 src/zolletta_metaskill/patterns/scan_liskov_substitution.py <directory> 
 
 **Checks**: overridden methods with extra required params, fewer params than parent, new exception types, stub overrides (pass/return None when parent has a real body).
 
+## PHP SOLID Validator Scripts
+
+These scanners live in `src/zolletta_metaskill/php_patterns/` and target PHP codebases. They use the `PHPEngine` (tree-sitter-php) to parse `.php` files. Install the optional dependency with `pip install zolletta-metaskill[php]`.
+
+### scan_php_dependency_inversion.py (DIP)
+
+Detects classes that instantiate their dependencies internally (`new ConcreteClass()` in constructors or methods) instead of receiving them via dependency injection. Excludes factories, builders, and PHP built-in types.
+
+```bash
+python3 src/zolletta_metaskill/php_patterns/scan_php_dependency_inversion.py <directory> [--skip] [--strict]
+```
+
+| Option        | Default | Description                              |
+| ------------- | ------- | ---------------------------------------- |
+| `<directory>` | `src`   | Root directory to scan                   |
+| `--skip`      | off     | Skip this check entirely                 |
+| `--strict`    | off     | Exit with code 1 if violations are found |
+
+**How it works**: since `ModuleInfo` does not capture `new` expressions, this scanner calls `PHPEngine.parse_raw()` to access the tree-sitter AST directly and walks it for `new_expression` nodes inside class methods.
+
+**Exclusions**: classes whose name contains `Factory` or `Builder` are treated as composition roots where object creation is expected. PHP built-in types (`stdClass`, `DateTime`, `Exception`, etc.) are excluded from dependency detection.
+
+### scan_php_interface_segregation.py (ISP)
+
+Detects fat interfaces — PHP interfaces with many methods where implementers are forced to depend on methods they do not use.
+
+```bash
+python3 src/zolletta_metaskill/php_patterns/scan_php_interface_segregation.py <directory> [--min-methods N] [--skip] [--strict]
+```
+
+| Option            | Default | Description                              |
+| ----------------- | ------- | ---------------------------------------- |
+| `<directory>`     | `src`   | Root directory to scan                   |
+| `--min-methods N` | 7       | Minimum method count to flag as fat      |
+| `--skip`          | off     | Skip this check entirely                 |
+| `--strict`        | off     | Exit with code 1 if violations are found |
+
+**How it works**: uses `ModuleInfo` directly (no raw AST needed). PHP interfaces are mapped to `ClassInfo` with `is_abstract=True` and no attributes. Interfaces with more than `--min-methods` methods are flagged as fat.
+
+### scan_php_open_closed.py (OCP)
+
+Detects `if/elseif` chains that use `instanceof` to branch on subtypes — an OCP violation. Adding a new subtype requires modifying the ladder instead of simply adding a new implementation.
+
+```bash
+python3 src/zolletta_metaskill/php_patterns/scan_php_open_closed.py <directory> [--min-branches N] [--skip] [--strict]
+```
+
+| Option             | Default | Description                              |
+| ------------------ | ------- | ---------------------------------------- |
+| `<directory>`      | `src`   | Root directory to scan                   |
+| `--min-branches N` | 3       | Minimum instanceof branches to flag      |
+| `--skip`           | off     | Skip this check entirely                 |
+| `--strict`         | off     | Exit with code 1 if violations are found |
+
+**How it works**: since `ModuleInfo` does not capture `instanceof` expressions, this scanner calls `PHPEngine.parse_raw()` to access the tree-sitter AST directly and counts `instanceof` branches in `if_statement` nodes.
+
+## LanguageEngine Protocol
+
+The `LanguageEngine` protocol is the seam between language-agnostic scanners and language-specific parsers. Scanners depend only on this protocol and the `ModuleInfo` data model — they never import `ast` or tree-sitter directly.
+
+### common/language_engine.py
+
+Defines the `LanguageEngine` protocol (`@runtime_checkable`). Every engine must implement:
+
+| Method / property | Description |
+| --- | --- |
+| `language` | Language identifier (e.g. `"python"`, `"php"`) |
+| `parse_module(path)` | Parse a source file and return a `ModuleInfo` |
+| `is_test_file(path)` | Return `True` if the path is a test file for this language |
+| `is_source_file(path)` | Return `True` if the path is a source file for this language |
+| `file_extensions()` | Return the list of extensions handled (e.g. `[".py"]`, `[".php"]`) |
+| `test_file_pattern()` | Return the glob pattern for test files (e.g. `"test_*.py"`, `"*Test.php"`) |
+
+### common/registry.py
+
+Provides the engine registry — maps language names and file extensions to engines:
+
+| Function | Description |
+| --- | --- |
+| `register_engine(engine)` | Register an engine under its `language` identifier (raises `ValueError` on duplicate) |
+| `get_engine(language)` | Return the registered engine for a language (raises `KeyError` if not found) |
+| `get_engine_for_file(path)` | Return the engine that handles a file path based on its extension, or `None` |
+| `ensure_engine(engine)` | Register an engine if its language is not already registered (idempotent — safe to call from scanner entry points) |
+| `available_languages()` | Return a sorted list of registered language identifiers |
+
+### engines/python_engine.py & engines/php_engine.py
+
+Two implementations of the `LanguageEngine` protocol:
+
+- **`PythonEngine`** — wraps Python's `ast` module to parse `.py` files into `ModuleInfo`.
+- **`PHPEngine`** — wraps tree-sitter with the tree-sitter-php grammar to parse `.php` files into `ModuleInfo`. The `tree-sitter-php` package is an optional dependency (`pip install zolletta-metaskill[php]`); if not installed, the engine still instantiates but `parse_module()` raises a clear `ImportError`.
+
+### PHPEngine.parse_raw()
+
+```python
+def parse_raw(self, path: Path) -> tuple[Tree, bytes]
+```
+
+Returns the raw tree-sitter `Tree` and source bytes for a `.php` file. Used by PHP-specific scanners (`scan_php_dependency_inversion.py`, `scan_php_open_closed.py`) that need direct AST access for constructs not captured in `ModuleInfo` (e.g. `new` expressions, `instanceof` chains). The source bytes are needed to extract text from individual nodes via `source[node.start_byte:node.end_byte]`.
+
 ## Dead Code Script
 
 ### scan_unused_all_exports.py
@@ -299,11 +399,14 @@ The full scanning workflow runs all scripts in this order:
 7. `scan_interface_segregation.py` — SOLID: ISP violations
 8. `scan_open_closed.py` — SOLID: OCP violations
 9. `scan_liskov_substitution.py` — SOLID: LSP violations
-10. `scan_unused_all_exports.py` — dead code: unused `__all__` exports
-11. `scan_test_naming.py` — test naming convention
-12. `scan_acronym_casing.py` — acronym casing convention
-13. For each test God class: `test_splitter.py --dry-run` → review → split
-14. Apply the "reason to change" test to each top candidate from step 1
+10. `scan_php_dependency_inversion.py` — SOLID: PHP DIP violations (PHP projects only)
+11. `scan_php_interface_segregation.py` — SOLID: PHP ISP violations (PHP projects only)
+12. `scan_php_open_closed.py` — SOLID: PHP OCP violations (PHP projects only)
+13. `scan_unused_all_exports.py` — dead code: unused `__all__` exports
+14. `scan_test_naming.py` — test naming convention
+15. `scan_acronym_casing.py` — acronym casing convention
+16. For each test God class: `test_splitter.py --dry-run` → review → split
+17. Apply the "reason to change" test to each top candidate from step 1
 
 ## Repository Scripts
 
