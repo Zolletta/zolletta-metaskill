@@ -1,0 +1,45 @@
+---
+name: Quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  lint:
+    name: ruff + ty + mypy + vulture
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --extra dev --extra php
+
+      - name: ruff check
+        run: uv run ruff check
+
+      - name: ty check
+        run: uv run ty check .
+
+      - name: mypy
+        run: uv run mypy .
+
+      - name: vulture
+        run: uv run vulture .

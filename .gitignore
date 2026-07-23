@@ -8,3 +8,6 @@ build/
 .mypy_cache/
 .ruff_cache/
 .tokensave/
+coverage.xml
+.coverage
+.coverage
