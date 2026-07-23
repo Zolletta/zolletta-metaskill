@@ -2,7 +2,7 @@
 
 # Zolletta-metaskill
 
-A family of generic code review skills with specializations for Python (other languages in progress).
+A family of generic code review skills with specializations for Python and PHP (other languages in progress).
 
 _Zolletta_ is Italian for sugar cubes — each skill is a compact, self-contained piece that sweetens the review process. Together they dissolve into a complete picture.
 
@@ -35,38 +35,71 @@ All files in `~/.agents/rules/` are the single source of truth for their domain 
 
 The first time you run any subcommand in a project, the **setup guard** automatically runs `/zolletta-metaskill setup` if `.zolletta-metaskill/settings.json` does not exist.
 
+New to Zolletta-metaskill? Read the [getting started tutorial](docs/tutorials/getting-started.md). For the full documentation index, see [`docs/index.md`](docs/index.md).
+
+### Supported languages
+
+| Language | Parser | SOLID scanners | Code style | Testing patterns |
+| --- | --- | --- | --- | --- |
+| Python | `ast` module (stdlib) | DIP, ISP, OCP, LSP | `python-code-style` | `python-testing-patterns` |
+| PHP | `tree-sitter-php` (optional) | DIP, ISP, OCP | `php-code-style` | `php-testing-patterns` |
+
+PHP support requires the optional `tree-sitter` and `tree-sitter-php` packages:
+
+```bash
+pip install zolletta-metaskill[php]
+```
+
+## Installation
+
+### One-command installer (recommended)
+
+```bash
+git clone https://github.com/Zolletta/zolletta-metaskill.git
+cd zolletta-metaskill
+./install.sh
+```
+
+The `install.sh` script copies the skill to `~/.agents/skills/zolletta-metaskill` and symlinks it into every detected AI agent tool's skills directory (Claude Code, Cursor, Gemini CLI, Devin, Windsurf, and others). See [`docs/how-to/install.md`](docs/how-to/install.md) for details and manual alternatives.
+
+### For contributors
+
+Use `./.bump --to <version>` to bump the version across `pyproject.toml`, `__init__.py`, all `SKILL.md` files, and `settings_template.json`.
+
 ## Subcommands
 
-| Subcommand                | Scope                                                                                                                                                                                |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `setup`                   | Project initialization — creates `settings.json`, detects language, Docker container, tokensave, Python tooling, and extracts effective tool configuration from `pyproject.toml`     |
-| `review`                  | Full project review orchestrator — runs general + language-specific skills as parallel subagents, produces graded SUMMARY.md and aggregated TODO.md with links to specialist reports |
-| `patterns`                | God classes, SOLID violations, coupling, composition vs inheritance for `src/`                                                                                                       |
-| `documentor`              | [Diátaxis](https://diataxis.fr/) compliance + drift detection for `.backstage/`                                                                                                      |
-| `external-review`         | External-LLM code review on modified files only (default model: `swe`)                                                                                                               |
-| `python-code-style`       | Python source code style review (ruff, mypy, naming, docstrings, type annotations) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)                        |
-| `python-testing-patterns` | Python test code review (isolation, naming, coverage gaps, mocking, fixtures, AAA structure) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)              |
+| Subcommand | Scope |
+| --- | --- |
+| `setup` | Project initialization — creates `settings.json`, detects language, Docker container, tokensave, Python tooling, and extracts effective tool configuration from `pyproject.toml` |
+| `review` | Full project review orchestrator — runs general + language-specific skills as parallel subagents, produces graded SUMMARY.md and aggregated TODO.md with links to specialist reports |
+| `patterns` | God classes, SOLID violations, coupling, composition vs inheritance for `src/` |
+| `documentor` | [Diátaxis](https://diataxis.fr/) compliance + drift detection for `.backstage/` |
+| `external-review` | External-LLM code review on modified files only (default model: `swe`) |
+| `python-code-style` | Python source code style review (ruff, mypy, naming, docstrings, type annotations) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT) |
+| `python-testing-patterns` | Python test code review (isolation, naming, coverage gaps, mocking, fixtures, AAA structure) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT) |
+| `php-code-style` | PHP source code style review (33 rules: naming, docblocks, type declarations, modern PHP practices) |
+| `php-testing-patterns` | PHP test code review (PHPUnit naming, mirroring, coverage gaps, mocking, data providers) |
 
 ## Tools leveraged if available
 
-| Tool      | Homepage                                      | Why zolletta-metaskill benefits                                                                                                                                                                                                                |
-| --------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tool | Homepage | Why Zolletta-metaskill benefits |
+| --- | --- | --- |
 | tokensave | https://github.com/aovestdipaperino/tokensave | Semantic code-graph index (symbols, call/callee, impact radius). Used by patterns, documentor, review, external-review to understand code without reading full files, assess blast radius, verify documented symbols, and find affected tests. |
 
-When a tool is not installed, zolletta-metaskill prints a message explaining why it would benefit from the tool and links to the homepage. It does **not** install anything.
+When a tool is not installed, Zolletta-metaskill prints a message explaining why it would benefit from the tool and links to the homepage. It does **not** install anything.
 
 ## Shared resources
 
-| Resource   | Path              | Contents                                                                                                                                                                    |
-| ---------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| References | `reference/`      | Code-exploration decision tree, general principles, Python review guide, scripts reference, documentation standards, tool messages, review-mode rules, settings.json schema |
-| Scripts    | `scripts/python/` | Automated scanning scripts used by multiple skills                                                                                                                          |
+| Resource | Path | Contents |
+| --- | --- | --- |
+| Documentation | [`docs/`](docs/index.md) | Tutorials, how-to guides, reference, and explanation — see [`docs/index.md`](docs/index.md) for the full index |
+| Scripts | `src/zolletta_metaskill/{patterns,php_patterns,python_code_style,python_testing_patterns,shared}/` | Automated scanning scripts organized by skill |
 
 ## Setup and settings.json
 
 `/zolletta-metaskill setup` creates `.zolletta-metaskill/settings.json` in the project root and adds `.zolletta-metaskill/` to `.gitignore`. The file is read by all other subcommands.
 
-For the full schema, field-by-field documentation, the `python_config`, `python_code_style_rules`, and `python_testing_patterns_rules` blocks, and the setup guard staleness check, see [`reference/settings-schema.md`](reference/settings-schema.md).
+For the full schema, field-by-field documentation, the `python` object (which merges `python.tools`, `python.code_style`, `python.testing`, and `python.pyproject_mtime`), the `php` object (which merges `php.code_style`, `php.testing`, and `php.composer_mtime`), the top-level `acronyms` array, and the setup guard staleness check, see [`docs/reference/settings-schema.md`](docs/reference/settings-schema.md).
 
 ### Setup guard
 
@@ -76,15 +109,15 @@ Before dispatching to any subcommand, the meta-skill checks for `.zolletta-metas
 2. If it **does not exist**, run the full setup procedure first.
 3. If the user invoked `/zolletta-metaskill setup` explicitly, run setup and stop.
 
-For Python projects, the guard also performs a **staleness check**: if `pyproject.toml`'s modification time differs from `python_config.pyproject_mtime` in `settings.json`, the guard re-runs only the pyproject extraction step and patches `python_config` — full setup is not re-run.
+For Python projects, the guard also performs a **staleness check**: if `pyproject.toml`'s modification time differs from `python.pyproject_mtime` in `settings.json`, the guard re-runs only the pyproject extraction step and patches the `python.tools.*` configuration fields — full setup is not re-run. For PHP projects, the guard checks `composer.json`'s modification time against `php.composer_mtime` and re-extracts PHP tooling configuration similarly.
 
 ### Tool-failure handler
 
 If any subcommand calls a tokensave MCP tool and receives a tool-not-found / server-not-found error, it:
 
 1. Updates `tokensave_available` in `settings.json` to `false`
-2. Prints the "not installed" message from `reference/tool-messages.md`
-3. Continues with grep + targeted reads as fallback (for graph tools). Python skills (`python-code-style`, `python-testing-patterns`) are bundled inside this meta-skill and are always available — the "not found" case does not apply to them.
+2. Prints the "not installed" message from `docs/reference/tool-messages.md`
+3. Continues with grep + targeted reads as fallback (for graph tools). Language-specific skills (`python-code-style`, `python-testing-patterns`, `php-code-style`, `php-testing-patterns`) are bundled inside this meta-skill and are always available — the "not found" case does not apply to them.
 
 ## Reports
 
@@ -104,7 +137,7 @@ The patterns skill includes three mechanisms to prevent verdict oscillation betw
 
 2. **Coverage cross-check for missing tests** — `scan_tests.py` reports structurally missing test files. Before reporting any as a finding, the reviewer must run `pytest --cov` and check the file's coverage. Files with >50% coverage are downgraded to informational — they are tested indirectly. Only files with <50% coverage AND no indirect references are reported as findings.
 
-3. **Semantic composition-root detection** — `scan_dependency_inversion.py` excludes classes that create DI containers (`make_container()`, `Container()`, etc.) as composition roots, regardless of filename. This prevents false positives on classes like `CITesterEngine` that wire the DI container but don't match entry-point filename patterns.
+3. **Semantic composition-root detection** — `scan_dependency_inversion.py` excludes classes that create DI containers (`make_container()`, `Container()`, etc.) as composition roots, regardless of filename. This prevents false positives on classes like `APIGateway` that wire the DI container but don't match entry-point filename patterns.
 
 ## Rules
 

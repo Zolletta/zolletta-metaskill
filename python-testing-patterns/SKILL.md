@@ -1,6 +1,6 @@
 ---
 name: python-testing-patterns
-version: 1.1.0
+version: 2.0.0
 license: MIT
 description: Implement comprehensive testing strategies with pytest, fixtures, mocking, and test-driven development. Use when writing Python tests, setting up test suites, or implementing testing best practices.
 ---
@@ -9,9 +9,9 @@ description: Implement comprehensive testing strategies with pytest, fixtures, m
 
 Review skill for Python test code: test isolation, naming, coverage gaps, mocking patterns, fixture design, and AAA structure.
 
-> **Configuration source**: all project-level configuration (tool availability, effective pytest/coverage config) is read from `settings.json` — specifically the `python` and `python_config` objects. Rule toggles are in `python_testing_patterns_rules`. See the parent `SKILL.md` for the setup guard and the shared "Running tools" convention.
+> **Configuration source**: all project-level configuration (tool availability, effective pytest/coverage config) is read from `settings.json` — specifically the `python.tools.*` objects. Rule toggles are in `python.testing`. See the parent `SKILL.md` for the setup guard and the shared "Running tools" convention.
 
-> **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../reference/review-mode.md`](../reference/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
+> **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../docs/reference/code/review-mode.md`](../docs/reference/code/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
 
 ## When to Use This Skill
 
@@ -36,7 +36,7 @@ You **must** run coverage before flagging any coverage gap. Do not skip this ste
 
 The project's `pyproject.toml` may already configure coverage options under `[tool.coverage.run]` and `[tool.pytest.ini_options]`. If so, a plain `pytest --cov` will use those settings — no need to add extra flags.
 
-Read the coverage output. If a module shows coverage **above `coverage_well_covered_threshold`** (from `python_testing_patterns_rules` in `settings.json`, default `80`), it is well-covered — do not flag it as a coverage gap even if there are no direct test references. The code is exercised through integration tests or indirect calls.
+Read the coverage output. If a module shows coverage **above `coverage_well_covered_threshold`** (from `python.testing` in `settings.json`, default `80`), it is well-covered — do not flag it as a coverage gap even if there are no direct test references. The code is exercised through integration tests or indirect calls.
 
 ### Step 2 — Check for indirect coverage
 
@@ -51,7 +51,7 @@ If a class has no direct test file but coverage is non-zero, trace the call chai
 ### Step 3 — Only flag as a gap if coverage is genuinely low
 
 Only report a coverage gap when:
-- Coverage is **below `coverage_gap_threshold`** (from `python_testing_patterns_rules`, default `50`) AND
+- Coverage is **below `coverage_gap_threshold`** (from `python.testing`, default `50`) AND
 - There are no direct test references AND
 - All callers are mocked in tests (no real instances)
 
@@ -67,20 +67,20 @@ If you find a genuine gap, check whether the caller's tests mock the class or us
 
 ### Always-on rules (cannot be disabled)
 
-| # | Area | Name |
-|---|------|------|
-| 1 | Structure | AAA pattern (Arrange, Act, Assert) |
-| 2 | Isolation | Tests must be independent — no shared state, each test cleans up after itself |
-| 3 | Coverage | Coverage gap detection is mandatory (run `pytest --cov` before flagging any gap) |
-| 4 | Scope | Do not duplicate the structural "missing test file" check from `patterns` — this skill owns coverage analysis only |
+| #   | Area      | Name                                                                                                               |
+| --- | --------- | ------------------------------------------------------------------------------------------------------------------ |
+| 1   | Structure | AAA pattern (Arrange, Act, Assert)                                                                                 |
+| 2   | Isolation | Tests must be independent — no shared state, each test cleans up after itself                                      |
+| 3   | Coverage  | Coverage gap detection is mandatory (run `pytest --cov` before flagging any gap)                                   |
+| 4   | Scope     | Do not duplicate the structural "missing test file" check from `patterns` — this skill owns coverage analysis only |
 
-### Configurable settings (stored in `settings.json` under `python_testing_patterns_rules`)
+### Configurable settings (stored in `settings.json` under `python.testing`)
 
-| # | Area | Name | Key | Default |
-|---|------|------|-----|---------|
-| 5 | Coverage | Coverage gap threshold (below X% = gap) | `coverage_gap_threshold` | `50` |
-| 6 | Coverage | Well-covered threshold (above X% = don't flag) | `coverage_well_covered_threshold` | `80` |
-| 7 | Naming | Test naming convention (`test_<unit>_<scenario>_<expected>`) | `check_test_naming` | `true` |
+| #   | Area     | Name                                                         | Key                               | Default |
+| --- | -------- | ------------------------------------------------------------ | --------------------------------- | ------- |
+| 5   | Coverage | Coverage gap threshold (below X% = gap)                      | `coverage_gap_threshold`          | `50`    |
+| 6   | Coverage | Well-covered threshold (above X% = don't flag)               | `coverage_well_covered_threshold` | `80`    |
+| 7   | Naming   | Test naming convention (`test_<unit>_<scenario>_<expected>`) | `check_test_naming`               | `true`  |
 
 ## Detailed rule explanations
 
@@ -122,14 +122,13 @@ If a module shows coverage above this percentage, do not flag it as a coverage g
 Test functions should follow the pattern `test_<unit>_<scenario>_<expected_outcome>`. The name should be descriptive enough to understand what is being tested without reading the body.
 
 - **Default**: `true`
-- **Enforcement**: `scan_test_naming.py` from `../scripts/python/` (deterministic). The scanner counts underscore-separated segments after the `test_` prefix and flags functions with fewer than `--min-segments` (default: 3). This replaces manual review, which was non-deterministic and produced different violation counts on each run.
+- **Enforcement**: `scan_test_naming.py` from `../src/zolletta_metaskill/python_testing_patterns/` (deterministic). The scanner counts underscore-separated segments after the `test_` prefix and flags functions with fewer than `--min-segments` (default: 3). This replaces manual review, which was non-deterministic and produced different violation counts on each run.
 
 ```bash
-python3 ../scripts/python/scan_test_naming.py tests/ --min-segments 3
+python3 ../src/zolletta_metaskill/python_testing_patterns/scan_test_naming.py tests/ --min-segments 3
 ```
 
-**Good names**: `test_create_user_with_valid_data_returns_user`, `test_login_fails_with_invalid_password`
-**Bad names**: `test_1`, `test_user`, `test_function`, `test_init`, `test_to_dict`
+**Good names**: `test_create_user_with_valid_data_returns_user`, `test_login_fails_with_invalid_password` **Bad names**: `test_1`, `test_user`, `test_function`, `test_init`, `test_to_dict`
 
 > The scanner is the single source of truth for this rule. Do not manually flag test names that the scanner doesn't flag — the segment count is the objective criterion. If the team disagrees with the threshold, change `--min-segments` in the skill invocation, not the scanner output.
 

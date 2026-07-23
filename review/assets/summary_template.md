@@ -1,8 +1,8 @@
 # Executive Summary — Review {{timestamp}}
 
-**Project:** {{project_name}}
-**Language:** {{language}}
-**Overall grade:** {{overall_grade}}/100 (weighted average of the sub-grades below)
+- **Project:** {{project_name}}
+- **Language:** {{language}}
+- **Overall grade:** {{overall_grade}}/100 (weighted average of the sub-grades below)
 
 ## Grades by area
 
@@ -13,9 +13,7 @@
 | {{lang_area_1}} | {{lang_skill_1}} | {{lang_grade_1}}/100     | {{lang_trend_1}}     |
 | {{lang_area_2}} | {{lang_skill_2}} | {{lang_grade_2}}/100     | {{lang_trend_2}}     |
 
-> Trend compares each grade with the previous review's grade for the same area
-> (↑ improved, ↓ worsened, → unchanged, — no previous review).
-> Only include rows for skills that were actually run.
+> Trend compares each grade with the previous review's grade for the same area (↑ improved, ↓ worsened, → unchanged, — no previous review). Only include rows for skills that were actually run.
 
 ## Strengths
 

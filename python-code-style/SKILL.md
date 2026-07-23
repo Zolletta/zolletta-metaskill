@@ -1,6 +1,6 @@
 ---
 name: python-code-style
-version: 1.1.0
+version: 2.0.0
 license: MIT
 description: Python code style, linting, formatting, naming conventions, and documentation standards. Use when writing new code, reviewing style, configuring linters, writing docstrings, or establishing project standards.
 ---
@@ -9,9 +9,9 @@ description: Python code style, linting, formatting, naming conventions, and doc
 
 Consistent code style and clear documentation make codebases maintainable and collaborative. This skill covers modern Python tooling, naming conventions, and documentation standards.
 
-> **Configuration source**: all project-level configuration (line length, target Python version, linting rules, type checking strictness, tool availability) is read from `settings.json` — specifically the `python`, `python_config`, and `python_code_style_rules` objects. These are populated by `setup` from `pyproject.toml`. Do not read `pyproject.toml` directly; do not hardcode fallback defaults. See the parent `SKILL.md` for the setup guard and the shared "Running tools" convention.
+> **Configuration source**: all project-level configuration (line length, target Python version, linting rules, type checking strictness, tool availability) is read from `settings.json` — specifically the `python.tools.*` objects (availability + effective config), `python.code_style` (rule toggles), and the top-level `acronyms` array. These are populated by `setup` from `pyproject.toml`. Do not read `pyproject.toml` directly; do not hardcode fallback defaults. See the parent `SKILL.md` for the setup guard and the shared "Running tools" convention.
 
-> **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../reference/review-mode.md`](../reference/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
+> **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../docs/reference/code/review-mode.md`](../docs/reference/code/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
 
 ## When to Use This Skill
 
@@ -23,30 +23,30 @@ Consistent code style and clear documentation make codebases maintainable and co
 
 ## Table 1 — Always-on rules (cannot be disabled)
 
-| # | Area | Name |
-|---|------|------|
-| 1 | Naming | Descriptive snake_case filenames, no abbreviations |
-| 2 | Naming | PascalCase class names |
-| 4 | Naming | snake_case functions and variables |
-| 5 | Naming | SCREAMING_SNAKE_CASE module-level constants |
-| 6 | Imports | Grouped import order (stdlib → third-party → local) |
-| 13 | Docstrings | Private functions exempt from docstrings |
-| 17 | Docstrings | Test functions exempt from docstrings |
-| 19 | Types | Type hints required for all public APIs |
+| #   | Area       | Name                                                |
+| --- | ---------- | --------------------------------------------------- |
+| 1   | Naming     | Descriptive snake_case filenames, no abbreviations  |
+| 2   | Naming     | PascalCase class names                              |
+| 4   | Naming     | snake_case functions and variables                  |
+| 5   | Naming     | SCREAMING_SNAKE_CASE module-level constants         |
+| 6   | Imports    | Grouped import order (stdlib → third-party → local) |
+| 13  | Docstrings | Private functions exempt from docstrings            |
+| 17  | Docstrings | Test functions exempt from docstrings               |
+| 19  | Types      | Type hints required for all public APIs             |
 
-## Table 2 — Configurable settings (stored in `settings.json` under `python_code_style_rules`)
+## Table 2 — Configurable settings (stored in `settings.json` under `python.code_style`)
 
-| # | Area | Name | Key | Default |
-|---|------|------|-----|---------|
-| 3 | Naming | Acronyms stay uppercase in class names | `check_acronym_casing` | `true` |
-| 7 | Imports | Absolute imports only, no relative imports | `check_no_relative_imports` | `true` |
-| 8 | Structure | One class per file | `check_one_class_per_file` | `true` |
-| 9 | Structure | Filename matches class name | `check_filename_matches_class` | `true` |
-| 12 | Docstrings | Docstrings required on public classes, methods, functions | `check_public_docstrings` | `true` |
-| 14 | Docstrings | No type repetition in docstring Args/Returns | `check_docstring_no_type_repeat` | `true` |
-| 18 | Docstrings | Skip docstrings for obvious one-line functions | `check_skip_obvious_docstrings` | `true` |
-| 20 | Formatting | Line length from project config | `check_line_length` | `true` |
-| 22 | Dead code | Vulture minimum confidence + unused `__all__` exports | `vulture_min_confidence` | `80` |
+| #   | Area       | Name                                                      | Key                              | Default |
+| --- | ---------- | --------------------------------------------------------- | -------------------------------- | ------- |
+| 3   | Naming     | Acronyms stay uppercase in class names                    | `check_acronym_casing`           | `true`  |
+| 7   | Imports    | Absolute imports only, no relative imports                | `check_no_relative_imports`      | `true`  |
+| 8   | Structure  | One class per file                                        | `check_one_class_per_file`       | `true`  |
+| 9   | Structure  | Filename matches class name                               | `check_filename_matches_class`   | `true`  |
+| 12  | Docstrings | Docstrings required on public classes, methods, functions | `check_public_docstrings`        | `true`  |
+| 14  | Docstrings | No type repetition in docstring Args/Returns              | `check_docstring_no_type_repeat` | `true`  |
+| 18  | Docstrings | Skip docstrings for obvious one-line functions            | `check_skip_obvious_docstrings`  | `true`  |
+| 20  | Formatting | Line length from project config                           | `check_line_length`              | `true`  |
+| 22  | Dead code  | Vulture minimum confidence + unused `__all__` exports     | `vulture_min_confidence`         | `80`    |
 
 ## Detailed rule explanations
 
@@ -74,24 +74,22 @@ Classes use `PascalCase`: `UserRepository`, `OrderProcessor`. This is PEP 8 stan
 
 **#3 — Acronyms stay uppercase in class names** *(configurable: `check_acronym_casing`)*
 
-Class names keep acronyms fully uppercase: `HTTPClientFactory`, not `HttpClientFactory`. `CITesterEngine`, not `CiTesterEngine`. This is a deliberate convention common in codebases with domain-specific acronyms.
+Class names keep acronyms fully uppercase: `HTTPClientFactory`, not `HttpClientFactory`. `APIGateway`, not `ApiGateway`. This is a deliberate convention common in codebases with domain-specific acronyms.
 
-- **Enforcement**: `scan_acronym_casing.py` from `../scripts/python/` (deterministic). The scanner splits each PascalCase class name into words, checks each word against the configured acronym list, and flags any word that case-insensitively matches an acronym but isn't all-uppercase.
+- **Enforcement**: `scan_acronym_casing.py` from `../src/zolletta_metaskill/python_code_style/` (deterministic). The scanner splits each PascalCase class name into words, checks each word against the configured acronym list, and flags any word that case-insensitively matches an acronym but isn't all-uppercase.
 
 ```bash
-python3 ../scripts/python/scan_acronym_casing.py src/ --acronyms CI,MR,AST,DI
+python3 ../src/zolletta_metaskill/python_code_style/scan_acronym_casing.py src/ --acronyms CI,MR,AST,DI
 ```
 
 The acronym list is built additively:
-1. **Shipped base**: `scripts/python/assets/acronyms.json` (common SE acronyms: CI, CD, CICD, HTTP, HTTPS, JSON, SQL, URL, etc.) — always loaded
-2. **Project-specific**: `python_code_style_rules.acronyms` in `settings.json` — merged with the shipped list (additive, not replacing). Use this for domain-specific acronyms not in the shipped list (e.g. `CITE`, `PEPITA`)
+1. **Shipped base**: `python-code-style/assets/acronyms.json` (common SE acronyms: CI, CD, CICD, HTTP, HTTPS, JSON, SQL, URL, etc.) — always loaded
+2. **Project-specific**: the top-level `acronyms` array in `settings.json` — merged with the shipped list (additive, not replacing). Use this for domain-specific acronyms not in the shipped list (e.g. `XML`, `SVG`)
 3. **`--acronyms` CLI flag**: fully replaces both (for testing/debugging only)
 
 To configure project-specific acronyms, add them to `settings.json`:
 ```json
-"python_code_style_rules": {
-    "acronyms": ["CI", "MR", "AST", "DI"]
-}
+"acronyms": ["CI", "MR", "AST", "DI"]
 ```
 
 > The scanner is the single source of truth for this rule. Do not manually flag class names that the scanner doesn't flag — the word-splitting + acronym matching is the objective criterion.
@@ -159,11 +157,11 @@ Use `from myproject.utils import retry_decorator`, not `from ..utils import retr
 
 Each class lives in its own file. No exceptions for "small helper classes" or "closely related enums" — if they're worth defining, they're worth their own file. This applies to all classes, public or private.
 
-- **Enforcement**: `scan_one_class_per_file.py` from `../scripts/python/`.
+- **Enforcement**: `scan_one_class_per_file.py` from `../src/zolletta_metaskill/shared/`.
 
 **#9 — Filename matches class name** *(configurable: `check_filename_matches_class`)*
 
-The filename is the snake_case form of the class name: `user_repository.py` → `UserRepository`, `ci_tester_engine.py` → `CITesterEngine`. Acronyms stay uppercase in the class name but lowercase in the filename.
+The filename is the snake_case form of the class name: `user_repository.py` → `UserRepository`, `api_gateway.py` → `APIGateway`. Acronyms stay uppercase in the class name but lowercase in the filename.
 
 - **Enforcement**: `scan_one_class_per_file.py` + manual review.
 
@@ -234,16 +232,16 @@ One-line functions where the name and signature are self-explanatory do not need
 
 **#19 — Type hints required for all public APIs** *(always-on)*
 
-All public classes, methods, and functions must include type annotations for parameters and return types. Enforcement is via the configured type checker (`python_config.type_checker`) with `disallow_untyped_defs` or equivalent, plus manual review for the public vs. private distinction.
+All public classes, methods, and functions must include type annotations for parameters and return types. Enforcement is via the available type checkers with `disallow_untyped_defs` or equivalent, plus manual review for the public vs. private distinction. Run `ty` if `python.tools.ty.available` is `true` and `mypy` if `python.tools.mypy.available` is `true` — when both are available, both run. If neither is available, type checking is skipped.
 
 ### Formatting
 
 **#20 — Line length from project config** *(configurable: `check_line_length`)*
 
-Line length is read from `python_config.line_length` in `settings.json` (extracted by setup from `[tool.ruff] line-length`, or ruff's built-in default of 88 if unconfigured). The skill does not carry its own fallback. If ruff is available, `ruff format` handles line breaking automatically — do not reformat manually.
+Line length is read from `python.tools.ruff.line_length` in `settings.json` (extracted by setup from `[tool.ruff] line-length`, or ruff's built-in default of 88 if unconfigured). The skill does not carry its own fallback. If ruff is available, `ruff format` handles line breaking automatically — do not reformat manually.
 
 ```python
-# Good: readable line breaks (respecting python_config.line_length)
+# Good: readable line breaks (respecting python.tools.ruff.line_length)
 def create_user(
     email: str,
     name: str,
@@ -268,20 +266,20 @@ result = (
 
 **#22 — Vulture minimum confidence + unused `__all__` exports** *(configurable: `vulture_min_confidence`)*
 
-If `vulture` is available (`python.vulture: true` in `settings.json`), run it to find unused code:
+If `vulture` is available (`python.tools.vulture.available: true` in `settings.json`), run it to find unused code:
 
 ```bash
 vulture src/ --min-confidence <vulture_min_confidence>
 ```
 
-The confidence threshold is read from `python_code_style_rules.vulture_min_confidence` in `settings.json` (default: `80`). Findings below this confidence are not reported. Vulture has false positives, especially for dynamically-accessed methods — review each finding above the threshold with judgment before flagging. Report findings as low-priority issues.
+The confidence threshold is read from `python.code_style.vulture_min_confidence` in `settings.json` (default: `80`). Findings below this confidence are not reported. Vulture has false positives, especially for dynamically-accessed methods — review each finding above the threshold with judgment before flagging. Report findings as low-priority issues.
 
-If `vulture` is `false` in `settings.json`, skip dead-code detection.
+If `python.tools.vulture.available` is `false` in `settings.json`, skip dead-code detection.
 
 **Supplementary check — unused `__all__` exports:** vulture treats every name in `__all__` as "used" (public API export), so it never flags `__all__` entries that are never imported anywhere. This is a known gap. After running vulture, also run:
 
 ```bash
-python3 ../scripts/python/scan_unused_all_exports.py src/
+python3 ../src/zolletta_metaskill/python_code_style/scan_unused_all_exports.py src/
 ```
 
 This scanner cross-references every `__all__` entry against actual import statements across the source tree. Names listed in `__all__` but never imported by any other module are reported as unused exports. Report these as low-priority findings (same severity as vulture findings).

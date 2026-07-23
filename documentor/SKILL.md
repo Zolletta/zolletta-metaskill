@@ -1,6 +1,6 @@
 ---
 name: zolletta-metaskill-documentor
-version: 1.1.0
+version: 2.0.0
 description: >
   Documentation review combining [Diátaxis](https://diataxis.fr/) compliance checks with automated drift detection. Reviews .backstage/ docs for structure, accuracy, consistency, and freshness against the codebase. Use when reviewing docs, preparing releases, running CI doc gates, or auditing doc quality.
 license: MIT + Commons Clause
@@ -22,18 +22,20 @@ Derived from the [Diátaxis Documentation Expert](https://github.com/github/awes
 
 Read shared guidelines from the meta-skill (parent directory):
 
-- `../reference/code-exploration.md` — code graph tools (tokensave) decision tree
-- `../reference/documentation_standards.md` — generic doc writing standards (README, API docs, changelogs, ADRs)
-- `../reference/general-principles.md` — SOLID, KISS, composition over inheritance (language-agnostic)
-- `../reference/tool-messages.md` — "not installed" messages for the tool-failure handler
-- `../scripts/python/` — shared scanning scripts
+- `../docs/reference/code/code-exploration.md` — code graph tools (tokensave) decision tree
+- `../docs/explanation/documentation/standards.md` — generic doc writing standards (README, API docs, changelogs, ADRs)
+- `../docs/explanation/code/general-principles.md` — SOLID, KISS, composition over inheritance (language-agnostic)
+- `../docs/reference/tool-messages.md` — "not installed" messages for the tool-failure handler
+- `../src/zolletta_metaskill/shared/` — shared scanning scripts
+- `../src/zolletta_metaskill/patterns/` — pattern-specific scanning scripts
 
 **Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
 
-Local scripts and references are in this skill's own subdirectories:
+Local scripts and references are in these locations:
 
-- `scripts/` — drift detection tools (Python stdlib only)
-- `references/` — drift scoring, workflow, and standards documentation
+- `../src/zolletta_metaskill/documentor/` — drift detection tools (Python stdlib only)
+- `../docs/reference/documentation/` — drift scoring, workflow, and operational rules
+- `../docs/explanation/documentation/` — drift prevention strategies and documentation standards
 - `assets/` — report templates and sample data
 
 ---
@@ -125,12 +127,12 @@ When checking accuracy, the agent MUST:
 
 ### Tools
 
-| Tool | Purpose | Command |
-|------|---------|---------|
-| `drift_analyzer.py` | Full drift analysis between code and docs | `python scripts/drift_analyzer.py <repo> --min-severity high --json` |
-| `doc_staleness_scorer.py` | Score documentation freshness 0-100 | `python scripts/doc_staleness_scorer.py <repo> --threshold 60` |
-| `api_doc_validator.py` | Validate API docs against Python source (AST) | `python scripts/api_doc_validator.py <src> <docs> --recursive` |
-| `link_checker.py` | Audit all markdown links and anchors | `python scripts/link_checker.py <repo> --broken-only` |
+| Tool                      | Purpose                                       | Command                                                                                        |
+| ------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `drift_analyzer.py`       | Full drift analysis between code and docs     | `python src/zolletta_metaskill/documentor/drift_analyzer.py <repo> --min-severity high --json` |
+| `doc_staleness_scorer.py` | Score documentation freshness 0-100           | `python src/zolletta_metaskill/documentor/doc_staleness_scorer.py <repo> --threshold 60`       |
+| `api_doc_validator.py`    | Validate API docs against Python source (AST) | `python src/zolletta_metaskill/documentor/api_doc_validator.py <src> <docs> --recursive`       |
+| `link_checker.py`         | Audit all markdown links and anchors          | `python src/zolletta_metaskill/documentor/link_checker.py <repo> --broken-only`                |
 
 All tools: Python 3.8+ stdlib only, `--json` and `--help`, non-zero exit codes for CI, any OS.
 
@@ -149,17 +151,17 @@ When running automated tools, filter out these known false positive patterns:
 
 Load on demand — keep this file lean:
 
-- **[references/workflows-and-tool-reference.md](references/workflows-and-tool-reference.md)** — quick start, 5 core workflows, GitHub Actions + pre-commit recipes, complete per-tool parameter/output/exit-code reference.
-- **[references/scoring-categories-and-troubleshooting.md](references/scoring-categories-and-troubleshooting.md)** — staleness scoring model and weights, drift categories, auto-fix vs manual-fix classification, troubleshooting.
-- **[references/operational-rules.md](references/operational-rules.md)** — tool invocation conventions, false positive patterns, real drift patterns, workflow order, and drift report conventions.
-- **[../reference/documentation_standards.md](../reference/documentation_standards.md)** — README structure, API docs, changelogs, ADRs, docs-as-code standards — **shared**
-- **[references/drift_prevention_guide.md](references/drift_prevention_guide.md)** — coupling strategies, CI gates, review checklists, prevention patterns.
+- **[docs/reference/documentation/workflows-and-tools.md](../docs/reference/documentation/workflows-and-tools.md)** — quick start, 5 core workflows, GitHub Actions + pre-commit recipes, complete per-tool parameter/output/exit-code reference.
+- **[docs/reference/documentation/scoring-and-categories.md](../docs/reference/documentation/scoring-and-categories.md)** — staleness scoring model and weights, drift categories, auto-fix vs manual-fix classification, troubleshooting.
+- **[docs/reference/documentation/operational-rules.md](../docs/reference/documentation/operational-rules.md)** — tool invocation conventions, false positive patterns, real drift patterns, workflow order, and drift report conventions.
+- **[docs/explanation/documentation/standards.md](../docs/explanation/documentation/standards.md)** — README structure, API docs, changelogs, ADRs, docs-as-code standards — **shared**
+- **[docs/explanation/documentation/drift-prevention.md](../docs/explanation/documentation/drift-prevention.md)** — coupling strategies, CI gates, review checklists, prevention patterns.
 
 ### Assets
 
-| Asset | Description |
-|-------|-------------|
-| [Report Template](assets/report_template.md) | Template for drift analysis reports |
+| Asset                                              | Description                               |
+| -------------------------------------------------- | ----------------------------------------- |
+| [Report Template](assets/report_template.md)       | Template for drift analysis reports       |
 | [Sample Drift Data](assets/sample_drift_data.json) | Sample JSON for testing and demonstration |
 
 ---
@@ -174,7 +176,7 @@ Load on demand — keep this file lean:
    - `api_doc_validator.py` — API doc accuracy against source (AST)
    - `drift_analyzer.py` — full drift analysis
    - `doc_staleness_scorer.py` — freshness score
-   - **Non-English documentation**: if `documentation_language` in `settings.json` is not `"en"`, translate the English signpost headings and directory names before running the staleness scorer. Write a JSON file (see `--diataxis-translations` in `reference/scripts.md` for the format) with the translated equivalents and pass it via `--diataxis-translations <path>`. The English signposts (e.g. `"tutorials"`, `"prerequisites"`, `"what we will learn"`) are the keys — translate each to the documentation language. Also translate the README section defaults (`installation`, `usage`, `api`, `contributing`, `license`) and include them as `readme_sections` in the JSON.
+   - **Non-English documentation**: if `documentation.language` in `settings.json` is not `"en"`, translate the English signpost headings and directory names before running the staleness scorer. Write a JSON file (see `--diataxis-translations` in `docs/reference/code/scripts.md` for the format) with the translated equivalents and pass it via `--diataxis-translations <path>`. The English signposts (e.g. `"tutorials"`, `"prerequisites"`, `"what we will learn"`) are the keys — translate each to the documentation language. Also translate the README section defaults (`installation`, `usage`, `api`, `contributing`, `license`) and include them as `readme_sections` in the JSON.
 3. **Filter false positives** using the rules above.
 4. **Inventory docs:** List all `.md` files in `.backstage/` and classify by Diátaxis quadrant.
 5. **Review each document** against the Diátaxis compliance checklist (this is a doc-internal check — no source reading needed).

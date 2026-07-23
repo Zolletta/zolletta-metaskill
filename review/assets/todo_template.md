@@ -1,7 +1,7 @@
 # TODO — Review {{timestamp}}
 
-**Project:** {{project_name}}
-**Language:** {{language}}
+- **Project:** {{project_name}}
+- **Language:** {{language}}
 
 ## Detailed reports
 
@@ -61,8 +61,8 @@ For full findings (file paths, line numbers, impact, suggested fixes), see the s
 
 ## Previous review status
 
-| #          | Item           | Status                                    |
-| ---------- | -------------- | ----------------------------------------- |
+| #          | Item           | Status                                  |
+| ---------- | -------------- | --------------------------------------- |
 | {{prev_n}} | {{prev_title}} | ✅ Done / ⚠️ Partially done / ❌ Not done |
 
 ---

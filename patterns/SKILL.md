@@ -1,6 +1,6 @@
 ---
 name: zolletta-metaskill-patterns
-version: 1.1.0
+version: 2.0.0
 license: MIT + Commons Clause
 description: >
   Language-agnostic design pattern analysis with automated class metrics scanning. Detects God classes, SOLID violations, tight coupling, and composition-vs-inheritance issues in Python (via AST scripts) and other languages (via manual principle application). Use when refactoring a God class, evaluating structural quality, or planning a modular architecture. Succeeds and extends python-design-patterns (MIT, wshobson/agents).
@@ -38,15 +38,16 @@ The principles are language-agnostic (KISS, SOLID, Separation of Concerns, Compo
 
 ## Reference Files
 
-This skill is organized into a lean entry point (this file) plus shared reference files in `../reference/`. Some are **mandatory reading** (marked with ★) — you must read them before starting any review. Others are optional and can be read on demand.
+This skill is organized into a lean entry point (this file) plus shared reference files in `../docs/`. Some are **mandatory reading** (marked with ★) — you must read them before starting any review. Others are optional and can be read on demand.
 
-| File | Mandatory | Content |
-| ---  | ---       | --- |
-| [general-principles.md](../reference/general-principles.md) | ★ | Language-agnostic principles: SOLID (SRP, OCP, LSP, ISP, DIP), KISS, Separation of Concerns, Composition over Inheritance, Rule of Three, function size, dependency injection, God class detection procedure, "What is NOT a God class" criteria, common anti-patterns, and manual checks for non-Python languages — **shared** |
-| [python-review.md](../reference/python-review.md) | ★ | Python-specific patterns: strategy pattern with autodiscovery, one-class-per-file convention, naming conventions, test structure mirroring, test God class splitting, Protocol vs ABC guidance — **shared** |
-| [scripts.md](../reference/scripts.md) | ★ | Full reference for all 10 scripts: usage, options, examples, and the complete 14-step workflow — **shared** |
-| [code-exploration.md](../reference/code-exploration.md) | on demand | Code graph tools (tokensave) decision tree, subagent guidance, and task templates — **shared** |
-| [tool-messages.md](../reference/tool-messages.md) | on demand | "not installed" messages for the tool-failure handler — **shared** |
+| File                                                                                   | Mandatory | Content                                                                                                                                                                                                                                                                                                                         |
+| -------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [general-principles.md](../docs/explanation/code/general-principles.md)                | ★         | Language-agnostic principles: SOLID (SRP, OCP, LSP, ISP, DIP), KISS, Separation of Concerns, Composition over Inheritance, Rule of Three, function size, dependency injection, God class detection procedure, "What is NOT a God class" criteria, common anti-patterns, and manual checks for non-Python languages — **shared** |
+| [python-review-patterns.md](../docs/explanation/code/python/python-review-patterns.md) | ★         | Python-specific patterns: strategy pattern with autodiscovery, Protocol vs ABC guidance — **shared**                                                                                                                                                                                                                            |
+| [structural-conventions.md](../docs/explanation/code/structural-conventions.md)        | ★         | One-class-per-file convention, naming conventions, test structure mirroring, test God class splitting — **shared**                                                                                                                                                                                                              |
+| [scripts.md](../docs/reference/code/scripts.md)                                        | ★         | Full reference for all 10 scripts: usage, options, examples, and the complete 14-step workflow — **shared**                                                                                                                                                                                                                     |
+| [code-exploration.md](../docs/reference/code/code-exploration.md)                      | on demand | Code graph tools (tokensave) decision tree, subagent guidance, and task templates — **shared**                                                                                                                                                                                                                                  |
+| [tool-messages.md](../docs/reference/tool-messages.md)                                 | on demand | "not installed" messages for the tool-failure handler — **shared**                                                                                                                                                                                                                                                              |
 
 **Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
 

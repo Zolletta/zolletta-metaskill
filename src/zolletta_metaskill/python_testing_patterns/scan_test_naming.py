@@ -1,0 +1,281 @@
+#!/usr/bin/env python3
+"""Check test function naming against the ``test_<unit>_<scenario>_<expected>`` convention.
+
+Reports test functions whose name (after stripping the ``test_`` prefix) has
+fewer than ``--min-segments`` underscore-separated segments. The convention
+expects at least 3 segments: the unit under test, the scenario, and the
+expected outcome.
+
+Example::
+
+    # Good — 3 segments: init, with_valid_dependencies, stores_attributes
+    test_init_with_valid_dependencies_stores_attributes
+
+    # Bad — 1 segment: init (no scenario, no expected outcome)
+    test_init
+
+    # Bad — 2 segments: to_dict, returns_expected (missing unit context)
+    test_to_dict_returns_expected
+
+The scanner is deterministic: the same input always produces the same output.
+This replaces manual AI review of test function names, which was
+non-deterministic and produced different violation counts on each run.
+
+Usage:
+    python3 scan_test_naming.py <directory> [--min-segments N] [--strict] [--json] [--skip]
+
+Arguments:
+    directory       Root test directory to scan (default: tests)
+
+Options:
+    --min-segments N   Minimum segments after test_ (default: 3)
+    --strict           Exit with code 1 if violations are found
+    --json             Output as JSON instead of markdown
+    --skip             Skip this check entirely (exit 0 with 'skipped' message)
+
+Exit code: 0 if no violations (or --strict not set or --skip),
+           1 if violations found with --strict.
+
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+from zolletta_metaskill.common.models import Finding, ModuleInfo
+from zolletta_metaskill.common.registry import (
+    ensure_engine,
+    get_engine_for_file,
+)
+from zolletta_metaskill.engines.python_engine import PythonEngine
+
+
+def _ensure_python_engine() -> None:
+    """Ensure the PythonEngine is registered."""
+    ensure_engine(PythonEngine())
+
+
+def _count_segments(func_name: str) -> int:
+    """Count underscore-separated segments after the ``test_`` prefix.
+
+    Returns 0 if the name doesn't start with ``test_``.
+    """
+    if not func_name.startswith("test_"):
+        return 0
+    rest = func_name[len("test_"):]
+    # Filter out empty segments (e.g. test__foo) and count non-empty parts
+    segments = [s for s in rest.split("_") if s]
+    return len(segments)
+
+
+def _find_test_functions(file_path: Path) -> list[tuple[str, int]]:
+    """Return (function_name, line_number) for every test_ function in a file.
+
+    Uses the registered language engine to parse the file.  Both top-level
+    test functions and test methods inside classes are discovered.
+    """
+    _ensure_python_engine()
+    engine = get_engine_for_file(file_path)
+    if engine is None:  # pragma: no cover
+        return []
+    module = engine.parse_module(file_path)
+    if module.has_syntax_error:
+        return []
+
+    results: list[tuple[str, int]] = []
+    for func in module.functions:
+        if func.name.startswith("test_"):
+            results.append((func.name, func.lineno))
+    for cls in module.classes:
+        for method in cls.methods:
+            if method.name.startswith("test_"):
+                results.append((method.name, method.lineno))
+    return results
+
+
+def scan_module(module: ModuleInfo, min_segments: int = 3) -> list[Finding]:
+    """Scan a parsed module for test-naming convention violations.
+
+    Args:
+        module: The :class:`ModuleInfo` produced by an engine.
+        min_segments: Minimum number of underscore-separated segments
+            required after the ``test_`` prefix.
+
+    Returns:
+        A list of :class:`Finding` objects with category ``"test_naming"``.
+
+    """
+    if module.has_syntax_error:
+        return []
+
+    findings: list[Finding] = []
+    file_path = str(module.path)
+
+    for func in module.functions:
+        if not func.name.startswith("test_"):
+            continue
+        segments = _count_segments(func.name)
+        if segments < min_segments:
+            findings.append(
+                Finding(
+                    file=file_path,
+                    line=func.lineno,
+                    category="test_naming",
+                    severity="medium",
+                    description=(
+                        f"Test function '{func.name}' has {segments} segments, "
+                        f"expected >= {min_segments}"
+                    ),
+                    fix_type="manual",
+                )
+            )
+
+    for cls in module.classes:
+        for method in cls.methods:
+            if not method.name.startswith("test_"):
+                continue
+            segments = _count_segments(method.name)
+            if segments < min_segments:
+                findings.append(
+                    Finding(
+                        file=file_path,
+                        line=method.lineno,
+                        category="test_naming",
+                        severity="medium",
+                        description=(
+                            f"Test method '{method.name}' has {segments} segments, "
+                            f"expected >= {min_segments}"
+                        ),
+                        fix_type="manual",
+                    )
+                )
+
+    return findings
+
+
+def scan_file(path: Path, min_segments: int = 3) -> list[Finding]:
+    """Backward-compatible wrapper that uses the registry to get an engine.
+
+    Args:
+        path: Path to a test file.
+        min_segments: Minimum number of underscore-separated segments
+            required after the ``test_`` prefix.
+
+    Returns:
+        A list of :class:`Finding` objects (empty if no engine matches or
+        the file has a syntax error).
+
+    """
+    _ensure_python_engine()
+    engine = get_engine_for_file(path)
+    if engine is None:  # pragma: no cover
+        return []
+    module = engine.parse_module(path)
+    return scan_module(module, min_segments)
+
+
+def main() -> int:
+    """Entry point for the test naming convention checker CLI."""
+    parser = argparse.ArgumentParser(
+        description="Check test function naming: test_<unit>_<scenario>_<expected>. "
+        "Flags functions with fewer than --min-segments segments after test_."
+    )
+    parser.add_argument(
+        "directory", nargs="?", default="tests",
+        help="Root test directory to scan (default: tests)",
+    )
+    parser.add_argument(
+        "--min-segments", type=int, default=3,
+        help="Minimum segments after test_ prefix (default: 3)",
+    )
+    parser.add_argument("--strict", action="store_true", help="Exit 1 if violations found")
+    parser.add_argument("--json", action="store_true", help="Output as JSON")
+    parser.add_argument(
+        "--skip", action="store_true",
+        help="Skip this check entirely (exit 0 with 'skipped' message)",
+    )
+    args = parser.parse_args()
+
+    _ensure_python_engine()
+    if args.skip:
+        if not args.json:
+            print("=" * 70)
+            print("TEST FUNCTION NAMING — VALIDATION REPORT")
+            print("=" * 70)
+            print("\nResult: SKIPPED (--skip flag)\n")
+        return 0
+
+    test_root = Path(args.directory)
+    if not test_root.exists():
+        print(f"Error: directory '{test_root}' does not exist", file=sys.stderr)
+        return 1
+
+    ignore_dirs = {"__pycache__", ".venv", "venv", ".tox", "dist", "build"}
+
+    violations: list[dict[str, Any]] = []
+    total_test_functions = 0
+
+    for py in sorted(test_root.rglob("*.py")):
+        if any(part in ignore_dirs for part in py.parts):
+            continue
+        # Only scan test files (test_*.py or *_test.py)
+        if not (py.name.startswith("test_") or py.name.endswith("_test.py")):
+            continue
+
+        test_funcs = _find_test_functions(py)
+        for func_name, line_no in test_funcs:
+            total_test_functions += 1
+            segments = _count_segments(func_name)
+            if segments < args.min_segments:
+                violations.append({
+                    "file": str(py.relative_to(test_root)),
+                    "line": line_no,
+                    "function": func_name,
+                    "segments": segments,
+                    "min_required": args.min_segments,
+                })
+
+    if args.json:
+        print(json.dumps({
+            "total_test_functions": total_test_functions,
+            "violation_count": len(violations),
+            "min_segments": args.min_segments,
+            "violations": violations,
+        }, indent=2))
+    else:
+        print("=" * 70)
+        print("TEST FUNCTION NAMING — VALIDATION REPORT")
+        print("=" * 70)
+        print(f"\nTest directory: {test_root}")
+        print(f"Minimum segments after test_: {args.min_segments}")
+        print(f"Total test functions scanned: {total_test_functions}")
+        print(f"Violations: {len(violations)}")
+        if total_test_functions > 0:
+            pct = (len(violations) / total_test_functions) * 100
+            print(f"Violation rate: {pct:.1f}%")
+        print()
+
+        if violations:
+            print(f"{'File':<55} {'Line':>5} {'Function':<45} {'Segs':>5}")
+            print("-" * 115)
+            for v in violations:
+                print(f"{v['file']:<55} {v['line']:>5} {v['function']:<45} {v['segments']:>5}")
+            print()
+            print(f"These test functions have fewer than {args.min_segments} segments")
+            print("after the test_ prefix. The convention expects:")
+            print("  test_<unit>_<scenario>_<expected_outcome>")
+            print("Rename to include the scenario and expected outcome.")
+        else:
+            print("All test functions meet the naming convention.\n")
+
+    if args.strict and violations:
+        return 1
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    sys.exit(main())

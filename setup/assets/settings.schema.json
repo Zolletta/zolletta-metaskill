@@ -1,0 +1,383 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zolletta-metaskill/schemas/settings.schema.json",
+  "title": "Zolletta-metaskill settings.json",
+  "description": "Project-wide configuration written by /zolletta-metaskill setup and read by every other subcommand. The prose documentation lives in docs/reference/settings-schema.md — this schema is the machine-readable counterpart. Keep both in sync.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "setup_version",
+    "setup_timestamp",
+    "language",
+    "container_name",
+    "tokensave_available",
+    "acronyms",
+    "python",
+    "php",
+    "external_review_model",
+    "documentation",
+    "reports_dir"
+  ],
+  "properties": {
+    "setup_version": {
+      "type": "string",
+      "description": "Matches the skill version that wrote the file."
+    },
+    "setup_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the last setup run."
+    },
+    "language": {
+      "type": "string",
+      "description": "Detected project language (lowercase).",
+      "enum": ["", "python", "php", "typescript", "javascript", "go", "rust", "java", "kotlin", "ruby", "c", "cpp", "csharp", "swift", "scala", "other"]
+    },
+    "container_name": {
+      "type": ["string", "null"],
+      "description": "Docker container name for running tools. null if no Docker."
+    },
+    "tokensave_available": {
+      "type": "boolean",
+      "description": "true if tokensave_status responds (probed directly)."
+    },
+    "acronyms": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Project-specific acronyms that must stay uppercase in class names (e.g. [\"CITE\"]). Extracted from AGENTS.md during setup. Always present, even for non-Python projects.",
+      "default": []
+    },
+    "python": {
+      "$ref": "#/$defs/python",
+      "description": "Python tooling, rule toggles, and effective tool configuration. null for non-Python projects."
+    },
+    "php": {
+      "$ref": "#/$defs/php",
+      "description": "PHP tooling, rule toggles, autoload mapping, and effective tool configuration. null for non-PHP projects."
+    },
+    "external_review_model": {
+      "type": "string",
+      "description": "Default model for external-review (overridable by front-matter).",
+      "default": "swe"
+    },
+    "documentation": {
+      "$ref": "#/$defs/documentation",
+      "description": "Documentation configuration."
+    },
+    "reports_dir": {
+      "type": "string",
+      "description": "Directory where review reports are saved.",
+      "default": ".zolletta-metaskill/reports"
+    }
+  },
+
+  "$defs": {
+
+    "documentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["language", "dir"],
+      "properties": {
+        "language": {
+          "type": "string",
+          "description": "ISO 639-1 code for documentation language (default: en). When not en, the documentor skill translates Diataxis signpost headings.",
+          "default": "en"
+        },
+        "dir": {
+          "type": "string",
+          "description": "Directory where project documentation lives (default: docs). Used by the documentor skill to locate the Diataxis docs tree.",
+          "default": "docs"
+        }
+      }
+    },
+
+    "python": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tools", "code_style", "testing", "pyproject_mtime"],
+          "properties": {
+            "tools": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["uv", "ruff", "pytest", "ty", "vulture", "mypy"],
+              "properties": {
+                "uv":      { "$ref": "#/$defs/python_tools_uv" },
+                "ruff":    { "$ref": "#/$defs/python_tools_ruff" },
+                "pytest":  { "$ref": "#/$defs/python_tools_pytest" },
+                "ty":      { "$ref": "#/$defs/python_tools_ty" },
+                "vulture": { "$ref": "#/$defs/python_tools_vulture" },
+                "mypy":    { "$ref": "#/$defs/python_tools_mypy" }
+              }
+            },
+            "code_style": { "$ref": "#/$defs/python_code_style" },
+            "testing":    { "$ref": "#/$defs/python_testing" },
+            "pyproject_mtime": {
+              "type": "number",
+              "description": "Modification time of pyproject.toml at last extraction (Unix timestamp). The setup guard uses it to detect staleness and trigger a light refresh."
+            }
+          }
+        }
+      ]
+    },
+
+    "python_tools_uv": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available"],
+      "properties": {
+        "available": { "type": "boolean" }
+      }
+    },
+
+    "python_tools_ruff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "line_length", "target_version", "select", "ignore"],
+      "properties": {
+        "available":      { "type": "boolean" },
+        "line_length":    { "type": "integer", "minimum": 1 },
+        "target_version": { "type": "string", "description": "e.g. py312, py310" },
+        "select":         { "type": "array", "items": { "type": "string" } },
+        "ignore":         { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "python_tools_pytest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "addopts", "testpaths", "minversion"],
+      "properties": {
+        "available":   { "type": "boolean" },
+        "addopts":     { "type": "array", "items": { "type": "string" } },
+        "testpaths":   { "type": "array", "items": { "type": "string" } },
+        "minversion":  { "type": ["string", "null"] }
+      }
+    },
+
+    "python_tools_ty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "python_version"],
+      "properties": {
+        "available":       { "type": "boolean" },
+        "python_version":  { "type": ["string", "null"] }
+      }
+    },
+
+    "python_tools_vulture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available"],
+      "properties": {
+        "available": { "type": "boolean" }
+      }
+    },
+
+    "python_tools_mypy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "strict", "python_version"],
+      "properties": {
+        "available":      { "type": "boolean" },
+        "strict":         { "type": "boolean" },
+        "python_version": { "type": ["string", "null"] }
+      }
+    },
+
+    "python_code_style": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "check_acronym_casing",
+        "check_no_relative_imports",
+        "check_one_class_per_file",
+        "check_filename_matches_class",
+        "check_public_docstrings",
+        "check_docstring_no_type_repeat",
+        "check_skip_obvious_docstrings",
+        "check_line_length",
+        "vulture_min_confidence"
+      ],
+      "properties": {
+        "check_acronym_casing":           { "type": "boolean", "default": true },
+        "check_no_relative_imports":      { "type": "boolean", "default": true },
+        "check_one_class_per_file":       { "type": "boolean", "default": true },
+        "check_filename_matches_class":   { "type": "boolean", "default": true },
+        "check_public_docstrings":        { "type": "boolean", "default": true },
+        "check_docstring_no_type_repeat": { "type": "boolean", "default": true },
+        "check_skip_obvious_docstrings":  { "type": "boolean", "default": true },
+        "check_line_length":              { "type": "boolean", "default": true },
+        "vulture_min_confidence":         { "type": "integer", "minimum": 0, "maximum": 100, "default": 80 }
+      }
+    },
+
+    "python_testing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "coverage_gap_threshold",
+        "coverage_well_covered_threshold",
+        "check_test_naming"
+      ],
+      "properties": {
+        "coverage_gap_threshold":          { "type": "integer", "minimum": 0, "maximum": 100, "default": 50 },
+        "coverage_well_covered_threshold": { "type": "integer", "minimum": 0, "maximum": 100, "default": 80 },
+        "check_test_naming":               { "type": "boolean", "default": true }
+      }
+    },
+
+    "php": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tools", "code_style", "testing", "autoload", "php_version", "composer_mtime"],
+          "properties": {
+            "tools": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["phpunit", "phpstan", "psalm", "php_cs_fixer", "phpcs"],
+              "properties": {
+                "phpunit":      { "$ref": "#/$defs/php_tools_phpunit" },
+                "phpstan":      { "$ref": "#/$defs/php_tools_phpstan" },
+                "psalm":        { "$ref": "#/$defs/php_tools_psalm" },
+                "php_cs_fixer": { "$ref": "#/$defs/php_tools_php_cs_fixer" },
+                "phpcs":        { "$ref": "#/$defs/php_tools_phpcs" }
+              }
+            },
+            "code_style":     { "$ref": "#/$defs/php_code_style" },
+            "testing":        { "$ref": "#/$defs/php_testing" },
+            "autoload":       { "$ref": "#/$defs/php_autoload" },
+            "php_version":    { "type": ["string", "null"], "description": "Minimum PHP version extracted from composer.json require.php (e.g. 8.2). null if unknown." },
+            "composer_mtime": { "type": "number", "description": "Modification time of composer.json at last extraction (Unix timestamp). The setup guard uses it to detect staleness and trigger a light refresh." }
+          }
+        }
+      ]
+    },
+
+    "php_tools_phpunit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "bootstrap", "testpaths", "coverage_config"],
+      "properties": {
+        "available":       { "type": "boolean" },
+        "bootstrap":       { "type": ["string", "null"], "description": "Path to the bootstrap file (e.g. vendor/autoload.php). null if not configured." },
+        "testpaths":       { "type": "array", "items": { "type": "string" } },
+        "coverage_config": { "type": ["boolean", "null"], "description": "true if phpunit.xml configures coverage, false/null otherwise." }
+      }
+    },
+
+    "php_tools_phpstan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "level", "paths", "memory_limit"],
+      "properties": {
+        "available":     { "type": "boolean" },
+        "level":         { "type": ["integer", "null"], "minimum": 0, "maximum": 9, "description": "PHPStan analysis level (0-9). null if config could not be read." },
+        "paths":         { "type": "array", "items": { "type": "string" } },
+        "memory_limit":  { "type": ["string", "null"], "description": "e.g. 256M. null if not configured." }
+      }
+    },
+
+    "php_tools_psalm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "error_level", "paths"],
+      "properties": {
+        "available":    { "type": "boolean" },
+        "error_level":  { "type": ["integer", "null"], "minimum": 1, "maximum": 8, "description": "Psalm error level (1-8). null if config could not be read." },
+        "paths":        { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "php_tools_php_cs_fixer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "config_file"],
+      "properties": {
+        "available":   { "type": "boolean" },
+        "config_file": { "type": "boolean", "description": "true if .php-cs-fixer.php or .php-cs-fixer.dist.php exists. The file is PHP code and cannot be parsed by setup — the php-code-style skill reads it at review time." }
+      }
+    },
+
+    "php_tools_phpcs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "standard"],
+      "properties": {
+        "available": { "type": "boolean" },
+        "standard":  { "type": ["string", "null"], "description": "Coding standard (e.g. PSR12, Custom). null if not configured." }
+      }
+    },
+
+    "php_code_style": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "check_union_types",
+        "check_intersection_types",
+        "check_enum_methods",
+        "check_first_class_callables",
+        "check_readonly_classes",
+        "check_typed_constants",
+        "check_override_attribute",
+        "check_property_hooks",
+        "check_asymmetric_visibility",
+        "check_pipe_operator",
+        "check_array_functions",
+        "check_string_functions"
+      ],
+      "properties": {
+        "check_union_types":            { "type": "boolean", "default": true },
+        "check_intersection_types":     { "type": "boolean", "default": true },
+        "check_enum_methods":           { "type": "boolean", "default": true },
+        "check_first_class_callables":  { "type": "boolean", "default": true },
+        "check_readonly_classes":       { "type": "boolean", "default": true },
+        "check_typed_constants":        { "type": "boolean", "default": true },
+        "check_override_attribute":     { "type": "boolean", "default": true },
+        "check_property_hooks":         { "type": "boolean", "default": true },
+        "check_asymmetric_visibility":  { "type": "boolean", "default": true },
+        "check_pipe_operator":          { "type": "boolean", "default": true },
+        "check_array_functions":        { "type": "boolean", "default": true },
+        "check_string_functions":       { "type": "boolean", "default": true }
+      }
+    },
+
+    "php_testing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "coverage_gap_threshold",
+        "coverage_well_covered_threshold",
+        "check_test_naming"
+      ],
+      "properties": {
+        "coverage_gap_threshold":          { "type": "integer", "minimum": 0, "maximum": 100, "default": 50 },
+        "coverage_well_covered_threshold": { "type": "integer", "minimum": 0, "maximum": 100, "default": 80 },
+        "check_test_naming":               { "type": "boolean", "default": true }
+      }
+    },
+
+    "php_autoload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["psr-4", "psr-4-dev"],
+      "properties": {
+        "psr-4": {
+          "type": "object",
+          "description": "Production namespace to directory mapping from composer.json autoload.psr-4 (e.g. {\"App\\\\\": \"src/\"}). Empty object if absent.",
+          "additionalProperties": { "type": "string" }
+        },
+        "psr-4-dev": {
+          "type": "object",
+          "description": "Test namespace to directory mapping from composer.json autoload-dev.psr-4 (e.g. {\"Tests\\\\\": \"tests/\"}). Empty object if absent.",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    }
+  }
+}

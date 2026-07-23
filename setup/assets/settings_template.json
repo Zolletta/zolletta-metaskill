@@ -1,31 +1,16 @@
 {
-  "setup_version": "1.1.0",
+  "setup_version": "2.0.0",
   "setup_timestamp": "",
   "language": "",
   "container_name": null,
   "tokensave_available": false,
+  "acronyms": [],
   "python": null,
-  "python_config": null,
-  "python_code_style_available": false,
-  "python_testing_patterns_available": false,
-  "python_code_style_rules": {
-    "check_acronym_casing": true,
-    "acronyms": [],
-    "check_no_relative_imports": true,
-    "check_one_class_per_file": true,
-    "check_filename_matches_class": true,
-    "check_public_docstrings": true,
-    "check_docstring_no_type_repeat": true,
-    "check_skip_obvious_docstrings": true,
-    "check_line_length": true,
-    "vulture_min_confidence": 80
-  },
-  "python_testing_patterns_rules": {
-    "coverage_gap_threshold": 50,
-    "coverage_well_covered_threshold": 80,
-    "check_test_naming": true
-  },
+  "php": null,
   "external_review_model": "swe",
-  "documentation_language": "en",
-  "reports_dir": ".zolletta-metaskill/reports"
+  "reports_dir": ".zolletta-metaskill/reports",
+  "documentation": {
+    "language": "en",
+    "dir": "docs"
+  }
 }

@@ -4,15 +4,31 @@ All notable changes to the Zolletta-metaskill skill family are documented in thi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - 2026-07-17
+## [2.0.0] - 2026-07-23
 
 ### Added
 
-#### Multi-language documentation support
+- `install.sh` script — one-command installer that copies the skill to `~/.agents/skills/` and symlinks it into every detected agent tool's skills directory
+- Frontmatter wildcard syntax (`python-*`, `php-*`) for the `skills:` field — language-specific skills no longer need to be listed individually
+- `php-pro` companion skill suggestion — when a PHP project is detected, setup prints a "not installed" message suggesting php-pro as an implementation skill
+- Language-agnostic explanation docs: `docs/explanation/code/error-handling.md`, `docs/explanation/code/performance.md`, `docs/explanation/code/security.md` — 10 rules promoted from php-best-practices with both PHP and Python examples
+- **PHP language support** — `PHPEngine` (tree-sitter-php), PHP SOLID scanners (`scan_php_dependency_inversion`, `scan_php_interface_segregation`, `scan_php_open_closed`), `php-code-style` skill (33 PHP-specific rules: 21 always-on + 12 configurable, version-gated by detected `php_version`), `php-testing-patterns` skill (PHPUnit naming, mirroring, coverage gaps, mocking, data providers)
+- **Language-neutral common infrastructure** — `ModuleInfo` data model, `LanguageEngine` protocol, and engine registry (`register_engine` / `get_engine` / `get_engine_for_file` / `ensure_engine` / `available_languages`) in `src/zolletta_metaskill/common/`
+- **`PythonEngine`** wrapping the `ast` module in `src/zolletta_metaskill/engines/`
+- **`PHPEngine`** wrapping tree-sitter with the tree-sitter-php grammar in `src/zolletta_metaskill/engines/` — includes `parse_raw()` for scanners needing direct tree-sitter AST access
+- PHP-specific SOLID scanners in `src/zolletta_metaskill/php_patterns/` (DIP, ISP, OCP via `instanceof` chains)
+- PHP tooling detection in setup (phpunit, phpstan, psalm, php-cs-fixer, phpcs) with `php` object in `settings.json`
+- `setup/assets/settings.schema.json` — machine-readable JSON Schema (draft 2020-12) for `settings.json`
+- `tree-sitter` / `tree-sitter-php` optional dependencies (`pip install zolletta-metaskill[php]`)
+- Recovered test suite — 1266 tests at 97% overall coverage (every file ≥92%)
 
-- **`documentation_language` field in `settings.json`** — ISO 639-1 code (default: `"en"`). When not English, the `documentor` skill translates the Diátaxis signpost headings before running the staleness scorer
-- **`--diataxis-translations` flag in `doc_staleness_scorer.py`** — accepts a JSON file with translated directory names and section headings. Directory names are merged additively (English + translated), section headings are replaced (translated is authoritative). Also supports translated README section defaults
-- **English signposts as translation keys** — the built-in English strings (`"tutorials"`, `"prerequisites"`, `"what we will learn"`, etc.) act as signposts. The agent translates each to the documentation language and writes the translations to a JSON file. This keeps the scorer deterministic while supporting any language
+### Changed
+
+- **7 scanners refactored** to consume `ModuleInfo` via the `LanguageEngine` protocol instead of Python `ast` directly — scanners in `shared/` and `patterns/` are now language-agnostic
+- **Setup detection now supports PHP** — detects `composer.json`, PSR-4 autoload mappings, PHPStan, PHPUnit, Psalm, PHP CS Fixer, and PHPCS configuration
+- **Settings schema extended** with a `php` configuration section (`php.code_style` toggles expanded from 3 to 12 configurable rules matching the php-code-style skill, `php.composer_mtime` for staleness checks)
+- "Supported languages" line updated from "Python / Others (Work in progress)" to "Python, PHP / Others (Work in progress)"
+- Setup guard extended with PHP staleness check (`composer.json` mtime vs `php.composer_mtime`)
 
 ## [1.0.0] - 2026-07-17
 
@@ -28,11 +44,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - **Project setup** — auto-detects language, Docker container, tokensave availability, and Python tooling (uv, ruff, pytest, ty, vulture, mypy). Creates `.zolletta-metaskill/settings.json` with effective tool configuration extracted from `pyproject.toml`. Prints helpful "not installed" messages for missing tools — never installs anything
 - **Setup guard** — every subcommand checks for `settings.json` before running. If missing, setup runs automatically. For Python projects, a staleness check re-extracts `pyproject.toml` configuration when the file changes — no full re-setup needed
-- **Settings schema documentation** — full field-by-field reference for `settings.json` at `reference/settings-schema.md`, covering tool availability, effective configuration, and all configurable rule toggles
+- **Settings schema documentation** — full field-by-field reference for `settings.json` at `docs/reference/settings-schema.md`, covering tool availability, effective configuration, and all configurable rule toggles
 
 #### Documentation review
 
 - **Documentation review** — structure, accuracy, consistency, and freshness checks with automated drift detection (staleness scoring, broken links, API doc validation). Supports [Diátaxis](https://diataxis.fr/)-structured docs (detects quadrant directories and applies appropriate completeness checks) and falls back to README-style sections for other layouts
+- **Multi-language documentation support** — `documentation_language` field in `settings.json` (ISO 639-1 code, default: `"en"`). When not English, the `documentor` skill translates the Diátaxis signpost headings before running the staleness scorer. `--diataxis-translations` flag in `doc_staleness_scorer.py` accepts a JSON file with translated directory names and section headings
 
 #### Design pattern analysis
 
@@ -64,5 +81,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Reports and references
 
-- **Report templates** — each skill ships a markdown report template with grade, tool results, severity tables, and recommendations. The zolletta-metaskill logo is embedded as a base64 data URI in every report footer
-- **Shared references** — code-exploration decision tree, general review principles, documentation standards, tool messages, review-mode rules, and scripts reference — all in `reference/`, linked from every skill
+- **Report templates** — each skill ships a markdown report template with grade, tool results, severity tables, and recommendations. The Zolletta-metaskill logo is embedded as a base64 data URI in every report footer
+- **Shared references** — code-exploration decision tree, general review principles, documentation standards, tool messages, review-mode rules, and scripts reference — all in `docs/`, linked from every skill
