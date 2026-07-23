@@ -28,7 +28,7 @@ def _parse_if(source: str) -> ast.If:
     for node in ast.walk(tree):
         if isinstance(node, ast.If):
             return node
-    raise AssertionError("No If found")
+    raise AssertionError("No If found")  # pragma: no cover
 
 
 def _parse_call(source: str) -> ast.Call:
@@ -36,7 +36,7 @@ def _parse_call(source: str) -> ast.Call:
     for node in ast.walk(tree):
         if isinstance(node, ast.Call):
             return node
-    raise AssertionError("No Call found")
+    raise AssertionError("No Call found")  # pragma: no cover
 
 
 def _parse_match(source: str) -> ast.Match:
@@ -44,7 +44,7 @@ def _parse_match(source: str) -> ast.Match:
     for node in ast.walk(tree):
         if isinstance(node, ast.Match):
             return node
-    raise AssertionError("No Match found")
+    raise AssertionError("No Match found")  # pragma: no cover
 
 
 class TestIsTypeCheck:
@@ -62,7 +62,7 @@ class TestIsTypeCheck:
             if isinstance(node, ast.Compare):
                 assert _is_type_check(node) is True
                 return
-        raise AssertionError("No Compare found")
+        raise AssertionError("No Compare found")  # pragma: no cover
 
     def test_class_name_compare(self) -> None:
         tree = _parse("obj.__class__.__name__ == 'Foo'")
@@ -70,7 +70,7 @@ class TestIsTypeCheck:
             if isinstance(node, ast.Compare):
                 assert _is_type_check(node) is True
                 return
-        raise AssertionError("No Compare found")
+        raise AssertionError("No Compare found")  # pragma: no cover
 
     def test_type_attr_compare(self) -> None:
         tree = _parse("obj.type == 'foo'")
@@ -78,7 +78,7 @@ class TestIsTypeCheck:
             if isinstance(node, ast.Compare):
                 assert _is_type_check(node) is True
                 return
-        raise AssertionError("No Compare found")
+        raise AssertionError("No Compare found")  # pragma: no cover
 
     def test_kind_attr_compare(self) -> None:
         tree = _parse("obj.kind == 'foo'")
@@ -86,7 +86,7 @@ class TestIsTypeCheck:
             if isinstance(node, ast.Compare):
                 assert _is_type_check(node) is True
                 return
-        raise AssertionError("No Compare found")
+        raise AssertionError("No Compare found")  # pragma: no cover
 
     def test_class_attr_compare(self) -> None:
         tree = _parse("obj.__class__ == Foo")
@@ -94,7 +94,7 @@ class TestIsTypeCheck:
             if isinstance(node, ast.Compare):
                 assert _is_type_check(node) is True
                 return
-        raise AssertionError("No Compare found")
+        raise AssertionError("No Compare found")  # pragma: no cover
 
     def test_non_type_compare(self) -> None:
         tree = _parse("x == 5")
@@ -102,7 +102,7 @@ class TestIsTypeCheck:
             if isinstance(node, ast.Compare):
                 assert _is_type_check(node) is False
                 return
-        raise AssertionError("No Compare found")
+        raise AssertionError("No Compare found")  # pragma: no cover
 
     def test_non_type_call(self) -> None:
         node = _parse_call("len(x)")
@@ -114,7 +114,7 @@ class TestIsTypeCheck:
             if isinstance(node, ast.Assign):
                 assert _is_type_check(node) is False
                 return
-        raise AssertionError("No Assign found")
+        raise AssertionError("No Assign found")  # pragma: no cover
 
 
 class TestContainsTypeCheck:
@@ -124,7 +124,7 @@ class TestContainsTypeCheck:
             if isinstance(node, ast.BoolOp):
                 assert _contains_type_check(node) is True
                 return
-        raise AssertionError("No BoolOp found")
+        raise AssertionError("No BoolOp found")  # pragma: no cover
 
     def test_bool_op_without_type_check(self) -> None:
         tree = _parse("x > 0 and y > 0")
@@ -132,7 +132,7 @@ class TestContainsTypeCheck:
             if isinstance(node, ast.BoolOp):
                 assert _contains_type_check(node) is False
                 return
-        raise AssertionError("No BoolOp found")
+        raise AssertionError("No BoolOp found")  # pragma: no cover
 
     def test_non_bool_op(self) -> None:
         node = _parse_call("isinstance(x, int)")
@@ -144,7 +144,7 @@ class TestContainsTypeCheck:
             if isinstance(node, ast.BoolOp):
                 assert _contains_type_check(node) is True
                 return
-        raise AssertionError("No BoolOp found")
+        raise AssertionError("No BoolOp found")  # pragma: no cover
 
 
 class TestCountTypeBranches:
@@ -200,6 +200,11 @@ class TestIsStringTypeDispatch:
         node = _parse_call("len(x)")
         assert _is_string_type_dispatch(node) is False
 
+    def test_attribute_call_not_getattr(self) -> None:
+        """Attribute call where attr is not 'getattr' (e.g. obj.method(...))."""
+        node = _parse_call('obj.method("method_" + t)')
+        assert _is_string_type_dispatch(node) is False
+
     def test_getattr_with_one_arg(self) -> None:
         node = _parse_call('builtins.getattr(obj)')
         assert _is_string_type_dispatch(node) is False
@@ -210,7 +215,7 @@ class TestIsStringTypeDispatch:
             if isinstance(node, ast.Assign):
                 assert _is_string_type_dispatch(node) is False
                 return
-        raise AssertionError("No Assign found")
+        raise AssertionError("No Assign found")  # pragma: no cover
 
 
 class TestFindMatchOnType:

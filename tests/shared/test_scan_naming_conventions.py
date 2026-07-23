@@ -483,6 +483,21 @@ class TestMain:
         assert rc == 0
         assert "all clear" in out
 
+    def test_main_test_conftest_file_skipped(self, tmp_path: Path,
+                                             capsys: pytest.CaptureFixture[str],
+                                             monkeypatch) -> None:
+        """test_conftest.py is not flagged as orphan (common non-SUT test file)."""
+        src_pkg, test_pkg = self._make_project(tmp_path)
+        (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
+        (test_pkg / "test_cache.py").write_text("def test_cache():\n    pass\n")
+        (test_pkg / "test_conftest.py").write_text("def test_conftest():\n    pass\n")
+        monkeypatch.setattr(sys, "argv", ["prog", "--src", str(tmp_path / "src"),
+                                          "--tests", str(tmp_path / "tests")])
+        rc = main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "test_conftest.py" not in out
+
     def test_main_ignore_dirs_on_test_files(self, tmp_path: Path,
                                             capsys: pytest.CaptureFixture[str],
                                             monkeypatch) -> None:

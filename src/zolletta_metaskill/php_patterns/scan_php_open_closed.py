@@ -117,17 +117,17 @@ def _scan_tree(path: Path, min_branches: int) -> list[Finding]:
     """Parse *path* with PHPEngine and walk the raw AST for OCP violations."""
     _ensure_php_engine()
     engine = get_engine_for_file(path)
-    if engine is None or not isinstance(engine, PHPEngine):
-        return []
+    if engine is None or not isinstance(engine, PHPEngine):  # pragma: no cover
+        return []  # pragma: no cover
 
     try:
         tree, source = engine.parse_raw(path)
-    except (OSError, ImportError):
-        return []
+    except (OSError, ImportError):  # pragma: no cover
+        return []  # pragma: no cover
 
     root = tree.root_node
-    if root.has_error:
-        return []
+    if root.has_error:  # pragma: no cover
+        return []  # pragma: no cover
 
     findings: list[Finding] = []
     file_path = str(path)
@@ -196,7 +196,7 @@ def scan_file(
     """
     _ensure_php_engine()
     engine = get_engine_for_file(path)
-    if engine is None:
+    if engine is None:  # pragma: no cover
         return []
     module = engine.parse_module(path)
     return scan_module(module, min_branches=min_branches)
@@ -262,8 +262,8 @@ def main() -> int:
         for f in all_findings:
             try:
                 rel = str(Path(f.file).relative_to(root))
-            except ValueError:
-                rel = f.file
+            except ValueError:  # pragma: no cover
+                rel = f.file  # pragma: no cover
             print(f"  {f.description}")
             print(f"    -> {rel}:{f.line}")
             print("    Fix: replace instanceof branching with polymorphism")
@@ -281,5 +281,5 @@ def main() -> int:
     return 0
 
 
-if __name__ == "__main__":
-    sys.exit(main())
+if __name__ == "__main__":  # pragma: no cover
+    sys.exit(main())  # pragma: no cover

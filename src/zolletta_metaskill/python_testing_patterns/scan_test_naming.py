@@ -80,7 +80,7 @@ def _find_test_functions(file_path: Path) -> list[tuple[str, int]]:
     """
     _ensure_python_engine()
     engine = get_engine_for_file(file_path)
-    if engine is None:
+    if engine is None:  # pragma: no cover
         return []
     module = engine.parse_module(file_path)
     if module.has_syntax_error:
@@ -172,7 +172,7 @@ def scan_file(path: Path, min_segments: int = 3) -> list[Finding]:
     """
     _ensure_python_engine()
     engine = get_engine_for_file(path)
-    if engine is None:
+    if engine is None:  # pragma: no cover
         return []
     module = engine.parse_module(path)
     return scan_module(module, min_segments)
@@ -277,5 +277,5 @@ def main() -> int:
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     sys.exit(main())

@@ -194,6 +194,15 @@ class TestExtractDecoratorNames:
         assert isinstance(func, ast.FunctionDef)
         assert _extract_decorator_names(func.decorator_list) == ["functools.wraps"]
 
+    def test_call_decorator_with_name_func(self) -> None:
+        import ast
+
+        src = '@deprecated("1.0")\ndef old(): pass\n'
+        tree = ast.parse(src)
+        func = tree.body[0]
+        assert isinstance(func, ast.FunctionDef)
+        assert _extract_decorator_names(func.decorator_list) == ["deprecated"]
+
     def test_empty(self) -> None:
         import ast
 
@@ -384,6 +393,21 @@ class TestExtractSignatures:
         assert sigs[0].decorators == ["deprecated"]
         assert sigs[0].is_deprecated is True
 
+    def test_private_class_excluded_by_default(self, tmp_path: Path) -> None:
+        p = tmp_path / "mod.py"
+        p.write_text("class _Private:\n    pass\nclass Public:\n    pass\n")
+        sigs = extract_signatures(str(p))
+        names = [s.name for s in sigs]
+        assert "Public" in names
+        assert "_Private" not in names
+
+    def test_private_class_included_with_flag(self, tmp_path: Path) -> None:
+        p = tmp_path / "mod.py"
+        p.write_text("class _Private:\n    pass\n")
+        sigs = extract_signatures(str(p), include_private=True)
+        names = [s.name for s in sigs]
+        assert "_Private" in names
+
 
 # ---------------------------------------------------------------------------
 # extract_all_signatures
@@ -475,6 +499,17 @@ class TestExtractDocumentedItems:
         param_names = [p["name"] for p in items["foo"]["parameters"]]
         assert "a" in param_names
         assert "b" in param_names
+
+    def test_multiple_headings_carry_params(self, tmp_path: Path) -> None:
+        p = tmp_path / "api.md"
+        p.write_text(
+            "### `foo()`\n\n- `a` (int): first param\n\n### `bar()`\n\n- `x` (str): param\n"
+        )
+        items = extract_documented_items(str(p))
+        assert "foo" in items
+        assert "bar" in items
+        foo_params = [p["name"] for p in items["foo"]["parameters"]]
+        assert "a" in foo_params
 
     def test_nonexistent_file(self, tmp_path: Path) -> None:
         items = extract_documented_items(str(tmp_path / "nope.md"))
@@ -587,6 +622,23 @@ class TestValidateApiDocs:
                               "parameters": []}}
         issues, suggestions = validate_api_docs(source_sigs, documented)
         assert issues == []
+
+    def test_qualified_name_skipped_when_simple_name_present(self) -> None:
+        """Qualified name is skipped to avoid duplicate suggestions.
+
+        When both 'method' and 'MyClass.method' are in source_by_name,
+        the qualified name entry is skipped.
+        """
+        method_sig = SourceSignature(
+            "method", "method", "mod.py", 1, [{"name": "x"}], parent_class="MyClass"
+        )
+        source_sigs = {"mod.py": [method_sig]}
+        documented: dict[str, dict] = {}
+        issues, suggestions = validate_api_docs(source_sigs, documented)
+        # Only one suggestion for the method, not two
+        undoc = [s for s in suggestions if s["type"] == "undocumented"]
+        assert len(undoc) == 1
+        assert undoc[0]["name"] == "MyClass.method"
 
 
 # ---------------------------------------------------------------------------

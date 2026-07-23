@@ -279,6 +279,13 @@ class TestScanFile:
         assert len(findings) == 1
         assert "Service" in findings[0].description
 
+    def test_non_php_file_returns_empty(self, tmp_path: Path) -> None:
+        """A non-.php file returns no findings (no matching engine)."""
+        f = tmp_path / "script.py"
+        _write_php(f, "class Foo:\n    pass\n")
+        findings = scan_file(f)
+        assert findings == []
+
 
 @_skip_no_ts
 class TestScanModule:

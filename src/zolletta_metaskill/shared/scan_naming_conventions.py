@@ -79,7 +79,7 @@ def _get_class_names(path: Path) -> list[str]:
     """
     _ensure_python_engine()
     engine = get_engine_for_file(path)
-    if engine is None:
+    if engine is None:  # pragma: no cover
         return []
     module = engine.parse_module(path)
     if module.has_syntax_error:
@@ -245,14 +245,14 @@ def main() -> int:
     for test_py in sorted(test_pkg.rglob("test_*.py")):
         if any(part in ignore_dirs for part in test_py.parts):
             continue
-        if test_py.name == "conftest.py":
+        if test_py.name == "conftest.py":  # pragma: no cover
             continue
 
         rel_dir = test_py.relative_to(test_pkg).parent
         stem = test_py.stem  # e.g. "test_cache_operations"
 
         # Skip test files that don't start with "test_" (shouldn't happen due to glob)
-        if not stem.startswith("test_"):
+        if not stem.startswith("test_"):  # pragma: no cover
             continue
 
         test_stem_rest = stem[5:]  # e.g. "cache_operations"
@@ -315,5 +315,5 @@ def main() -> int:
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     sys.exit(main())

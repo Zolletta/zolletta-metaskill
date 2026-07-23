@@ -310,6 +310,59 @@ class Worker {
 
 
 @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+def test_parse_raw_returns_tree_and_source(tmp_path: Path) -> None:
+    """parse_raw returns the raw tree-sitter tree and source bytes."""
+    engine = PHPEngine()
+    src = """<?php
+class Foo {
+    public function bar(): void {}
+}
+"""
+    path = tmp_path / "Foo.php"
+    path.write_text(src, encoding="utf-8")
+
+    tree, source = engine.parse_raw(path)
+    assert source == src.encode("utf-8")
+    assert tree.root_node.type == "program"
+
+
+@pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+def test_get_parser_cached_on_repeated_parse(tmp_path: Path) -> None:
+    """The parser is created once and reused on subsequent calls."""
+    engine = PHPEngine()
+    path = tmp_path / "Foo.php"
+    path.write_text("<?php class Foo {}", encoding="utf-8")
+
+    engine.parse_module(path)
+    cached_parser = engine._parser
+    assert cached_parser is not None
+    # Second parse reuses the cached parser (covers the early-return branch).
+    engine.parse_module(path)
+    assert engine._parser is cached_parser
+
+
+@pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+def test_parse_throws_variable_rethrow(tmp_path: Path) -> None:
+    """A ``throw $var`` (rethrow) has no object creation, so no type is recorded."""
+    engine = PHPEngine()
+    src = """<?php
+class Worker {
+    public function rethrow(\\Exception $ex): void {
+        throw $ex;
+    }
+}
+"""
+    path = tmp_path / "Rethrow.php"
+    path.write_text(src, encoding="utf-8")
+
+    info = engine.parse_module(path)
+    cls = info.classes[0]
+    rethrow = next(m for m in cls.methods if m.name == "rethrow")
+    # No object_creation_expression → no type name extracted.
+    assert rethrow.raises == []
+
+
+@pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
 def test_parse_syntax_error(tmp_path: Path) -> None:
     engine = PHPEngine()
     src = "<?php class { "

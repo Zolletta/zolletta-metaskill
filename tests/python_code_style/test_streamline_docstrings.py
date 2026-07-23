@@ -142,6 +142,15 @@ class TestRebuildDocstring:
         result = rebuild_docstring([""], [("Args:", ["    x: the x"])])
         assert result.startswith("Args:")
 
+    def test_section_body_trailing_blank_stripped(self) -> None:
+        """Trailing blank lines in a section body are stripped by the second while loop."""
+        result = rebuild_docstring(["Summary."], [("Args:", ["    x: the x", ""])])
+        assert "Summary." in result
+        assert "Args:" in result
+        assert "    x: the x" in result
+        # The trailing blank from the body is removed, then D413 blank is appended
+        assert result == "Summary.\n\nArgs:\n    x: the x\n"
+
 
 # ---------------------------------------------------------------------------
 # _arg_name_from_entry
@@ -699,6 +708,39 @@ class TestApplyEdits:
         report = process_file(src, True, False, False, False)
         result = apply_edits(src, report.findings)
         assert "Helper" not in result
+
+    def test_remove_docstring_strips_trailing_blank(self, tmp_path: Path) -> None:
+        """When a docstring is removed and a blank line follows, the blank is also removed."""
+        src = tmp_path / "mod.py"
+        original = (
+            "def f(x: int) -> int:\n"
+            '    """\nArgs:\n    x: int\nReturns:\n    int"""\n'
+            "\n"
+            "    return x\n"
+        )
+        src.write_text(original, encoding="utf-8")
+        report = process_file(src, False, False, False, False)
+        result = apply_edits(src, report.findings)
+        # The docstring and the trailing blank line are both removed
+        assert "Args:" not in result
+        assert "return x" in result
+        # No double blank line left behind
+        assert "\n\n\n" not in result
+
+    def test_replace_docstring_no_trailing_newline(self, tmp_path: Path) -> None:
+        """When the last docstring line has no trailing newline, the replacement preserves it."""
+        src = tmp_path / "mod.py"
+        original = (
+            "def f(x: int) -> None:\n"
+            '    """Summary.\n\nArgs:\n    x: int"""'
+        )
+        src.write_bytes(original.encode("utf-8"))
+        report = process_file(src, False, False, False, False)
+        result = apply_edits(src, report.findings)
+        assert "Args:" not in result
+        assert "Summary." in result
+        # The result should not end with a newline (preserving original)
+        assert not result.endswith("\n")
 
 
 # ---------------------------------------------------------------------------

@@ -23,7 +23,7 @@ def _parse_class(source: str) -> ast.ClassDef:
     for node in ast.walk(tree):
         if isinstance(node, ast.ClassDef):
             return node
-    raise AssertionError("No class found in source")
+    raise AssertionError("No class found in source")  # pragma: no cover
 
 
 def _parse_func(source: str) -> ast.FunctionDef:
@@ -32,7 +32,7 @@ def _parse_func(source: str) -> ast.FunctionDef:
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef):
             return node
-    raise AssertionError("No FunctionDef found in source")
+    raise AssertionError("No FunctionDef found in source")  # pragma: no cover
 
 
 class TestGetClassInfo:

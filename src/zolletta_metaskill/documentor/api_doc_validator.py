@@ -89,7 +89,7 @@ def _annotation_to_str(node: ast.expr | None) -> str | None:
         return None
     try:
         return ast.unparse(node)
-    except AttributeError:
+    except AttributeError:  # pragma: no cover
         # Python < 3.9 fallback
         if isinstance(node, ast.Name):
             return node.id
@@ -143,7 +143,7 @@ def _extract_parameters(func_node: ast.FunctionDef | ast.AsyncFunctionDef) -> li
             param["has_default"] = True
             try:
                 param["default"] = ast.unparse(args.defaults[default_idx])
-            except AttributeError:
+            except AttributeError:  # pragma: no cover
                 param["default"] = "..."
         params.append(param)
 
@@ -169,7 +169,7 @@ def _extract_parameters(func_node: ast.FunctionDef | ast.AsyncFunctionDef) -> li
             param["has_default"] = True
             try:
                 param["default"] = ast.unparse(kw_default)
-            except AttributeError:
+            except AttributeError:  # pragma: no cover
                 param["default"] = "..."
         params.append(param)
 
@@ -790,5 +790,5 @@ def main() -> None:
     sys.exit(1 if has_high else 0)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

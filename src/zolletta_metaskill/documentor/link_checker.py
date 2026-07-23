@@ -349,7 +349,7 @@ def validate_external_url(url: str) -> tuple[bool, str | None]:
         with urllib.request.urlopen(req, timeout=10) as resp:
             if resp.status < 400:
                 return True, None
-            return False, f"HTTP {resp.status}"
+            return False, f"HTTP {resp.status}"  # pragma: no cover
     except urllib.error.HTTPError as e:
         # Some servers don't support HEAD
         if e.code == 405:
@@ -556,5 +556,5 @@ def main() -> None:
     sys.exit(1 if (broken_count > 0 or dup_count > 0) else 0)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

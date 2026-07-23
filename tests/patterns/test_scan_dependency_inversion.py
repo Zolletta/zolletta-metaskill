@@ -27,7 +27,7 @@ def _parse_class(source: str) -> ast.ClassDef:
     for node in ast.walk(tree):
         if isinstance(node, ast.ClassDef):
             return node
-    raise AssertionError("No class found in source")
+    raise AssertionError("No class found in source")  # pragma: no cover
 
 
 def _parse_call(source: str) -> ast.Call:
@@ -35,7 +35,7 @@ def _parse_call(source: str) -> ast.Call:
     for node in ast.walk(tree):
         if isinstance(node, ast.Call):
             return node
-    raise AssertionError("No Call found in source")
+    raise AssertionError("No Call found in source")  # pragma: no cover
 
 
 class TestIsDataClass:
@@ -229,12 +229,9 @@ class TestGetClassNameFromCall:
         assert _get_class_name_from_call(call) is None
 
     def test_other_node_type(self) -> None:
-        tree = ast.parse("x = 1")
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Assign):
-                # Not a Call node — function expects ast.Call
-                # but we test the None path via a non-matching func
-                pass
+        """Call with a func that is neither Name nor Attribute (e.g. Subscript)."""
+        call = _parse_call("d['key']()")
+        assert _get_class_name_from_call(call) is None
 
 
 class TestIsRealDependency:

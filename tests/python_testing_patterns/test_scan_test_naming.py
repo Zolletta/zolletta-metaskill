@@ -152,6 +152,21 @@ class TestFindTestFunctions:
         result = _find_test_functions(f)
         assert result == [("test_real_function_works", 6)]
 
+    def test_finds_test_methods_in_class(self, tmp_path: Path) -> None:
+        """Test methods inside classes are also discovered by _find_test_functions."""
+        f = tmp_path / "test_class.py"
+        f.write_text(
+            "class TestFoo:\n"
+            "    def test_init_with_valid_stores(self):\n"
+            "        assert True\n"
+            "    def helper(self):\n"
+            "        pass\n",
+        )
+        result = _find_test_functions(f)
+        names = [name for name, _ in result]
+        assert "test_init_with_valid_stores" in names
+        assert "helper" not in names
+
     def test_empty_file_returns_empty_list(self, tmp_path: Path) -> None:
         """A completely empty file yields no test functions."""
         f = tmp_path / "test_empty.py"
@@ -660,6 +675,36 @@ class TestScanModule:
         write_test_file(
             f,
             "class TestFoo:\n"
+            "    def test_init(self):\n"
+            "        assert True\n",
+        )
+        findings = scan_file(f)
+        assert len(findings) == 1
+        assert "test_init" in findings[0].description
+
+    def test_non_test_function_skipped(self, tmp_path: Path) -> None:
+        """Non-test top-level functions are skipped by scan_module."""
+        f = tmp_path / "test_mixed.py"
+        write_test_file(
+            f,
+            "def helper():\n"
+            "    pass\n"
+            "\n"
+            "def test_init():\n"
+            "    assert True\n",
+        )
+        findings = scan_file(f)
+        assert len(findings) == 1
+        assert "test_init" in findings[0].description
+
+    def test_non_test_method_in_class_skipped(self, tmp_path: Path) -> None:
+        """Non-test methods inside classes are skipped by scan_module."""
+        f = tmp_path / "test_class_mixed.py"
+        write_test_file(
+            f,
+            "class TestFoo:\n"
+            "    def setUp(self):\n"
+            "        pass\n"
             "    def test_init(self):\n"
             "        assert True\n",
         )

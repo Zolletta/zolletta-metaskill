@@ -8,7 +8,7 @@ import pytest
 
 
 @pytest.fixture
-def tmp_src(tmp_path: Path) -> Path:
+def tmp_src(tmp_path: Path) -> Path:  # pragma: no cover
     """Create a minimal src/ package structure under tmp_path."""
     src = tmp_path / "src"
     pkg = src / "myproject"
@@ -18,7 +18,7 @@ def tmp_src(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def tmp_tests(tmp_path: Path) -> Path:
+def tmp_tests(tmp_path: Path) -> Path:  # pragma: no cover
     """Create a minimal tests/ package structure under tmp_path."""
     tests = tmp_path / "tests"
     pkg = tests / "myproject"

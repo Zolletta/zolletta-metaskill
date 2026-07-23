@@ -207,6 +207,14 @@ class TestFindDocFiles:
         assert "README.md" in files
         assert not any("secrets" in f for f in files)
 
+    def test_gitignore_skip_file_name(self, tmp_path: Path) -> None:
+        (tmp_path / ".gitignore").write_text("ignored.md\n")
+        (tmp_path / "README.md").write_text("# Test")
+        (tmp_path / "ignored.md").write_text("# Ignored")
+        files = find_doc_files(str(tmp_path))
+        assert "README.md" in files
+        assert "ignored.md" not in files
+
 
 # ---------------------------------------------------------------------------
 # score_last_updated
@@ -303,6 +311,14 @@ class TestScoreCodeDocAlignment:
             score, details = score_code_doc_alignment(str(tmp_path), "doc.md")
             assert score == 40.0
 
+    def test_no_refs_with_git_moderate_changes(self, tmp_path: Path) -> None:
+        (tmp_path / "doc.md").write_text("# Title\n\nSome content.\n")
+        dt = datetime.now(UTC) - timedelta(days=10)
+        with patch.object(dss, "get_file_last_commit_date", return_value=dt), \
+             patch.object(dss, "get_code_changes_since", return_value=10):
+            score, details = score_code_doc_alignment(str(tmp_path), "doc.md")
+            assert score == 60.0
+
     def test_with_refs_all_exist(self, tmp_path: Path) -> None:
         (tmp_path / "doc.md").write_text("# Title\n\nSee [module](module.py).\n")
         (tmp_path / "module.py").write_text("# code")
@@ -321,6 +337,16 @@ class TestScoreCodeDocAlignment:
         (tmp_path / "module.py").write_text("# code")
         score, details = score_code_doc_alignment(str(tmp_path), "doc.md")
         assert score == 100.0
+
+    def test_ref_resolved_from_repo_root(self, tmp_path: Path) -> None:
+        """File ref that doesn't exist relative to doc dir but exists at repo root."""
+        sub = tmp_path / "docs"
+        sub.mkdir()
+        (sub / "doc.md").write_text("# Title\n\nSee [module](module.py).\n")
+        (tmp_path / "module.py").write_text("# code")
+        score, details = score_code_doc_alignment(str(tmp_path), "docs/doc.md")
+        assert score == 100.0
+        assert details["existing_files"] == 1
 
 
 # ---------------------------------------------------------------------------
@@ -377,6 +403,13 @@ class TestScoreLinkHealth:
         (tmp_path / "doc.md").write_text("# Title\n\n[link](https://example.com)\n")
         score, details = score_link_health(str(tmp_path), "doc.md")
         assert score == 100.0
+
+    def test_empty_anchor_link(self, tmp_path: Path) -> None:
+        """A link to just '#' (no file, no anchor) counts as valid."""
+        (tmp_path / "doc.md").write_text("# Title\n\n[empty](#)\n")
+        score, details = score_link_health(str(tmp_path), "doc.md")
+        assert score == 100.0
+        assert details["valid_links"] == 1
 
 
 # ---------------------------------------------------------------------------
@@ -457,6 +490,16 @@ class TestScoreCompleteness:
         assert details["any_of_groups_found"] == 1
         assert score == 100.0
 
+    def test_diataxis_how_to_any_of_missing(self, tmp_path: Path) -> None:
+        howto = tmp_path / "how-to"
+        howto.mkdir()
+        (howto / "guide.md").write_text("# Solution\n\n" + "content\n" * 15)
+        score, details = score_completeness(str(tmp_path), "how-to/guide.md", ["installation"])
+        assert details.get("doc_structure") == "diataxis"
+        assert details["any_of_groups_found"] == 0
+        assert len(details["any_of_groups_missing"]) == 1
+        assert score < 100.0
+
     def test_diataxis_reference_no_requirements(self, tmp_path: Path) -> None:
         ref = tmp_path / "reference"
         ref.mkdir()
@@ -513,12 +556,31 @@ class TestScoreAccuracy:
             score, details = score_accuracy(str(tmp_path), "doc.md")
             assert score == 100.0
 
+    def test_manifest_version_mismatch(self, tmp_path: Path) -> None:
+        (tmp_path / "doc.md").write_text("# Title\n\nVersion 0.9.0\n")
+        (tmp_path / "pyproject.toml").write_text('version = "1.0.0"\n')
+        with patch.object(dss, "get_latest_tag", return_value=None):
+            score, details = score_accuracy(str(tmp_path), "doc.md")
+            assert score == 0.0
+            assert any("FAIL" in c for c in details["checks"])
+
     def test_file_paths_valid(self, tmp_path: Path) -> None:
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "mod.py").write_text("# code")
         (tmp_path / "doc.md").write_text("# Title\n\nSee `src/mod.py`.\n")
         with patch.object(dss, "get_latest_tag", return_value=None):
             score, details = score_accuracy(str(tmp_path), "doc.md")
+            assert score == 100.0
+
+    def test_file_paths_resolved_from_repo_root(self, tmp_path: Path) -> None:
+        """File ref that doesn't exist relative to doc dir but exists at repo root."""
+        sub = tmp_path / "docs"
+        sub.mkdir()
+        (sub / "doc.md").write_text("# Title\n\nSee `src/mod.py`.\n")
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "mod.py").write_text("# code")
+        with patch.object(dss, "get_latest_tag", return_value=None):
+            score, details = score_accuracy(str(tmp_path), "docs/doc.md")
             assert score == 100.0
 
     def test_file_paths_broken(self, tmp_path: Path) -> None:
@@ -669,6 +731,23 @@ class TestMergeTranslations:
 
     def test_empty_translations(self) -> None:
         _merge_translations({})  # should not raise
+
+    def test_merge_any_of_groups(self) -> None:
+        original = {k: dict(v) for k, v in DIATAXIS_QUADRANTS.items()}
+        try:
+            translations = {
+                "quadrants": {
+                    "how-to": {"any_of_groups": [["Prerequisiti", "Prima di iniziare"]]}
+                }
+            }
+            _merge_translations(translations)
+            assert DIATAXIS_QUADRANTS["how-to"]["any_of_groups"] == [
+                ["prerequisiti", "prima di iniziare"]
+            ]
+        finally:
+            for k, v in original.items():
+                DIATAXIS_QUADRANTS[k].clear()
+                DIATAXIS_QUADRANTS[k].update(v)
 
 
 # ---------------------------------------------------------------------------
@@ -865,6 +944,21 @@ class TestMain:
                 main()
             assert exc.value.code == 0
 
+    def test_all_weight_flags(
+        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+    ) -> None:
+        (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
+        monkeypatch.setattr(sys, "argv", [
+            "doc_staleness_scorer.py", str(tmp_path),
+            "--weight-links", "0.2", "--weight-completeness", "0.2",
+            "--weight-accuracy", "0.2",
+        ])
+        with patch.object(dss, "get_file_last_commit_date", return_value=None), \
+             patch.object(dss, "get_latest_tag", return_value=None):
+            with pytest.raises(SystemExit) as exc:
+                main()
+            assert exc.value.code == 0
+
     def test_required_sections_override(
         self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
     ) -> None:
@@ -910,6 +1004,24 @@ class TestMain:
             "quadrants": {"tutorials": {"dir_names": ["guide"]}},
         }))
         (tmp_path / "README.md").write_text("# Installazione\n\n# Utilizzo\n" + "content\n" * 15)
+        monkeypatch.setattr(sys, "argv", [
+            "doc_staleness_scorer.py", str(tmp_path), "--diataxis-translations", str(trans),
+        ])
+        with patch.object(dss, "get_file_last_commit_date", return_value=None), \
+             patch.object(dss, "get_latest_tag", return_value=None):
+            with pytest.raises(SystemExit) as exc:
+                main()
+            assert exc.value.code == 0
+
+    def test_diataxis_translations_no_readme_sections(
+        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+    ) -> None:
+        """Translations without readme_sections fall back to DEFAULT_README_SECTIONS."""
+        trans = tmp_path / "trans.json"
+        trans.write_text(json.dumps({
+            "quadrants": {"tutorials": {"dir_names": ["guide"]}},
+        }))
+        (tmp_path / "README.md").write_text("# Installation\n\n# Usage\n" + "content\n" * 15)
         monkeypatch.setattr(sys, "argv", [
             "doc_staleness_scorer.py", str(tmp_path), "--diataxis-translations", str(trans),
         ])

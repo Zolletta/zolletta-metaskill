@@ -404,7 +404,7 @@ class TestValidateLink:
             # Only return True for the exact case "Guide.md", not "guide.md"
             if path.endswith("guide.md") and not path.endswith("Guide.md"):
                 return False
-            return real_exists(path)
+            return real_exists(path)  # pragma: no cover
 
         with patch("os.path.exists", side_effect=mock_exists):
             validate_link(link, str(tmp_path), {})
@@ -417,6 +417,14 @@ class TestValidateLink:
         link = LinkInfo("test.md", 1, "text", "#section", "cross_doc_anchor")
         validate_link(link, str(tmp_path), {})
         assert link.is_valid is True
+
+    def test_empty_file_part_with_broken_anchor(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.md"
+        f.write_text("# Other\n", encoding="utf-8")
+        link = LinkInfo("test.md", 1, "text", "#nonexistent", "cross_doc_anchor")
+        validate_link(link, str(tmp_path), {})
+        assert link.is_valid is False
+        assert "not found" in link.error
 
     def test_heading_cache_used(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
@@ -763,6 +771,21 @@ class TestMain:
         f = tmp_path / "README.md"
         f.write_text("# Title\n[link](guide.md)\n", encoding="utf-8")
         (tmp_path / "guide.md").write_text("# Guide\n", encoding="utf-8")
+        monkeypatch.setattr(sys, "argv", ["prog", str(f)])
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+        assert exc_info.value.code == 0
+
+    def test_single_file_finds_git_root(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When a file is passed, main() walks up to find the .git root."""
+        (tmp_path / ".git").mkdir()
+        sub = tmp_path / "docs"
+        sub.mkdir()
+        f = sub / "README.md"
+        f.write_text("# Title\n[link](guide.md)\n", encoding="utf-8")
+        (sub / "guide.md").write_text("# Guide\n", encoding="utf-8")
         monkeypatch.setattr(sys, "argv", ["prog", str(f)])
         with pytest.raises(SystemExit) as exc_info:
             main()

@@ -178,6 +178,12 @@ class TestGetRenamedFiles:
         with patch("zolletta_metaskill.documentor.drift_analyzer.run_git", return_value=output):
             assert get_renamed_files(str(tmp_path), "90 days ago") == []
 
+    def test_empty_lines_skipped(self, tmp_path: Path) -> None:
+        output = "\nR100\told.py\tnew.py\n\nR90\ta.py\tb.py\n\n"
+        with patch("zolletta_metaskill.documentor.drift_analyzer.run_git", return_value=output):
+            renames = get_renamed_files(str(tmp_path), "90 days ago")
+        assert renames == [("old.py", "new.py"), ("a.py", "b.py")]
+
 
 # ---------------------------------------------------------------------------
 # get_current_version_from_git
@@ -309,6 +315,18 @@ class TestMapDocsToCode:
         assert "README.md" in mapping
         assert os.path.join("src", "") in mapping["README.md"] or "src" in mapping["README.md"]
 
+    def test_parent_directory_proximity(self, tmp_path: Path) -> None:
+        """Doc in a subdirectory whose parent directory contains code files."""
+        (tmp_path / "pkg").mkdir()
+        (tmp_path / "pkg" / "mod.py").write_text("x = 1", encoding="utf-8")
+        (tmp_path / "pkg" / "docs").mkdir()
+        (tmp_path / "pkg" / "docs" / "guide.md").write_text("guide", encoding="utf-8")
+        doc_files = [os.path.join("pkg", "docs", "guide.md")]
+        code_files = [os.path.join("pkg", "mod.py")]
+        mapping = map_docs_to_code(str(tmp_path), doc_files, code_files)
+        assert os.path.join("pkg", "docs", "guide.md") in mapping
+        assert "pkg" in mapping[os.path.join("pkg", "docs", "guide.md")]
+
     def test_readme_naming_convention(self, tmp_path: Path) -> None:
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "README.md").write_text("# Auth", encoding="utf-8")
@@ -434,6 +452,69 @@ class TestDetectDriftForDoc:
         factual = [i for i in issues if i["category"] == "factual"]
         assert len(factual) == 1
         assert factual[0]["severity"] == "high"
+
+    def test_factual_drift_medium_severity(self, tmp_path: Path) -> None:
+        for i in range(4):
+            (tmp_path / f"mod{i}.py").write_text("x = 1", encoding="utf-8")
+        (tmp_path / "README.md").write_text(
+            "See " + " ".join(f"`mod{i}.py`" for i in range(4)), encoding="utf-8"
+        )
+        doc_modified = datetime.now(UTC) - timedelta(days=10)
+        with (
+            patch(
+                "zolletta_metaskill.documentor.drift_analyzer.get_file_last_modified",
+                return_value=doc_modified,
+            ),
+            patch(
+                "zolletta_metaskill.documentor.drift_analyzer.get_files_changed_since"
+            ) as mock_changed,
+        ):
+            mock_changed.return_value = [{"status": "M", "file": "mod0.py"}]
+            issues = detect_drift_for_doc(str(tmp_path), "README.md", [], [], None)
+        factual = [i for i in issues if i["category"] == "factual"]
+        assert len(factual) == 1
+        assert factual[0]["severity"] == "medium"
+
+    def test_non_code_ref_skipped(self, tmp_path: Path) -> None:
+        """Non-code file references (e.g. .md) are skipped in factual drift."""
+        (tmp_path / "guide.md").write_text("guide", encoding="utf-8")
+        (tmp_path / "README.md").write_text("See [guide](guide.md) for details.", encoding="utf-8")
+        doc_modified = datetime.now(UTC) - timedelta(days=10)
+        with (
+            patch(
+                "zolletta_metaskill.documentor.drift_analyzer.get_file_last_modified",
+                return_value=doc_modified,
+            ),
+            patch(
+                "zolletta_metaskill.documentor.drift_analyzer.get_files_changed_since",
+                return_value=[],
+            ),
+        ):
+            issues = detect_drift_for_doc(str(tmp_path), "README.md", [], [], None)
+        factual = [i for i in issues if i["category"] == "factual"]
+        assert len(factual) == 0
+
+    def test_ref_resolved_from_repo_root(self, tmp_path: Path) -> None:
+        """Code file ref that exists at repo root but not in doc's directory."""
+        sub = tmp_path / "docs"
+        sub.mkdir()
+        (sub / "guide.md").write_text("See `mod.py` for details.", encoding="utf-8")
+        (tmp_path / "mod.py").write_text("x = 1", encoding="utf-8")
+        doc_modified = datetime.now(UTC) - timedelta(days=10)
+        with (
+            patch(
+                "zolletta_metaskill.documentor.drift_analyzer.get_file_last_modified",
+                return_value=doc_modified,
+            ),
+            patch(
+                "zolletta_metaskill.documentor.drift_analyzer.get_files_changed_since"
+            ) as mock_changed,
+        ):
+            mock_changed.return_value = [{"status": "M", "file": "mod.py"}]
+            issues = detect_drift_for_doc(str(tmp_path), "docs/guide.md", [], [], None)
+        factual = [i for i in issues if i["category"] == "factual"]
+        assert len(factual) == 1
+        assert factual[0]["severity"] == "low"
 
     def test_temporal_staleness(self, tmp_path: Path) -> None:
         (tmp_path / "README.md").write_text("# Test", encoding="utf-8")
@@ -666,6 +747,9 @@ class TestVersionComparison:
 
     def test_different_lengths(self) -> None:
         assert _version_is_older("1.0", "1.0.1") is True
+
+    def test_v2_shorter_than_v1(self) -> None:
+        assert _version_is_older("1.0.1", "1.0") is False
 
     def test_with_prerelease(self) -> None:
         assert _version_is_older("1.0.0-alpha", "1.0.0") is False
@@ -904,6 +988,29 @@ class TestMain:
             "# Test\n## Usage\n## Installation\n## License\n", encoding="utf-8"
         )
         monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path), "--min-severity", "critical"])
+        with (
+            patch(
+                "zolletta_metaskill.documentor.drift_analyzer.get_file_last_modified",
+                return_value=None,
+            ),
+            patch(
+                "zolletta_metaskill.documentor.drift_analyzer.get_renamed_files", return_value=[]
+            ),
+            patch(
+                "zolletta_metaskill.documentor.drift_analyzer.get_current_version_from_git",
+                return_value=None,
+            ),pytest.raises(SystemExit) as exc_info
+        ):
+            main()
+        assert exc_info.value.code == 0
+
+    def test_non_readme_doc_no_associated_dirs(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A non-README doc with no code files gets default associated_dirs=['']."""
+        (tmp_path / ".git").mkdir()
+        (tmp_path / "guide.md").write_text("# Guide\n\nSome content.\n", encoding="utf-8")
+        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path)])
         with (
             patch(
                 "zolletta_metaskill.documentor.drift_analyzer.get_file_last_modified",

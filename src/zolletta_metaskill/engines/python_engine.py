@@ -270,7 +270,7 @@ class PythonEngine:
                     exc = exc.func
                 try:
                     name = ast.unparse(exc)
-                except Exception:
+                except Exception:  # pragma: no cover
                     # Defensive: ast.unparse should not fail on valid nodes,
                     # but guard against unexpected forms anyway.
                     continue

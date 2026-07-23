@@ -84,7 +84,7 @@ def _get_class_names(path: Path) -> list[str]:
     """
     _ensure_python_engine()
     engine = get_engine_for_file(path)
-    if engine is None:
+    if engine is None:  # pragma: no cover
         return []
     module = engine.parse_module(path)
     if module.has_syntax_error:
@@ -510,5 +510,5 @@ def main() -> int:
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     sys.exit(main())

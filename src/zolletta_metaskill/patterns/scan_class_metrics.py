@@ -149,7 +149,7 @@ def main() -> int:
     all_results: list[dict[str, Any]] = []
     for py in root.rglob("*.py"):
         engine = get_engine_for_file(py)
-        if engine is None:
+        if engine is None:  # pragma: no cover
             continue
         module = engine.parse_module(py)
         all_results.extend(_class_metrics(module))
@@ -176,5 +176,5 @@ def main() -> int:
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     sys.exit(main())

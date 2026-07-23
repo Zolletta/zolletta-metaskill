@@ -73,6 +73,12 @@ class TestScanFile:
         results = scan_file(f)
         assert results == []
 
+    def test_non_python_file_returns_empty(self, tmp_path: Path) -> None:
+        f = tmp_path / "readme.txt"
+        f.write_text("not python")
+        results = scan_file(f)
+        assert results == []
+
     def test_file_with_non_test_class(self, tmp_path: Path) -> None:
         f = tmp_path / "test_mod.py"
         f.write_text("class Helper:\n    def helper_method(self):\n        pass\n")

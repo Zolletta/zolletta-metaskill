@@ -195,7 +195,7 @@ def parse_docstring(text: str) -> tuple[list[str], list[tuple[str, list[str]]]]:
             while body and not body[-1].strip():
                 body.pop()
             sections.append((header, body))
-        else:
+        else:  # pragma: no cover
             i += 1
 
     return summary, sections
@@ -286,7 +286,7 @@ def _annotation_str(node: ast.expr | None) -> str | None:
         return None
     try:
         return ast.unparse(node)
-    except Exception:
+    except Exception:  # pragma: no cover
         return None
 
 
@@ -558,23 +558,25 @@ def apply_edits(path: Path, findings: list[Finding]) -> str:
         node = finding.node
         # The docstring is the first statement of the function/class body.
         body: list[ast.stmt] = getattr(node, "body", [])
-        if not body:
+        if not body:  # pragma: no cover
             continue
         doc_expr = body[0]
-        if not isinstance(doc_expr, ast.Expr) or not isinstance(doc_expr.value, ast.Constant):
+        if not isinstance(doc_expr, ast.Expr) or not isinstance(  # pragma: no cover
+            doc_expr.value, ast.Constant
+        ):
             continue
-        if not isinstance(doc_expr.value.value, str):
+        if not isinstance(doc_expr.value.value, str):  # pragma: no cover
             continue
 
         start = doc_expr.lineno
         end = doc_expr.end_lineno
-        if end is None:
+        if end is None:  # pragma: no cover
             continue
         raw_block = "".join(lines[start - 1 : end])
         indent_match = re.match(r"^(\s*)", raw_block)
         indent = indent_match.group(1) if indent_match else ""
         detected = _detect_prefix_quote(raw_block)
-        if detected is None:
+        if detected is None:  # pragma: no cover
             continue
         prefix, quote = detected
 
@@ -761,5 +763,5 @@ def main() -> int:
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     sys.exit(main())

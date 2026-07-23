@@ -105,6 +105,21 @@ class TestParseClasses:
         cls = _classes(info)["Foo"]
         assert cls.attributes == ["x", "y", "z"]
 
+    def test_class_method_with_local_variable_assignment(self, tmp_path: Path) -> None:
+        """Local variable assignments inside methods are not self attributes."""
+        path = _write(
+            tmp_path,
+            "mod.py",
+            "class Foo:\n"
+            "    def bar(self):\n"
+            "        local = 1\n"
+            "        self.value = local\n",
+        )
+        info = PythonEngine().parse_module(path)
+        cls = _classes(info)["Foo"]
+        # Only self.value is an attribute; local is not.
+        assert cls.attributes == ["value"]
+
     def test_class_with_static_method(self, tmp_path: Path) -> None:
         path = _write(
             tmp_path,
@@ -320,6 +335,12 @@ class TestAllExports:
 
     def test_no_all_exports(self, tmp_path: Path) -> None:
         path = _write(tmp_path, "mod.py", "x = 1\n")
+        info = PythonEngine().parse_module(path)
+        assert info.all_exports is None
+
+    def test_all_exports_tuple_not_collected(self, tmp_path: Path) -> None:
+        """A tuple ``__all__`` is not recognised (only lists are)."""
+        path = _write(tmp_path, "mod.py", '__all__ = ("Foo", "Bar")\n')
         info = PythonEngine().parse_module(path)
         assert info.all_exports is None
 

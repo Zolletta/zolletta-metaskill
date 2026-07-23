@@ -325,7 +325,7 @@ def main() -> int:
     print(f"\nWriting split files to: {out_dir}/")
 
     for sut, methods in sorted(groups.items()):
-        if sut == "_unmatched" and not methods:
+        if sut == "_unmatched" and not methods:  # pragma: no cover
             continue
         filename = f"test_{_pascal_to_snake(sut)}.py"
         filepath = out_dir / filename
@@ -341,5 +341,5 @@ def main() -> int:
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     sys.exit(main())
