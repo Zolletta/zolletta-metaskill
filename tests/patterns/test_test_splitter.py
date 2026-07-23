@@ -168,14 +168,18 @@ class TestGetSharedMethods:
 
 class TestAutoDerivePrefixes:
     def test_simple_prefixes(self) -> None:
-        methods = [_make_method("test_cache_get"), _make_method("test_cache_set"),
-                   _make_method("test_extract_defaults")]
+        methods: list[ast.FunctionDef | ast.AsyncFunctionDef] = [
+            _make_method("test_cache_get"), _make_method("test_cache_set"),
+            _make_method("test_extract_defaults"),
+        ]
         groups = _auto_derive_prefixes(methods)
         assert groups == {"cache": ["test_cache_get", "test_cache_set"],
                           "extract": ["test_extract_defaults"]}
 
     def test_single_token(self) -> None:
-        methods = [_make_method("test_cache"), _make_method("test_extract")]
+        methods: list[ast.FunctionDef | ast.AsyncFunctionDef] = [
+            _make_method("test_cache"), _make_method("test_extract"),
+        ]
         groups = _auto_derive_prefixes(methods)
         assert groups == {"cache": ["test_cache"], "extract": ["test_extract"]}
 
@@ -183,7 +187,9 @@ class TestAutoDerivePrefixes:
         assert _auto_derive_prefixes([]) == {}
 
     def test_preserves_method_names(self) -> None:
-        methods = [_make_method("test_cache_get"), _make_method("test_cache_set")]
+        methods: list[ast.FunctionDef | ast.AsyncFunctionDef] = [
+            _make_method("test_cache_get"), _make_method("test_cache_set"),
+        ]
         groups = _auto_derive_prefixes(methods)
         assert "test_cache_get" in groups["cache"]
         assert "test_cache_set" in groups["cache"]
@@ -191,8 +197,10 @@ class TestAutoDerivePrefixes:
 
 class TestGroupMethods:
     def test_groups_by_prefix(self) -> None:
-        methods = [_make_method("test_cache_get"), _make_method("test_cache_set"),
-                   _make_method("test_extract_defaults")]
+        methods: list[ast.FunctionDef | ast.AsyncFunctionDef] = [
+            _make_method("test_cache_get"), _make_method("test_cache_set"),
+            _make_method("test_extract_defaults"),
+        ]
         mapping = {"cache": "Cache", "extract": "Extractor"}
         groups = _group_methods(methods, mapping)
         assert "Cache" in groups
@@ -201,7 +209,9 @@ class TestGroupMethods:
         assert len(groups["Extractor"]) == 1
 
     def test_unmatched_methods(self) -> None:
-        methods = [_make_method("test_cache_get"), _make_method("test_unknown_thing")]
+        methods: list[ast.FunctionDef | ast.AsyncFunctionDef] = [
+            _make_method("test_cache_get"), _make_method("test_unknown_thing"),
+        ]
         mapping = {"cache": "Cache"}
         groups = _group_methods(methods, mapping)
         assert "_unmatched" in groups
@@ -209,21 +219,23 @@ class TestGroupMethods:
         assert groups["_unmatched"][0].name == "test_unknown_thing"
 
     def test_longest_prefix_match(self) -> None:
-        methods = [_make_method("test_extract_defaults")]
+        methods: list[ast.FunctionDef | ast.AsyncFunctionDef] = [
+            _make_method("test_extract_defaults"),
+        ]
         mapping = {"extract": "Extractor", "extract_defaults": "DefaultsExtractor"}
         groups = _group_methods(methods, mapping)
         assert "DefaultsExtractor" in groups
         assert len(groups["DefaultsExtractor"]) == 1
 
     def test_exact_prefix_match(self) -> None:
-        methods = [_make_method("test_cache")]
+        methods: list[ast.FunctionDef | ast.AsyncFunctionDef] = [_make_method("test_cache")]
         mapping = {"cache": "Cache"}
         groups = _group_methods(methods, mapping)
         assert "Cache" in groups
         assert len(groups["Cache"]) == 1
 
     def test_empty_mapping(self) -> None:
-        methods = [_make_method("test_cache_get")]
+        methods: list[ast.FunctionDef | ast.AsyncFunctionDef] = [_make_method("test_cache_get")]
         groups = _group_methods(methods, {})
         assert "_unmatched" in groups
         assert len(groups["_unmatched"]) == 1

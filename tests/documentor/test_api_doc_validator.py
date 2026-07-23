@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -579,7 +580,7 @@ class TestValidateApiDocs:
     def test_undocumented_suggestion(self) -> None:
         sig = SourceSignature("undoc", "function", "mod.py", 1, [{"name": "a"}])
         source_sigs = {"mod.py": [sig]}
-        documented: dict[str, dict] = {}
+        documented: dict[str, dict[str, Any]] = {}
         issues, suggestions = validate_api_docs(source_sigs, documented)
         assert any(s["type"] == "undocumented" for s in suggestions)
 
@@ -633,7 +634,7 @@ class TestValidateApiDocs:
             "method", "method", "mod.py", 1, [{"name": "x"}], parent_class="MyClass"
         )
         source_sigs = {"mod.py": [method_sig]}
-        documented: dict[str, dict] = {}
+        documented: dict[str, dict[str, Any]] = {}
         issues, suggestions = validate_api_docs(source_sigs, documented)
         # Only one suggestion for the method, not two
         undoc = [s for s in suggestions if s["type"] == "undocumented"]
@@ -758,7 +759,7 @@ class TestGenerateReport:
 
 class TestMain:
     def test_main_source_not_found(
-        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         monkeypatch.setattr(
             sys, "argv",
@@ -769,7 +770,7 @@ class TestMain:
         assert exc.value.code == 2
 
     def test_main_doc_not_found(
-        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         src = tmp_path / "src"
         src.mkdir()
@@ -783,7 +784,7 @@ class TestMain:
         assert exc.value.code == 2
 
     def test_main_directory_source(
-        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         src = tmp_path / "src"
         src.mkdir()
@@ -801,7 +802,7 @@ class TestMain:
         assert "API Documentation Validation Report" in out
 
     def test_main_single_file_source(
-        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         src = tmp_path / "mod.py"
         src.write_text("def foo(): pass\n")
@@ -815,7 +816,7 @@ class TestMain:
         assert exc.value.code == 0
 
     def test_main_json_output(
-        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         src = tmp_path / "src"
         src.mkdir()
@@ -834,7 +835,7 @@ class TestMain:
         assert "summary" in data
 
     def test_main_recursive(
-        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         src = tmp_path / "src"
         src.mkdir()
@@ -853,7 +854,7 @@ class TestMain:
         assert exc.value.code == 0
 
     def test_main_include_private(
-        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         src = tmp_path / "src"
         src.mkdir()
@@ -869,7 +870,7 @@ class TestMain:
         assert exc.value.code == 0
 
     def test_main_suggest_coverage(
-        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         src = tmp_path / "src"
         src.mkdir()
@@ -887,7 +888,7 @@ class TestMain:
         assert "DOCUMENTATION SUGGESTIONS" in out
 
     def test_main_high_severity_exit_1(
-        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         src = tmp_path / "src"
         src.mkdir()
@@ -902,7 +903,7 @@ class TestMain:
         assert exc.value.code == 1
 
     def test_main_non_python_source(
-        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         src = tmp_path / "data.txt"
         src.write_text("not python")

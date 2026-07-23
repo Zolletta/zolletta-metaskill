@@ -173,7 +173,7 @@ class TestMain:
     """Tests for main()."""
 
     def test_main_skip(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                       monkeypatch) -> None:
+                       monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(sys, "argv", ["prog", "--skip"])
         rc = main()
         out = capsys.readouterr().out
@@ -181,7 +181,7 @@ class TestMain:
         assert "SKIPPED" in out
 
     def test_main_missing_dir(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                              monkeypatch) -> None:
+                              monkeypatch: pytest.MonkeyPatch) -> None:
         missing = tmp_path / "nonexistent"
         monkeypatch.setattr(sys, "argv", ["prog", str(missing)])
         rc = main()
@@ -190,7 +190,7 @@ class TestMain:
         assert "does not exist" in err
 
     def test_main_all_clear(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                            monkeypatch) -> None:
+                            monkeypatch: pytest.MonkeyPatch) -> None:
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
@@ -203,7 +203,7 @@ class TestMain:
 
     def test_main_multi_class_report_only(self, tmp_path: Path,
                                           capsys: pytest.CaptureFixture[str],
-                                          monkeypatch) -> None:
+                                          monkeypatch: pytest.MonkeyPatch) -> None:
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
@@ -216,7 +216,7 @@ class TestMain:
         assert "2+ classes" in out
 
     def test_main_multi_class_strict(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                                     monkeypatch) -> None:
+                                     monkeypatch: pytest.MonkeyPatch) -> None:
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
@@ -228,7 +228,7 @@ class TestMain:
         assert "VIOLATIONS FOUND" in out
 
     def test_main_name_mismatch(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                                monkeypatch) -> None:
+                                monkeypatch: pytest.MonkeyPatch) -> None:
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
@@ -241,7 +241,7 @@ class TestMain:
         assert "WrongName" in out
 
     def test_main_name_mismatch_strict(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                                       monkeypatch) -> None:
+                                       monkeypatch: pytest.MonkeyPatch) -> None:
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
@@ -251,7 +251,7 @@ class TestMain:
         assert rc == 1
 
     def test_main_zero_class_reported(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                                      monkeypatch) -> None:
+                                      monkeypatch: pytest.MonkeyPatch) -> None:
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
@@ -264,7 +264,7 @@ class TestMain:
         assert "utils.py" in out
 
     def test_main_ignore_zero(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                              monkeypatch) -> None:
+                              monkeypatch: pytest.MonkeyPatch) -> None:
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
@@ -279,7 +279,7 @@ class TestMain:
 
     def test_main_ignore_zero_strict_no_violation(self, tmp_path: Path,
                                                   capsys: pytest.CaptureFixture[str],
-                                                  monkeypatch) -> None:
+                                                  monkeypatch: pytest.MonkeyPatch) -> None:
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
@@ -291,7 +291,7 @@ class TestMain:
         assert "all clear" in out
 
     def test_main_syntax_error_skipped(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                                       monkeypatch) -> None:
+                                       monkeypatch: pytest.MonkeyPatch) -> None:
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
@@ -304,7 +304,7 @@ class TestMain:
         assert "bad.py" not in out or "0 classes" in out
 
     def test_main_empty_dir(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                            monkeypatch) -> None:
+                            monkeypatch: pytest.MonkeyPatch) -> None:
         root = tmp_path / "src"
         root.mkdir()
         monkeypatch.setattr(sys, "argv", ["prog", str(root)])
@@ -314,7 +314,7 @@ class TestMain:
         assert "all clear" in out
 
     def test_main_nested_dirs(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                              monkeypatch) -> None:
+                              monkeypatch: pytest.MonkeyPatch) -> None:
         root = tmp_path / "src"
         sub = root / "models"
         sub.mkdir(parents=True)
@@ -330,7 +330,7 @@ class TestMain:
         assert "models/bad.py" in out
 
     def test_main_pycache_ignored(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                                  monkeypatch) -> None:
+                                  monkeypatch: pytest.MonkeyPatch) -> None:
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
@@ -346,7 +346,7 @@ class TestMain:
 
     def test_main_class_name_matches_filename(self, tmp_path: Path,
                                               capsys: pytest.CaptureFixture[str],
-                                              monkeypatch) -> None:
+                                              monkeypatch: pytest.MonkeyPatch) -> None:
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
@@ -358,7 +358,7 @@ class TestMain:
         assert "none" in out
 
     def test_main_class_name_equals_stem(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                                         monkeypatch) -> None:
+                                         monkeypatch: pytest.MonkeyPatch) -> None:
         """Class name == file stem (snake_case) is also accepted."""
         root = tmp_path / "src"
         root.mkdir()
@@ -371,7 +371,7 @@ class TestMain:
         assert "none" in out
 
     def test_main_default_src(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                              monkeypatch) -> None:
+                              monkeypatch: pytest.MonkeyPatch) -> None:
         """main() with default 'src' directory."""
         monkeypatch.chdir(tmp_path)
         root = tmp_path / "src"

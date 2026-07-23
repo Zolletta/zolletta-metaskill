@@ -51,7 +51,7 @@ select = ["E", "W", "F", "I", "B", "C4", "D", "UP", "T20", "SIM"]
 ignore = ["B008", "T201", "D104", "D107", "D203", "D213"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["D100", "D101", "D102", "D103", "D105"]
+"tests/**/*.py" = ["D100", "D101", "D102", "D103", "D105", "B010"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["zolletta_metaskill"]
@@ -59,7 +59,17 @@ known-first-party = ["zolletta_metaskill"]
 [tool.mypy]
 strict = true
 python_version = "3.12"
+python_executable = ".venv/bin/python"
+mypy_path = "src"
 exclude = ["zolletta-metaskill/"]
+
+[[tool.mypy.overrides]]
+module = ["tree_sitter.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+strict = false
 
 [tool.pytest.ini_options]
 addopts = ["-ra", "--tb=short"]
@@ -68,3 +78,5 @@ minversion = "8.0"
 
 [tool.vulture]
 min_confidence = 80
+paths = ["src"]
+exclude = [".venv/"]

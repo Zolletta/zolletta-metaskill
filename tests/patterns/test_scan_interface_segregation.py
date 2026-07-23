@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -165,7 +166,7 @@ class TestIsProtocolOrAbc:
         assert _is_protocol_or_abc(info) is False
 
     def test_empty_bases(self) -> None:
-        info = {"bases": []}
+        info: dict[str, Any] = {"bases": []}
         assert _is_protocol_or_abc(info) is False
 
     def test_multiple_bases_with_protocol(self) -> None:

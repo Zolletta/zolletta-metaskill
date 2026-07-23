@@ -321,6 +321,7 @@ class TestValidateLink:
         link = LinkInfo("test.md", 1, "text", "#nonexistent", "anchor")
         validate_link(link, str(tmp_path), {})
         assert link.is_valid is False
+        assert link.error is not None
         assert "not found" in link.error
 
     def test_local_file_valid(self, tmp_path: Path) -> None:
@@ -337,6 +338,7 @@ class TestValidateLink:
         link = LinkInfo("test.md", 1, "text", "nonexistent.md", "local_file")
         validate_link(link, str(tmp_path), {})
         assert link.is_valid is False
+        assert link.error is not None
         assert "not found" in link.error
 
     def test_local_file_from_repo_root(self, tmp_path: Path) -> None:
@@ -366,6 +368,7 @@ class TestValidateLink:
         link = LinkInfo("test.md", 1, "text", "guide.md#nonexistent", "cross_doc_anchor")
         validate_link(link, str(tmp_path), {})
         assert link.is_valid is False
+        assert link.error is not None
         assert "anchor" in link.error.lower()
 
     def test_cross_doc_anchor_non_markdown_file(self, tmp_path: Path) -> None:
@@ -409,6 +412,7 @@ class TestValidateLink:
         with patch("os.path.exists", side_effect=mock_exists):
             validate_link(link, str(tmp_path), {})
         assert link.is_valid is False
+        assert link.error is not None
         assert "case" in link.error.lower()
 
     def test_empty_file_part_with_anchor(self, tmp_path: Path) -> None:
@@ -424,6 +428,7 @@ class TestValidateLink:
         link = LinkInfo("test.md", 1, "text", "#nonexistent", "cross_doc_anchor")
         validate_link(link, str(tmp_path), {})
         assert link.is_valid is False
+        assert link.error is not None
         assert "not found" in link.error
 
     def test_heading_cache_used(self, tmp_path: Path) -> None:
@@ -496,6 +501,7 @@ class TestValidateExternalUrl:
         assert error is None
 
     def test_http_error_405_fallback_get(self) -> None:
+        import email.message
         import urllib.error
         from unittest.mock import MagicMock
 
@@ -505,21 +511,27 @@ class TestValidateExternalUrl:
         mock_resp.__exit__ = MagicMock(return_value=False)
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_urlopen.side_effect = [
-                urllib.error.HTTPError("url", 405, "Method Not Allowed", {}, None),
+                urllib.error.HTTPError(
+                    "url", 405, "Method Not Allowed", email.message.Message(), None,
+                ),
                 mock_resp,
             ]
             valid, error = validate_external_url("https://example.com")
         assert valid is True
 
     def test_http_error_404(self) -> None:
+        import email.message
         import urllib.error
 
         with patch(
             "urllib.request.urlopen",
-            side_effect=urllib.error.HTTPError("url", 404, "Not Found", {}, None),
+            side_effect=urllib.error.HTTPError(
+                "url", 404, "Not Found", email.message.Message(), None,
+            ),
         ):
             valid, error = validate_external_url("https://example.com")
         assert valid is False
+        assert error is not None
         assert "404" in error
 
     def test_url_error(self) -> None:
@@ -530,21 +542,26 @@ class TestValidateExternalUrl:
         with patch("urllib.request.urlopen", side_effect=err):
             valid, error = validate_external_url("https://example.com")
         assert valid is False
+        assert error is not None
         assert "connection refused" in error
 
     def test_generic_exception(self) -> None:
         with patch("urllib.request.urlopen", side_effect=Exception("boom")):
             valid, error = validate_external_url("https://example.com")
         assert valid is False
+        assert error is not None
         assert "boom" in error
 
     def test_405_get_fallback_failure(self) -> None:
+        import email.message
         import urllib.error
 
         # Both HEAD and GET fallback raise 405
         with patch(
             "urllib.request.urlopen",
-            side_effect=urllib.error.HTTPError("url", 405, "Method Not Allowed", {}, None),
+            side_effect=urllib.error.HTTPError(
+                "url", 405, "Method Not Allowed", email.message.Message(), None,
+            ),
         ):
             valid, error = validate_external_url("https://example.com")
         assert valid is False

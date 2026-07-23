@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -95,7 +96,7 @@ class TestLoadDefaultAcronyms:
         acronyms = _load_default_acronyms()
         assert "API" in acronyms
         assert "HTTP" in acronyms
-        assert 123 not in acronyms
+        assert cast(Any, 123) not in acronyms
         assert None not in acronyms
 
 
@@ -239,7 +240,7 @@ class TestLoadAcronymsFromSettings:
 
 class TestMain:
     def test_skip_flag_returns_zero(
-        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         monkeypatch.setattr(sys, "argv", ["scan", "--skip"])
         assert main() == 0
@@ -247,7 +248,7 @@ class TestMain:
         assert "SKIPPED" in out
 
     def test_skip_flag_with_json_no_output(
-        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         monkeypatch.setattr(sys, "argv", ["scan", "--skip", "--json"])
         assert main() == 0
@@ -255,7 +256,7 @@ class TestMain:
         assert out == ""
 
     def test_nonexistent_directory(
-        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         monkeypatch.setattr(sys, "argv", ["scan", "/nonexistent/path/xyz"])
         assert main() == 1
@@ -264,7 +265,7 @@ class TestMain:
 
     def test_no_violations(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
-        capsys: pytest.CaptureFixture,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         src = tmp_path / "src"
         src.mkdir()
@@ -276,7 +277,7 @@ class TestMain:
 
     def test_detects_violation(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
-        capsys: pytest.CaptureFixture,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         src = tmp_path / "src"
         src.mkdir()
@@ -307,7 +308,7 @@ class TestMain:
 
     def test_json_output(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
-        capsys: pytest.CaptureFixture,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         src = tmp_path / "src"
         src.mkdir()
@@ -321,7 +322,7 @@ class TestMain:
         assert data["violations"][0]["expected"] == "API"
 
     def test_json_output_no_violations(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         src = tmp_path / "src"
         src.mkdir()
@@ -383,7 +384,7 @@ class TestMain:
         assert main() == 0
 
     def test_multiple_violations_in_one_class(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         src = tmp_path / "src"
         src.mkdir()
@@ -396,7 +397,7 @@ class TestMain:
         assert data["violation_count"] == 2
 
     def test_correct_casing_not_flagged(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         src = tmp_path / "src"
         src.mkdir()

@@ -54,7 +54,7 @@ class TestMethodInfo:
         """MethodInfo is immutable."""
         m = MethodInfo(name="foo", lineno=1, end_lineno=5)
         with pytest.raises(FrozenInstanceError):
-            m.name = "bar"  # type: ignore[misc]
+            setattr(m, "name", "bar")
 
     def test_default_lists_are_independent(self) -> None:
         """Each instance gets its own default list (no shared mutable default)."""
@@ -114,7 +114,7 @@ class TestClassInfo:
         """ClassInfo is immutable."""
         c = ClassInfo(name="Foo", lineno=1, end_lineno=10)
         with pytest.raises(FrozenInstanceError):
-            c.name = "Bar"  # type: ignore[misc]
+            setattr(c, "name", "Bar")
 
     def test_default_lists_are_independent(self) -> None:
         """Each instance gets its own default list."""
@@ -151,7 +151,7 @@ class TestImportInfo:
         """ImportInfo is immutable."""
         imp = ImportInfo(module="os")
         with pytest.raises(FrozenInstanceError):
-            imp.module = "sys"  # type: ignore[misc]
+            setattr(imp, "module", "sys")
 
 
 class TestModuleInfo:
@@ -195,7 +195,7 @@ class TestModuleInfo:
         """ModuleInfo is immutable."""
         mi = ModuleInfo(path=Path("/tmp/foo.py"), language="python")
         with pytest.raises(FrozenInstanceError):
-            mi.language = "php"  # type: ignore[misc]
+            setattr(mi, "language", "php")
 
     def test_default_lists_are_independent(self) -> None:
         """Each instance gets its own default list."""
@@ -246,7 +246,7 @@ class TestFinding:
             description="Bad name.",
         )
         with pytest.raises(FrozenInstanceError):
-            f.line = 20  # type: ignore[misc]
+            setattr(f, "line", 20)
 
     def test_equality(self) -> None:
         """Two Findings with the same fields are equal."""

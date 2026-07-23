@@ -227,7 +227,7 @@ class TestMain:
         return src_pkg, test_pkg
 
     def test_main_skip(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                       monkeypatch) -> None:
+                       monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(sys, "argv", ["prog", "--skip"])
         rc = main()
         out = capsys.readouterr().out
@@ -235,7 +235,7 @@ class TestMain:
         assert "SKIPPED" in out
 
     def test_main_missing_src(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                              monkeypatch) -> None:
+                              monkeypatch: pytest.MonkeyPatch) -> None:
         tests = tmp_path / "tests"
         tests.mkdir()
         monkeypatch.setattr(sys, "argv", ["prog", "--src", str(tmp_path / "nosrc"),
@@ -246,7 +246,7 @@ class TestMain:
         assert "does not exist" in err
 
     def test_main_missing_tests(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                                monkeypatch) -> None:
+                                monkeypatch: pytest.MonkeyPatch) -> None:
         src = tmp_path / "src"
         src.mkdir()
         monkeypatch.setattr(sys, "argv", ["prog", "--src", str(src),
@@ -257,7 +257,7 @@ class TestMain:
         assert "does not exist" in err
 
     def test_main_all_clear(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                            monkeypatch) -> None:
+                            monkeypatch: pytest.MonkeyPatch) -> None:
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
         (test_pkg / "test_cache.py").write_text("def test_cache():\n    pass\n")
@@ -270,7 +270,7 @@ class TestMain:
 
     def test_main_missing_tests_reported(self, tmp_path: Path,
                                          capsys: pytest.CaptureFixture[str],
-                                         monkeypatch) -> None:
+                                         monkeypatch: pytest.MonkeyPatch) -> None:
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
         (src_pkg / "user.py").write_text("class User:\n    pass\n")
@@ -284,7 +284,7 @@ class TestMain:
         assert "user.py" in out
 
     def test_main_orphaned_test(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                                monkeypatch) -> None:
+                                monkeypatch: pytest.MonkeyPatch) -> None:
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
         (test_pkg / "test_cache.py").write_text("def test_cache():\n    pass\n")
@@ -298,7 +298,7 @@ class TestMain:
         assert "test_orphan.py" in out
 
     def test_main_misnamed_test(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                                monkeypatch) -> None:
+                                monkeypatch: pytest.MonkeyPatch) -> None:
         """Test file references a class but has wrong name."""
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
@@ -314,7 +314,7 @@ class TestMain:
         assert "test_wrong_name.py" in out
 
     def test_main_misplaced_test(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                                 monkeypatch) -> None:
+                                 monkeypatch: pytest.MonkeyPatch) -> None:
         """Test file in wrong directory."""
         src_pkg, test_pkg = self._make_project(tmp_path)
         src_sub = src_pkg / "models"
@@ -331,7 +331,7 @@ class TestMain:
         assert "Misplaced tests" in out
 
     def test_main_indirect_reference(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                                     monkeypatch) -> None:
+                                     monkeypatch: pytest.MonkeyPatch) -> None:
         """Test file provides indirect coverage for a source file."""
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
@@ -349,7 +349,7 @@ class TestMain:
         assert "Indirect references" in out
 
     def test_main_ignore_dirs(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                              monkeypatch) -> None:
+                              monkeypatch: pytest.MonkeyPatch) -> None:
         src_pkg, test_pkg = self._make_project(tmp_path)
         assets = src_pkg / "assets"
         assets.mkdir()
@@ -365,7 +365,7 @@ class TestMain:
 
     def test_main_no_package_auto_detect(self, tmp_path: Path,
                                          capsys: pytest.CaptureFixture[str],
-                                         monkeypatch) -> None:
+                                         monkeypatch: pytest.MonkeyPatch) -> None:
         src = tmp_path / "src"
         tests = tmp_path / "tests"
         src.mkdir()
@@ -377,7 +377,7 @@ class TestMain:
         assert "auto-detect" in err
 
     def test_main_src_package_not_exist(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                                        monkeypatch) -> None:
+                                        monkeypatch: pytest.MonkeyPatch) -> None:
         src = tmp_path / "src"
         tests = tmp_path / "tests"
         src.mkdir()
@@ -392,7 +392,7 @@ class TestMain:
         assert "does not exist" in err
 
     def test_main_test_package_not_exist(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                                         monkeypatch) -> None:
+                                         monkeypatch: pytest.MonkeyPatch) -> None:
         src = tmp_path / "src"
         tests = tmp_path / "tests"
         src.mkdir()
@@ -407,7 +407,7 @@ class TestMain:
         assert "does not exist" in err
 
     def test_main_empty_dirs(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                             monkeypatch) -> None:
+                             monkeypatch: pytest.MonkeyPatch) -> None:
         src_pkg, test_pkg = self._make_project(tmp_path)
         monkeypatch.setattr(sys, "argv", ["prog", "--src", str(tmp_path / "src"),
                                           "--tests", str(tmp_path / "tests")])
@@ -417,7 +417,7 @@ class TestMain:
         assert "all clear" in out
 
     def test_main_explicit_packages(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                                    monkeypatch) -> None:
+                                    monkeypatch: pytest.MonkeyPatch) -> None:
         src = tmp_path / "src"
         tests = tmp_path / "tests"
         src_pkg = src / "mypkg"
@@ -436,7 +436,7 @@ class TestMain:
         assert "all clear" in out
 
     def test_main_orphaned_test_dir(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                                    monkeypatch) -> None:
+                                    monkeypatch: pytest.MonkeyPatch) -> None:
         """Test directory with no corresponding source dir."""
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
@@ -451,7 +451,7 @@ class TestMain:
         assert "orphan_dir" in out
 
     def test_main_split_tests(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                              monkeypatch) -> None:
+                              monkeypatch: pytest.MonkeyPatch) -> None:
         """Multiple test files for one source file (split tests)."""
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
@@ -465,7 +465,7 @@ class TestMain:
         assert "all clear" in out
 
     def test_main_class_based_test_name(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                                        monkeypatch) -> None:
+                                        monkeypatch: pytest.MonkeyPatch) -> None:
         """Test file named after class (snake_case) instead of source stem."""
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "user_service.py").write_text("class UserService:\n    pass\n")
@@ -478,7 +478,7 @@ class TestMain:
         assert "all clear" in out
 
     def test_main_conftest_ignored(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                                   monkeypatch) -> None:
+                                   monkeypatch: pytest.MonkeyPatch) -> None:
         """conftest.py should not be treated as a test file."""
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
@@ -493,7 +493,7 @@ class TestMain:
 
     def test_main_syntax_error_in_source(self, tmp_path: Path,
                                          capsys: pytest.CaptureFixture[str],
-                                         monkeypatch) -> None:
+                                         monkeypatch: pytest.MonkeyPatch) -> None:
         """Source file with syntax error is skipped (no classes)."""
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "bad.py").write_text("def broken(:\n")
@@ -508,7 +508,7 @@ class TestMain:
 
     def test_main_nested_structure_all_clear(self, tmp_path: Path,
                                              capsys: pytest.CaptureFixture[str],
-                                             monkeypatch) -> None:
+                                             monkeypatch: pytest.MonkeyPatch) -> None:
         """Nested src/tests structure that mirrors correctly."""
         src_pkg, test_pkg = self._make_project(tmp_path)
         src_sub = src_pkg / "models"
@@ -529,7 +529,7 @@ class TestMain:
         assert "all clear" in out
 
     def test_main_pycache_ignored(self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-                                  monkeypatch) -> None:
+                                  monkeypatch: pytest.MonkeyPatch) -> None:
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
         (test_pkg / "test_cache.py").write_text("def test_cache():\n    pass\n")
@@ -544,7 +544,7 @@ class TestMain:
 
     def test_main_misnamed_and_misplaced(self, tmp_path: Path,
                                          capsys: pytest.CaptureFixture[str],
-                                         monkeypatch) -> None:
+                                         monkeypatch: pytest.MonkeyPatch) -> None:
         """Test file that is both misnamed (references class) and misplaced."""
         src_pkg, test_pkg = self._make_project(tmp_path)
         src_sub = src_pkg / "models"
@@ -565,7 +565,7 @@ class TestMain:
 
     def test_main_test_file_read_error(self, tmp_path: Path,
                                        capsys: pytest.CaptureFixture[str],
-                                       monkeypatch) -> None:
+                                       monkeypatch: pytest.MonkeyPatch) -> None:
         """Test file that can't be read is handled gracefully."""
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
@@ -576,10 +576,12 @@ class TestMain:
 
         original_read_text = Path.read_text
 
-        def mock_read_text(self: Path, *args: object, **kwargs: object) -> str:
+        def mock_read_text(
+            self: Path, encoding: str | None = None, errors: str | None = None
+        ) -> str:
             if self == bad_test:
                 raise OSError("permission denied")
-            return original_read_text(self, *args, **kwargs)  # type: ignore[arg-type]
+            return original_read_text(self, encoding=encoding, errors=errors)
 
         monkeypatch.setattr(Path, "read_text", mock_read_text)
         monkeypatch.setattr(sys, "argv", ["prog", "--src", str(tmp_path / "src"),

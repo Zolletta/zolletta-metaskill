@@ -210,7 +210,7 @@ class TestMainSkip:
     """``--skip`` short-circuits the scan and exits 0."""
 
     def test_skip_prints_skipped_message(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """``--skip`` prints a SKIPPED banner and returns 0."""
         rc = main_with_argv(["scan", str(tmp_path), "--skip"])
@@ -220,7 +220,7 @@ class TestMainSkip:
         assert "--skip flag" in out
 
     def test_skip_with_json_prints_nothing(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """``--skip --json`` produces no output and returns 0."""
         rc = main_with_argv(["scan", str(tmp_path), "--skip", "--json"])
@@ -238,7 +238,7 @@ class TestMainDirectoryErrors:
     """Missing directories produce an error on stderr and exit 1."""
 
     def test_nonexistent_directory_returns_one(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """A non-existent directory prints an error to stderr and returns 1."""
         missing = tmp_path / "does_not_exist"
@@ -257,7 +257,7 @@ class TestMainDirectoryErrors:
 class TestMainNoTestFiles:
     """An empty or test-file-free directory reports zero functions."""
 
-    def test_empty_directory(self, tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    def test_empty_directory(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         """An empty directory scans zero functions and reports success."""
         rc = main_with_argv(["scan", str(tmp_path)])
         assert rc == 0
@@ -267,7 +267,7 @@ class TestMainNoTestFiles:
         assert "All test functions meet the naming convention." in out
 
     def test_directory_with_only_non_test_files(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Non-test ``.py`` files do not contribute to the scan."""
         (tmp_path / "helpers.py").write_text("def helper():\n    pass\n")
@@ -287,7 +287,7 @@ class TestMainViolationsMarkdown:
     """Markdown report lists violations and respects ``--strict``."""
 
     def test_violations_listed_no_strict_returns_zero(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Violations are listed but exit code stays 0 without ``--strict``."""
         write_test_file(
@@ -302,7 +302,7 @@ class TestMainViolationsMarkdown:
         assert "test_bad.py" in out
 
     def test_violations_with_strict_returns_one(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """``--strict`` flips the exit code to 1 when violations exist."""
         write_test_file(
@@ -315,7 +315,7 @@ class TestMainViolationsMarkdown:
         assert "Violations: 1" in out
 
     def test_no_violations_with_strict_returns_zero(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """``--strict`` with no violations still returns 0."""
         write_test_file(
@@ -329,7 +329,7 @@ class TestMainViolationsMarkdown:
         assert "All test functions meet the naming convention." in out
 
     def test_violation_rate_displayed_when_functions_present(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """The violation rate is printed only when test functions exist."""
         # One good (3 segments), one bad (1 segment) -> 50% violation rate
@@ -347,7 +347,7 @@ class TestMainViolationsMarkdown:
         assert "Violation rate: 50.0%" in out
 
     def test_no_violation_rate_when_zero_functions(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """No violation rate line is shown when there are no test functions."""
         rc = main_with_argv(["scan", str(tmp_path)])
@@ -356,7 +356,7 @@ class TestMainViolationsMarkdown:
         assert "Violation rate" not in out
 
     def test_report_header_present(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """The markdown report always starts with the validation banner."""
         main_with_argv(["scan", str(tmp_path)])
@@ -374,7 +374,7 @@ class TestMainJsonOutput:
     """``--json`` emits a machine-readable report."""
 
     def test_json_with_violations(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """JSON output includes total counts and full violation details."""
         write_test_file(
@@ -397,7 +397,7 @@ class TestMainJsonOutput:
         assert v["line"] == 1
 
     def test_json_no_violations(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """JSON output with compliant tests reports zero violations."""
         write_test_file(
@@ -412,7 +412,7 @@ class TestMainJsonOutput:
         assert data["violations"] == []
 
     def test_json_empty_directory(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """JSON output for an empty directory reports all-zero counts."""
         rc = main_with_argv(["scan", str(tmp_path), "--json"])
@@ -422,7 +422,7 @@ class TestMainJsonOutput:
         assert data["violation_count"] == 0
 
     def test_json_with_strict_violations_returns_one(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """``--json --strict`` returns 1 when violations are present."""
         write_test_file(
@@ -442,7 +442,7 @@ class TestMainMinSegments:
     """Custom ``--min-segments`` thresholds change what counts as a violation."""
 
     def test_custom_min_segments_higher(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Raising ``--min-segments`` turns previously-compliant names into violations."""
         # 3 segments — fine at default 3, violation at 4
@@ -457,7 +457,7 @@ class TestMainMinSegments:
         assert data["min_segments"] == 4
 
     def test_custom_min_segments_lower(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Lowering ``--min-segments`` lets short names pass."""
         # 1 segment — violation at default 3, fine at 1
@@ -481,7 +481,7 @@ class TestMainIgnoreDirs:
 
     @pytest.mark.parametrize("ignored", ["__pycache__", ".venv", "venv", ".tox", "dist", "build"])
     def test_ignored_directory_skipped(
-        self, tmp_path: Path, ignored: str, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, ignored: str, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Each configured ignore-dir is excluded from the recursive scan."""
         sub = tmp_path / ignored
@@ -497,7 +497,7 @@ class TestMainIgnoreDirs:
         assert data["violation_count"] == 0
 
     def test_non_test_py_file_skipped(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """A ``.py`` file that is neither ``test_*.py`` nor ``*_test.py`` is skipped."""
         write_test_file(
@@ -510,7 +510,7 @@ class TestMainIgnoreDirs:
         assert data["total_test_functions"] == 0
 
     def test_suffix_test_file_scanned(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """``*_test.py`` files are treated as test files and scanned."""
         write_test_file(
@@ -524,7 +524,7 @@ class TestMainIgnoreDirs:
         assert data["violation_count"] == 1
 
     def test_nested_directory_scanned(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """``rglob`` recurses into nested subdirectories."""
         nested = tmp_path / "subdir" / "deep"
@@ -550,7 +550,7 @@ class TestMainDefaultDirectory:
     """Omitting the directory argument defaults to ``tests``."""
 
     def test_default_directory_is_tests(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """With no directory argument the scanner targets ``./tests``."""
         # Create a tests/ dir in the cwd and chdir into tmp_path so the default
@@ -577,7 +577,7 @@ class TestMainMixedScenarios:
     """Combined real-world scenarios across multiple files."""
 
     def test_multiple_files_some_good_some_bad(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Good and bad files in one run are aggregated correctly."""
         write_test_file(
@@ -599,7 +599,7 @@ class TestMainMixedScenarios:
         assert bad_files == {"test_bad.py"}
 
     def test_syntax_error_file_does_not_crash(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """A syntax-error file is skipped while valid files are still scanned."""
         (tmp_path / "test_broken.py").write_text("def test_foo(:\n    pass\n")
@@ -614,7 +614,7 @@ class TestMainMixedScenarios:
         assert data["violation_count"] == 0
 
     def test_relative_path_in_violations(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Violation file paths are reported relative to the scan root."""
         sub = tmp_path / "pkg"

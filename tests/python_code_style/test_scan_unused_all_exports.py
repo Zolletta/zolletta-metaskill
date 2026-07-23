@@ -201,7 +201,7 @@ class TestFindAllFilesWithAll:
 
 class TestMain:
     def test_skip_flag(
-        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         monkeypatch.setattr(sys, "argv", ["scan", "--skip"])
         assert main() == 0
@@ -209,14 +209,14 @@ class TestMain:
         assert "SKIPPED" in out
 
     def test_skip_flag_json(
-        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         monkeypatch.setattr(sys, "argv", ["scan", "--skip", "--json"])
         assert main() == 0
         assert capsys.readouterr().out == ""
 
     def test_nonexistent_directory(
-        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         monkeypatch.setattr(sys, "argv", ["scan", "/nonexistent/xyz"])
         assert main() == 1
@@ -224,7 +224,7 @@ class TestMain:
         assert "does not exist" in err
 
     def test_no_unused_exports(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         src = tmp_path / "src"
         src.mkdir()
@@ -238,7 +238,7 @@ class TestMain:
         assert "No unused" in out
 
     def test_unused_export_detected(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         src = tmp_path / "src"
         src.mkdir()
@@ -274,7 +274,7 @@ class TestMain:
         assert main() == 0
 
     def test_json_output(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         src = tmp_path / "src"
         src.mkdir()
@@ -289,7 +289,7 @@ class TestMain:
         assert data["unused"][0]["symbol"] == "unused_func"
 
     def test_json_output_no_unused(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         src = tmp_path / "src"
         src.mkdir()
@@ -317,7 +317,7 @@ class TestMain:
         assert main() == 1  # self-import doesn't count as external
 
     def test_empty_src(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         src = tmp_path / "src"
         src.mkdir()
@@ -337,7 +337,7 @@ class TestMain:
         assert main() == 0  # .venv is ignored
 
     def test_multiple_unused(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         src = tmp_path / "src"
         src.mkdir()

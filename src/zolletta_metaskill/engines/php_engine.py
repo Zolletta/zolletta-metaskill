@@ -24,7 +24,7 @@ from zolletta_metaskill.common.models import (
 )
 
 if TYPE_CHECKING:
-    from tree_sitter import Node, Parser, Tree  # type: ignore[import-not-found]
+    from tree_sitter import Node, Parser, Tree
 
 __all__ = ["PHPEngine"]
 
@@ -221,7 +221,7 @@ class PHPEngine:
                 "Install it with: uv add tree-sitter tree-sitter-php"
             )
         import tree_sitter
-        import tree_sitter_php  # type: ignore[import-not-found]
+        import tree_sitter_php
 
         language = tree_sitter.Language(tree_sitter_php.language_php())
         self._parser = tree_sitter.Parser(language)

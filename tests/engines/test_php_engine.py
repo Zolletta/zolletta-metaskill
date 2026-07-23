@@ -421,8 +421,8 @@ def test_parse_module_missing_dependency(monkeypatch: pytest.MonkeyPatch, tmp_pa
     monkeypatch.setattr(
         "zolletta_metaskill.engines.php_engine._have_tree_sitter_php", lambda: False
     )
-    engine._ready = False  # type: ignore[attr-defined]
-    engine._parser = None  # type: ignore[attr-defined]
+    engine._ready = False  # noqa: SLF001
+    engine._parser = None  # noqa: SLF001
 
     path = tmp_path / "Foo.php"
     path.write_text("<?php class Foo {}", encoding="utf-8")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -46,7 +47,7 @@ class _StubEngine:
 
 
 @pytest.fixture(autouse=True)
-def _clean_registry() -> None:
+def _clean_registry() -> Iterator[None]:
     """Ensure the registry is empty before and after each test."""
     clear_registry()
     yield
@@ -100,8 +101,12 @@ class TestGetEngineForFile:
         """get_engine_for_file returns the engine matching the file extension."""
         register_engine(_StubEngine("python", [".py"]))
         register_engine(_StubEngine("php", [".php"]))
-        assert get_engine_for_file(Path("/tmp/foo.py")).language == "python"
-        assert get_engine_for_file(Path("/tmp/bar.php")).language == "php"
+        py_engine = get_engine_for_file(Path("/tmp/foo.py"))
+        assert py_engine is not None
+        assert py_engine.language == "python"
+        php_engine = get_engine_for_file(Path("/tmp/bar.php"))
+        assert php_engine is not None
+        assert php_engine.language == "php"
 
     def test_no_match_returns_none(self) -> None:
         """get_engine_for_file returns None for unknown extensions."""

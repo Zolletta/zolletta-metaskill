@@ -42,7 +42,7 @@ from zolletta_metaskill.common.registry import (
 from zolletta_metaskill.engines.php_engine import PHPEngine
 
 if TYPE_CHECKING:
-    from tree_sitter import Node  # type: ignore[import-not-found]
+    from tree_sitter import Node
 
 __all__ = ["main", "scan_file", "scan_module"]
 

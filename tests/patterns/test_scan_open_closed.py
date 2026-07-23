@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import sys
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -213,7 +214,7 @@ class TestIsStringTypeDispatch:
         tree = _parse("x = 1")
         for node in ast.walk(tree):
             if isinstance(node, ast.Assign):
-                assert _is_string_type_dispatch(node) is False
+                assert _is_string_type_dispatch(cast("ast.Call", node)) is False
                 return
         raise AssertionError("No Assign found")  # pragma: no cover
 

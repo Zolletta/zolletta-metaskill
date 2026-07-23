@@ -690,11 +690,11 @@ class TestLoadDiataxisTranslations:
         assert result["readme_sections"] == ["installazione"]
         assert "guide" in result["quadrants"]["tutorials"]["dir_names"]
 
-    def test_nonexistent_file(self, tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    def test_nonexistent_file(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         result = _load_diataxis_translations(str(tmp_path / "nope.json"))
         assert result == {"readme_sections": None, "quadrants": {}}
 
-    def test_invalid_json(self, tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    def test_invalid_json(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         p = tmp_path / "bad.json"
         p.write_text("{invalid json")
         result = _load_diataxis_translations(str(p))
@@ -836,7 +836,7 @@ class TestScoreBar:
 
 class TestMain:
     def test_not_a_directory(
-        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         f = tmp_path / "file.txt"
         f.write_text("not a dir")
@@ -845,7 +845,9 @@ class TestMain:
             main()
         assert exc.value.code == 2
 
-    def test_no_docs_json(self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    def test_no_docs_json(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+    ) -> None:
         monkeypatch.setattr(sys, "argv", ["doc_staleness_scorer.py", str(tmp_path), "--json"])
         with pytest.raises(SystemExit) as exc:
             main()
@@ -853,7 +855,9 @@ class TestMain:
         out = capsys.readouterr().out
         assert json.loads(out)["error"] == "No documentation files found"
 
-    def test_no_docs_text(self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    def test_no_docs_text(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+    ) -> None:
         monkeypatch.setattr(sys, "argv", ["doc_staleness_scorer.py", str(tmp_path)])
         with pytest.raises(SystemExit) as exc:
             main()
@@ -862,7 +866,7 @@ class TestMain:
         assert "No documentation files found" in out
 
     def test_no_docs_quiet(
-        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         monkeypatch.setattr(
             sys, "argv", ["doc_staleness_scorer.py", str(tmp_path), "--quiet"],
@@ -873,7 +877,9 @@ class TestMain:
         out = capsys.readouterr().out.strip()
         assert out == "0"
 
-    def test_with_docs(self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    def test_with_docs(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+    ) -> None:
         (tmp_path / "README.md").write_text("# Installation\n\n# Usage\n\n" + "content\n" * 15)
         monkeypatch.setattr(sys, "argv", ["doc_staleness_scorer.py", str(tmp_path)])
         with patch.object(dss, "get_file_last_commit_date", return_value=None), \
@@ -885,7 +891,7 @@ class TestMain:
             assert "Documentation Staleness Report" in out
 
     def test_readme_focus(
-        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
         (tmp_path / "guide.md").write_text("# Guide\n\n" + "content\n" * 15)
@@ -900,7 +906,7 @@ class TestMain:
             assert exc.value.code == 0
 
     def test_threshold_fail(
-        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
         monkeypatch.setattr(
@@ -914,7 +920,7 @@ class TestMain:
             assert exc.value.code == 1
 
     def test_threshold_pass(
-        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         (tmp_path / "README.md").write_text(
             "# Installation\n\n# Usage\n\n# API\n\n# Contributing\n\n# License\n"
@@ -931,7 +937,7 @@ class TestMain:
             assert exc.value.code == 0
 
     def test_custom_weights(
-        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
         monkeypatch.setattr(sys, "argv", [
@@ -945,7 +951,7 @@ class TestMain:
             assert exc.value.code == 0
 
     def test_all_weight_flags(
-        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
         monkeypatch.setattr(sys, "argv", [
@@ -960,7 +966,7 @@ class TestMain:
             assert exc.value.code == 0
 
     def test_required_sections_override(
-        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         (tmp_path / "README.md").write_text("# Foo\n\n# Bar\n" + "content\n" * 15)
         monkeypatch.setattr(sys, "argv", [
@@ -972,7 +978,9 @@ class TestMain:
                 main()
             assert exc.value.code == 0
 
-    def test_json_output(self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    def test_json_output(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+    ) -> None:
         (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
         monkeypatch.setattr(sys, "argv", ["doc_staleness_scorer.py", str(tmp_path), "--json"])
         with patch.object(dss, "get_file_last_commit_date", return_value=None), \
@@ -984,7 +992,9 @@ class TestMain:
             data = json.loads(out)
             assert "aggregate_score" in data
 
-    def test_quiet_output(self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    def test_quiet_output(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+    ) -> None:
         (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
         monkeypatch.setattr(sys, "argv", ["doc_staleness_scorer.py", str(tmp_path), "--quiet"])
         with patch.object(dss, "get_file_last_commit_date", return_value=None), \
@@ -996,7 +1006,7 @@ class TestMain:
             float(out)  # should be a number
 
     def test_diataxis_translations(
-        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         trans = tmp_path / "trans.json"
         trans.write_text(json.dumps({
@@ -1014,7 +1024,7 @@ class TestMain:
             assert exc.value.code == 0
 
     def test_diataxis_translations_no_readme_sections(
-        self, monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Translations without readme_sections fall back to DEFAULT_README_SECTIONS."""
         trans = tmp_path / "trans.json"

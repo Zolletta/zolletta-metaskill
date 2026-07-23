@@ -241,12 +241,16 @@ class TestAnnotationStr:
 
     def test_simple_annotation(self) -> None:
         tree = ast.parse("x: int = 0")
-        ann = tree.body[0].annotation  # type: ignore[attr-defined]
+        stmt = tree.body[0]
+        assert isinstance(stmt, ast.AnnAssign)
+        ann = stmt.annotation
         assert _annotation_str(ann) == "int"
 
     def test_complex_annotation(self) -> None:
         tree = ast.parse("x: list[int] = 0")
-        ann = tree.body[0].annotation  # type: ignore[attr-defined]
+        stmt = tree.body[0]
+        assert isinstance(stmt, ast.AnnAssign)
+        ann = stmt.annotation
         assert _annotation_str(ann) == "list[int]"
 
 
@@ -334,7 +338,9 @@ class TestPredicates:
     def test_nested_function(self) -> None:
         tree = ast.parse("def outer():\n    def inner():\n        pass\n")
         _annotate_parents(tree)
-        inner = tree.body[0].body[0]  # type: ignore[attr-defined]
+        outer = tree.body[0]
+        assert isinstance(outer, ast.FunctionDef)
+        inner = outer.body[0]
         assert isinstance(inner, ast.FunctionDef)
         assert _is_nested(inner) is True
 
@@ -353,21 +359,29 @@ class TestPredicates:
 
 class TestDetectPrefixQuote:
     def test_simple_triple_quote(self) -> None:
-        prefix, quote = _detect_prefix_quote('    """doc"""')
+        result = _detect_prefix_quote('    """doc"""')
+        assert result is not None
+        prefix, quote = result
         assert prefix == ""
         assert quote == '"""'
 
     def test_raw_prefix(self) -> None:
-        prefix, quote = _detect_prefix_quote('    r"""doc"""')
+        result = _detect_prefix_quote('    r"""doc"""')
+        assert result is not None
+        prefix, quote = result
         assert prefix == "r"
         assert quote == '"""'
 
     def test_single_quotes(self) -> None:
-        prefix, quote = _detect_prefix_quote("    '''doc'''")
+        result = _detect_prefix_quote("    '''doc'''")
+        assert result is not None
+        prefix, quote = result
         assert quote == "'''"
 
     def test_no_match_returns_default(self) -> None:
-        prefix, quote = _detect_prefix_quote("pass")
+        result = _detect_prefix_quote("pass")
+        assert result is not None
+        prefix, quote = result
         assert prefix == ""
         assert quote == '"""'
 
@@ -441,7 +455,7 @@ class TestParseArgsEntries:
 class TestArgsSectionRedundant:
     def test_all_trivial(self) -> None:
         body = ["    x: int", "    y: str"]
-        anns = {"x": "int", "y": "str"}
+        anns: dict[str, str | None] = {"x": "int", "y": "str"}
         assert _args_section_is_redundant(body, anns) is True
 
     def test_self_skipped(self) -> None:
@@ -451,12 +465,12 @@ class TestArgsSectionRedundant:
 
     def test_one_meaningful(self) -> None:
         body = ["    x: the number of items"]
-        anns = {"x": "int"}
+        anns: dict[str, str | None] = {"x": "int"}
         assert _args_section_is_redundant(body, anns) is False
 
     def test_unannotated_arg(self) -> None:
         body = ["    x: some desc"]
-        anns = {"x": None}
+        anns: dict[str, str | None] = {"x": None}
         assert _args_section_is_redundant(body, anns) is False
 
     def test_empty_args_section(self) -> None:
@@ -576,7 +590,9 @@ class TestAnalyzeFunction:
         src = 'def outer():\n    def inner():\n        """Nested."""\n        pass\n'
         tree = ast.parse(src)
         _annotate_parents(tree)
-        inner = tree.body[0].body[0]  # type: ignore[attr-defined]
+        outer = tree.body[0]
+        assert isinstance(outer, ast.FunctionDef)
+        inner = outer.body[0]
         assert isinstance(inner, ast.FunctionDef)
         finding = _analyze_function(inner, Path("f.py"), False, False, True, False)
         assert finding is not None
@@ -588,7 +604,9 @@ class TestAnalyzeFunction:
         )
         tree = ast.parse(src)
         _annotate_parents(tree)
-        init_node = tree.body[0].body[0]  # type: ignore[attr-defined]
+        cls = tree.body[0]
+        assert isinstance(cls, ast.ClassDef)
+        init_node = cls.body[0]
         assert isinstance(init_node, ast.FunctionDef)
         finding = _analyze_function(init_node, Path("f.py"), False, False, False, True)
         assert finding is not None
@@ -598,7 +616,9 @@ class TestAnalyzeFunction:
         src = 'class C:\n    def __init__(self, x) -> None:\n        """Init."""\n        pass\n'
         tree = ast.parse(src)
         _annotate_parents(tree)
-        init_node = tree.body[0].body[0]  # type: ignore[attr-defined]
+        cls = tree.body[0]
+        assert isinstance(cls, ast.ClassDef)
+        init_node = cls.body[0]
         assert isinstance(init_node, ast.FunctionDef)
         finding = _analyze_function(init_node, Path("f.py"), False, False, False, True)
         assert finding is None

@@ -300,8 +300,8 @@ class TestMapDocsToCode:
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "auth.py").write_text("x = 1", encoding="utf-8")
         (tmp_path / "src" / "auth.md").write_text("auth docs", encoding="utf-8")
-        doc_files = [os.path.join("src", "auth.md")]
-        code_files = [os.path.join("src", "auth.py")]
+        doc_files: list[str] = [os.path.join("src", "auth.md")]
+        code_files: list[str] = [os.path.join("src", "auth.py")]
         mapping = map_docs_to_code(str(tmp_path), doc_files, code_files)
         assert os.path.join("src", "auth.md") in mapping
 
@@ -309,8 +309,8 @@ class TestMapDocsToCode:
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "auth.py").write_text("x = 1", encoding="utf-8")
         (tmp_path / "README.md").write_text("See auth.py for details", encoding="utf-8")
-        doc_files = ["README.md"]
-        code_files = [os.path.join("src", "auth.py")]
+        doc_files: list[str] = ["README.md"]
+        code_files: list[str] = [os.path.join("src", "auth.py")]
         mapping = map_docs_to_code(str(tmp_path), doc_files, code_files)
         assert "README.md" in mapping
         assert os.path.join("src", "") in mapping["README.md"] or "src" in mapping["README.md"]
@@ -321,8 +321,8 @@ class TestMapDocsToCode:
         (tmp_path / "pkg" / "mod.py").write_text("x = 1", encoding="utf-8")
         (tmp_path / "pkg" / "docs").mkdir()
         (tmp_path / "pkg" / "docs" / "guide.md").write_text("guide", encoding="utf-8")
-        doc_files = [os.path.join("pkg", "docs", "guide.md")]
-        code_files = [os.path.join("pkg", "mod.py")]
+        doc_files: list[str] = [os.path.join("pkg", "docs", "guide.md")]
+        code_files: list[str] = [os.path.join("pkg", "mod.py")]
         mapping = map_docs_to_code(str(tmp_path), doc_files, code_files)
         assert os.path.join("pkg", "docs", "guide.md") in mapping
         assert "pkg" in mapping[os.path.join("pkg", "docs", "guide.md")]
@@ -330,8 +330,8 @@ class TestMapDocsToCode:
     def test_readme_naming_convention(self, tmp_path: Path) -> None:
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "README.md").write_text("# Auth", encoding="utf-8")
-        doc_files = [os.path.join("src", "README.md")]
-        code_files = []
+        doc_files: list[str] = [os.path.join("src", "README.md")]
+        code_files: list[str] = []
         mapping = map_docs_to_code(str(tmp_path), doc_files, code_files)
         assert os.path.join("src", "README.md") in mapping
 
