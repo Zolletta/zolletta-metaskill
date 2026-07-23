@@ -4,7 +4,7 @@ All notable changes to the Zolletta-metaskill skill family are documented in thi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.0.0] - 2026-07-23
 
 ### Added
 
@@ -20,7 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - PHP tooling detection in setup (phpunit, phpstan, psalm, php-cs-fixer, phpcs) with `php` object in `settings.json`
 - `setup/assets/settings.schema.json` — machine-readable JSON Schema (draft 2020-12) for `settings.json`
 - `tree-sitter` / `tree-sitter-php` optional dependencies (`pip install zolletta-metaskill[php]`)
-- Recovered test suite — 846+ tests at ≥90% coverage per file
+- Recovered test suite — 1266 tests at 97% overall coverage (every file ≥92%)
 
 ### Changed
 

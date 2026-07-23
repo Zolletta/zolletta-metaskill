@@ -154,7 +154,7 @@ trait BadTrait {
 
 ## SOLID Violation Patterns
 
-The following SOLID violations are common in PHP codebases. Each pattern includes a before/after example and references the automated scanner that detects it. For scanner usage details, see [scripts.md](../../reference/code/scripts.md).
+The following SOLID violations are common in PHP codebases. Each pattern includes a before/after example and references the automated scanner that detects it. For scanner usage details, see [scripts.md](../../../reference/code/scripts.md).
 
 ### Dependency Inversion Principle (DIP)
 
@@ -199,7 +199,7 @@ class OrderProcessor {
 }
 ```
 
-**Scanner**: [`scan_php_dependency_inversion`](../../reference/code/scripts.md#scan_php_dependency_inversionpy-dip) — detects `new ConcreteClass()` inside class methods. Excludes factories, builders, and PHP built-in types.
+**Scanner**: [`scan_php_dependency_inversion`](../../../reference/code/scripts.md#scan_php_dependency_inversionpy-dip) — detects `new ConcreteClass()` inside class methods. Excludes factories, builders, and PHP built-in types.
 
 ### Interface Segregation Principle (ISP)
 
@@ -269,7 +269,7 @@ class HumanWorker implements Workable, Reportable, Employable {
 }
 ```
 
-**Scanner**: [`scan_php_interface_segregation`](../../reference/code/scripts.md#scan_php_interface_segregationpy-isp) — flags interfaces with more than `--min-methods` (default: 7) methods.
+**Scanner**: [`scan_php_interface_segregation`](../../../reference/code/scripts.md#scan_php_interface_segregationpy-isp) — flags interfaces with more than `--min-methods` (default: 7) methods.
 
 ### Open/Closed Principle (OCP)
 
@@ -331,7 +331,7 @@ class PaymentProcessor {
 }
 ```
 
-**Scanner**: [`scan_php_open_closed`](../../reference/code/scripts.md#scan_php_open_closedpy-ocp) — detects `if/elseif` chains with 3+ `instanceof` branches.
+**Scanner**: [`scan_php_open_closed`](../../../reference/code/scripts.md#scan_php_open_closedpy-ocp) — detects `if/elseif` chains with 3+ `instanceof` branches.
 
 ## Manual Detection Commands
 

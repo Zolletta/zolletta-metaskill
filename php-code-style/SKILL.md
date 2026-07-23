@@ -186,4 +186,4 @@ Write the report to `.zolletta-metaskill/reports/<timestamp>/php-code-style.md` 
 - [`../docs/explanation/code/error-handling.md`](../docs/explanation/code/error-handling.md) — language-agnostic error handling rules
 - [`../docs/explanation/code/performance.md`](../docs/explanation/code/performance.md) — language-agnostic performance rules
 - [`../docs/explanation/code/security.md`](../docs/explanation/code/security.md) — language-agnostic security rules
-- [`../docs/reference/code/php/php-review-patterns.md`](../docs/explanation/code/php/php-review-patterns.md) — PHP-specific review patterns
+- [`../docs/explanation/code/php/php-review-patterns.md`](../docs/explanation/code/php/php-review-patterns.md) — PHP-specific review patterns

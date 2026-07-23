@@ -1,6 +1,6 @@
 ---
 name: zolletta-metaskill-documentor
-version: 1.2.0
+version: 2.0.0
 description: >
   Documentation review combining [Diátaxis](https://diataxis.fr/) compliance checks with automated drift detection. Reviews .backstage/ docs for structure, accuracy, consistency, and freshness against the codebase. Use when reviewing docs, preparing releases, running CI doc gates, or auditing doc quality.
 license: MIT + Commons Clause

@@ -1,6 +1,6 @@
 ---
 name: zolletta-metaskill-setup
-version: 1.2.0
+version: 2.0.0
 license: MIT + Commons Clause
 description: >
   Project initialization for Zolletta-metaskill. Creates the .zolletta-metaskill/ directory, detects the project language, detects Docker container, tests tokensave availability, detects Python and PHP tooling, and writes settings.json. Also adds .zolletta-metaskill/ to .gitignore. Run automatically by the setup guard before any subcommand if settings.json is missing, or manually via /zolletta-metaskill setup.
