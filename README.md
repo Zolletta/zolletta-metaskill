@@ -139,7 +139,7 @@ The timestamp format (`YYYY-MM-DD-HH-MM`) is lexicographically sortable, so find
 
 The patterns skill includes three mechanisms to prevent verdict oscillation between reviews:
 
-1. **Mandatory judgment step for God class detection** — `scan_class_metrics.py` reports class size as a triage signal, never a verdict. Before reporting any class as a God class, the reviewer must apply the "reason to change" test: list every change that could require editing the class, group by domain, and only report if there are reasons from **different domains**. Classes that are parsers, strategies, orchestrators, or factories serving a single domain are explicitly suppressed. See `patterns/SKILL.md` → "Mandatory Procedure".
+1. **Mandatory judgment step for God class detection** — `scan_class_metrics.py` reports class size as a triage signal, never a verdict. Before reporting any class as a God class, the reviewer must apply the "reason to change" test: list every change that could require editing the class, group by domain, and only report if there are reasons from **different domains**. Classes that are parsers, strategies, orchestrators, or factories serving a single domain are explicitly suppressed. See `skills/patterns/SKILL.md` → "Mandatory Procedure".
 
 2. **Coverage cross-check for missing tests** — `scan_tests.py` reports structurally missing test files. Before reporting any as a finding, the reviewer must run `pytest --cov` and check the file's coverage. Files with >50% coverage are downgraded to informational — they are tested indirectly. Only files with <50% coverage AND no indirect references are reported as findings.
 
