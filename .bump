@@ -52,8 +52,8 @@ find "$ROOT" -name "SKILL.md" -not -path "*/.git/*" | while read -r f; do
 done
 
 # settings_template.json
-sed -i.bak "s/\"setup_version\": \".*\"/\"setup_version\": \"$VERSION\"/" "$ROOT/setup/assets/settings_template.json"
-rm -f "$ROOT/setup/assets/settings_template.json.bak"
+sed -i.bak "s/\"setup_version\": \".*\"/\"setup_version\": \"$VERSION\"/" "$ROOT/skills/setup/assets/settings_template.json"
+rm -f "$ROOT/skills/setup/assets/settings_template.json.bak"
 
 echo "Done. Version bumped to $VERSION."
 echo ""

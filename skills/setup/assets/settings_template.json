@@ -1,0 +1,16 @@
+{
+  "setup_version": "3.0.0",
+  "setup_timestamp": "",
+  "language": "",
+  "container_name": null,
+  "tokensave_available": false,
+  "acronyms": [],
+  "python": null,
+  "php": null,
+  "external_review_model": "swe",
+  "reports_dir": ".zolletta-metaskill/reports",
+  "documentation": {
+    "language": "en",
+    "dir": "docs"
+  }
+}

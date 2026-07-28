@@ -8,7 +8,7 @@ skills: [documentor]
 
 Expert knowledge for writing, maintaining, and evaluating technical documentation across all common formats.
 
-> This file narrows down any eventual general rule about documentation, i.e. [documentation-rules.md](~/.agents/documentation-rules.md). All files in `~/.agents/` are the single source of truth for their domain.
+> This file narrows down any eventual general rule about documentation, i.e. [documentation-rules.md](~/.agents/documentation-rules.md). If you have rules in `~/.agents/`, those are the single source of truth for their domain.
 
 ## Documentation-as-Code Principles
 
@@ -43,7 +43,7 @@ project/
 Following the Diataxis framework:
 
 | Type              | Purpose                | Approach                                 |
-| ----------------- | ---------------------- | ---------------------------------------- |
+|-------------------|------------------------|------------------------------------------|
 | **Tutorials**     | Learning-oriented      | Step-by-step lessons, hands-on           |
 | **How-to Guides** | Task-oriented          | Practical steps to achieve a goal        |
 | **Reference**     | Information-oriented   | Accurate, complete technical description |
@@ -59,7 +59,7 @@ When writing GitHub-flavored markdown tables, use compact separator rows with no
 
 ```markdown
 | Header A | Header B | Header C |
-| -------- | -------- | -------- |
+|----------|----------|----------|
 | cell     | cell     | cell     |
 | longer   | longer   | longer   |
 ```

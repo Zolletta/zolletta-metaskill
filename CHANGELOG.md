@@ -4,6 +4,24 @@ All notable changes to the Zolletta-metaskill skill family are documented in thi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-07-28
+
+### Changed
+
+- **Sub-skills grouped under `skills/`** — all subfolders containing a `SKILL.md` (`documentor`, `external-review`, `patterns`, `php-code-style`, `php-testing-patterns`, `python-code-style`, `python-testing-patterns`, `review`, `setup`) moved from the repo root into a `skills/` directory, aligning with the `.agents/` convention (agentsfolder/spec, .agents Protocol, Agents Standard) which groups skills under a `skills/` subfolder. All path references in `SKILL.md`, `README.md`, docs, and sub-skill cross-references updated accordingly.
+- **CI pipeline consolidated** — the two parallel workflows (`tests.yml`, `quality.yml`) merged into a single `ci.yml` with sequential jobs: `pytest` runs first, then `quality` (ruff + ty + mypy + vulture) via `needs: pytest`. Eliminates the cross-workflow cache write race.
+- **Codecov upload fixed** — `codecov-action` bumped to v6 (ships `github-script@v8` on Node.js 24, clearing the deprecation warning) and `CODECOV_TOKEN` now passed explicitly via the `token:` input. `actions/checkout` bumped to v5 and `astral-sh/setup-uv` to v7 (Node.js 24).
+- **`~/.agents/rules/` language relaxed** — changed from prescriptive ("All files in `~/.agents/rules/` are the single source of truth") to conditional ("If you have rules in `~/.agents/rules/`, those are the single source of truth") since `rules/` is our own convention, not part of the `.agents/` standard.
+
+### Added
+
+- `LICENSE` file with links to the MIT and Commons Clause license texts
+- README badges: CI status, Codecov coverage, Python version, license, PRs welcome
+
+### Fixed
+
+- `.bump` script path updated for the new `skills/setup/` layout
+
 ## [2.0.0] - 2026-07-23
 
 ### Added
