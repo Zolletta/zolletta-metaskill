@@ -25,6 +25,7 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
+          cache-suffix: "quality"
 
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
