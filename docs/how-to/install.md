@@ -33,7 +33,7 @@ The `install.sh` script:
 Supported tools (auto-detected — only installed tools are linked):
 
 | Tool        | Symlink path                                    |
-| ----------- | ----------------------------------------------- |
+|-------------|-------------------------------------------------|
 | Claude Code | `~/.claude/skills/zolletta-metaskill`           |
 | Cursor      | `~/.cursor/skills/zolletta-metaskill`           |
 | Gemini CLI  | `~/.gemini/skills/zolletta-metaskill`           |
@@ -82,7 +82,7 @@ This should list the available subcommands: `setup`, `documentor`, `patterns`, `
 
 ## Post-installation
 
-After installing, run `/zolletta-metaskill setup` in each project where we want to use the review skills. Setup creates `.zolletta-metaskill/settings.json` with the project's language, tool availability, and configuration. See [Set up a project](setup-project.md) for details.
+After installing, run `/zolletta-metaskill setup` in each project to use the review skills. Setup creates `.zolletta-metaskill/settings.json` with the project's language, tool availability, and configuration. See [Set up a project](setup-project.md) for details.
 
 ## See also
 

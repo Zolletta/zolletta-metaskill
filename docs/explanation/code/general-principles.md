@@ -75,6 +75,8 @@ class UserController {
 }
 ```
 
+**Why this matters**: a class with one reason to change is easier to test, review, and maintain. See [SRP — Clean Code](https://wiki.c2.com/?SingleResponsibilityPrinciple).
+
 ### 2. Open/Closed (OCP)
 
 Software entities should be open for extension, but closed for modification. Adding a new type should not require editing existing code — use polymorphism (strategy pattern, plugin registry, protocol-based dispatch) instead of if/elif type ladders.
@@ -115,6 +117,8 @@ class FeatureBranchPipeline:
 grep -rn "instanceof\|get_class(" src/ --include="*.php" | head -20
 ```
 
+**Why this matters**: adding a new type requires zero modification to existing code. See [OCP — Clean Code](https://wiki.c2.com/?OpenClosedPrinciple).
+
 ### 3. Liskov Substitution (LSP)
 
 Subtypes must be substitutable for their base types. If code expects a parent class, passing a subclass must not break it.
@@ -138,6 +142,8 @@ class StrictValidator(BaseValidator):
 class StrictValidator(BaseValidator):
     def validate(self, data: dict) -> bool: ...
 ```
+
+**Why this matters**: subtypes must be substitutable for their base types without breaking callers. See [LSP — Clean Code](https://wiki.c2.com/?LiskovSubstitutionPrinciple).
 
 ### 4. Interface Segregation (ISP)
 
@@ -170,6 +176,8 @@ class ReadOnlyImpl(Readable):
     def read(self) -> bytes: ...
     # No stubs needed — only implements what it uses
 ```
+
+**Why this matters**: clients should not depend on interfaces they do not use. See [ISP — Clean Code](https://wiki.c2.com/?InterfaceSegregationPrinciple).
 
 ### 5. Dependency Inversion (DIP)
 
@@ -206,6 +214,8 @@ def main():
 grep -rn "new \|->.* = new " src/ --include="*.php" | grep -v "Factory\|Builder"
 ```
 
+**Why this matters**: both high-level and low-level modules depend on abstractions, not concretions. See [DIP — Clean Code](https://wiki.c2.com/?DependencyInversionPrinciple).
+
 ## Other Fundamental Principles
 
 ### KISS (Keep It Simple)
@@ -229,6 +239,19 @@ def get_formatter(name: str) -> Formatter:
 
 The factory pattern adds code without adding value here. Save patterns for when they solve real problems.
 
+**Why this matters**: complexity has a cost — prefer the simplest solution that works. See [KISS — Clean Code](https://wiki.c2.com/?KeepItSimpleStupid).
+
+### Do Not Overcomplicate Responses
+
+When reporting findings, writing explanations, or suggesting fixes, keep responses as simple as the finding warrants. Do not add tangential context, restate the obvious, or propose fixes that are more complex than the problem. A one-line finding with a file:line reference and a direct fix is better than a paragraph that explains the history of the pattern.
+
+- Report each finding once, with the minimum context needed to act on it.
+- Do not restate rules or principles the reader already has access to — link instead.
+- Do not suggest architectural changes for style-level findings.
+- Do not bundle unrelated findings into a single narrative — list them separately.
+
+**Why this matters**: overcomplicated responses bury the actionable signal under noise, waste tokens, and make the review harder to triage. See [KISS — Clean Code](https://wiki.c2.com/?KeepItSimpleStupid).
+
 ### Separation of Concerns
 
 Organize code into distinct layers with clear responsibilities.
@@ -251,6 +274,8 @@ Organize code into distinct layers with clear responsibilities.
 ```
 
 Each layer depends only on layers below it. See the SRP examples above for Python and PHP implementations of this layering.
+
+**Why this matters**: layers isolate change — a database swap does not touch the API layer. See [Separation of Concerns — Wikipedia](https://en.wikipedia.org/wiki/Separation_of_concerns).
 
 ### Composition Over Inheritance
 
@@ -291,6 +316,55 @@ class NotificationService {
 }
 ```
 
+**Why this matters**: composition is flexible and testable; inheritance is rigid. See [Composition over inheritance — Wikipedia](https://en.wikipedia.org/wiki/Composition_over_inheritance).
+
+### Thin Coordinator / Orchestrator
+
+A **thin coordinator** (often named `Orchestrator`) wires collaborators and owns the high-level flow, delegating every concrete operation to focused helpers. It is SRP + DIP combined: one responsibility (the flow), every dependency injected. Methods are 1–5 lines each, every line a delegation — the class reads like a table of contents.
+
+```python
+class Orchestrator:
+    """Thin coordinator: wires four collaborators, owns only the flow."""
+
+    def __init__(
+        self,
+        config: Config,
+        *,
+        scenario_filter: ScenarioFilter,
+        group_runner: PipelineGroupRunner,
+        finalizer: ExecutionFinalizer,
+    ) -> None:
+        self._config = config
+        self._scenario_filter = scenario_filter
+        self._group_runner = group_runner
+        self._finalizer = finalizer
+
+    def run(self, spec: Spec) -> Result:
+        scenarios = self._scenario_filter.filter(spec)
+        outcomes = self._group_runner.run(scenarios)
+        return self._finalizer.finalize(outcomes)
+```
+
+```php
+<?php
+
+class Orchestrator {
+    public function __construct(
+        private readonly ScenarioFilter $scenarioFilter,
+        private readonly PipelineGroupRunner $groupRunner,
+        private readonly ExecutionFinalizer $finalizer,
+    ) {}
+
+    public function run(Spec $spec): Result {
+        $scenarios = $this->scenarioFilter->filter($spec);
+        $outcomes = $this->groupRunner->run($scenarios);
+        return $this->finalizer->finalize($outcomes);
+    }
+}
+```
+
+**Why this matters**: this is the inverse of a God class — high attribute count is *delegation*, not mixed concerns. See [false-positive-prevention.md](false-positive-prevention.md) → "An orchestrator that delegates to injected dependencies" is explicitly **not** a God class. For the Python-specific variant with keyword-only DI, see [python-review-patterns.md](python/python-review-patterns.md).
+
 ### Rule of Three
 
 Wait until you have three instances before abstracting. Duplication is often better than the wrong abstraction.
@@ -304,6 +378,8 @@ def process_returns(returns: list[Return]) -> list[Result]: ...
 # Duplication is often better than the wrong abstraction.
 # Only after a third case, consider if there's a real pattern.
 ```
+
+**Why this matters**: premature abstraction is harder to undo than duplication. See [Rule of Three — Wikipedia](https://en.wikipedia.org/wiki/Rule_of_three_(computer_programming)).
 
 ### Function Size Guidelines
 
@@ -330,6 +406,8 @@ def process_order(order: Order) -> Result:
     send_confirmation(order, payment_result)
     return Result(success=True, order_id=order.id)
 ```
+
+**Why this matters**: focused functions are easier to test, name, and reuse. See [Clean Code — Function Size](https://wiki.c2.com/?FunctionSize).
 
 ## Dependency Injection
 
@@ -358,6 +436,8 @@ service = UserService(repository=PostgresUserRepository(db), cache=RedisCache(re
 service = UserService(repository=InMemoryUserRepository(), cache=FakeCache(), logger=NullLogger())
 ```
 
+**Why this matters**: injected dependencies are substitutable at test time and production time. See [DI — Clean Code](https://wiki.c2.com/?DependencyInjection).
+
 ## God Class Detection
 
 A **God class** is not defined by size (lines, methods, attributes). It is defined by **having multiple reasons to change from different domains**.
@@ -382,7 +462,7 @@ grep -c "public function\|private function\|protected function" src/MyClass.php
 ### Domain reference table
 
 | Domain         | Examples                                           |
-| -------------- | -------------------------------------------------- |
+|----------------|----------------------------------------------------|
 | HTTP/API       | request parsing, response formatting, status codes |
 | Business logic | validation, domain rules, calculations             |
 | Data access    | SQL, ORM calls, cache reads/writes                 |
@@ -402,6 +482,8 @@ grep -c "public function\|private function\|protected function" src/MyClass.php
 - A large class whose methods all serve one domain (e.g., a parser with 14 handler methods).
 - A class with many static helpers that all operate on the same data structure.
 - An orchestrator that delegates to injected dependencies (high attribute count is delegation, not mixed concerns).
+
+**Why this matters**: size is a triage signal, never a verdict — cohesion is the test. See [God Class — Wikipedia](https://en.wikipedia.org/wiki/God_object).
 
 ## Common Anti-Patterns
 
@@ -436,3 +518,5 @@ def calculate_discount(user: User, order_history: list[Order]) -> float:
         return 0.15
     return 0.0
 ```
+
+**Why this matters**: leaking internal types couples API consumers to implementation details; mixing I/O with logic makes functions untestable. See [Clean Code — Anti-Patterns](https://wiki.c2.com/?AntiPattern).

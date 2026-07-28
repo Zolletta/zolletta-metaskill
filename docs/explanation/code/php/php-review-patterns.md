@@ -77,7 +77,7 @@ class StrategyDiscovery {
 }
 ```
 
-**Why this matters**: this is the OCP-compliant alternative to if/elseif type branching. Adding a new strategy requires zero modification to existing dispatch logic — just create a new class and register it.
+**Why this matters**: this is the OCP-compliant alternative to if/elseif type branching. Adding a new strategy requires zero modification to existing dispatch logic — just create a new class and register it. See [Strategy Pattern — Wikipedia](https://en.wikipedia.org/wiki/Strategy_pattern), [PHP 8 attributes](https://www.php.net/manual/en/language.attributes.php).
 
 ## Interface vs Abstract Class
 
@@ -116,6 +116,8 @@ abstract class BaseRepository {
 
 **ISP reminder**: keep interfaces thin. If an interface has 5+ methods and different implementers only use subsets, split it into smaller, focused interfaces. See [general-principles.md](../general-principles.md) → Interface Segregation.
 
+**Why this matters**: interfaces allow multiple inheritance of contract; abstract classes share implementation but limit to one parent. See [PHP interfaces](https://www.php.net/manual/en/language.oop5.interfaces.php), [PHP abstract classes](https://www.php.net/manual/en/language.oop5.abstract.php).
+
 ## Trait Patterns
 
 PHP traits provide horizontal code reuse — a way to share methods across classes without inheritance. Use traits for small, focused pieces of shared behavior.
@@ -151,6 +153,8 @@ trait BadTrait {
     // This is a God trait — split it into focused traits
 }
 ```
+
+**Why this matters**: small, focused, stateless traits are composable; fat traits with state recreate the God class problem horizontally. See [PHP traits](https://www.php.net/manual/en/language.oop5.traits.php).
 
 ## SOLID Violation Patterns
 
@@ -200,6 +204,8 @@ class OrderProcessor {
 ```
 
 **Scanner**: [`scan_php_dependency_inversion`](../../../reference/code/scripts.md#scan_php_dependency_inversionpy-dip) — detects `new ConcreteClass()` inside class methods. Excludes factories, builders, and PHP built-in types.
+
+**Why this matters**: injected dependencies are substitutable and testable; `new` in a constructor is a hard coupling. See [DIP — Clean Code](https://wiki.c2.com/?DependencyInversionPrinciple).
 
 ### Interface Segregation Principle (ISP)
 
@@ -271,6 +277,8 @@ class HumanWorker implements Workable, Reportable, Employable {
 
 **Scanner**: [`scan_php_interface_segregation`](../../../reference/code/scripts.md#scan_php_interface_segregationpy-isp) — flags interfaces with more than `--min-methods` (default: 7) methods.
 
+**Why this matters**: fat interfaces force implementers to stub methods they don't use. See [ISP — Clean Code](https://wiki.c2.com/?InterfaceSegregationPrinciple).
+
 ### Open/Closed Principle (OCP)
 
 **Violation**: `instanceof` chains branch on subtypes. Adding a new subtype requires modifying the ladder instead of simply adding a new implementation.
@@ -333,6 +341,8 @@ class PaymentProcessor {
 
 **Scanner**: [`scan_php_open_closed`](../../../reference/code/scripts.md#scan_php_open_closedpy-ocp) — detects `if/elseif` chains with 3+ `instanceof` branches.
 
+**Why this matters**: polymorphism via interface keeps the processor closed for modification. See [OCP — Clean Code](https://wiki.c2.com/?OpenClosedPrinciple).
+
 ## Manual Detection Commands
 
 For PHP projects where AST-based scanners are not available (e.g. `tree-sitter-php` not installed), use grep for manual triage:
@@ -352,3 +362,77 @@ grep -rn "public function" src/ --include="*.php" | cut -d: -f1 | sort | uniq -c
 ```
 
 These commands produce triage signals, not verdicts. Always apply the "reason to change" test before reporting a class as a God class. See [false-positive-prevention.md](../false-positive-prevention.md) for the mandatory judgment steps.
+
+## Reusable Array Shapes with `@phpstan-import-type`
+
+PHPStan supports declaring a typed array shape once on an interface and importing it wherever the shape is reused. This prevents drift: the shape is defined in one place and every consumer references the canonical definition.
+
+```php
+<?php
+
+interface ArrayShapesInterface {
+    /** @return array{responseId: string, userId: int, username: string} */
+    public function getResponseShape(): array;
+}
+
+class JwtResponse {
+    /** @phpstan-import-type HeadersArrayShape from ArrayShapesInterface */
+
+    /** @param HeadersArrayShape $headers */
+    public function __construct(private readonly array $headers) {}
+
+    /** @return HeadersArrayShape */
+    public function getHeaders(): array {
+        return $this->headers;
+    }
+}
+```
+
+**Why this matters**: the array shape lives on the interface — changing it there updates every consumer. PHPStan resolves the imported type alias and type-checks every usage. See [PHPStan — importing types](https://phpstan.org/writing-php-code/phpdocs-basics#importing-types).
+
+## Aligned `=` and `=>` in Multi-Line Arrays
+
+In multi-line array literals and assignments, the `=` and `=>` operators are vertically aligned, enforced by `php-cs-fixer` via `binary_operator_spaces`.
+
+```php
+<?php
+
+return [
+    'responseId'   => $this->responseId,
+    'userId'       => $this->id,
+    'username'     => $this->username,
+    'creationDate' => $this->creationDate,
+];
+```
+
+**Enforcement**: `php-cs-fixer` config:
+
+```php
+'binary_operator_spaces' => [
+    'operators' => ['=' => 'align', '=>' => 'align'],
+],
+```
+
+**Why this matters**: aligned columns let the eye scan keys and values independently — a missing or mistyped key is immediately visible. See [PHP-CS-Fixer — binary_operator_spaces](https://github.com/PHP-CS-Fixer/PHP-CS-Fixer/blob/master/doc/rules/operator/binary_operator_spaces.rst).
+
+## `readonly class` for Immutable DTOs
+
+PHP 8.2 `readonly class` makes every property immutable by default. Use it for DTOs, value objects, and any class whose entire purpose is to carry data that should not change after construction.
+
+```php
+<?php
+
+readonly class GenericDataDTO {
+    public function __construct(
+        public readonly string $name,
+        public readonly string $requestType,
+        public readonly ?string $responseType,
+        /** @var array<string> */
+        public readonly array $exceptionsThrown,
+    ) {}
+}
+```
+
+**Why this matters**: every property is readonly without listing `readonly` on each one — immutability is a class-level contract. See [PHP readonly classes](https://www.php.net/manual/en/language.oop5.readonly.php#language.oop5.readonly.readonly-class).
+
+> This is the PHP analogue of Python's `@dataclass(frozen=True)`. See [structural-conventions.md](../structural-conventions.md) → Value-Object Suffixes for the naming convention.

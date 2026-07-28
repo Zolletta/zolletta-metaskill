@@ -8,11 +8,11 @@ skills: [python-*]
 
 > **Paths in this document are relative to the Zolletta-MetaSkill project root.**
 
-The `python-code-style` skill inspects Python source for naming conventions, import structure, docstring quality, type annotations, formatting, and dead code. This guide covers what the skill checks, how the rules are organized, and how we configure rule toggles for a project.
+The `python-code-style` skill inspects Python source for naming conventions, import structure, docstring quality, type annotations, formatting, and dead code. This guide covers what the skill checks, how the rules are organized, and how to configure rule toggles for a project.
 
 ## Prerequisites
 
-We need a Python project that has been set up with `/zolletta-metaskill setup`. Setup creates `.zolletta-metaskill/settings.json`, which the skill reads to determine tool availability, effective tool configuration, and rule toggles. The skill reads from the `python` object in `settings.json`: `python.tools.*` objects (each with an `available` boolean and, where applicable, the effective configuration extracted from `pyproject.toml` — ruff carries `line_length`, `target_version`, `select`, `ignore`; mypy carries `strict`, `python_version`; ty carries `python_version`; pytest carries `addopts`, `testpaths`, `minversion`), and `python.code_style` (boolean toggles and the vulture confidence threshold). Project-specific acronyms live in the top-level `acronyms` field. If `settings.json` is missing or these objects are absent, the skill cannot run — we should run setup first so the configuration is explicit and repeatable.
+Requires a Python project set up via `/zolletta-metaskill setup`. Reads `python.tools.*` and `python.code_style` from `settings.json`.
 
 ## What the skill checks
 
@@ -44,19 +44,15 @@ Imports must be absolute (no relative imports) when `check_no_relative_imports` 
 
 ## Always-on vs configurable rules
 
-The skill distinguishes between always-on rules and configurable rules. Always-on rules are fundamental standards or fundamental conventions that cannot be disabled — they apply to every project regardless of configuration. Configurable rules are project-specific conventions that can be turned on or off via `settings.json`.
-
-The always-on rules are: descriptive `snake_case` filenames with no abbreviations, `PascalCase` class names, `snake_case` functions and variables, `SCREAMING_SNAKE_CASE` module-level constants, grouped import order (stdlib, third-party, local), private functions exempt from docstrings, test functions exempt from docstrings, and type hints required for all public APIs.
-
-The configurable rules are: acronym casing in class names, absolute imports only (no relative imports), one class per file, filename matches class name, docstrings required on public classes/methods/functions, no type repetition in docstring `Args`/`Returns`, skip docstrings for obvious one-line functions, line length from project config, and vulture minimum confidence for dead-code detection. All configurable rules default to enabled (`true`), and the vulture confidence threshold defaults to `80`.
+The rules above are tagged **always-on** (cannot be disabled) or **configurable** (toggled via `settings.json`, all default to enabled).
 
 ## Review mode (read-only)
 
-When the skill is invoked as part of a read-only review — for example via `/zolletta-metaskill review` — it follows the shared review-mode rules: it does not apply any fixes, and it runs all tools in their check-only modes. Every diagnostic is classified into one of two buckets. Auto-fixable issues (things a formatter or linter could fix automatically) are listed in a separate "Auto-fixable (informational)" section, are not counted toward the grade, and are not listed as findings. Issues that require human judgment to fix are listed as actual findings with severity, impact, and a suggested fix, and they are the only issues that count toward the review score. There is no third "borderline" bucket — every diagnostic is either a real finding or suppressed. The skill writes its findings to a markdown report file in the timestamped report folder, following the report template with the grade at the top, tool results, auto-fixable issues, and findings grouped by severity.
+Follows [review mode](../../../reference/code/review-mode.md) — read-only, two-bucket classification, no fixes applied.
 
 ## How to configure rule toggles
 
-We configure rule toggles by editing the `python.code_style` object in `.zolletta-metaskill/settings.json`. Each configurable rule has a boolean key — set it to `false` to disable that check for the project. The vulture confidence threshold is an integer key (`vulture_min_confidence`) accepting values from 0 to 100. To add project-specific acronyms for the acronym casing check, we set the top-level `acronyms` array; these are merged additively with the shipped base list, not replacing it.
+Configure rule toggles by editing the `python.code_style` object in `.zolletta-metaskill/settings.json`. Each configurable rule has a boolean key — set it to `false` to disable that check for the project. The vulture confidence threshold is an integer key (`vulture_min_confidence`) accepting values from 0 to 100. To add project-specific acronyms for the acronym casing check, set the top-level `acronyms` array; these are merged additively with the shipped base list, not replacing it.
 
 ```json
 "acronyms": ["CI", "MR", "AST", "DI"],
@@ -75,7 +71,7 @@ We configure rule toggles by editing the `python.code_style` object in `.zollett
 }
 ```
 
-For example, to disable the one-class-per-file check and lower the vulture confidence threshold to 60, we would set `check_one_class_per_file` to `false` and `vulture_min_confidence` to `60`. The always-on rules have no corresponding keys in `settings.json` and cannot be disabled.
+For example, to disable the one-class-per-file check and lower the vulture confidence threshold to 60, set `check_one_class_per_file` to `false` and `vulture_min_confidence` to `60`. The always-on rules have no corresponding keys in `settings.json` and cannot be disabled.
 
 ## See also
 

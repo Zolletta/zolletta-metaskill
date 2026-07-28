@@ -6,11 +6,7 @@ skills: [patterns, documentor, review, external-review]
 
 # Tools to Leverage
 
-How to use code graph tools (tokensave) during design pattern analysis.
-
-> **Language-agnostic**: the principles and workflow in this document apply to any project language. The tokensave tools work across all languages. When language-specific examples are needed, they are clearly marked.
-
-> This file narrows down any eventual general rule about code exploration, i.e. [code-exploration-rules.md](~/.agents/code-exploration-rules.md), [tokensave-rules.md](~/.agents/tokensave-rules.md). If you have rules in `~/.agents/`, those are the single source of truth for their domain. For the full tokensave rules reference, see [tokensave.md](tokensave.md).
+Decision tree for choosing the right exploration tool. See [tokensave.md](tokensave.md) for tool reference.
 
 ## Patterns-specific workflow with code graph tools
 
@@ -22,12 +18,6 @@ The standard scanning workflow (see [`scripts.md`](scripts.md)) can be enhanced:
 4. Apply the "reason to change" test based on the domain grouping
 5. **Before splitting**: run `tokensave_impact` (or `tokensave_callers`) to assess blast radius — warn the user if risk is HIGH or CRITICAL
 6. After splitting: run `tokensave_affected` to find which tests to run
-
-## Patterns-specific narrowing
-
-- **Before splitting a God class**: run `tokensave_impact` to assess blast radius. Warn the user if risk is HIGH or CRITICAL. Narrows "before editing any symbol" → "before splitting a class".
-- **After splitting**: run `tokensave_affected` to find which tests to run. Narrows "after changes" → "after a class split".
-- **Don't spawn subagents for code exploration** if tokensave is available. No narrowing needed — restates the global rule.
 
 ## Subagents
 

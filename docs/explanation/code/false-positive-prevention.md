@@ -26,6 +26,8 @@ The patterns skill includes three mechanisms to prevent verdict oscillation betw
 
 **You must NOT report a class as a God class or "large class" finding based on size alone.** Size (lines, methods, attributes) is a triage signal, never a verdict. A 400-line parser with 14 methods that all serve the parsing domain is NOT a God class. A 234-line orchestrator with 15 methods that delegates to injected dependencies is NOT a God class.
 
+**Why this matters**: size-based detection flags the same cohesive classes every review, wasting triage time. See [God Object — Wikipedia](https://en.wikipedia.org/wiki/God_object).
+
 ## 2. Coverage cross-check for missing tests
 
 `scan_tests.py` reports structurally missing test files. Before reporting any as a finding, the reviewer must run `pytest --cov` and check the file's coverage:
@@ -37,18 +39,51 @@ The patterns skill includes three mechanisms to prevent verdict oscillation betw
 
 This prevents the whack-a-mole cycle where every review re-reports the same structurally-missing-but-adequately-covered files.
 
+**Why this matters**: indirect coverage via integration tests is real coverage — re-reporting covered files is noise. See [coverage.py — reporting](https://coverage.readthedocs.io/en/latest/cmd.html#reporting).
+
 ## 3. Semantic composition-root detection
 
 The `scan_dependency_inversion.py` scanner excludes entry points by filename pattern and detects DI container creation (`make_container()`, `Container()`, etc.) semantically. If the scanner still flags a class that is clearly a composition root (it wires the DI container, creates the container, or is the top-level entry point), suppress it and note "composition root — not a DIP violation" in the report.
 
 Someone has to create the container — that is not a violation. The composition root (main, CLI entry point) is the only place where object creation belongs.
 
+**Why this matters**: flagging the composition root as a DIP violation re-litigates the one place where `new` is correct. See [Composition Root — Clean Code](https://wiki.c2.com/?CompositionRoot).
+
+## 4. Coverage-ignore annotations require a documented criterion
+
+`@codeCoverageIgnore` (PHP) and `# pragma: no cover` (Python) exclude code from coverage measurement. When the criterion for *which* classes or lines qualify is not documented, the annotations become an escape hatch — every review re-flags the same classes, and the author re-justifies them from memory.
+
+Before reporting a coverage-ignore annotation as a finding:
+
+1. **Is there a project-level policy?** Look in `AGENTS.md`, `CONTRIBUTING.md`, or the review settings.
+2. **Does the annotated code match the policy?** If yes, do not flag — note "excluded per <policy>".
+3. **If no policy exists**, report it as a *process* finding once: "Coverage-ignore annotation present but no documented criterion. Either document the criterion or remove the annotation."
+
+**Why this matters**: judgement that lives only in the author's head is not reproducible — the next reviewer cannot reproduce the decision. See [coverage.py — excluding code](https://coverage.readthedocs.io/en/latest/excluding.html), [PHPUnit — @codeCoverageIgnore](https://docs.phpunit.de/en/main/annotations.html#codecoverageignore).
+
+## 5. Generational drift is a sub-tree finding, not a per-file defect
+
+When a codebase has sub-projects of different ages, older sub-projects lag the conventions established in newer ones. This is **discipline drift**, not **discipline absence**.
+
+Before reporting drift items as per-file findings:
+
+1. **Identify the sub-tree boundary** (e.g. `workflow-runner/` vs `ci-tester-engine/`).
+2. **Group all drift items by sub-tree**, not by file. Report once per sub-tree.
+3. **Do not report each `Optional[str]` as a separate finding** — dozens of identical findings bury the actionable signal.
+4. **Frame as a migration decision**: "Standardise or accept the drift. If standardising, file a migration task."
+
+**Common drift signals**: legacy typing (`Optional[X]`, `List[T]`), numbered test names (`test_unit_01_...`), reduced ruff ruleset (`E,F,I` only), banner-comment separators.
+
+**Why this matters**: a single sub-tree-level finding is actionable; 47 individual `Optional[str]` findings are noise. See [false-positive-prevention.md](#) → "Why these mechanisms exist".
+
 ## Why these mechanisms exist
 
 Without these checks, automated scanners produce false positives that oscillate between reviews:
 
-- **Size-based God class detection** flags the same large-but-cohesive classes every review, wasting triage time.
+- **Size-based God class detection** flags the same large-but-cohesive classes every review.
 - **Structural missing-test detection** re-reports files that are actually well-covered through indirect tests.
 - **Pattern-based DIP detection** flags composition roots that are explicitly exempted by the DIP principle itself.
+- **Unguided coverage-ignore detection** re-litigates the same annotations every review.
+- **Per-file drift reporting** buries a single migration decision under dozens of identical findings.
 
-Each mechanism adds a mandatory human-judgment step between the automated signal and the reported finding, ensuring that only genuine issues reach the report.
+Each mechanism adds a mandatory human-judgment step between the automated signal and the reported finding.

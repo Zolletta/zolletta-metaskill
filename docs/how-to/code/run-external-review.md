@@ -11,7 +11,6 @@ Run a code review on the modified files of a change using an external LLM that f
 ## Prerequisites
 
 - A git repository with uncommitted or committed-but-unreviewed changes
-- The Zolletta-metaskill skill installed and available to the agent
 - Global rules present in `~/.agents/` (markdown files covering language, style, and documentation conventions)
 
 ## Steps
@@ -53,9 +52,9 @@ The external reviewer writes its findings to a markdown report in the timestampe
 
 ## Configuration
 
-| Setting | Location | Default | Description |
-| --- | --- | --- | --- |
-| `external_review_model` | `.zolletta-metaskill/settings.json` | `swe` | The external LLM model to use for the review |
+| Setting                 | Location                            | Default | Description                                  |
+|-------------------------|-------------------------------------|---------|----------------------------------------------|
+| `external_review_model` | `.zolletta-metaskill/settings.json` | `swe`   | The external LLM model to use for the review |
 
 ## See also
 

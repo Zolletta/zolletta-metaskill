@@ -42,7 +42,7 @@ python3 src/zolletta_metaskill/patterns/test_splitter.py <test_file> \
 ## Options
 
 | Option             | Default                                      | Description                                          |
-| ------------------ | -------------------------------------------- | ---------------------------------------------------- |
+|--------------------|----------------------------------------------|------------------------------------------------------|
 | `<test_file>`      | (required)                                   | Path to the test .py file to split                   |
 | `--mapping <json>` | (none)                                       | JSON file or inline JSON mapping prefix to SUT class |
 | `--out <dir>`      | `.zolletta-metaskill/test_split/<filename>/` | Output directory                                     |
@@ -60,18 +60,11 @@ python3 src/zolletta_metaskill/patterns/test_splitter.py <test_file> \
 
 ## What gets copied to each split file
 
-- Module docstring (with "split from" note)
-- All imports from the original file
-- `pytestmark` assignment (if present)
-- Shared methods (fixtures, helpers, setup/teardown) — copied to every split file
-- Test methods matching the SUT's prefix
+See [scripts.md](../../reference/code/scripts.md) → test_splitter.py for what gets copied to each split file.
 
 ## What the splitter does NOT do
 
-- Remove unused imports from split files (review manually)
-- Move the files to the final test directory (human reviews first)
-- Delete the original file (human confirms the split is correct)
-- Run the tests (human verifies the split files pass)
+The splitter does not remove unused imports, move files, delete the original, or run tests — review manually. See [scripts.md](../../reference/code/scripts.md).
 
 ## Unmatched methods
 

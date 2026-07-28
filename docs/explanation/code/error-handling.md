@@ -5,7 +5,7 @@ skills: [patterns, review, python-*, php-*]
 ---
 # Error Handling (Language-Agnostic)
 
-> Four rules adapted from [php-best-practices](https://skills.sh/php-community/php-best-practices) (MIT, v2.1.0). Examples in PHP and Python. The principles apply identically regardless of language.
+> Five rules adapted from [php-best-practices](https://skills.sh/php-community/php-best-practices) (MIT, v2.1.0). Examples in PHP and Python. The principles apply identically regardless of language.
 
 ## 1. Custom exceptions
 
@@ -30,6 +30,8 @@ class UserNotFoundError(RuntimeError):
 
 raise UserNotFoundError(f"User {user_id} not found")
 ```
+
+**Why this matters**: callers catch exactly the error they can handle. See [Python user-defined exceptions](https://docs.python.org/3/tutorial/errors.html#user-defined-exceptions), [PHP extending exceptions](https://www.php.net/manual/en/language.exceptions.extending.php).
 
 ## 2. Exception hierarchy
 
@@ -74,6 +76,8 @@ except DomainError:
     # handle any domain error
 ```
 
+**Why this matters**: callers catch at the level of abstraction they care about. See [Python exception hierarchy](https://docs.python.org/3/library/exceptions.html#exception-hierarchy).
+
 ## 3. Catch specific exceptions
 
 Catch specific exception types, not the generic base class. Catching the base class swallows unexpected errors and hides bugs.
@@ -108,6 +112,8 @@ except UserNotFoundError:
     user = None
 ```
 
+**Why this matters**: catching the base class swallows unexpected errors and hides bugs. See [Python handling exceptions](https://docs.python.org/3/tutorial/errors.html#handling-exceptions).
+
 ## 4. Finally for cleanup
 
 Use `finally` for guaranteed resource cleanup — it runs whether the `try` block succeeds or throws.
@@ -134,3 +140,30 @@ except ProcessingError as e:
 finally:
     lock.release()  # always runs
 ```
+
+**Why this matters**: `finally` runs whether the `try` succeeds or throws — guaranteed cleanup. See [Python try statement](https://docs.python.org/3/reference/compound_stmts.html#the-try-statement), [PHP exceptions](https://www.php.net/manual/en/language.exceptions.php).
+
+## 5. Wrap library exceptions in domain exceptions
+
+Catch library-specific exceptions at the service boundary and re-throw as domain exceptions, preserving the cause. This composes rules 1 and 3: callers depend on a stable domain type and never catch the library's base exception.
+
+```php
+<?php
+
+// Library throws ExpiredException (e.g. from a JWT library)
+try {
+    $token = $this->tokenParser->parse($raw);
+} catch (ExpiredException $e) {
+    throw new ExpiredAuthTokenException('Il token fornito è scaduto', previous: $e);
+}
+```
+
+```python
+# Library raises httpx.HTTPError
+try:
+    data = httpx.get(url).json()
+except httpx.HTTPError as e:
+    raise GitLabFetchError(f"Failed to fetch -> {e}") from e
+```
+
+**Why this matters**: swapping the library does not break every `except` clause; the cause chain (`from e` / `previous: $e`) keeps the root failure traceable. See [PEP 3134](https://peps.python.org/pep-3134/) (Python exception chaining), [PHP Exception::__construct](https://www.php.net/manual/en/exception.construct.php) (`previous` parameter).

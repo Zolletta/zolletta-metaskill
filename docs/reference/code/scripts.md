@@ -23,7 +23,7 @@ python3 src/zolletta_metaskill/patterns/scan_class_metrics.py <directory> [--top
 ```
 
 | Option          | Default | Description                       |
-| --------------- | ------- | --------------------------------- |
+|-----------------|---------|-----------------------------------|
 | `<directory>`   | `src`   | Root directory to scan            |
 | `--top N`       | 30      | Show only the top N classes       |
 | `--min-lines N` | 50      | Skip classes shorter than N lines |
@@ -41,7 +41,7 @@ python3 src/zolletta_metaskill/patterns/scan_test_god_classes.py <directory> [--
 ```
 
 | Option           | Default | Description                                             |
-| ---------------- | ------- | ------------------------------------------------------- |
+|------------------|---------|---------------------------------------------------------|
 | `<directory>`    | `tests` | Root directory to scan                                  |
 | `--top N`        | 30      | Show only the top N classes                             |
 | `--show-methods` | off     | List all method names per class (helps spot mixed SUTs) |
@@ -57,7 +57,7 @@ python3 src/zolletta_metaskill/shared/scan_one_class_per_file.py <directory> [--
 ```
 
 | Option          | Default | Description                                         |
-| --------------- | ------- | --------------------------------------------------- |
+|-----------------|---------|-----------------------------------------------------|
 | `<directory>`   | `src`   | Root directory to scan                              |
 | `--strict`      | off     | Exit with code 1 if violations are found            |
 | `--ignore-zero` | off     | Don't report files with 0 classes (utility modules) |
@@ -82,20 +82,16 @@ python3 src/zolletta_metaskill/shared/scan_tests.py \
     [--ignore-dirs <dir1,dir2,...>] [--skip]
 ```
 
-| Option | Default | Description |
-| --- | --- | --- |
-| `--src` | `src` | Source root directory |
-| `--tests` | `tests` | Test root directory |
-| `--src-package` | auto-detect | Package path within `--src` |
-| `--tests-package` | same as `--src-package` | Package path within `--tests` |
-| `--ignore-dirs` | (none) | Comma-separated dir names to skip (e.g. `assets,templates`) |
-| `--skip` | off | Skip this check entirely |
+| Option            | Default                 | Description                                                 |
+|-------------------|-------------------------|-------------------------------------------------------------|
+| `--src`           | `src`                   | Source root directory                                       |
+| `--tests`         | `tests`                 | Test root directory                                         |
+| `--src-package`   | auto-detect             | Package path within `--src`                                 |
+| `--tests-package` | same as `--src-package` | Package path within `--tests`                               |
+| `--ignore-dirs`   | (none)                  | Comma-separated dir names to skip (e.g. `assets,templates`) |
+| `--skip`          | off                     | Skip this check entirely                                    |
 
-**File matching convention**: `src/.../my_module.py` -> `tests/.../test_my_module*.py`. One source class can have many test files (e.g. `test_cache_operations.py`, `test_cache_getters.py`), so matching is by prefix. Also checks class-name-based prefixes: `src/.../my_module.py` with class `MyClass` -> `tests/.../test_my_class*.py`. Uses longest-prefix matching to avoid false positives (e.g. `test_scenario_writer.py` matches `scenario_writer.py`, not `scenario.py`). When two source files have equal-length prefixes (e.g. two `cache.py` files in different directories), prefers the one in the same directory as the test.
-
-**Indirect test detection**: source files with no mirrored test file are always checked for indirect references. The script reads all test files once and checks if any class name from the source file appears in the test code. Files with indirect references are excluded from the "missing" table — they have no mirrored test file but their classes ARE exercised through other test files.
-
-**Coverage cross-check (mandatory)**: The "Missing tests" table is a structural signal only. Before reporting any file from this table as a finding in a review, you MUST run `pytest --cov` and check the file's coverage. If the file has >50% coverage, it is adequately tested via indirect tests — downgrade to informational. Only report as a finding if coverage <50% AND no indirect references. This prevents the whack-a-mole cycle where every review re-reports the same structurally-missing-but-adequately-covered files.
+**File matching convention**: Test files match source files by stem prefix: `test_cache_*` matches `cache.py`.
 
 ### scan_naming_conventions.py
 
@@ -111,19 +107,17 @@ python3 src/zolletta_metaskill/shared/scan_naming_conventions.py \
     [--ignore-dirs <dir1,dir2,...>] [--strict] [--skip]
 ```
 
-| Option | Default | Description |
-| --- | --- | --- |
-| `--src` | `src` | Source root directory |
-| `--tests` | `tests` | Test root directory |
-| `--src-package` | auto-detect | Package path within `--src` |
-| `--tests-package` | same as `--src-package` | Package path within `--tests` |
-| `--ignore-dirs` | (none) | Comma-separated dir names to skip (e.g. `assets,templates`) |
-| `--strict` | off | Exit with code 1 if violations are found |
-| `--skip` | off | Skip this check entirely |
+| Option            | Default                 | Description                                                 |
+|-------------------|-------------------------|-------------------------------------------------------------|
+| `--src`           | `src`                   | Source root directory                                       |
+| `--tests`         | `tests`                 | Test root directory                                         |
+| `--src-package`   | auto-detect             | Package path within `--src`                                 |
+| `--tests-package` | same as `--src-package` | Package path within `--tests`                               |
+| `--ignore-dirs`   | (none)                  | Comma-separated dir names to skip (e.g. `assets,templates`) |
+| `--strict`        | off                     | Exit with code 1 if violations are found                    |
+| `--skip`          | off                     | Skip this check entirely                                    |
 
-**Matching logic**: for each test file `test_cache_operations.py`, the script strips `test_` to get `cache_operations`, then checks if any source file stem in the mirrored directory is a prefix (followed by nothing or by `_`). So `cache.py` matches `cache_operations` (suffix `_operations`), and `cache_operations.py` also matches (no suffix). The longest match wins. Class-name-based prefixes are also checked: source file `my_module.py` with class `MyClass` accepts `test_my_class*.py`.
-
-**Use this instead of** `scan_one_class_per_file.py` + `scan_tests.py` when you want a single focused check on naming compliance (not coverage or directory mirroring).
+**Matching logic**: Longest stem-prefix match wins; class-name prefixes also checked.
 
 ## SOLID Validator Scripts
 
@@ -136,14 +130,14 @@ python3 src/zolletta_metaskill/patterns/scan_dependency_inversion.py <directory>
     [--entry-points <pattern1,pattern2,...>] [--skip] [--strict]
 ```
 
-| Option | Default | Description |
-| --- | --- | --- |
-| `<directory>` | `src` | Root directory to scan |
+| Option           | Default                                                     | Description                                  |
+|------------------|-------------------------------------------------------------|----------------------------------------------|
+| `<directory>`    | `src`                                                       | Root directory to scan                       |
 | `--entry-points` | `main,cli,app,__main__,myproject,manage,wsgi,asgi,conftest` | Comma-separated filename patterns to exclude |
-| `--skip` | off | Skip this check entirely |
-| `--strict` | off | Exit with code 1 if violations are found |
+| `--skip`         | off                                                         | Skip this check entirely                     |
+| `--strict`       | off                                                         | Exit with code 1 if violations are found     |
 
-**Exclusions**: entry points (composition roots by filename pattern), classes that create DI containers (`make_container()`, `Container()`, etc. — detected semantically as composition roots), dataclasses/NamedTuples/TypedDicts/Enums, factory classes, and stdlib types are automatically excluded.
+**Exclusions**: Excludes entry points, DI containers, dataclasses, factories, and stdlib types.
 
 ### scan_interface_segregation.py (ISP)
 
@@ -154,7 +148,7 @@ python3 src/zolletta_metaskill/patterns/scan_interface_segregation.py <directory
 ```
 
 | Option            | Default | Description                                  |
-| ----------------- | ------- | -------------------------------------------- |
+|-------------------|---------|----------------------------------------------|
 | `<directory>`     | `src`   | Root directory to scan                       |
 | `--min-methods N` | 5       | Minimum abstract method count to flag as fat |
 | `--skip`          | off     | Skip this check entirely                     |
@@ -171,7 +165,7 @@ python3 src/zolletta_metaskill/patterns/scan_open_closed.py <directory> [--min-b
 ```
 
 | Option             | Default | Description                              |
-| ------------------ | ------- | ---------------------------------------- |
+|--------------------|---------|------------------------------------------|
 | `<directory>`      | `src`   | Root directory to scan                   |
 | `--min-branches N` | 3       | Minimum type-check branches to flag      |
 | `--skip`           | off     | Skip this check entirely                 |
@@ -186,7 +180,7 @@ python3 src/zolletta_metaskill/patterns/scan_liskov_substitution.py <directory> 
 ```
 
 | Option        | Default | Description                              |
-| ------------- | ------- | ---------------------------------------- |
+|---------------|---------|------------------------------------------|
 | `<directory>` | `src`   | Root directory to scan                   |
 | `--skip`      | off     | Skip this check entirely                 |
 | `--strict`    | off     | Exit with code 1 if violations are found |
@@ -206,7 +200,7 @@ python3 src/zolletta_metaskill/php_patterns/scan_php_dependency_inversion.py <di
 ```
 
 | Option        | Default | Description                              |
-| ------------- | ------- | ---------------------------------------- |
+|---------------|---------|------------------------------------------|
 | `<directory>` | `src`   | Root directory to scan                   |
 | `--skip`      | off     | Skip this check entirely                 |
 | `--strict`    | off     | Exit with code 1 if violations are found |
@@ -224,7 +218,7 @@ python3 src/zolletta_metaskill/php_patterns/scan_php_interface_segregation.py <d
 ```
 
 | Option            | Default | Description                              |
-| ----------------- | ------- | ---------------------------------------- |
+|-------------------|---------|------------------------------------------|
 | `<directory>`     | `src`   | Root directory to scan                   |
 | `--min-methods N` | 7       | Minimum method count to flag as fat      |
 | `--skip`          | off     | Skip this check entirely                 |
@@ -241,7 +235,7 @@ python3 src/zolletta_metaskill/php_patterns/scan_php_open_closed.py <directory> 
 ```
 
 | Option             | Default | Description                              |
-| ------------------ | ------- | ---------------------------------------- |
+|--------------------|---------|------------------------------------------|
 | `<directory>`      | `src`   | Root directory to scan                   |
 | `--min-branches N` | 3       | Minimum instanceof branches to flag      |
 | `--skip`           | off     | Skip this check entirely                 |
@@ -257,26 +251,26 @@ The `LanguageEngine` protocol is the seam between language-agnostic scanners and
 
 Defines the `LanguageEngine` protocol (`@runtime_checkable`). Every engine must implement:
 
-| Method / property | Description |
-| --- | --- |
-| `language` | Language identifier (e.g. `"python"`, `"php"`) |
-| `parse_module(path)` | Parse a source file and return a `ModuleInfo` |
-| `is_test_file(path)` | Return `True` if the path is a test file for this language |
-| `is_source_file(path)` | Return `True` if the path is a source file for this language |
-| `file_extensions()` | Return the list of extensions handled (e.g. `[".py"]`, `[".php"]`) |
-| `test_file_pattern()` | Return the glob pattern for test files (e.g. `"test_*.py"`, `"*Test.php"`) |
+| Method / property      | Description                                                                |
+|------------------------|----------------------------------------------------------------------------|
+| `language`             | Language identifier (e.g. `"python"`, `"php"`)                             |
+| `parse_module(path)`   | Parse a source file and return a `ModuleInfo`                              |
+| `is_test_file(path)`   | Return `True` if the path is a test file for this language                 |
+| `is_source_file(path)` | Return `True` if the path is a source file for this language               |
+| `file_extensions()`    | Return the list of extensions handled (e.g. `[".py"]`, `[".php"]`)         |
+| `test_file_pattern()`  | Return the glob pattern for test files (e.g. `"test_*.py"`, `"*Test.php"`) |
 
 ### common/registry.py
 
 Provides the engine registry — maps language names and file extensions to engines:
 
-| Function | Description |
-| --- | --- |
-| `register_engine(engine)` | Register an engine under its `language` identifier (raises `ValueError` on duplicate) |
-| `get_engine(language)` | Return the registered engine for a language (raises `KeyError` if not found) |
-| `get_engine_for_file(path)` | Return the engine that handles a file path based on its extension, or `None` |
-| `ensure_engine(engine)` | Register an engine if its language is not already registered (idempotent — safe to call from scanner entry points) |
-| `available_languages()` | Return a sorted list of registered language identifiers |
+| Function                    | Description                                                                                                        |
+|-----------------------------|--------------------------------------------------------------------------------------------------------------------|
+| `register_engine(engine)`   | Register an engine under its `language` identifier (raises `ValueError` on duplicate)                              |
+| `get_engine(language)`      | Return the registered engine for a language (raises `KeyError` if not found)                                       |
+| `get_engine_for_file(path)` | Return the engine that handles a file path based on its extension, or `None`                                       |
+| `ensure_engine(engine)`     | Register an engine if its language is not already registered (idempotent — safe to call from scanner entry points) |
+| `available_languages()`     | Return a sorted list of registered language identifiers                                                            |
 
 ### engines/python_engine.py & engines/php_engine.py
 
@@ -304,15 +298,11 @@ python3 src/zolletta_metaskill/python_code_style/scan_unused_all_exports.py <dir
 ```
 
 | Option        | Default | Description                                  |
-| ------------- | ------- | -------------------------------------------- |
+|---------------|---------|----------------------------------------------|
 | `<directory>` | `src`   | Root source directory to scan                |
 | `--strict`    | off     | Exit with code 1 if unused exports are found |
 | `--json`      | off     | Output as JSON instead of markdown           |
 | `--skip`      | off     | Skip this check entirely                     |
-
-**How it works**: extracts all `__all__` entries from every `.py` file, builds an index of all imported names across the source tree, then cross-references. Names listed in `__all__` but never imported by any file other than the one defining `__all__` are reported as unused.
-
-**Use alongside vulture**: run vulture first for general dead-code detection, then this scanner for the `__all__` gap. Do not double-report symbols that vulture already catches.
 
 ### scan_test_naming.py
 
@@ -323,16 +313,12 @@ python3 src/zolletta_metaskill/python_testing_patterns/scan_test_naming.py <dire
 ```
 
 | Option             | Default | Description                              |
-| ------------------ | ------- | ---------------------------------------- |
+|--------------------|---------|------------------------------------------|
 | `<directory>`      | `tests` | Root test directory to scan              |
 | `--min-segments N` | 3       | Minimum segments after `test_` prefix    |
 | `--strict`         | off     | Exit with code 1 if violations are found |
 | `--json`           | off     | Output as JSON instead of markdown       |
 | `--skip`           | off     | Skip this check entirely                 |
-
-**How it works**: for each `test_*.py` or `*_test.py` file, extracts every `test_` function via AST, counts the underscore-separated segments after `test_`, and flags functions with fewer than `--min-segments`. The same input always produces the same output — no AI judgment involved.
-
-**Why this exists**: manual review of test function names was non-deterministic and produced different violation counts on each run. The scanner replaces subjective judgment with a simple, objective segment count.
 
 ### scan_acronym_casing.py
 
@@ -342,13 +328,13 @@ Checks that acronyms in PascalCase class names stay fully uppercase (e.g. `HTTPC
 python3 src/zolletta_metaskill/python_code_style/scan_acronym_casing.py <directory> [--acronyms <list>] [--strict] [--json] [--skip]
 ```
 
-| Option | Default | Description |
-| --- | --- | --- |
-| `<directory>` | `src` | Root source directory to scan |
-| `--acronyms` | (from assets + settings) | Comma-separated acronym list (overrides built-in + settings) |
-| `--strict` | off | Exit with code 1 if violations are found |
-| `--json` | off | Output as JSON instead of markdown |
-| `--skip` | off | Skip this check entirely |
+| Option        | Default                  | Description                                                  |
+|---------------|--------------------------|--------------------------------------------------------------|
+| `<directory>` | `src`                    | Root source directory to scan                                |
+| `--acronyms`  | (from assets + settings) | Comma-separated acronym list (overrides built-in + settings) |
+| `--strict`    | off                      | Exit with code 1 if violations are found                     |
+| `--json`      | off                      | Output as JSON instead of markdown                           |
+| `--skip`      | off                      | Skip this check entirely                                     |
 
 The acronym list is built additively:
 
@@ -365,7 +351,7 @@ python3 src/zolletta_metaskill/patterns/test_splitter.py <test_file> [--dry-run]
 ```
 
 | Option         | Default  | Description                                    |
-| -------------- | -------- | ---------------------------------------------- |
+|----------------|----------|------------------------------------------------|
 | `<test_file>`  | (req)    | Path to the test file to split                 |
 | `--dry-run`    | off      | Show what would be split without writing files |
 | `--output-dir` | same dir | Directory to write split files to              |
@@ -388,25 +374,7 @@ python3 src/zolletta_metaskill/patterns/test_splitter.py <test_file> [--dry-run]
 
 ## Complete Workflow
 
-The full scanning workflow runs all scripts in this order:
-
-1. `scan_class_metrics.py` — triage: find the largest classes
-2. `scan_test_god_classes.py --show-methods` — triage: find test God classes
-3. `scan_one_class_per_file.py` — structural: one class per file
-4. `scan_tests.py` — structural: test mirroring + missing tests
-5. `scan_naming_conventions.py` — structural: naming compliance
-6. `scan_dependency_inversion.py` — SOLID: DIP violations
-7. `scan_interface_segregation.py` — SOLID: ISP violations
-8. `scan_open_closed.py` — SOLID: OCP violations
-9. `scan_liskov_substitution.py` — SOLID: LSP violations
-10. `scan_php_dependency_inversion.py` — SOLID: PHP DIP violations (PHP projects only)
-11. `scan_php_interface_segregation.py` — SOLID: PHP ISP violations (PHP projects only)
-12. `scan_php_open_closed.py` — SOLID: PHP OCP violations (PHP projects only)
-13. `scan_unused_all_exports.py` — dead code: unused `__all__` exports
-14. `scan_test_naming.py` — test naming convention
-15. `scan_acronym_casing.py` — acronym casing convention
-16. For each test God class: `test_splitter.py --dry-run` → review → split
-17. Apply the "reason to change" test to each top candidate from step 1
+Run scripts in order: triage (`scan_class_metrics`, `scan_test_god_classes`) → structural (`scan_one_class_per_file`, `scan_tests`, `scan_naming_conventions`) → SOLID (`scan_dependency_inversion`, `scan_interface_segregation`, `scan_open_closed`, `scan_liskov_substitution`) → PHP SOLID (PHP projects) → dead code (`scan_unused_all_exports`) → naming (`scan_test_naming`, `scan_acronym_casing`) → split (`test_splitter`). Apply the "reason to change" test to top candidates.
 
 ## Repository Scripts
 

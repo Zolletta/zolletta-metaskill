@@ -8,7 +8,7 @@ skills: [setup, review, patterns, documentor, external-review, python-*]
 
 Welcome to Zolletta-MetaSkill — a family of generic code review skills with specializations for Python and other languages. This tutorial walks through installing the skill, setting up a project, and running a first review.
 
-## What we will learn
+## What you will learn
 
 - How to install Zolletta-metaskill
 - How to set up a project for reviews
@@ -35,11 +35,11 @@ Verify the installation by invoking the skill with no arguments:
 /zolletta-metaskill
 ```
 
-We should see the list of available subcommands: `setup`, `documentor`, `patterns`, `external-review`, `review`, `python-code-style`, `python-testing-patterns`.
+Verify the list of available subcommands: `setup`, `documentor`, `patterns`, `external-review`, `review`, `python-code-style`, `python-testing-patterns`.
 
 ## Step 2 — Set up the project
 
-Navigate to the project we want to review and run setup:
+Navigate to the project to review and run setup:
 
 ```bash
 cd /path/to/our/project
@@ -63,13 +63,7 @@ cat .zolletta-metaskill/settings.json
 /zolletta-metaskill review
 ```
 
-The review orchestrator runs all applicable skills in parallel:
-
-- **patterns** — God classes, SOLID violations, structural conventions
-- **documentor** — Diátaxis compliance, drift detection, freshness scoring
-- **external-review** — external-LLM review of modified files
-- **python-code-style** (Python only) — ruff, mypy, naming, docstrings, type annotations
-- **python-testing-patterns** (Python only) — test isolation, coverage gaps, mocking, AAA structure
+The review orchestrator runs all applicable skills in parallel — general skills (`patterns`, `documentor`, `external-review`) plus language-specific skills. See [subcommands.md](../reference/subcommands.md) for the full table.
 
 Each skill writes a report to `.zolletta-metaskill/reports/<timestamp>/`. The orchestrator creates `SUMMARY.md` with the overall grade and `TODO.md` with aggregated action items.
 
@@ -87,7 +81,7 @@ Then open `TODO.md` for the aggregated action items sorted by priority (P1 = cri
 
 ## Step 5 — Run individual skills
 
-We can run any skill individually for a focused review:
+Run any skill individually for a focused review:
 
 ```
 /zolletta-metaskill patterns       # God classes and SOLID only

@@ -14,11 +14,7 @@ Language-agnostic structural conventions for source and test code organisation. 
 
 Each class lives in its own file. The filename should match the class name using the language's conventional mapping.
 
-**Why this matters**:
-
-- **Navigability**: `MyClass` lives in `my_class.py` (Python) or `MyClass.php` (PHP) — mechanical lookup.
-- **Testability**: one class per file means one test file per class.
-- **Coupling signal**: multiple classes in one file often indicates tight coupling.
+**Why this matters**: `MyClass` lives in `my_class.py` (Python) or `MyClass.php` (PHP) — mechanical lookup, one test file per class, and multiple classes in one file signal tight coupling. See [PEP 8 — modules](https://peps.python.org/pep-0008/#module-level-dunder-names), [PSR-4 — autoloading](https://www.php-fig.org/psr/psr-4/).
 
 **Acceptable exceptions**:
 
@@ -46,11 +42,7 @@ src/myproject/engine/config/config_factory.py
 -> tests/myproject/engine/config/test_config_factory*.py
 ```
 
-**Why this matters**:
-
-- **Coverage visibility**: structural gaps immediately reveal untested source files.
-- **Orphan detection**: test dirs with no source dir indicate tests for deleted code.
-- **Navigation**: from any source file, the test file is at a predictable path.
+**Why this matters**: structural gaps immediately reveal untested source files, orphaned test dirs indicate tests for deleted code, and the test file is at a predictable path from any source file. See [pytest — test layout](https://docs.pytest.org/en/stable/explanation/goodpractices.html#choosing-a-test-layout-importing-modes), [PHPUnit — directory structure](https://docs.phpunit.de/en/main/organizing-tests.html).
 
 **Acceptable exceptions**:
 
@@ -77,6 +69,84 @@ src/.../cache.py  ->  tests/.../test_cache.py
 Test files whose name doesn't match any source file or class in the mirrored directory are orphan or misnamed tests — they test code that has been renamed, deleted, or they use a naming pattern inconsistent with the project.
 
 **Detection (Python)**: see [scripts.md](../../reference/code/scripts.md) → `scan_naming_conventions.py` (checks both rules in a single pass).
+
+**Why this matters**: orphan or misnamed tests test code that has been renamed, deleted, or use an inconsistent naming pattern. See [PEP 8 — naming conventions](https://peps.python.org/pep-0008/#naming-conventions), [PHPUnit — test naming](https://docs.phpunit.de/en/main/organizing-tests.html).
+
+## Value-Object Suffixes
+
+Value objects — immutable data carriers with no behaviour — use a conventional suffix that signals their role.
+
+| Suffix    | Purpose                                           | Examples                                       |
+|-----------|---------------------------------------------------|------------------------------------------------|
+| `*DTO`    | Data Transfer Object — serialisable data carrier  | `GenericDataDTO`, `UserResponseDTO`            |
+| `*Spec`   | Specification — describes *what* to build/run     | `EndpointSpec`, `ScenarioSpec`                 |
+| `*Params` | Parameter bundle — grouped arguments for one call | `ResizableParams`, `AgencyEstimateCoverParams` |
+
+**Why this matters**: the suffix separates *description* from *thing described* — `EndpointSpec` is a specification, not an endpoint. See [Fowler — Data Transfer Object](https://martinfowler.com/eaaCatalog/dto.html).
+
+**Language notes**:
+
+- **Python**: suffix applies to `@dataclass` / `NamedTuple` / `TypedDict` / frozen dataclasses.
+- **PHP**: suffix applies to `readonly class` DTOs and promoted-constructor parameter bundles.
+
+**Acceptable exceptions**:
+
+- Domain entities (`User`, `Order`) are not value objects and do not take a suffix.
+- Framework base classes that impose their own naming (`*Controller`, `*Repository`, `*Command`, `*Event`) follow the framework convention.
+
+## Enum Naming
+
+Enums use `PascalCase` for the enum class and `SCREAMING_SNAKE_CASE` for the cases. This separates the *type* (a closed set) from its *members* (individual values) at a glance.
+
+```python
+# Good — PascalCase enum, SCREAMING_SNAKE members
+class PipelineType(Enum):
+    MASTER = "master"
+    FEATURE_BRANCH = "feature_branch"
+```
+
+```php
+<?php
+
+// Good — PascalCase enum, PascalCase cases (PHP convention)
+enum CommandRunMode: string {
+    case DryRun = 'DRY_RUN';
+    case Live = 'LIVE';
+}
+```
+
+> **PHP note**: PHP enum case names follow [PSR-12](https://www.php-fig.org/per/coding-style/) `PascalCase` by convention, while Python enum members follow `SCREAMING_SNAKE_CASE`. The *class* is `PascalCase` in both. Reviewers should enforce the language-native member casing.
+
+**Why this matters**: the class/member casing split makes enums visually distinct from classes-with-instances. See [PEP 435](https://peps.python.org/pep-0435/) (Python enums), [PHP enums](https://www.php.net/manual/en/language.enumerations.php).
+
+## Acronyms Stay Uppercase in Class Names
+
+Acronyms retain their uppercase form inside PascalCase class names: `HTTPClient`, not `HttpClient`; `CITesterEngine`, not `CiTesterEngine`. This is a cross-language convention.
+
+```python
+# Good — acronyms stay uppercase
+class CITesterEngine: ...
+class JWTDecoder: ...
+
+# Flag — acronym lowercased mid-name
+class CiTesterEngine: ...      # should be CITesterEngine
+```
+
+```php
+<?php
+
+// Good — acronyms stay uppercase
+class JWTDecoder { ... }
+
+// Flag
+class JwtDecoder { ... }       // should be JWTDecoder
+```
+
+**Enforcement**: the acronym list is project-specific. The Python skill ships `scan_acronym_casing.py` with an additive acronym list (shipped base + `settings.json` `acronyms` array + CLI override). A class name is flagged only when a word inside it case-insensitively matches a configured acronym but is not all-uppercase.
+
+> The acronym rule is already enforced by the `python-code-style` skill (rule #3). It is restated here because it is a *cross-language* convention — a reviewer reading PHP code should apply the same rule.
+
+**Why this matters**: `HTTPClient` reads as "HTTP client"; `HttpClient` obscures the acronym. See [PEP 8 — naming conventions](https://peps.python.org/pep-0008/#naming-conventions), [PSR-12 — class names](https://www.php-fig.org/psr/psr-12/).
 
 ## Test God Class Splitting
 
@@ -113,3 +183,5 @@ When a test class tests multiple SUTs (Systems Under Test), it should be split i
 - Run the tests (human verifies the split files pass)
 
 For the step-by-step procedure, see [split-god-test-class.md](../../how-to/code/split-god-test-class.md).
+
+**Why this matters**: a test class testing multiple SUTs is hard to navigate and maintain — per-SUT files keep tests focused. See [xUnit Test Patterns — One Test Class Per Feature](https://xunitpatterns.com/One%20Test%20Class%20Per%20Feature.html).
