@@ -422,68 +422,6 @@ return [
 
 **Flag**: a project whose `.php-cs-fixer.dist.php` does not include the `binary_operator_spaces` alignment rule — the visual convention will not hold across contributors.
 
-## Builder Pattern with Built-In Mocked Responses
-
-Fluent builders (`with*` setters + terminal `build()`) are the preferred shape for constructing commands and requests. Mocked responses are first-class builder arguments, so dry-run / test mode is built into the command path rather than bolted on.
-
-```php
-<?php
-
-$command = Exists::builder()
-    ->withResourceId($id)
-    ->withMockedResponse($fakeResponse)   // dry-run / test path, same builder
-    ->build();
-
-$result = $command->execute();
-```
-
-```php
-<?php
-
-class Exists {
-    private function __construct(
-        public readonly string $resourceId,
-        public readonly ?MockedResponse $mockedResponse = null,
-    ) {}
-
-    public static function builder(): ExistsBuilder {
-        return new ExistsBuilder();
-    }
-
-    public function execute(): Result {
-        $response = $this->mockedResponse ?? $this->fetchRealResponse();
-        return $this->parse($response);
-    }
-}
-
-class ExistsBuilder {
-    private string $resourceId;
-    private ?MockedResponse $mockedResponse = null;
-
-    public function withResourceId(string $id): static {
-        $this->resourceId = $id;
-        return $this;
-    }
-
-    public function withMockedResponse(MockedResponse $response): static {
-        $this->mockedResponse = $response;
-        return $this;
-    }
-
-    public function build(): Exists {
-        return new Exists($this->resourceId, $this->mockedResponse);
-    }
-}
-```
-
-**Why this matters**:
-
-- **Dry-run is not a branch**: `$this->mockedResponse ?? $this->fetchRealResponse()` means the command has one execution path. There is no `if ($this->isDryRun)` sprinkled through the logic.
-- **Test parity**: tests build the command with the same builder as production, only swapping `withMockedResponse` for the real call. The SUT is identical.
-- **Fluent readability**: `Exists::builder()->withResourceId($id)->build()` reads as a sentence.
-
-**Flag**: a command class with a separate `DryRunExists` subclass or an `if ($dryRun)` branch inside `execute()` — the mocked-response builder replaces both.
-
 ## `readonly class` for Immutable DTOs
 
 PHP 8.2 `readonly class` makes every property immutable by default. Use it for DTOs, value objects, and any class whose entire purpose is to carry data that should not change after construction.
