@@ -63,7 +63,7 @@ class PipelineTypeStrategy(ScenarioReducerMixin):
 
 Python offers two mechanisms for defining interfaces:
 
-- **`Protocol`** (PEP 544): structural subtyping — a class is a valid implementation if it has the right methods, no inheritance required.
+- **`Protocol`** ([PEP 544](https://peps.python.org/pep-0544/)): structural subtyping — a class is a valid implementation if it has the right methods, no inheritance required.
 - **`ABC`** (abstract base class): nominal subtyping — a class must explicitly inherit from the ABC.
 
 **Prefer `Protocol`** for new code: it enables duck typing and doesn't force implementers to import the interface. Use `ABC` when you need `@abstractmethod` enforcement or when the framework requires it.
@@ -271,4 +271,4 @@ def filter_scenarios(
 ) -> List[Scenario]: ...
 ```
 
-**Why this matters**: `from __future__ import annotations` makes all annotations strings at parse time, enabling PEP 604 `X | None` syntax on Python 3.9+ and deferring evaluation (faster imports, no runtime cost for annotations). `collections.abc.Callable` is preferred over `typing.Callable` because it is the canonical home and supports `isinstance` checks.
+**Why this matters**: `from __future__ import annotations` makes all annotations strings at parse time, enabling [PEP 604](https://peps.python.org/pep-0604/) `X | None` syntax on Python 3.9+ and deferring evaluation (faster imports, no runtime cost for annotations). `collections.abc.Callable` is preferred over `typing.Callable` because it is the canonical home and supports `isinstance` checks.

@@ -134,7 +134,7 @@ enum CommandRunMode: string {
 }
 ```
 
-> **PHP note**: PHP enum case names follow PSR-12 `PascalCase` by convention, while Python enum members follow `SCREAMING_SNAKE_CASE`. The *class* is `PascalCase` in both. Reviewers should enforce the language-native member casing, not impose one language's convention on the other.
+> **PHP note**: PHP enum case names follow [PSR-12](https://www.php-fig.org/per/coding-style/) `PascalCase` by convention, while Python enum members follow `SCREAMING_SNAKE_CASE`. The *class* is `PascalCase` in both. Reviewers should enforce the language-native member casing, not impose one language's convention on the other.
 
 **Why this matters**: the class/member casing split makes enums visually distinct from classes-with-instances: `PipelineType.MASTER` reads as "the MASTER member of the PipelineType set", not as a method call or property access.
 
