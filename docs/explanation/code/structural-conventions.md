@@ -14,11 +14,7 @@ Language-agnostic structural conventions for source and test code organisation. 
 
 Each class lives in its own file. The filename should match the class name using the language's conventional mapping.
 
-**Why this matters**:
-
-- **Navigability**: `MyClass` lives in `my_class.py` (Python) or `MyClass.php` (PHP) — mechanical lookup.
-- **Testability**: one class per file means one test file per class.
-- **Coupling signal**: multiple classes in one file often indicates tight coupling.
+**Why this matters**: `MyClass` lives in `my_class.py` (Python) or `MyClass.php` (PHP) — mechanical lookup, one test file per class, and multiple classes in one file signal tight coupling. See [PEP 8 — modules](https://peps.python.org/pep-0008/#module-level-dunder-names), [PSR-4 — autoloading](https://www.php-fig.org/psr/psr-4/).
 
 **Acceptable exceptions**:
 
@@ -46,11 +42,7 @@ src/myproject/engine/config/config_factory.py
 -> tests/myproject/engine/config/test_config_factory*.py
 ```
 
-**Why this matters**:
-
-- **Coverage visibility**: structural gaps immediately reveal untested source files.
-- **Orphan detection**: test dirs with no source dir indicate tests for deleted code.
-- **Navigation**: from any source file, the test file is at a predictable path.
+**Why this matters**: structural gaps immediately reveal untested source files, orphaned test dirs indicate tests for deleted code, and the test file is at a predictable path from any source file. See [pytest — test layout](https://docs.pytest.org/en/stable/explanation/goodpractices.html#choosing-a-test-layout-importing-modes), [PHPUnit — directory structure](https://docs.phpunit.de/en/main/organizing-tests.html).
 
 **Acceptable exceptions**:
 
@@ -77,6 +69,8 @@ src/.../cache.py  ->  tests/.../test_cache.py
 Test files whose name doesn't match any source file or class in the mirrored directory are orphan or misnamed tests — they test code that has been renamed, deleted, or they use a naming pattern inconsistent with the project.
 
 **Detection (Python)**: see [scripts.md](../../reference/code/scripts.md) → `scan_naming_conventions.py` (checks both rules in a single pass).
+
+**Why this matters**: orphan or misnamed tests test code that has been renamed, deleted, or use an inconsistent naming pattern. See [PEP 8 — naming conventions](https://peps.python.org/pep-0008/#naming-conventions), [PHPUnit — test naming](https://docs.phpunit.de/en/main/organizing-tests.html).
 
 ## Value-Object Suffixes
 
@@ -152,6 +146,8 @@ class JwtDecoder { ... }       // should be JWTDecoder
 
 > The acronym rule is already enforced by the `python-code-style` skill (rule #3). It is restated here because it is a *cross-language* convention — a reviewer reading PHP code should apply the same rule.
 
+**Why this matters**: `HTTPClient` reads as "HTTP client"; `HttpClient` obscures the acronym. See [PEP 8 — naming conventions](https://peps.python.org/pep-0008/#naming-conventions), [PSR-12 — class names](https://www.php-fig.org/psr/psr-12/).
+
 ## Test God Class Splitting
 
 When a test class tests multiple SUTs (Systems Under Test), it should be split into per-SUT test files.
@@ -187,3 +183,5 @@ When a test class tests multiple SUTs (Systems Under Test), it should be split i
 - Run the tests (human verifies the split files pass)
 
 For the step-by-step procedure, see [split-god-test-class.md](../../how-to/code/split-god-test-class.md).
+
+**Why this matters**: a test class testing multiple SUTs is hard to navigate and maintain — per-SUT files keep tests focused. See [xUnit Test Patterns — One Test Class Per Feature](https://xunitpatterns.com/One%20Test%20Class%20Per%20Feature.html).

@@ -45,7 +45,7 @@ def autodiscover_strategies(package: str) -> None:
         importlib.import_module(f"{package}.{name}")
 ```
 
-**Why this matters**: this is the OCP-compliant alternative to if/elif type branching. Adding a new strategy requires zero modification to existing code.
+**Why this matters**: this is the OCP-compliant alternative to if/elif type branching. Adding a new strategy requires zero modification to existing code. See [Strategy Pattern — Wikipedia](https://en.wikipedia.org/wiki/Strategy_pattern), [PEP 544](https://peps.python.org/pep-0544/).
 
 **Common mixin pattern**: shared behavior across strategies goes in a mixin, not in the base class. This keeps the protocol thin (ISP) and allows strategies to opt into shared behavior via composition.
 
@@ -86,6 +86,8 @@ class MyVerifier(VerifierBase):  # Must inherit
 ```
 
 **ISP reminder**: keep protocols and ABCs thin. If an interface has 5+ methods and different implementers only use subsets, split it into smaller, focused interfaces. See [general-principles.md](../general-principles.md) → Interface Segregation for the full rationale.
+
+**Why this matters**: `Protocol` enables structural subtyping (duck typing) without forcing implementers to import the interface; `ABC` provides nominal enforcement. See [PEP 544](https://peps.python.org/pep-0544/), [Python `abc` module](https://docs.python.org/3/library/abc.html).
 
 ## Thin Coordinator / Orchestrator Pattern
 

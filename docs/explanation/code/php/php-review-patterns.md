@@ -77,7 +77,7 @@ class StrategyDiscovery {
 }
 ```
 
-**Why this matters**: this is the OCP-compliant alternative to if/elseif type branching. Adding a new strategy requires zero modification to existing dispatch logic — just create a new class and register it.
+**Why this matters**: this is the OCP-compliant alternative to if/elseif type branching. Adding a new strategy requires zero modification to existing dispatch logic — just create a new class and register it. See [Strategy Pattern — Wikipedia](https://en.wikipedia.org/wiki/Strategy_pattern), [PHP 8 attributes](https://www.php.net/manual/en/language.attributes.php).
 
 ## Interface vs Abstract Class
 
@@ -116,6 +116,8 @@ abstract class BaseRepository {
 
 **ISP reminder**: keep interfaces thin. If an interface has 5+ methods and different implementers only use subsets, split it into smaller, focused interfaces. See [general-principles.md](../general-principles.md) → Interface Segregation.
 
+**Why this matters**: interfaces allow multiple inheritance of contract; abstract classes share implementation but limit to one parent. See [PHP interfaces](https://www.php.net/manual/en/language.oop5.interfaces.php), [PHP abstract classes](https://www.php.net/manual/en/language.oop5.abstract.php).
+
 ## Trait Patterns
 
 PHP traits provide horizontal code reuse — a way to share methods across classes without inheritance. Use traits for small, focused pieces of shared behavior.
@@ -151,6 +153,8 @@ trait BadTrait {
     // This is a God trait — split it into focused traits
 }
 ```
+
+**Why this matters**: small, focused, stateless traits are composable; fat traits with state recreate the God class problem horizontally. See [PHP traits](https://www.php.net/manual/en/language.oop5.traits.php).
 
 ## SOLID Violation Patterns
 
@@ -200,6 +204,8 @@ class OrderProcessor {
 ```
 
 **Scanner**: [`scan_php_dependency_inversion`](../../../reference/code/scripts.md#scan_php_dependency_inversionpy-dip) — detects `new ConcreteClass()` inside class methods. Excludes factories, builders, and PHP built-in types.
+
+**Why this matters**: injected dependencies are substitutable and testable; `new` in a constructor is a hard coupling. See [DIP — Clean Code](https://wiki.c2.com/?DependencyInversionPrinciple).
 
 ### Interface Segregation Principle (ISP)
 
@@ -271,6 +277,8 @@ class HumanWorker implements Workable, Reportable, Employable {
 
 **Scanner**: [`scan_php_interface_segregation`](../../../reference/code/scripts.md#scan_php_interface_segregationpy-isp) — flags interfaces with more than `--min-methods` (default: 7) methods.
 
+**Why this matters**: fat interfaces force implementers to stub methods they don't use. See [ISP — Clean Code](https://wiki.c2.com/?InterfaceSegregationPrinciple).
+
 ### Open/Closed Principle (OCP)
 
 **Violation**: `instanceof` chains branch on subtypes. Adding a new subtype requires modifying the ladder instead of simply adding a new implementation.
@@ -332,6 +340,8 @@ class PaymentProcessor {
 ```
 
 **Scanner**: [`scan_php_open_closed`](../../../reference/code/scripts.md#scan_php_open_closedpy-ocp) — detects `if/elseif` chains with 3+ `instanceof` branches.
+
+**Why this matters**: polymorphism via interface keeps the processor closed for modification. See [OCP — Clean Code](https://wiki.c2.com/?OpenClosedPrinciple).
 
 ## Manual Detection Commands
 

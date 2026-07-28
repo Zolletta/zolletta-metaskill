@@ -26,6 +26,8 @@ The patterns skill includes three mechanisms to prevent verdict oscillation betw
 
 **You must NOT report a class as a God class or "large class" finding based on size alone.** Size (lines, methods, attributes) is a triage signal, never a verdict. A 400-line parser with 14 methods that all serve the parsing domain is NOT a God class. A 234-line orchestrator with 15 methods that delegates to injected dependencies is NOT a God class.
 
+**Why this matters**: size-based detection flags the same cohesive classes every review, wasting triage time. See [God Object — Wikipedia](https://en.wikipedia.org/wiki/God_object).
+
 ## 2. Coverage cross-check for missing tests
 
 `scan_tests.py` reports structurally missing test files. Before reporting any as a finding, the reviewer must run `pytest --cov` and check the file's coverage:
@@ -37,11 +39,15 @@ The patterns skill includes three mechanisms to prevent verdict oscillation betw
 
 This prevents the whack-a-mole cycle where every review re-reports the same structurally-missing-but-adequately-covered files.
 
+**Why this matters**: indirect coverage via integration tests is real coverage — re-reporting covered files is noise. See [coverage.py — reporting](https://coverage.readthedocs.io/en/latest/cmd.html#reporting).
+
 ## 3. Semantic composition-root detection
 
 The `scan_dependency_inversion.py` scanner excludes entry points by filename pattern and detects DI container creation (`make_container()`, `Container()`, etc.) semantically. If the scanner still flags a class that is clearly a composition root (it wires the DI container, creates the container, or is the top-level entry point), suppress it and note "composition root — not a DIP violation" in the report.
 
 Someone has to create the container — that is not a violation. The composition root (main, CLI entry point) is the only place where object creation belongs.
+
+**Why this matters**: flagging the composition root as a DIP violation re-litigates the one place where `new` is correct. See [Composition Root — Clean Code](https://wiki.c2.com/?CompositionRoot).
 
 ## 4. Coverage-ignore annotations require a documented criterion
 
