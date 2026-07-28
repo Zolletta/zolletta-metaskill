@@ -241,6 +241,17 @@ The factory pattern adds code without adding value here. Save patterns for when 
 
 **Why this matters**: complexity has a cost — prefer the simplest solution that works. See [KISS — Clean Code](https://wiki.c2.com/?KeepItSimpleStupid).
 
+### Do Not Overcomplicate Responses
+
+When reporting findings, writing explanations, or suggesting fixes, keep responses as simple as the finding warrants. Do not add tangential context, restate the obvious, or propose fixes that are more complex than the problem. A one-line finding with a file:line reference and a direct fix is better than a paragraph that explains the history of the pattern.
+
+- Report each finding once, with the minimum context needed to act on it.
+- Do not restate rules or principles the reader already has access to — link instead.
+- Do not suggest architectural changes for style-level findings.
+- Do not bundle unrelated findings into a single narrative — list them separately.
+
+**Why this matters**: overcomplicated responses bury the actionable signal under noise, waste tokens, and make the review harder to triage. See [KISS — Clean Code](https://wiki.c2.com/?KeepItSimpleStupid).
+
 ### Separation of Concerns
 
 Organize code into distinct layers with clear responsibilities.

@@ -31,6 +31,8 @@ sql = "SELECT * FROM users WHERE email = %s"
 db.execute(sql, (request.args.get("email"),))
 ```
 
+**Why this matters**: concatenating user input into SQL lets attackers execute arbitrary queries and exfiltrate or destroy data. See [SQL Injection — OWASP](https://owasp.org/www-community/attacks/SQL_Injection).
+
 ## 2. Escape output
 
 Never trust data before rendering it to the user. Escape it for the output context (HTML, URL, JavaScript, etc.).
@@ -59,6 +61,8 @@ return f"<h1>{user.name}</h1>"
 import html
 return f"<h1>{html.escape(user.name)}</h1>"
 ```
+
+**Why this matters**: unescaped output lets attackers inject scripts that run in other users' browsers, stealing sessions or hijacking accounts. See [XSS — OWASP](https://owasp.org/www-community/attacks/xss/).
 
 ## 3. Validate input
 
@@ -112,6 +116,8 @@ def create(request: Request) -> Response:
     return Response({"id": user.id})
 ```
 
+**Why this matters**: unvalidated input reaches business logic as-is, causing unexpected behavior, data corruption, or injection downstream. See [Input Validation — OWASP](https://owasp.org/www-community/controls/Input_Validation_Cheat_Sheet).
+
 ## 4. Store secrets in environment variables
 
 Never hardcode secrets (API keys, database passwords, tokens) in source code. Read them from environment variables or a secrets manager.
@@ -136,3 +142,5 @@ import os
 api_key = os.environ["API_KEY"]  # raises KeyError if not set
 client = ApiClient(api_key)
 ```
+
+**Why this matters**: hardcoded secrets leak into version control and logs, exposing credentials to anyone with repository access. See [Secret Management — OWASP](https://owasp.org/www-project-top-ten/2017/A5_2017-Broken_Access_Control).

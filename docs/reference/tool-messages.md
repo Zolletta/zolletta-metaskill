@@ -6,21 +6,13 @@ skills: [setup]
 
 # Tool "not installed" messages
 
-Shared messages printed by the `setup` subcommand and the tool-failure handler when a tool is not available. Each message explains **why Zolletta-metaskill benefits from the tool** and links to the project homepage (where applicable).
-
-These messages must be printed verbatim (or close to it) by any subcommand that detects a tool is missing — either during setup or via the tool-failure handler.
-
-> **Python skills**: `python-code-style` and `python-testing-patterns` are bundled inside this meta-skill, so they are always available. No "not installed" message is needed for them.
+Verbatim messages printed by the tool-failure handler.
 
 ---
 
 # Tool "unconfigured" warnings
 
-Shared warnings printed by the `setup` subcommand when a Python tool is **available** (the command exists) but has **no `[tool.*]` section in `pyproject.toml`**. Each warning states the tool's effective built-in defaults (so the review runs against a known configuration) and links to the full options reference so the user can broaden the review if they choose.
-
-These warnings are **informational only** — setup never modifies `pyproject.toml`. The effective defaults are also written into the `python.tools.*` configuration fields in `settings.json` so review subcommands report against the configuration the tool will actually use, not a skill-invented fallback.
-
-> **Distinguish "absent section" from "present but minimal"**: the warning fires only when the `[tool.*]` section is entirely missing. If the section exists (even with a single key like `line-length = 100`), the tool is considered configured and no warning is printed — the tool merges the user's settings with its own defaults.
+## Tool unconfigured warnings
 
 ---
 
@@ -207,7 +199,7 @@ See all available options at: https://docs.pytest.org/en/stable/reference/refere
 
 # Companion skill "not installed" messages
 
-These messages are printed by `setup` when a companion **implementation** skill is not installed. Zolletta-metaskill is a **review** skill — it checks code quality but does not write code. For projects that need code generation alongside review, a companion implementation skill can be installed separately.
+## Companion skill not installed
 
 ## php-pro (PHP projects only)
 

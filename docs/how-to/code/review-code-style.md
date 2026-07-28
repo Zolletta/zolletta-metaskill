@@ -13,7 +13,6 @@ Review source code for naming conventions, docstring quality, type annotations, 
 ## Prerequisites
 
 - A project that has been set up with `/zolletta-metaskill setup`
-- The Zolletta-metaskill skill installed and available to the agent
 
 ## What the review checks
 
@@ -50,41 +49,15 @@ The review runs the project's configured dead-code detector. Findings below the 
 
 ## Always-on vs configurable rules
 
-The review distinguishes between always-on rules and configurable rules:
+**Always-on** (cannot be disabled): descriptive filenames, class naming convention, function/variable naming, constant naming, import grouping, private functions exempt from docs, test functions exempt from docs, type hints for public APIs.
 
-**Always-on rules** (cannot be disabled):
+**Configurable** (toggled via `settings.json`, all default to enabled): acronym casing, absolute imports, one class per file, filename matches class, public docstrings, no type repetition in docs, skip obvious one-liner docs, line length, dead-code confidence threshold.
 
-- Descriptive filenames with no abbreviations
-- Class names follow the language's PascalCase convention
-- Functions and variables follow the language's naming convention
-- Module-level constants follow the language's constant convention
-- Import grouping (stdlib, third-party, local)
-- Private functions exempt from documentation
-- Test functions exempt from documentation
-- Type hints required for all public APIs
-
-**Configurable rules** (can be toggled via `settings.json`):
-
-- Acronym casing in class names
-- Absolute imports only (no relative imports)
-- One class per file
-- Filename matches class name
-- Documentation required on public classes/methods/functions
-- No type repetition in documentation
-- Skip documentation for obvious one-line functions
-- Line length from project config
-- Dead-code detection confidence threshold
-
-All configurable rules default to enabled. See the language-specific guides for the exact `settings.json` keys.
+See the language-specific guides for the exact `settings.json` keys.
 
 ## Review mode (read-only)
 
-When the review runs as part of a read-only review — for example via `/zolletta-metaskill review` — it follows the shared [review mode](../../reference/code/review-mode.md) rules: it does not apply any fixes, and it runs all tools in their check-only modes. Every diagnostic is classified into one of two buckets:
-
-- **Auto-fixable** (informational) — things a formatter or linter could fix automatically. Listed in a separate section, not counted toward the grade.
-- **Findings** — issues that require human judgment to fix. Listed with severity, impact, and a suggested fix. These are the only issues that count toward the review score.
-
-There is no third "borderline" bucket — every diagnostic is either a real finding or suppressed.
+Follows [review mode](../../reference/code/review-mode.md) — read-only, two-bucket classification (auto-fixable vs findings), no fixes applied.
 
 ## See also
 

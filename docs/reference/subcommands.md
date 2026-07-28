@@ -31,13 +31,7 @@ Before dispatching to **any** subcommand (including `setup` itself), the meta-sk
 
 ## Running tools
 
-This convention applies to **every** subcommand that invokes external tools (ruff, mypy, ty, pytest, vulture, etc.):
-
-- If `container_name` is set in `settings.json` (not `null`), run tools inside the container via `docker compose exec <container_name> <command>`.
-- If `container_name` is `null`, run tools directly on the host.
-- If `python.tools.uv.available` is `true`, prefer `uv run <command>` to ensure the project environment is used.
-
-Subcommands do not restate this convention — they follow it.
+Tools run inside the Docker container if `container_name` is set, otherwise on the host. Prefer `uv run <command>` when `python.tools.uv.available` is `true`. See [settings-schema.md](settings-schema.md) for these fields.
 
 ## Tool-failure handler
 

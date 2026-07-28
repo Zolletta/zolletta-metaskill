@@ -12,7 +12,6 @@ Initialize a project for use with Zolletta-metaskill review skills. Setup create
 
 ## Prerequisites
 
-- The Zolletta-metaskill skill installed and available to the agent
 - A project directory with source code to review
 
 ## Steps
@@ -23,23 +22,25 @@ Initialize a project for use with Zolletta-metaskill review skills. Setup create
 /zolletta-metaskill setup
 ```
 
-The setup procedure runs automatically when any subcommand is invoked and `settings.json` is missing. We can also run it explicitly.
+The setup procedure runs automatically when any subcommand is invoked and `settings.json` is missing. Can also run it explicitly.
 
 ### Step 2 — What setup detects
 
 Setup detects and records the following:
 
-| Detection | What it finds | Stored as |
-| --- | --- | --- |
-| **Project language** | Python, TypeScript, PHP, Go, Rust, Java, Ruby, C/C++ | `language` |
-| **Docker container** | Service name from `compose.yml` / `docker-compose.yml` | `container_name` |
-| **tokensave** | Whether the tokensave MCP server is available | `tokensave_available` |
-| **Acronyms** | Project-specific acronyms extracted from `AGENTS.md` | `acronyms` |
-| **Python tooling** | ruff, pytest, ty, vulture, mypy, uv availability | `python.tools.*` objects (each with `available` boolean) |
-| **Python config** | Line length, target version, ruff/mypy/ty/pytest config from `pyproject.toml` | `python.tools.*` fields |
-| **Python code-style rules** | Configurable rule toggles for `python-code-style` | `python.code_style` object |
-| **Python testing rules** | Configurable rule toggles for `python-testing-patterns` | `python.testing` object |
-| **Documentation directory** | `.backstage/` if exists, else `docs/` if exists, else default `docs/` | `documentation.dir` |
+| Detection                   | What it finds                                                                 |
+|-----------------------------|-------------------------------------------------------------------------------|
+| **Project language**        | Python, TypeScript, PHP, Go, Rust, Java, Ruby, C/C++                          |
+| **Docker container**        | Service name from `compose.yml` / `docker-compose.yml`                        |
+| **tokensave**               | Whether the tokensave MCP server is available                                 |
+| **Acronyms**                | Project-specific acronyms extracted from `AGENTS.md`                          |
+| **Python tooling**          | ruff, pytest, ty, vulture, mypy, uv availability                              |
+| **Python config**           | Line length, target version, ruff/mypy/ty/pytest config from `pyproject.toml` |
+| **Python code-style rules** | Configurable rule toggles for `python-code-style`                             |
+| **Python testing rules**    | Configurable rule toggles for `python-testing-patterns`                       |
+| **Documentation directory** | `.backstage/` if exists, else `docs/` if exists, else default `docs/`         |
+
+See [settings-schema.md](../reference/settings-schema.md) for the corresponding field names.
 
 ### Step 3 — settings.json
 

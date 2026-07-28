@@ -13,39 +13,13 @@ Review project documentation for [Diátaxis](https://diataxis.fr/) compliance, d
 ## Prerequisites
 
 - A project with a documentation directory (default: `docs`, configurable via `documentation.dir` in `settings.json`)
-- The Zolletta-metaskill skill installed and available to the agent
 - The project set up with `/zolletta-metaskill setup`
 
 ## What the review checks
 
-### Diátaxis compliance
-
-The review checks that the documentation directory follows the Diátaxis framework with four quadrants:
-
-- **Tutorials** — learning-oriented, step-by-step lessons
-- **How-to guides** — task-oriented, practical steps to achieve a goal
-- **Reference** — information-oriented, accurate technical description
-- **Explanation** — understanding-oriented, clarification and background
-
-Each file should have frontmatter with `audience`, `status`, and `skills` fields. The review checks that files are placed in the correct quadrant and that frontmatter is consistent.
-
-### Drift detection
-
-The review runs drift detection tools to identify:
-
-- **Stale docs** — documentation that has not been updated when the code it describes changed
-- **Missing docs** — code features that have no corresponding documentation
-- **Broken links** — internal links that point to non-existent files
-- **API drift** — API documentation that does not match the actual code signatures
-
-### Freshness scoring
-
-The review scores documentation freshness on a 0–100 scale using weighted multi-dimensional scoring:
-
-- **Git history** — how recently docs were updated relative to code
-- **Code-to-doc mapping** — whether each code feature has corresponding docs
-- **Link integrity** — whether internal links resolve
-- **Diátaxis structure** — whether the four quadrants are present and populated
+- **Diátaxis compliance** — four quadrants (tutorials, how-to, reference, explanation), correct file placement, consistent frontmatter
+- **Drift detection** — stale docs, missing docs, broken links, API drift. See [drift-detection-tools.md](../../reference/documentation/drift-detection-tools.md)
+- **Freshness scoring** — 0–100 weighted score across five dimensions. See [scoring-and-categories.md](../../reference/documentation/scoring-and-categories.md)
 
 ## Steps
 

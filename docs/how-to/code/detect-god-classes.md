@@ -13,7 +13,6 @@ Identify God classes, missing tests, dependency-inversion violations, and other 
 ## Prerequisites
 
 - A codebase with `src/` and `tests/` directories (scripts use the `ast` module — no code execution required)
-- The Zolletta-metaskill skill installed and available to the agent
 - The scanning scripts at `src/zolletta_metaskill/{patterns,shared,python_code_style,python_testing_patterns}/` (or `scripts/python/` in the baseline layout)
 
 ## Phase 1 — Automated triage
@@ -69,21 +68,11 @@ python3 src/zolletta_metaskill/shared/scan_tests.py --src src --tests tests
 python3 src/zolletta_metaskill/python_code_style/scan_unused_all_exports.py src
 ```
 
-## Phase 2 — Principle-based judgment
+### Phase 2 — Judgment
 
-The scripts identify candidates, but not every large class is a God class. For each candidate from Phase 1, apply the "reason to change" test from [general-principles.md](../../explanation/code/general-principles.md):
+Apply the "reason to change" test from [general-principles.md](../../explanation/code/general-principles.md) → God Class Detection → Procedure.
 
-1. **Read the class** — the script gives metrics, but we need to read the code to understand its responsibilities.
-2. **Count reasons to change** — a God class has multiple unrelated reasons to change. If the class handles HTTP parsing, database access, and business logic, it has three responsibilities and should be split.
-3. **Check cohesion** — a class with many methods that all operate on the same data is cohesive (not a God class). A class with methods that operate on disjoint subsets of data is not cohesive (God class).
-4. **Check the false-positive prevention rules** from [false-positive-prevention.md](../../explanation/code/false-positive-prevention.md):
-   - Mandatory judgment step — never report a God class based on metrics alone
-   - Coverage cross-check — before reporting "missing tests", verify coverage is genuinely low
-   - Semantic composition-root detection — entry points that create dependencies are not DIP violations
-
-## Coverage cross-check (mandatory)
-
-Before reporting any file from the "Missing tests" table as a finding, run `pytest --cov` and check the file's coverage. If the file has >50% coverage, it is adequately tested via indirect tests — downgrade to informational. Only report as a finding if coverage <50% AND no indirect references. This prevents the whack-a-mole cycle where every review re-reports the same structurally-missing-but-adequately-covered files.
+Suppress false positives per [false-positive-prevention.md](../../explanation/code/false-positive-prevention.md) → Rule 1 (mandatory judgment step) and Rule 2 (coverage cross-check).
 
 ## See also
 

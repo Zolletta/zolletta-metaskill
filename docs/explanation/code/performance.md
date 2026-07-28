@@ -76,6 +76,8 @@ class UserDTO:
         return self._perm_repo.load_for_user(self.user_id)
 ```
 
+**Why this matters**: deferring expensive loads until access avoids paying for work that never runs, keeping startup fast and memory low. See [Lazy Initialization — Wikipedia](https://en.wikipedia.org/wiki/Lazy_initialization).
+
 ## 2. Generators
 
 Use generators for large datasets to avoid loading everything into memory at once. Both PHP and Python support `yield`.
@@ -117,3 +119,5 @@ def get_all_users() -> Iterator[dict]:
 for user in get_all_users():
     exporter.write(user)
 ```
+
+**Why this matters**: generators yield one item at a time, keeping memory flat regardless of dataset size. See [Generators — Python docs](https://docs.python.org/3/tutorial/classes.html#generators), [Generators — PHP docs](https://www.php.net/manual/en/language.generators.overview.php).

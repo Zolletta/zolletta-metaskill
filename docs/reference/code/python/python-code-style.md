@@ -12,7 +12,7 @@ Python-specific coding conventions and code-style workflow. These rules are the 
 
 ## 1. Environment setup
 
-1.1. **Always run inside the dev container.** If the project is containerised (a `compose.yml` or `docker-compose.yml` is present), use `docker exec <container_name> ...` for every command. The container name is detected by `/zolletta-metaskill setup` and stored as `container_name` in `settings.json`.
+1.1. **Always run inside the dev container.**
 
 1.2. **Re-sync the virtual environment before any style or type check.** The `.venv` is mounted from the host and may be stale or linked to the wrong interpreter.
 
@@ -62,7 +62,7 @@ uv run mypy src
 uv run mypy .
 ```
 
-3.3. **Mypy overrides work per module list.** The `[tool.mypy.overrides]` block only applies to explicitly listed modules. If a module is reported as `import-untyped` or `import-not-found`, it means it is **not** in that override list and `ignore_missing_imports = false` is the global default. Either add the module to the override list or install the missing stubs/packages; do not assume the existing override silences everything.
+3.3. **Mypy overrides work per module list.** Override blocks apply only to listed modules; unlisted modules use the global default (`ignore_missing_imports = false`).
 
 3.4. **Resolve true type errors.** After `import-untyped`/`import-not-found` issues are explained, fix any remaining errors such as `Missing return statement`, `Class cannot subclass Any`, `untyped-decorator`, etc.
 
@@ -99,7 +99,7 @@ Run quality checks in this exact order:
 - 1 class 1 file, 1 file one class
 - A class must have a single responsibility
 - Prefer imports at the beginning of the file instead of local imports
-- Do not use `TYPE_CHECKING` blocks. Import types directly at module level. If this creates a circular import, restructure the module boundaries (move the shared type to a lower-level module, or extract an interface/protocol) rather than hiding the import behind `if TYPE_CHECKING:`.
+- Do not use `TYPE_CHECKING` blocks — restructure module boundaries instead.
 
 ## 7. Comments
 
@@ -180,7 +180,7 @@ if match:
     current_item = match.group(1)                            # start new
 ```
 
-8.5. **Ruff enforcement:** `SIM` (flake8-simplify) is already in the recommended `select` list. `SIM101` (merge `isinstance`), `SIM102` (collapse nested `if`), `SIM110` (`any()`/`all()` instead of `for` loop), and `SIM103` (return condition directly) all enforce this pattern automatically.
+8.5. **Ruff enforcement:** Ruff `SIM` rules enforce this automatically — see [flake8-simplify](https://github.com/astral-sh/ruff/issues?q=flake8-simplify).
 
 ## 9. Prefer early returns over nested if/elseif
 
@@ -219,10 +219,10 @@ def process_order(order: Order) -> Receipt:
 9.2. **Rules of thumb:**
 
 - Invert the condition and return/raise/`continue` immediately.
-- Each guard clause is a single `if` at the top level — no `else`.
-- The happy path lives at the function's base indentation, never inside an `if`.
-- If a guard's body is just `return`, prefer `if not cond: return` over `if cond: ... else: return`.
-- Apply the same pattern to `for` loops with `continue` to skip irrelevant items early.
+- Each guard is a single `if` at the top level — no `else`.
+- The happy path lives at base indentation, never inside an `if`.
+- Prefer `if not cond: return` over `if cond: ... else: return`.
+- Apply the same pattern to `for` loops with `continue`.
 
   9.3. **Ruff enforcement:** `RET501` (unnecessary `yield None`), `RET502` (implicit `return None` after `if`), `RET503` (missing explicit `return`), and `RET505` (unnecessary `else` after `return`) all flag code that should use early returns. Add `"RET"` (flake8-return) to the `select` list in `pyproject.toml` to enable them.
 
