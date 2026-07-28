@@ -5,7 +5,7 @@
 [![CI](https://github.com/Zolletta/zolletta-metaskill/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Zolletta/zolletta-metaskill/actions/workflows/ci.yml)
 [![Coverage](https://codecov.io/gh/Zolletta/zolletta-metaskill/branch/main/graph/badge.svg)](https://codecov.io/gh/Zolletta/zolletta-metaskill/branch/main)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT + Commons Clause](https://img.shields.io/badge/license-MIT%20%2B%20Commons%20Clause-blue.svg)](#license)
+[![License: MIT + Commons Clause](https://img.shields.io/badge/license-MIT%20%2B%20Commons%20Clause-blue.svg)](LICENSE)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Zolletta/zolletta-metaskill/pulls)
 
 A family of generic code review skills with specializations for Python and PHP (other languages in progress).
@@ -151,7 +151,7 @@ All files in `~/.agents/rules/` are the **single source of truth** for their dom
 
 ## License
 
-MIT + Commons Clause. See `SKILL.md` frontmatter in each subcommand.
+MIT + Commons Clause. See [LICENSE](LICENSE) and the `license` field in each subcommand's `SKILL.md` frontmatter.
 
 ## Attributions
 
