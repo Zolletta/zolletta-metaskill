@@ -8,7 +8,7 @@ skills: [patterns, python-*]
 
 Python-specific design patterns that go beyond the language-agnostic principles in [general-principles.md](../general-principles.md). Read this when reviewing Python source code for structural quality.
 
-> This file narrows down any eventual general rule about Python, i.e. [python-rules.md](~/.agents/python-rules.md). All files in `~/.agents/` are the single source of truth for their domain.
+> This file narrows down any eventual general rule about Python, i.e. [python-rules.md](~/.agents/python-rules.md). If you have rules in `~/.agents/`, those are the single source of truth for their domain.
 
 ## Strategy Pattern with Autodiscovery
 

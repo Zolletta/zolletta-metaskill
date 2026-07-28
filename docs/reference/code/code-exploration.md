@@ -10,7 +10,7 @@ How to use code graph tools (tokensave) during design pattern analysis.
 
 > **Language-agnostic**: the principles and workflow in this document apply to any project language. The tokensave tools work across all languages. When language-specific examples are needed, they are clearly marked.
 
-> This file narrows down any eventual general rule about code exploration, i.e. [code-exploration-rules.md](~/.agents/code-exploration-rules.md), [tokensave-rules.md](~/.agents/tokensave-rules.md). All files in `~/.agents/` are the single source of truth for their domain. For the full tokensave rules reference, see [tokensave.md](tokensave.md).
+> This file narrows down any eventual general rule about code exploration, i.e. [code-exploration-rules.md](~/.agents/code-exploration-rules.md), [tokensave-rules.md](~/.agents/tokensave-rules.md). If you have rules in `~/.agents/`, those are the single source of truth for their domain. For the full tokensave rules reference, see [tokensave.md](tokensave.md).
 
 ## Patterns-specific workflow with code graph tools
 

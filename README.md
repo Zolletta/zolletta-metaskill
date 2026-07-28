@@ -26,7 +26,7 @@ References:
 
 ### Rules
 
-All files in `~/.agents/rules/` are the single source of truth for their domain and apply to every subcommand. Sub-skills link back to them and only narrow behavior for their specific review context.
+If you have rules in `~/.agents/rules/`, those are the single source of truth for their domain and apply to every subcommand. Sub-skills link back to them and only narrow behavior for their specific review context.
 
 ## Quick start
 
@@ -147,7 +147,7 @@ The patterns skill includes three mechanisms to prevent verdict oscillation betw
 
 ## Rules
 
-All files in `~/.agents/rules/` are the **single source of truth** for their domain and apply to every subcommand. Sub-skills link back to them and only narrow behavior for their specific review context.
+If you have rules in `~/.agents/rules/`, those are the **single source of truth** for their domain and apply to every subcommand. Sub-skills link back to them and only narrow behavior for their specific review context.
 
 ## License
 

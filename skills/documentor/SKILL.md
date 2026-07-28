@@ -16,7 +16,7 @@ A unified documentation review skill that combines:
 
 Derived from the [Diátaxis Documentation Expert](https://github.com/github/awesome-copilot/blob/main/skills/documentation-writer/SKILL.md) skill (MIT, github/awesome-copilot) and the [Doc Drift Detector](https://github.com/borghei/Claude-Skills/blob/main/engineering/doc-drift-detector/SKILL.md) (MIT + Commons Clause, borghei/Claude-Skills), merged into a single review pipeline.
 
-> This file narrows down any eventual general rule about code exploration and documentation, i.e. [code-exploration-rules.md](~/.agents/rules/code-exploration-rules.md), [tokensave-rules.md](~/.agents/rules/tokensave-rules.md), [documentation-rules.md](~/.agents/rules/documentation-rules.md). All files in `~/.agents/rules/` are the single source of truth for their domain.
+> This file narrows down any eventual general rule about code exploration and documentation, i.e. [code-exploration-rules.md](~/.agents/rules/code-exploration-rules.md), [tokensave-rules.md](~/.agents/rules/tokensave-rules.md), [documentation-rules.md](~/.agents/rules/documentation-rules.md). If you have rules in `~/.agents/rules/`, those are the single source of truth for their domain.
 
 ## Shared resources
 
