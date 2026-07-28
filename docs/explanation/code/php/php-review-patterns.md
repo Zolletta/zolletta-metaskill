@@ -361,16 +361,14 @@ PHPStan supports declaring a typed array shape once on an interface and importin
 <?php
 
 interface ArrayShapesInterface {
-    /** @return array{responseId: string, userId: int, username: string, creationDate: string} */
+    /** @return array{responseId: string, userId: int, username: string} */
     public function getResponseShape(): array;
 }
 
 class JwtResponse {
     /** @phpstan-import-type HeadersArrayShape from ArrayShapesInterface */
 
-    /**
-     * @param HeadersArrayShape $headers
-     */
+    /** @param HeadersArrayShape $headers */
     public function __construct(private readonly array $headers) {}
 
     /** @return HeadersArrayShape */
@@ -380,21 +378,11 @@ class JwtResponse {
 }
 ```
 
-**Why this matters**:
-
-- **Single source of truth**: the array shape lives on the interface. Changing it there updates every consumer's type — no grep-and-replace across `@return array{...}` blocks.
-- **PHPStan enforcement**: PHPStan resolves the imported type alias and type-checks every usage. A consumer passing the wrong shape is a static error, not a runtime surprise.
-- **Readable signatures**: `@param HeadersArrayShape $headers` is self-documenting; `@param array{responseId: string, userId: int, ...} $headers` is noise.
-
-**Review signals**:
-
-- **Good**: complex array shapes declared once on an interface, imported via `@phpstan-import-type` at every use site.
-- **Flag**: the same inline `array{...}` shape duplicated across multiple classes — a drift hazard. Extract it to an interface and import.
-- **Flag**: `@var` assertions inside method bodies to narrow `mixed` returns that could have been a typed shape on the interface.
+**Why this matters**: the array shape lives on the interface — changing it there updates every consumer. PHPStan resolves the imported type alias and type-checks every usage. See [PHPStan — importing types](https://phpstan.org/writing-php-code/phpdocs-basics#importing-types).
 
 ## Aligned `=` and `=>` in Multi-Line Arrays
 
-In multi-line array literals and assignments, the `=` and `=>` operators are vertically aligned. This is a visual convention that makes the keys/values scannable as columns, enforced by `php-cs-fixer` via `binary_operator_spaces`.
+In multi-line array literals and assignments, the `=` and `=>` operators are vertically aligned, enforced by `php-cs-fixer` via `binary_operator_spaces`.
 
 ```php
 <?php
@@ -411,16 +399,11 @@ return [
 
 ```php
 'binary_operator_spaces' => [
-    'operators' => [
-        '='  => 'align',
-        '=>' => 'align',
-    ],
+    'operators' => ['=' => 'align', '=>' => 'align'],
 ],
 ```
 
-**Why this matters**: aligned columns let the eye scan keys and values independently. When every `=>` starts at the same column, a missing or mistyped key is immediately visible. The convention is enforced by the formatter, so reviewers do not need to flag it manually — but they should verify the formatter rule is present in the project's `.php-cs-fixer.dist.php`.
-
-**Flag**: a project whose `.php-cs-fixer.dist.php` does not include the `binary_operator_spaces` alignment rule — the visual convention will not hold across contributors.
+**Why this matters**: aligned columns let the eye scan keys and values independently — a missing or mistyped key is immediately visible. See [PHP-CS-Fixer — binary_operator_spaces](https://github.com/PHP-CS-Fixer/PHP-CS-Fixer/blob/master/doc/rules/operator/binary_operator_spaces.rst).
 
 ## `readonly class` for Immutable DTOs
 
@@ -438,21 +421,8 @@ readonly class GenericDataDTO {
         public readonly array $exceptionsThrown,
     ) {}
 }
-
-$dto = new GenericDataDTO('jwt', 'POST', null, ['ExpiredException']);
-// $dto->name = 'changed';  // Fatal error: cannot modify readonly property
 ```
 
-**Why this matters**:
+**Why this matters**: every property is readonly without listing `readonly` on each one — immutability is a class-level contract. See [PHP readonly classes](https://www.php.net/manual/en/language.oop5.readonly.php#language.oop5.readonly.readonly-class).
 
-- **Defensive by default**: every property is readonly without listing `readonly` on each one. The immutability is a class-level contract, not a per-property opt-in.
-- **Safe sharing**: a `readonly class` instance can be passed to any collaborator without guarding against mutation.
-- **PHPStan / Psalm friendly**: static analysers can treat the entire class as immutable and skip write-path checks.
-
-**Review signals**:
-
-- **Good**: DTOs and value objects declared `readonly class` with promoted constructor properties.
-- **Flag**: a DTO with `public readonly` on every property but the class itself is not `readonly` — promote to `readonly class` (PHP 8.2+) to make the intent structural.
-- **Flag**: a `readonly class` with a setter method — a contradiction. Either the class is not a DTO (remove `readonly`) or the setter is wrong (remove it).
-
-> This pattern is the PHP analogue of Python's `@dataclass(frozen=True)`. See [structural-conventions.md](../structural-conventions.md) → Value-Object Suffixes for the naming convention (`*DTO`, `*Spec`, `*Params`).
+> This is the PHP analogue of Python's `@dataclass(frozen=True)`. See [structural-conventions.md](../structural-conventions.md) → Value-Object Suffixes for the naming convention.

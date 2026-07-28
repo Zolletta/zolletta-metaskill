@@ -5,7 +5,7 @@ skills: [patterns, review, python-*, php-*]
 ---
 # Error Handling (Language-Agnostic)
 
-> Four rules adapted from [php-best-practices](https://skills.sh/php-community/php-best-practices) (MIT, v2.1.0). Examples in PHP and Python. The principles apply identically regardless of language.
+> Five rules adapted from [php-best-practices](https://skills.sh/php-community/php-best-practices) (MIT, v2.1.0). Examples in PHP and Python. The principles apply identically regardless of language.
 
 ## 1. Custom exceptions
 
@@ -30,6 +30,8 @@ class UserNotFoundError(RuntimeError):
 
 raise UserNotFoundError(f"User {user_id} not found")
 ```
+
+**Why this matters**: callers catch exactly the error they can handle. See [Python user-defined exceptions](https://docs.python.org/3/tutorial/errors.html#user-defined-exceptions), [PHP extending exceptions](https://www.php.net/manual/en/language.exceptions.extending.php).
 
 ## 2. Exception hierarchy
 
@@ -74,6 +76,8 @@ except DomainError:
     # handle any domain error
 ```
 
+**Why this matters**: callers catch at the level of abstraction they care about. See [Python exception hierarchy](https://docs.python.org/3/library/exceptions.html#exception-hierarchy).
+
 ## 3. Catch specific exceptions
 
 Catch specific exception types, not the generic base class. Catching the base class swallows unexpected errors and hides bugs.
@@ -108,6 +112,8 @@ except UserNotFoundError:
     user = None
 ```
 
+**Why this matters**: catching the base class swallows unexpected errors and hides bugs. See [Python handling exceptions](https://docs.python.org/3/tutorial/errors.html#handling-exceptions).
+
 ## 4. Finally for cleanup
 
 Use `finally` for guaranteed resource cleanup — it runs whether the `try` block succeeds or throws.
@@ -135,15 +141,11 @@ finally:
     lock.release()  # always runs
 ```
 
+**Why this matters**: `finally` runs whether the `try` succeeds or throws — guaranteed cleanup. See [Python try statement](https://docs.python.org/3/reference/compound_stmts.html#the-try-statement), [PHP exceptions](https://www.php.net/manual/en/language.exceptions.php).
+
 ## 5. Wrap library exceptions in domain exceptions
 
-Catch low-level or library-specific exceptions at the boundary where they originate and re-throw them as domain exceptions, preserving the original message and (where the language supports it) the cause. This composes rules 1 and 3: callers depend on a stable domain exception type (rule 1) and are never forced to catch the generic base (rule 3) just to handle a library failure.
-
-The pattern has three parts:
-
-1. **Catch the specific library exception** — never the generic base.
-2. **Re-throw a domain exception** that names the domain concept, not the library.
-3. **Preserve the cause** so the original failure is traceable in stack traces.
+Catch library-specific exceptions at the service boundary and re-throw as domain exceptions, preserving the cause. This composes rules 1 and 3: callers depend on a stable domain type and never catch the library's base exception.
 
 ```php
 <?php
@@ -152,35 +154,16 @@ The pattern has three parts:
 try {
     $token = $this->tokenParser->parse($raw);
 } catch (ExpiredException $e) {
-    // Wrap in a domain exception — callers depend on ExpiredAuthTokenException,
-    // not on the library's ExpiredException
     throw new ExpiredAuthTokenException('Il token fornito è scaduto', previous: $e);
-} catch (\Exception $e) {
-    throw new SecurityException("Token validation failed: {$e->getMessage()}", previous: $e);
 }
 ```
 
 ```python
-# Library raises a low-level error (e.g. from an HTTP client or file parser)
+# Library raises httpx.HTTPError
 try:
     data = httpx.get(url).json()
 except httpx.HTTPError as e:
-    # Wrap in a domain exception — callers catch GitLabFetchError, not httpx.HTTPError
-    raise GitLabFetchError(f"Failed to fetch from GitLab -> {e}") from e
-except KeyError as e:
-    raise ConfigParseError(f"Missing required config key -> {e}") from e
+    raise GitLabFetchError(f"Failed to fetch -> {e}") from e
 ```
 
-**Why this matters**:
-
-- **Stable caller contracts**: callers depend on `ExpiredAuthTokenException` / `GitLabFetchError`, not on `firebase.jwt.ExpiredException` / `httpx.HTTPError`. Swapping the library does not break every `except` clause in the codebase.
-- **Domain vocabulary in stack traces**: the exception names the *domain concept* that failed, not the *library* that raised. A production stack trace reading `SecurityException: token validation failed` is actionable; `ExpiredException` is not.
-- **Cause preservation**: `from e` (Python) / `previous: $e` (PHP) keeps the original exception in the chain, so debugging still reaches the library layer.
-
-**Violation signals**:
-
-- Library exception types (`httpx.HTTPError`, `redis.ConnectionError`, `ExpiredException`) leaking past a service boundary into caller code.
-- `except Exception as e: raise RuntimeError(str(e))` — wraps but loses the cause chain (Python: missing `from e`).
-- Domain exceptions without a `previous` / `from` link to the original — the chain is broken and the root cause is unrecoverable.
-
-**Boundary definition**: the wrapping happens at the *service boundary* — the class or module that owns the integration with the library. Code *inside* the service may use the library's exceptions; code *outside* the service should only see domain exceptions.
+**Why this matters**: swapping the library does not break every `except` clause; the cause chain (`from e` / `previous: $e`) keeps the root failure traceable. See [PEP 3134](https://peps.python.org/pep-3134/) (Python exception chaining), [PHP Exception::__construct](https://www.php.net/manual/en/exception.construct.php) (`previous` parameter).

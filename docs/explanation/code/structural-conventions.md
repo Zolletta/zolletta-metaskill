@@ -80,7 +80,7 @@ Test files whose name doesn't match any source file or class in the mirrored dir
 
 ## Value-Object Suffixes
 
-Value objects — immutable data carriers with no behaviour — use a conventional suffix that signals their role. The suffix makes the class's purpose immediately recognisable at the call site and in type annotations.
+Value objects — immutable data carriers with no behaviour — use a conventional suffix that signals their role.
 
 | Suffix    | Purpose                                           | Examples                                       |
 |-----------|---------------------------------------------------|------------------------------------------------|
@@ -88,21 +88,17 @@ Value objects — immutable data carriers with no behaviour — use a convention
 | `*Spec`   | Specification — describes *what* to build/run     | `EndpointSpec`, `ScenarioSpec`                 |
 | `*Params` | Parameter bundle — grouped arguments for one call | `ResizableParams`, `AgencyEstimateCoverParams` |
 
-**Why this matters**:
-
-- **Intent at a glance**: `EndpointSpec` tells the reader "this describes an endpoint", not "this is an endpoint". The suffix separates *description* from *thing described*.
-- **Consistent type annotations**: `def create(spec: EndpointSpec) -> ...` reads as a contract, not an implementation detail.
-- **Searchability**: grepping for `*Spec` / `*Params` / `*DTO` surfaces every value object in the codebase without a tag.
+**Why this matters**: the suffix separates *description* from *thing described* — `EndpointSpec` is a specification, not an endpoint. See [Fowler — Data Transfer Object](https://martinfowler.com/eaaCatalog/dto.html).
 
 **Language notes**:
 
-- **Python**: suffix applies to `@dataclass` / `NamedTuple` / `TypedDict` / frozen dataclasses. A `@dataclass(frozen=True)` named `EndpointSpec` is the canonical form.
-- **PHP**: suffix applies to `readonly class` DTOs (`readonly class GenericDataDTO`) and promoted-constructor parameter bundles.
+- **Python**: suffix applies to `@dataclass` / `NamedTuple` / `TypedDict` / frozen dataclasses.
+- **PHP**: suffix applies to `readonly class` DTOs and promoted-constructor parameter bundles.
 
 **Acceptable exceptions**:
 
 - Domain entities (`User`, `Order`) are not value objects and do not take a suffix.
-- Framework base classes that impose their own naming (`*Controller`, `*Repository`, `*Command`, `*Event`) follow the framework convention, not this rule.
+- Framework base classes that impose their own naming (`*Controller`, `*Repository`, `*Command`, `*Event`) follow the framework convention.
 
 ## Enum Naming
 
@@ -113,44 +109,33 @@ Enums use `PascalCase` for the enum class and `SCREAMING_SNAKE_CASE` for the cas
 class PipelineType(Enum):
     MASTER = "master"
     FEATURE_BRANCH = "feature_branch"
-
-class CommandRunMode(Enum):
-    DRY_RUN = "dry_run"
-    LIVE = "live"
 ```
 
 ```php
 <?php
 
-// Good — PascalCase enum, SCREAMING_SNAKE cases
-enum PipelineType: string {
-    case Master = 'MASTER';       // case name may be PascalCase per PHP convention
-    case FeatureBranch = 'FEATURE_BRANCH';
-}
-
+// Good — PascalCase enum, PascalCase cases (PHP convention)
 enum CommandRunMode: string {
     case DryRun = 'DRY_RUN';
     case Live = 'LIVE';
 }
 ```
 
-> **PHP note**: PHP enum case names follow [PSR-12](https://www.php-fig.org/per/coding-style/) `PascalCase` by convention, while Python enum members follow `SCREAMING_SNAKE_CASE`. The *class* is `PascalCase` in both. Reviewers should enforce the language-native member casing, not impose one language's convention on the other.
+> **PHP note**: PHP enum case names follow [PSR-12](https://www.php-fig.org/per/coding-style/) `PascalCase` by convention, while Python enum members follow `SCREAMING_SNAKE_CASE`. The *class* is `PascalCase` in both. Reviewers should enforce the language-native member casing.
 
-**Why this matters**: the class/member casing split makes enums visually distinct from classes-with-instances: `PipelineType.MASTER` reads as "the MASTER member of the PipelineType set", not as a method call or property access.
+**Why this matters**: the class/member casing split makes enums visually distinct from classes-with-instances. See [PEP 435](https://peps.python.org/pep-0435/) (Python enums), [PHP enums](https://www.php.net/manual/en/language.enumerations.php).
 
 ## Acronyms Stay Uppercase in Class Names
 
-Acronyms retain their uppercase form inside PascalCase class names: `HTTPClient`, not `HttpClient`; `CITesterEngine`, not `CiTesterEngine`; `JWTDecoder`, not `JwtDecoder`. This is a cross-language convention — it applies to Python, PHP, and any other PascalCase-named language.
+Acronyms retain their uppercase form inside PascalCase class names: `HTTPClient`, not `HttpClient`; `CITesterEngine`, not `CiTesterEngine`. This is a cross-language convention.
 
 ```python
 # Good — acronyms stay uppercase
 class CITesterEngine: ...
-class MRBranchResolver: ...
 class JWTDecoder: ...
 
 # Flag — acronym lowercased mid-name
 class CiTesterEngine: ...      # should be CITesterEngine
-class MrBranchResolver: ...    # should be MRBranchResolver
 ```
 
 ```php
@@ -158,15 +143,14 @@ class MrBranchResolver: ...    # should be MRBranchResolver
 
 // Good — acronyms stay uppercase
 class JWTDecoder { ... }
-class URLEndpoint { ... }
 
 // Flag
 class JwtDecoder { ... }       // should be JWTDecoder
 ```
 
-**Enforcement**: the acronym list is project-specific. The Python skill ships `scan_acronym_casing.py` with an additive acronym list (shipped base + `settings.json` `acronyms` array + CLI override). PHP projects should maintain an equivalent list. A class name is flagged only when a word inside it case-insensitively matches a configured acronym but is not all-uppercase.
+**Enforcement**: the acronym list is project-specific. The Python skill ships `scan_acronym_casing.py` with an additive acronym list (shipped base + `settings.json` `acronyms` array + CLI override). A class name is flagged only when a word inside it case-insensitively matches a configured acronym but is not all-uppercase.
 
-> The acronym rule is already enforced by the `python-code-style` skill (rule #3). It is restated here because it is a *cross-language* convention, not a Python-specific one — a reviewer reading PHP code should apply the same rule.
+> The acronym rule is already enforced by the `python-code-style` skill (rule #3). It is restated here because it is a *cross-language* convention — a reviewer reading PHP code should apply the same rule.
 
 ## Test God Class Splitting
 
