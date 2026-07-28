@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# Run the same checks as CI locally.
+#
+# Usage:
+#   ./.check           # run everything (pytest + quality)
+#   ./.check pytest    # run only pytest + coverage
+#   ./.check quality   # run only ruff + ty + mypy + vulture
+#
+# Exits with a non-zero status if any check fails.
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+cd "$ROOT"
+
+# Colors
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+pass() { echo -e "${GREEN}✓ $1${RESET}"; }
+fail() { echo -e "${RED}✗ $1${RESET}"; }
+header() { echo -e "\n${BOLD}=== $1 ===${RESET}"; }
+
+TARGET="${1:-all}"
+FAILED=0
+
+run_pytest() {
+    header "pytest + coverage"
+    if uv run pytest --cov=zolletta_metaskill --cov-report=term -q; then
+        pass "pytest"
+    else
+        fail "pytest"
+        FAILED=1
+    fi
+}
+
+run_quality() {
+    header "ruff"
+    if uv run ruff check; then
+        pass "ruff"
+    else
+        fail "ruff"
+        FAILED=1
+    fi
+
+    header "ty"
+    if uv run ty check .; then
+        pass "ty"
+    else
+        fail "ty"
+        FAILED=1
+    fi
+
+    header "mypy"
+    if uv run mypy .; then
+        pass "mypy"
+    else
+        fail "mypy"
+        FAILED=1
+    fi
+
+    header "vulture"
+    if uv run vulture .; then
+        pass "vulture"
+    else
+        fail "vulture"
+        FAILED=1
+    fi
+}
+
+case "$TARGET" in
+    all)
+        run_pytest
+        run_quality
+        ;;
+    pytest|tests)
+        run_pytest
+        ;;
+    quality|lint)
+        run_quality
+        ;;
+    *)
+        echo "Usage: ./.check [all|pytest|quality]" >&2
+        exit 1
+        ;;
+esac
+
+echo ""
+if [ "$FAILED" -eq 0 ]; then
+    echo -e "${GREEN}${BOLD}All checks passed.${RESET}"
+else
+    echo -e "${RED}${BOLD}Some checks failed.${RESET}"
+fi
+exit "$FAILED"
