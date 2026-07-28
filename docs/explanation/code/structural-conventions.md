@@ -78,6 +78,96 @@ Test files whose name doesn't match any source file or class in the mirrored dir
 
 **Detection (Python)**: see [scripts.md](../../reference/code/scripts.md) → `scan_naming_conventions.py` (checks both rules in a single pass).
 
+## Value-Object Suffixes
+
+Value objects — immutable data carriers with no behaviour — use a conventional suffix that signals their role. The suffix makes the class's purpose immediately recognisable at the call site and in type annotations.
+
+| Suffix    | Purpose                                           | Examples                                       |
+|-----------|---------------------------------------------------|------------------------------------------------|
+| `*DTO`    | Data Transfer Object — serialisable data carrier  | `GenericDataDTO`, `UserResponseDTO`            |
+| `*Spec`   | Specification — describes *what* to build/run     | `EndpointSpec`, `ScenarioSpec`                 |
+| `*Params` | Parameter bundle — grouped arguments for one call | `ResizableParams`, `AgencyEstimateCoverParams` |
+
+**Why this matters**:
+
+- **Intent at a glance**: `EndpointSpec` tells the reader "this describes an endpoint", not "this is an endpoint". The suffix separates *description* from *thing described*.
+- **Consistent type annotations**: `def create(spec: EndpointSpec) -> ...` reads as a contract, not an implementation detail.
+- **Searchability**: grepping for `*Spec` / `*Params` / `*DTO` surfaces every value object in the codebase without a tag.
+
+**Language notes**:
+
+- **Python**: suffix applies to `@dataclass` / `NamedTuple` / `TypedDict` / frozen dataclasses. A `@dataclass(frozen=True)` named `EndpointSpec` is the canonical form.
+- **PHP**: suffix applies to `readonly class` DTOs (`readonly class GenericDataDTO`) and promoted-constructor parameter bundles.
+
+**Acceptable exceptions**:
+
+- Domain entities (`User`, `Order`) are not value objects and do not take a suffix.
+- Framework base classes that impose their own naming (`*Controller`, `*Repository`, `*Command`, `*Event`) follow the framework convention, not this rule.
+
+## Enum Naming
+
+Enums use `PascalCase` for the enum class and `SCREAMING_SNAKE_CASE` for the cases. This separates the *type* (a closed set) from its *members* (individual values) at a glance.
+
+```python
+# Good — PascalCase enum, SCREAMING_SNAKE members
+class PipelineType(Enum):
+    MASTER = "master"
+    FEATURE_BRANCH = "feature_branch"
+
+class CommandRunMode(Enum):
+    DRY_RUN = "dry_run"
+    LIVE = "live"
+```
+
+```php
+<?php
+
+// Good — PascalCase enum, SCREAMING_SNAKE cases
+enum PipelineType: string {
+    case Master = 'MASTER';       // case name may be PascalCase per PHP convention
+    case FeatureBranch = 'FEATURE_BRANCH';
+}
+
+enum CommandRunMode: string {
+    case DryRun = 'DRY_RUN';
+    case Live = 'LIVE';
+}
+```
+
+> **PHP note**: PHP enum case names follow PSR-12 `PascalCase` by convention, while Python enum members follow `SCREAMING_SNAKE_CASE`. The *class* is `PascalCase` in both. Reviewers should enforce the language-native member casing, not impose one language's convention on the other.
+
+**Why this matters**: the class/member casing split makes enums visually distinct from classes-with-instances: `PipelineType.MASTER` reads as "the MASTER member of the PipelineType set", not as a method call or property access.
+
+## Acronyms Stay Uppercase in Class Names
+
+Acronyms retain their uppercase form inside PascalCase class names: `HTTPClient`, not `HttpClient`; `CITesterEngine`, not `CiTesterEngine`; `JWTDecoder`, not `JwtDecoder`. This is a cross-language convention — it applies to Python, PHP, and any other PascalCase-named language.
+
+```python
+# Good — acronyms stay uppercase
+class CITesterEngine: ...
+class MRBranchResolver: ...
+class JWTDecoder: ...
+
+# Flag — acronym lowercased mid-name
+class CiTesterEngine: ...      # should be CITesterEngine
+class MrBranchResolver: ...    # should be MRBranchResolver
+```
+
+```php
+<?php
+
+// Good — acronyms stay uppercase
+class JWTDecoder { ... }
+class URLEndpoint { ... }
+
+// Flag
+class JwtDecoder { ... }       // should be JWTDecoder
+```
+
+**Enforcement**: the acronym list is project-specific. The Python skill ships `scan_acronym_casing.py` with an additive acronym list (shipped base + `settings.json` `acronyms` array + CLI override). PHP projects should maintain an equivalent list. A class name is flagged only when a word inside it case-insensitively matches a configured acronym but is not all-uppercase.
+
+> The acronym rule is already enforced by the `python-code-style` skill (rule #3). It is restated here because it is a *cross-language* convention, not a Python-specific one — a reviewer reading PHP code should apply the same rule.
+
 ## Test God Class Splitting
 
 When a test class tests multiple SUTs (Systems Under Test), it should be split into per-SUT test files.

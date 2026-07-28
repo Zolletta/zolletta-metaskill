@@ -352,3 +352,169 @@ grep -rn "public function" src/ --include="*.php" | cut -d: -f1 | sort | uniq -c
 ```
 
 These commands produce triage signals, not verdicts. Always apply the "reason to change" test before reporting a class as a God class. See [false-positive-prevention.md](../false-positive-prevention.md) for the mandatory judgment steps.
+
+## Reusable Array Shapes with `@phpstan-import-type`
+
+PHPStan supports declaring a typed array shape once on an interface and importing it wherever the shape is reused. This prevents drift: the shape is defined in one place and every consumer references the canonical definition.
+
+```php
+<?php
+
+interface ArrayShapesInterface {
+    /** @return array{responseId: string, userId: int, username: string, creationDate: string} */
+    public function getResponseShape(): array;
+}
+
+class JwtResponse {
+    /** @phpstan-import-type HeadersArrayShape from ArrayShapesInterface */
+
+    /**
+     * @param HeadersArrayShape $headers
+     */
+    public function __construct(private readonly array $headers) {}
+
+    /** @return HeadersArrayShape */
+    public function getHeaders(): array {
+        return $this->headers;
+    }
+}
+```
+
+**Why this matters**:
+
+- **Single source of truth**: the array shape lives on the interface. Changing it there updates every consumer's type — no grep-and-replace across `@return array{...}` blocks.
+- **PHPStan enforcement**: PHPStan resolves the imported type alias and type-checks every usage. A consumer passing the wrong shape is a static error, not a runtime surprise.
+- **Readable signatures**: `@param HeadersArrayShape $headers` is self-documenting; `@param array{responseId: string, userId: int, ...} $headers` is noise.
+
+**Review signals**:
+
+- **Good**: complex array shapes declared once on an interface, imported via `@phpstan-import-type` at every use site.
+- **Flag**: the same inline `array{...}` shape duplicated across multiple classes — a drift hazard. Extract it to an interface and import.
+- **Flag**: `@var` assertions inside method bodies to narrow `mixed` returns that could have been a typed shape on the interface.
+
+## Aligned `=` and `=>` in Multi-Line Arrays
+
+In multi-line array literals and assignments, the `=` and `=>` operators are vertically aligned. This is a visual convention that makes the keys/values scannable as columns, enforced by `php-cs-fixer` via `binary_operator_spaces`.
+
+```php
+<?php
+
+return [
+    'responseId'   => $this->responseId,
+    'userId'       => $this->id,
+    'username'     => $this->username,
+    'creationDate' => $this->creationDate,
+];
+```
+
+**Enforcement**: `php-cs-fixer` config:
+
+```php
+'binary_operator_spaces' => [
+    'operators' => [
+        '='  => 'align',
+        '=>' => 'align',
+    ],
+],
+```
+
+**Why this matters**: aligned columns let the eye scan keys and values independently. When every `=>` starts at the same column, a missing or mistyped key is immediately visible. The convention is enforced by the formatter, so reviewers do not need to flag it manually — but they should verify the formatter rule is present in the project's `.php-cs-fixer.dist.php`.
+
+**Flag**: a project whose `.php-cs-fixer.dist.php` does not include the `binary_operator_spaces` alignment rule — the visual convention will not hold across contributors.
+
+## Builder Pattern with Built-In Mocked Responses
+
+Fluent builders (`with*` setters + terminal `build()`) are the preferred shape for constructing commands and requests. Mocked responses are first-class builder arguments, so dry-run / test mode is built into the command path rather than bolted on.
+
+```php
+<?php
+
+$command = Exists::builder()
+    ->withResourceId($id)
+    ->withMockedResponse($fakeResponse)   // dry-run / test path, same builder
+    ->build();
+
+$result = $command->execute();
+```
+
+```php
+<?php
+
+class Exists {
+    private function __construct(
+        public readonly string $resourceId,
+        public readonly ?MockedResponse $mockedResponse = null,
+    ) {}
+
+    public static function builder(): ExistsBuilder {
+        return new ExistsBuilder();
+    }
+
+    public function execute(): Result {
+        $response = $this->mockedResponse ?? $this->fetchRealResponse();
+        return $this->parse($response);
+    }
+}
+
+class ExistsBuilder {
+    private string $resourceId;
+    private ?MockedResponse $mockedResponse = null;
+
+    public function withResourceId(string $id): static {
+        $this->resourceId = $id;
+        return $this;
+    }
+
+    public function withMockedResponse(MockedResponse $response): static {
+        $this->mockedResponse = $response;
+        return $this;
+    }
+
+    public function build(): Exists {
+        return new Exists($this->resourceId, $this->mockedResponse);
+    }
+}
+```
+
+**Why this matters**:
+
+- **Dry-run is not a branch**: `$this->mockedResponse ?? $this->fetchRealResponse()` means the command has one execution path. There is no `if ($this->isDryRun)` sprinkled through the logic.
+- **Test parity**: tests build the command with the same builder as production, only swapping `withMockedResponse` for the real call. The SUT is identical.
+- **Fluent readability**: `Exists::builder()->withResourceId($id)->build()` reads as a sentence.
+
+**Flag**: a command class with a separate `DryRunExists` subclass or an `if ($dryRun)` branch inside `execute()` — the mocked-response builder replaces both.
+
+## `readonly class` for Immutable DTOs
+
+PHP 8.2 `readonly class` makes every property immutable by default. Use it for DTOs, value objects, and any class whose entire purpose is to carry data that should not change after construction.
+
+```php
+<?php
+
+readonly class GenericDataDTO {
+    public function __construct(
+        public readonly string $name,
+        public readonly string $requestType,
+        public readonly ?string $responseType,
+        /** @var array<string> */
+        public readonly array $exceptionsThrown,
+    ) {}
+}
+
+$dto = new GenericDataDTO('jwt', 'POST', null, ['ExpiredException']);
+// $dto->name = 'changed';  // Fatal error: cannot modify readonly property
+```
+
+**Why this matters**:
+
+- **Defensive by default**: every property is readonly without listing `readonly` on each one. The immutability is a class-level contract, not a per-property opt-in.
+- **Safe sharing**: a `readonly class` instance can be passed to any collaborator without guarding against mutation.
+- **PHPStan / Psalm friendly**: static analysers can treat the entire class as immutable and skip write-path checks.
+
+**Review signals**:
+
+- **Good**: DTOs and value objects declared `readonly class` with promoted constructor properties.
+- **Flag**: a DTO with `public readonly` on every property but the class itself is not `readonly` — promote to `readonly class` (PHP 8.2+) to make the intent structural.
+- **Flag**: a `readonly class` with a setter method — a contradiction. Either the class is not a DTO (remove `readonly`) or the setter is wrong (remove it).
+
+> This pattern is the PHP analogue of Python's `@dataclass(frozen=True)`. See [structural-conventions.md](../structural-conventions.md) → Value-Object Suffixes for the naming convention (`*DTO`, `*Spec`, `*Params`).

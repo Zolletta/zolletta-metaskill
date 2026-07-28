@@ -291,6 +291,63 @@ class NotificationService {
 }
 ```
 
+### Thin Coordinator / Orchestrator
+
+A **thin coordinator** (often named `Orchestrator`) is a small class that *wires* collaborators and owns the high-level flow, delegating every concrete operation to focused helpers. It is the practical embodiment of SRP + DIP together: the orchestrator has one responsibility (the flow), and every dependency is injected.
+
+The orchestrator's methods are 1–5 lines each, every line a delegation. The class reads like a table of contents of the operation, not an implementation of it.
+
+```python
+class Orchestrator:
+    """Thin coordinator: wires four collaborators, owns only the flow."""
+
+    def __init__(
+        self,
+        config: Config,
+        *,
+        scenario_filter: ScenarioFilter,
+        group_runner: PipelineGroupRunner,
+        finalizer: ExecutionFinalizer,
+    ) -> None:
+        self._config = config
+        self._scenario_filter = scenario_filter
+        self._group_runner = group_runner
+        self._finalizer = finalizer
+
+    def run(self, spec: Spec) -> Result:
+        scenarios = self._scenario_filter.filter(spec)
+        outcomes = self._group_runner.run(scenarios)
+        return self._finalizer.finalize(outcomes)
+```
+
+```php
+<?php
+
+class Orchestrator {
+    public function __construct(
+        private readonly ScenarioFilter $scenarioFilter,
+        private readonly PipelineGroupRunner $groupRunner,
+        private readonly ExecutionFinalizer $finalizer,
+    ) {}
+
+    public function run(Spec $spec): Result {
+        $scenarios = $this->scenarioFilter->filter($spec);
+        $outcomes = $this->groupRunner->run($scenarios);
+        return $this->finalizer->finalize($outcomes);
+    }
+}
+```
+
+**This is the inverse of a God class**: the orchestrator has a high attribute count (one per collaborator), but that is *delegation*, not mixed concerns. Every attribute is a dependency injected to handle one step of the flow. See [false-positive-prevention.md](false-positive-prevention.md) → "An orchestrator that delegates to injected dependencies" is explicitly **not** a God class.
+
+**Violation signals**:
+
+- The orchestrator starts inlining logic (`if spec.type == ...: scenarios = [s for s in ...]`) — the logic belongs in a collaborator, not the coordinator.
+- The orchestrator creates dependencies with `new` / `SomeClass(...)` inside its methods — it is creating instead of receiving (DIP violation).
+- The orchestrator's methods exceed ~5 lines — it is accumulating logic that should be delegated.
+
+For the Python-specific variant with keyword-only DI and the `_initialize` pattern, see [python-review-patterns.md](python/python-review-patterns.md) → Thin Coordinator / Orchestrator Pattern.
+
 ### Rule of Three
 
 Wait until you have three instances before abstracting. Duplication is often better than the wrong abstraction.
@@ -382,7 +439,7 @@ grep -c "public function\|private function\|protected function" src/MyClass.php
 ### Domain reference table
 
 | Domain         | Examples                                           |
-| -------------- | -------------------------------------------------- |
+|----------------|----------------------------------------------------|
 | HTTP/API       | request parsing, response formatting, status codes |
 | Business logic | validation, domain rules, calculations             |
 | Data access    | SQL, ORM calls, cache reads/writes                 |
