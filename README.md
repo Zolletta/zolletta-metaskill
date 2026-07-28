@@ -2,6 +2,12 @@
 
 # Zolletta-metaskill
 
+[![CI](https://github.com/Zolletta/zolletta-metaskill/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Zolletta/zolletta-metaskill/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/Zolletta/zolletta-metaskill/branch/main/graph/badge.svg)](https://codecov.io/gh/Zolletta/zolletta-metaskill/branch/main)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT + Commons Clause](https://img.shields.io/badge/license-MIT%20%2B%20Commons%20Clause-blue.svg)](#license)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Zolletta/zolletta-metaskill/pulls)
+
 A family of generic code review skills with specializations for Python and PHP (other languages in progress).
 
 _Zolletta_ is Italian for sugar cubes — each skill is a compact, self-contained piece that sweetens the review process. Together they dissolve into a complete picture.
@@ -39,10 +45,10 @@ New to Zolletta-metaskill? Read the [getting started tutorial](docs/tutorials/ge
 
 ### Supported languages
 
-| Language | Parser | SOLID scanners | Code style | Testing patterns |
-| --- | --- | --- | --- | --- |
-| Python | `ast` module (stdlib) | DIP, ISP, OCP, LSP | `python-code-style` | `python-testing-patterns` |
-| PHP | `tree-sitter-php` (optional) | DIP, ISP, OCP | `php-code-style` | `php-testing-patterns` |
+| Language | Parser                       | SOLID scanners     | Code style          | Testing patterns          |
+|----------|------------------------------|--------------------|---------------------|---------------------------|
+| Python   | `ast` module (stdlib)        | DIP, ISP, OCP, LSP | `python-code-style` | `python-testing-patterns` |
+| PHP      | `tree-sitter-php` (optional) | DIP, ISP, OCP      | `php-code-style`    | `php-testing-patterns`    |
 
 PHP support requires the optional `tree-sitter` and `tree-sitter-php` packages:
 
@@ -68,32 +74,32 @@ Use `./.bump --to <version>` to bump the version across `pyproject.toml`, `__ini
 
 ## Subcommands
 
-| Subcommand | Scope |
-| --- | --- |
-| `setup` | Project initialization — creates `settings.json`, detects language, Docker container, tokensave, Python tooling, and extracts effective tool configuration from `pyproject.toml` |
-| `review` | Full project review orchestrator — runs general + language-specific skills as parallel subagents, produces graded SUMMARY.md and aggregated TODO.md with links to specialist reports |
-| `patterns` | God classes, SOLID violations, coupling, composition vs inheritance for `src/` |
-| `documentor` | [Diátaxis](https://diataxis.fr/) compliance + drift detection for `.backstage/` |
-| `external-review` | External-LLM code review on modified files only (default model: `swe`) |
-| `python-code-style` | Python source code style review (ruff, mypy, naming, docstrings, type annotations) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT) |
-| `python-testing-patterns` | Python test code review (isolation, naming, coverage gaps, mocking, fixtures, AAA structure) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT) |
-| `php-code-style` | PHP source code style review (33 rules: naming, docblocks, type declarations, modern PHP practices) |
-| `php-testing-patterns` | PHP test code review (PHPUnit naming, mirroring, coverage gaps, mocking, data providers) |
+| Subcommand                | Scope                                                                                                                                                                                |
+|---------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `setup`                   | Project initialization — creates `settings.json`, detects language, Docker container, tokensave, Python tooling, and extracts effective tool configuration from `pyproject.toml`     |
+| `review`                  | Full project review orchestrator — runs general + language-specific skills as parallel subagents, produces graded SUMMARY.md and aggregated TODO.md with links to specialist reports |
+| `patterns`                | God classes, SOLID violations, coupling, composition vs inheritance for `src/`                                                                                                       |
+| `documentor`              | [Diátaxis](https://diataxis.fr/) compliance + drift detection for `.backstage/`                                                                                                      |
+| `external-review`         | External-LLM code review on modified files only (default model: `swe`)                                                                                                               |
+| `python-code-style`       | Python source code style review (ruff, mypy, naming, docstrings, type annotations) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)                        |
+| `python-testing-patterns` | Python test code review (isolation, naming, coverage gaps, mocking, fixtures, AAA structure) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)              |
+| `php-code-style`          | PHP source code style review (33 rules: naming, docblocks, type declarations, modern PHP practices)                                                                                  |
+| `php-testing-patterns`    | PHP test code review (PHPUnit naming, mirroring, coverage gaps, mocking, data providers)                                                                                             |
 
 ## Tools leveraged if available
 
-| Tool | Homepage | Why Zolletta-metaskill benefits |
-| --- | --- | --- |
+| Tool      | Homepage                                      | Why Zolletta-metaskill benefits                                                                                                                                                                                                                |
+|-----------|-----------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | tokensave | https://github.com/aovestdipaperino/tokensave | Semantic code-graph index (symbols, call/callee, impact radius). Used by patterns, documentor, review, external-review to understand code without reading full files, assess blast radius, verify documented symbols, and find affected tests. |
 
 When a tool is not installed, Zolletta-metaskill prints a message explaining why it would benefit from the tool and links to the homepage. It does **not** install anything.
 
 ## Shared resources
 
-| Resource | Path | Contents |
-| --- | --- | --- |
-| Documentation | [`docs/`](docs/index.md) | Tutorials, how-to guides, reference, and explanation — see [`docs/index.md`](docs/index.md) for the full index |
-| Scripts | `src/zolletta_metaskill/{patterns,php_patterns,python_code_style,python_testing_patterns,shared}/` | Automated scanning scripts organized by skill |
+| Resource      | Path                                                                                               | Contents                                                                                                       |
+|---------------|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
+| Documentation | [`docs/`](docs/index.md)                                                                           | Tutorials, how-to guides, reference, and explanation — see [`docs/index.md`](docs/index.md) for the full index |
+| Scripts       | `src/zolletta_metaskill/{patterns,php_patterns,python_code_style,python_testing_patterns,shared}/` | Automated scanning scripts organized by skill                                                                  |
 
 ## Setup and settings.json
 
