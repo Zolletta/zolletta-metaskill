@@ -94,13 +94,6 @@ Use `./.bump --to <version>` to bump the version across `pyproject.toml`, `__ini
 
 When a tool is not installed, Zolletta-metaskill prints a message explaining why it would benefit from the tool and links to the homepage. It does **not** install anything.
 
-## Shared resources
-
-| Resource      | Path                                                                                               | Contents                                                                                                       |
-|---------------|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
-| Documentation | [`docs/`](docs/index.md)                                                                           | Tutorials, how-to guides, reference, and explanation — see [`docs/index.md`](docs/index.md) for the full index |
-| Scripts       | `src/zolletta_metaskill/{patterns,php_patterns,python_code_style,python_testing_patterns,shared}/` | Automated scanning scripts organized by skill                                                                  |
-
 ## Setup and settings.json
 
 `/zolletta-metaskill setup` creates `.zolletta-metaskill/settings.json` in the project root and adds `.zolletta-metaskill/` to `.gitignore`. The file is read by all other subcommands.
