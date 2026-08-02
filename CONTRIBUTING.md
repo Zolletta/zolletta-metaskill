@@ -13,10 +13,10 @@ Thanks for your interest in contributing! This guide covers the practical steps 
 ```bash
 git clone https://github.com/Zolletta/zolletta-metaskill.git
 cd zolletta-metaskill
-uv sync --extra dev --extra php
+uv sync --all-extras
 ```
 
-This installs all development and runtime dependencies (including the optional PHP extras).
+This installs all optional dependency groups: `dev` (pytest, ruff, mypy, ty, vulture) and `php` (tree-sitter, tree-sitter-php). Both are needed to run the full test suite and quality gate locally.
 
 ## Development workflow
 
@@ -35,6 +35,36 @@ uv run vulture .
 These are the same checks CI runs (see `.github/workflows/ci.yml`). All four must pass.
 
 4. **Commit and push** your branch, then open a pull request against `main`.
+
+## Commit messages
+
+This project follows [Conventional Commits](https://www.conventionalcommits.org/). Prefix every commit with one of:
+
+| Type       | Use for                                             |
+|------------|-----------------------------------------------------|
+| `feat`     | New feature or capability                            |
+| `fix`      | Bug fix                                             |
+| `docs`     | Documentation changes                                |
+| `refactor` | Code restructuring without behavior change          |
+| `test`     | Adding or updating tests                            |
+| `chore`    | Maintenance, deps, config                           |
+| `style`    | Formatting, whitespace, naming                       |
+| `ci`       | CI/CD changes                                        |
+| `perf`     | Performance improvements                             |
+
+Example: `feat(setup): detect PHP tools from composer.json`
+
+Scope is optional but encouraged when the change targets a specific subcommand or module.
+
+## Dogfooding
+
+Zolletta-metaskill reviews its own code. Running the review skills on this repository before opening a PR is encouraged — it catches the same issues the maintainers would flag. Use:
+
+```bash
+/zolletta-metaskill review
+```
+
+Findings from a self-review don't need to be resolved if they're informational, but real findings (severity/impact) should be addressed or explained in the PR description.
 
 ## Tests
 
