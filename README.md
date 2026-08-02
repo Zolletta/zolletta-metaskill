@@ -47,16 +47,10 @@ New to Zolletta-metaskill? Read the [getting started tutorial](https://zolletta.
 
 ### Supported languages
 
-| Language | Parser                       | SOLID scanners     | Code style          | Testing patterns          |
-|----------|------------------------------|--------------------|---------------------|---------------------------|
-| Python   | `ast` module (stdlib)        | DIP, ISP, OCP, LSP | `python-code-style` | `python-testing-patterns` |
-| PHP      | `tree-sitter-php` (optional) | DIP, ISP, OCP      | `php-code-style`    | `php-testing-patterns`    |
-
-PHP support requires the optional `tree-sitter` and `tree-sitter-php` packages:
-
-```bash
-pip install zolletta-metaskill[php]
-```
+| Language | Parser                                              | SOLID scanners     | Code style          | Testing patterns          |
+|----------|-----------------------------------------------------|--------------------|---------------------|---------------------------|
+| Python   | [ast](https://docs.python.org/3/library/ast.html) module (stdlib) | DIP, ISP, OCP, LSP | `python-code-style` | `python-testing-patterns` |
+| PHP      | [tree-sitter-php](https://github.com/tree-sitter/tree-sitter-php) (optional) | DIP, ISP, OCP      | `php-code-style`    | `php-testing-patterns`    |
 
 ## Installation
 
