@@ -52,8 +52,7 @@ Read shared guidelines from the meta-skill (parent directory):
 The setup guard (see the meta-skill's [setup guard](../SKILL.md#setup-guard)) guarantees that `.zolletta-metaskill/settings.json` exists before this subcommand runs.
 
 1. Read `.zolletta-metaskill/settings.json` and extract the `language` field.
-2. If `settings.json` is missing or `language` is empty, fall back to detecting
-   the language using the marker list in `skills/setup/SKILL.md` Step 3.
+2. If `settings.json` is missing or `language` is empty, fall back to detecting the language using the marker list in `skills/setup/SKILL.md` Step 3.
 3. If the language cannot be determined, ask the user with `ask_user_question`.
 4. Store the detected language for use in subsequent steps.
 
@@ -211,10 +210,8 @@ If a previous review folder was found in Step 3:
    - Search the codebase for the files/areas mentioned in the item
    - Use `git log --oneline -20` and `git diff` to see recent changes
    - Determine if the issue described has been fixed, partially fixed, or is still open
-3. Create a section in the new TODO.md called "## Previous review status" that lists
-   each previous TODO item with its status: ✅ Done / ⚠️ Partially done / ❌ Not done.
-4. Any items that are ❌ Not done or ⚠️ Partially done should be carried forward into
-   the new TODO as high-priority items (they were already identified and not resolved).
+3. Create a section in the new TODO.md called "## Previous review status" that lists each previous TODO item with its status: ✅ Done / ⚠️ Partially done / ❌ Not done.
+4. Any items that are ❌ Not done or ⚠️ Partially done should be carried forward into the new TODO as high-priority items (they were already identified and not resolved).
 
 If no previous review exists, skip this step (note in the TODO that this is the first review).
 
@@ -252,14 +249,11 @@ The TODO.md is a prioritized action list — it does **not** duplicate the full 
 
 **Organization rules** (in this exact order):
 
-1. **Dependency changes (under my control)** — any findings that require changes to
-   internal/shared packages or other dependencies I own. These go first because everything else may depend on them being released. Mark each with a note: "⚠️ Requires dependency release — do these first, then wait for the release before proceeding."
+1. **Dependency changes (under my control)** — any findings that require changes to internal/shared packages or other dependencies I own. These go first because everything else may depend on them being released. Mark each with a note: "⚠️ Requires dependency release — do these first, then wait for the release before proceeding."
 
-2. **Critical / blocking issues** — anything that breaks functionality, causes data loss,
-   security issues, or prevents the project from working.
+2. **Critical / blocking issues** — anything that breaks functionality, causes data loss, security issues, or prevents the project from working.
 
-3. **High priority** — significant code quality, design, or testing issues that should be
-   addressed soon but don't block work.
+3. **High priority** — significant code quality, design, or testing issues that should be addressed soon but don't block work.
 
 4. **Medium priority** — style, documentation, and minor design improvements.
 
