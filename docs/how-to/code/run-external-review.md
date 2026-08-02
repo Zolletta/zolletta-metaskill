@@ -11,7 +11,7 @@ Run a code review on the modified files of a change using an external LLM that f
 ## Prerequisites
 
 - A git repository with uncommitted or committed-but-unreviewed changes
-- Global rules present in `~/.agents/` (markdown files covering language, style, and documentation conventions)
+- Global rules present in your agent configuration (markdown files covering language, style, and documentation conventions)
 
 ## Steps
 
@@ -32,7 +32,7 @@ git diff --name-only main...HEAD
 Read the following to build the review context:
 
 1. The project's `AGENTS.md` (if present) — project-specific rules and conventions
-2. The global rules from `~/.agents/` — language rules, code style rules, documentation rules, commit rules
+2. The global rules from your agent configuration — language rules, code style rules, documentation rules, commit rules
 3. The modified files from Step 1 — read each file in full
 
 ### Step 3 — Run the external review

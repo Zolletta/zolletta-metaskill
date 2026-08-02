@@ -47,7 +47,7 @@ All subcommands read from this skill's subdirectories:
 
 ## Rules
 
-If you have rules in `~/.agents/rules/`, those are the **single source of truth** for their domain and apply to every subcommand. Sub-skills link back to them and only **narrow** behavior for their specific review context — they never override or restate the rules.
+If you maintain rules as part of your agent configuration, those are the **single source of truth** for their domain and apply to every subcommand. Sub-skills link back to them and only **narrow** behavior for their specific review context — they never override or restate the rules.
 
 ## Setup guard
 

@@ -30,7 +30,7 @@ When running as part of `/zolletta-metaskill review`, this skill is invoked by a
 
 ### When NOT to use subagents
 
-- Don't spawn subagents for code exploration if tokensave is available — use `tokensave_context` instead (per `~/.agents/tokensave-rules.md`).
+- Don't spawn subagents for code exploration if tokensave is available — use `tokensave_context` instead (per `tokensave-rules.md`).
 - Don't spawn more than 3 background subagents at a time (batch if needed).
 - Don't use subagents for running the scanning scripts — run them directly with `exec`.
 

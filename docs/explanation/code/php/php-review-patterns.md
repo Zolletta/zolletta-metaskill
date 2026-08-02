@@ -8,7 +8,7 @@ skills: [patterns, php-*]
 
 PHP-specific design patterns that go beyond the language-agnostic principles in [general-principles.md](../general-principles.md). Read this when reviewing PHP source code for structural quality.
 
-> This file narrows down any eventual general rule about PHP. If you have rules in `~/.agents/`, those are the single source of truth for their domain.
+> This file narrows down any eventual general rule about PHP, i.e. `php-rules.md`. If you maintain rules as part of your agent configuration, those are the single source of truth for their domain.
 
 ## Strategy Pattern with Autodiscovery
 

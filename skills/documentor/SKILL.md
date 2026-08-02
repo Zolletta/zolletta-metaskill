@@ -16,7 +16,7 @@ A unified documentation review skill that combines:
 
 Derived from the [Diátaxis Documentation Expert](https://github.com/github/awesome-copilot/blob/main/skills/documentation-writer/SKILL.md) skill (MIT, github/awesome-copilot) and the [Doc Drift Detector](https://github.com/borghei/Claude-Skills/blob/main/engineering/doc-drift-detector/SKILL.md) (MIT + Commons Clause, borghei/Claude-Skills), merged into a single review pipeline.
 
-> This file narrows down any eventual general rule about code exploration and documentation, i.e. [code-exploration-rules.md](~/.agents/rules/code-exploration-rules.md), [tokensave-rules.md](~/.agents/rules/tokensave-rules.md), [documentation-rules.md](~/.agents/rules/documentation-rules.md). If you have rules in `~/.agents/rules/`, those are the single source of truth for their domain.
+> This file narrows down any eventual general rule about code exploration and documentation, i.e. `code-exploration-rules.md`, `tokensave-rules.md`, `documentation-rules.md`. If you maintain rules as part of your agent configuration, those are the single source of truth for their domain.
 
 ## Shared resources
 
@@ -170,7 +170,7 @@ Load on demand — keep this file lean:
 
 ### Phase 1: Automated tools (fast — run first)
 
-1. **Read project rules:** AGENTS.md and any documentation rules in `~/.agents/rules/`.
+1. **Read project rules:** `AGENTS.md` and any documentation rules in your agent configuration.
 2. **Run the 4 scripts** from `scripts/` — these are fast (seconds), find most issues, and require no graph index:
    - `link_checker.py` — broken links and duplicate anchors
    - `api_doc_validator.py` — API doc accuracy against source (AST)

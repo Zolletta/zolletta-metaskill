@@ -39,7 +39,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install MkDocs Material
-        run: pip install "mkdocs-material==9.7.6"
+        run: uv pip install "mkdocs-material==9.7.6"
 
       - name: Stage assets and rewrite links for site build
         # Source docs use relative paths that escape docs_dir (../assets/,

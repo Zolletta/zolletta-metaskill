@@ -189,7 +189,7 @@ python3 src/zolletta_metaskill/patterns/scan_liskov_substitution.py <directory> 
 
 ## PHP SOLID Validator Scripts
 
-These scanners live in `src/zolletta_metaskill/php_patterns/` and target PHP codebases. They use the `PHPEngine` (tree-sitter-php) to parse `.php` files. Install the optional dependency with `pip install zolletta-metaskill[php]`.
+These scanners live in `src/zolletta_metaskill/php_patterns/` and target PHP codebases. They use the `PHPEngine` (tree-sitter-php) to parse `.php` files. Install the optional dependency with `uv pip install zolletta-metaskill[php]`.
 
 ### scan_php_dependency_inversion.py (DIP)
 
@@ -277,7 +277,7 @@ Provides the engine registry — maps language names and file extensions to engi
 Two implementations of the `LanguageEngine` protocol:
 
 - **`PythonEngine`** — wraps Python's `ast` module to parse `.py` files into `ModuleInfo`.
-- **`PHPEngine`** — wraps tree-sitter with the tree-sitter-php grammar to parse `.php` files into `ModuleInfo`. The `tree-sitter-php` package is an optional dependency (`pip install zolletta-metaskill[php]`); if not installed, the engine still instantiates but `parse_module()` raises a clear `ImportError`.
+- **`PHPEngine`** — wraps tree-sitter with the tree-sitter-php grammar to parse `.php` files into `ModuleInfo`. The `tree-sitter-php` package is an optional dependency (`uv pip install zolletta-metaskill[php]`); if not installed, the engine still instantiates but `parse_module()` raises a clear `ImportError`.
 
 ### PHPEngine.parse_raw()
 
