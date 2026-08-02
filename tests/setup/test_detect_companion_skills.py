@@ -2,9 +2,16 @@
 
 from __future__ import annotations
 
+import json
+import sys
 from pathlib import Path
 
-from zolletta_metaskill.setup.detect_companion_skills import detect_companion_skills
+import pytest
+
+from zolletta_metaskill.setup.detect_companion_skills import (
+    detect_companion_skills,
+    main,
+)
 
 
 class TestDetectCompanionSkills:
@@ -52,3 +59,19 @@ class TestDetectCompanionSkills:
         )
         assert result["php_pro"]["available"] is True
         assert result["python_development"]["available"] is True
+
+
+class TestMain:
+    """Tests for main()."""
+
+    def test_main_prints_json(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        rc = main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        data = json.loads(out)
+        assert "php_pro" in data
+        assert "python_development" in data

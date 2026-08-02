@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-from zolletta_metaskill.setup.detect_language import detect_language
+import pytest
+
+from zolletta_metaskill.setup.detect_language import detect_language, main
 
 
 class TestDetectLanguage:
@@ -76,3 +79,49 @@ class TestDetectLanguage:
         (tmp_path / "pyproject.toml").write_text("", encoding="utf-8")
         (tmp_path / "package.json").write_text("{}", encoding="utf-8")
         assert detect_language(tmp_path) == "python"
+
+
+class TestMain:
+    """Tests for main()."""
+
+    def test_main_detects_python(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        (tmp_path / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
+        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path)])
+        rc = main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "python" in out
+
+    def test_main_no_markers(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path)])
+        rc = main()
+        assert rc == 1
+
+    def test_main_not_a_directory(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        missing = tmp_path / "nonexistent"
+        monkeypatch.setattr(sys, "argv", ["prog", str(missing)])
+        rc = main()
+        err = capsys.readouterr().err
+        assert rc == 1
+        assert "not a directory" in err
+
+    def test_main_default_directory(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        (tmp_path / "pyproject.toml").write_text("", encoding="utf-8")
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        monkeypatch.chdir(tmp_path)
+        rc = main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "python" in out

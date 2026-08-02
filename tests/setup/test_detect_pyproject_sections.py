@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import json
+import sys
 from pathlib import Path
+
+import pytest
 
 from zolletta_metaskill.setup.detect_pyproject_sections import (
     detect_pyproject_sections,
+    main,
 )
 
 
@@ -67,3 +72,34 @@ class TestDetectPyprojectSections:
         result = detect_pyproject_sections(pyproject)
         assert result["ruff"]["available"] is True
         assert result["mypy"]["available"] is False
+
+
+class TestMain:
+    """Tests for main()."""
+
+    def test_main_prints_json(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text("[tool.ruff]\n", encoding="utf-8")
+        monkeypatch.setattr(sys, "argv", ["prog", str(pyproject)])
+        rc = main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        data = json.loads(out)
+        assert data["ruff"]["available"] is True
+
+    def test_main_default_path(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text("[project]\n", encoding="utf-8")
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        monkeypatch.chdir(tmp_path)
+        rc = main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        data = json.loads(out)
+        assert data["uv"]["available"] is True

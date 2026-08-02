@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import json
+import sys
 from pathlib import Path
+
+import pytest
 
 from zolletta_metaskill.setup.detect_php_tools import (
     detect_php_tools,
     detect_php_tools_from_composer,
     detect_php_tools_from_config_files,
+    main,
 )
 
 
@@ -97,3 +102,33 @@ class TestDetectPhpTools:
     def test_neither_source(self, tmp_path: Path) -> None:
         result = detect_php_tools(tmp_path)
         assert all(not v["available"] for v in result.values())
+
+
+class TestMain:
+    """Tests for main()."""
+
+    def test_main_prints_json(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        (tmp_path / "composer.json").write_text(
+            '{"require-dev": {"phpunit/phpunit": "^9"}}', encoding="utf-8"
+        )
+        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path)])
+        rc = main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        data = json.loads(out)
+        assert data["phpunit"]["available"] is True
+
+    def test_main_default_directory(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        monkeypatch.chdir(tmp_path)
+        rc = main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        data = json.loads(out)
+        assert all(not v["available"] for v in data.values())

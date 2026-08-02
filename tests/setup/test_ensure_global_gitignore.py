@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
+
+import pytest
 
 from zolletta_metaskill.setup.ensure_global_gitignore import (
     ensure_global_gitignore,
+    main,
 )
 
 
@@ -51,3 +55,39 @@ class TestEnsureGlobalGitignore:
         gitignore.write_text(".zolletta-metaskill\n", encoding="utf-8")
         added = ensure_global_gitignore(gitignore)
         assert added is False
+
+    def test_default_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        added = ensure_global_gitignore()
+        assert added is True
+        assert ".zolletta-metaskill/" in (tmp_path / ".gitignore").read_text()
+
+
+class TestMain:
+    """Tests for main()."""
+
+    def test_main_adds_entry(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        gitignore = tmp_path / ".gitignore"
+        monkeypatch.setattr(sys, "argv", ["prog", "--path", str(gitignore)])
+        rc = main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "Added" in out
+        assert ".zolletta-metaskill/" in gitignore.read_text(encoding="utf-8")
+
+    def test_main_already_present(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        gitignore = tmp_path / ".gitignore"
+        gitignore.write_text(".zolletta-metaskill/\n", encoding="utf-8")
+        monkeypatch.setattr(sys, "argv", ["prog", "--path", str(gitignore)])
+        rc = main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "already present" in out
