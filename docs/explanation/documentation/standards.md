@@ -8,7 +8,7 @@ skills: [documentor]
 
 Expert knowledge for writing, maintaining, and evaluating technical documentation across all common formats.
 
-> This file narrows down any eventual general rule about documentation, i.e. [documentation-rules.md](~/.agents/documentation-rules.md). If you have rules in `~/.agents/`, those are the single source of truth for their domain.
+> This file narrows down any eventual general rule about documentation, i.e. `~/.agents/documentation-rules.md`. If you have rules in `~/.agents/`, those are the single source of truth for their domain.
 
 ## Documentation-as-Code Principles
 

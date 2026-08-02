@@ -1,0 +1,62 @@
+---
+name: Docs (Pages)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - ".github/workflows/docs-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, cancel runs in progress.
+concurrency:
+  group: "docs-pages"
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  build-deploy:
+    name: Build & deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install MkDocs Material
+        run: pip install "mkdocs-material==9.7.6"
+
+      - name: Stage assets into docs/
+        # docs/index.md references assets/ relative to docs_dir; copy the
+        # repo-level assets/ folder into docs/assets/ so links resolve.
+        run: cp -r assets docs/assets
+
+      - name: Build site
+        run: mkdocs build --clean --strict
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v6
