@@ -66,7 +66,7 @@ The `install.sh` script copies the skill to `~/.agents/skills/zolletta-metaskill
 
 ## Contributing
 
-See the [repository scripts reference](https://zolletta.github.io/zolletta-metaskill/reference/code/scripts/#.bump) for version bumping (`./.bump --to <version>`) and other project-management scripts.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, version bumping, and the quality gate.
 
 ## Reference
 
