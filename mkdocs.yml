@@ -61,59 +61,59 @@ plugins:
   - search
 
 nav:
-  - Home: index.md
-  - Tutorials:
-      - Getting started: tutorials/getting-started.md
-  - How-to guides:
-      - Getting things done:
-          - Install: how-to/install.md
-          - Set up a project: how-to/setup-project.md
-          - Run a full review: how-to/run-full-review.md
-      - Code review:
-          - Review code style: how-to/code/review-code-style.md
-          - Review test code: how-to/code/review-test-code.md
-          - Detect God classes: how-to/code/detect-god-classes.md
-          - Split a God test class: how-to/code/split-god-test-class.md
-          - Run an external review: how-to/code/run-external-review.md
-      - Python-specific:
-          - Review Python style: how-to/code/python/review-python-style.md
-          - Review Python tests: how-to/code/python/review-python-tests.md
-      - Documentation review:
-          - Review documentation: how-to/documentation/review-documentation.md
-  - Reference:
-      - Code review tools:
-          - Scripts reference: reference/code/scripts.md
-          - Review mode: reference/code/review-mode.md
-          - Code exploration: reference/code/code-exploration.md
-          - tokensave: reference/code/tokensave.md
-          - Python code style: reference/code/python/python-code-style.md
-      - Documentation tools:
-          - Drift detection tools: reference/documentation/drift-detection-tools.md
-          - Workflows & tools: reference/documentation/workflows-and-tools.md
-          - Scoring & categories: reference/documentation/scoring-and-categories.md
-          - Operational rules: reference/documentation/operational-rules.md
-      - Project configuration:
-          - Settings schema: reference/settings-schema.md
-          - Subcommands: reference/subcommands.md
-          - Frontmatter: reference/frontmatter.md
-          - Reports: reference/reports.md
-          - Tool messages: reference/tool-messages.md
-          - Reference index: reference/index.md
-  - Explanation:
-      - Code review principles:
-          - General principles: explanation/code/general-principles.md
-          - Structural conventions: explanation/code/structural-conventions.md
-          - False positive prevention: explanation/code/false-positive-prevention.md
-          - Error handling: explanation/code/error-handling.md
-          - Performance: explanation/code/performance.md
-          - Security: explanation/code/security.md
-      - Language-specific patterns:
-          - Python review patterns: explanation/code/python/python-review-patterns.md
-          - PHP review patterns: explanation/code/php/php-review-patterns.md
-      - Documentation principles:
-          - Documentation standards: explanation/documentation/standards.md
-          - README structure: explanation/documentation/readme.md
-          - API documentation: explanation/documentation/api.md
-          - Changelog conventions: explanation/documentation/changelog.md
-          - Architecture Decision Records: explanation/documentation/adr.md
-          - Drift prevention: explanation/documentation/drift-prevention.md
+  - "Home": index.md
+  - "Tutorials":
+      - "Getting started": tutorials/getting-started.md
+  - "How-to guides":
+      - "Getting things done":
+          - "Install": how-to/install.md
+          - "Set up a project": how-to/setup-project.md
+          - "Run a full review": how-to/run-full-review.md
+      - "Code review":
+          - "Review code style": how-to/code/review-code-style.md
+          - "Review test code": how-to/code/review-test-code.md
+          - "Detect God classes": how-to/code/detect-god-classes.md
+          - "Split a God test class": how-to/code/split-god-test-class.md
+          - "Run an external review": how-to/code/run-external-review.md
+      - "Python-specific":
+          - "Review Python style": how-to/code/python/review-python-style.md
+          - "Review Python tests": how-to/code/python/review-python-tests.md
+      - "Documentation review":
+          - "Review documentation": how-to/documentation/review-documentation.md
+  - "Reference":
+      - "Code review tools":
+          - "Scripts reference": reference/code/scripts.md
+          - "Review mode": reference/code/review-mode.md
+          - "Code exploration": reference/code/code-exploration.md
+          - "tokensave": reference/code/tokensave.md
+          - "Python code style": reference/code/python/python-code-style.md
+      - "Documentation tools":
+          - "Drift detection tools": reference/documentation/drift-detection-tools.md
+          - "Workflows & tools": reference/documentation/workflows-and-tools.md
+          - "Scoring & categories": reference/documentation/scoring-and-categories.md
+          - "Operational rules": reference/documentation/operational-rules.md
+      - "Project configuration":
+          - "Settings schema": reference/settings-schema.md
+          - "Subcommands": reference/subcommands.md
+          - "Frontmatter": reference/frontmatter.md
+          - "Reports": reference/reports.md
+          - "Tool messages": reference/tool-messages.md
+          - "Reference index": reference/index.md
+  - "Explanation":
+      - "Code review principles":
+          - "General principles": explanation/code/general-principles.md
+          - "Structural conventions": explanation/code/structural-conventions.md
+          - "False positive prevention": explanation/code/false-positive-prevention.md
+          - "Error handling": explanation/code/error-handling.md
+          - "Performance": explanation/code/performance.md
+          - "Security": explanation/code/security.md
+      - "Language-specific patterns":
+          - "Python review patterns": explanation/code/python/python-review-patterns.md
+          - "PHP review patterns": explanation/code/php/php-review-patterns.md
+      - "Documentation principles":
+          - "Documentation standards": explanation/documentation/standards.md
+          - "README structure": explanation/documentation/readme.md
+          - "API documentation": explanation/documentation/api.md
+          - "Changelog conventions": explanation/documentation/changelog.md
+          - "Architecture Decision Records": explanation/documentation/adr.md
+          - "Drift prevention": explanation/documentation/drift-prevention.md
