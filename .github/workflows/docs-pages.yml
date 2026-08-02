@@ -41,10 +41,29 @@ jobs:
       - name: Install MkDocs Material
         run: pip install "mkdocs-material==9.7.6"
 
-      - name: Stage assets into docs/
-        # docs/index.md references assets/ relative to docs_dir; copy the
-        # repo-level assets/ folder into docs/assets/ so links resolve.
-        run: cp -r assets docs/assets
+      - name: Stage assets and rewrite links for site build
+        # Source docs use relative paths that escape docs_dir (../assets/,
+        # ../../README.md, etc.) — valid on GitHub, invalid in MkDocs. Rewrite
+        # them in the staged copy only; source files stay untouched.
+        run: |
+          cp -r assets docs/assets
+          python - <<'PY'
+          import pathlib, re
+          REPO = "https://github.com/Zolletta/zolletta-metaskill/blob/main"
+          rewrites = [
+              (r'\]\(\.\./assets/', '](assets/'),
+              (r'\]\(\.\./\.\./README\.md\)', f']({REPO}/README.md)'),
+              (r'\]\(\.\./\.\./setup/assets/settings\.schema\.json\)',
+               f']({REPO}/setup/assets/settings.schema.json)'),
+              (r'\]\(\.\./\.\./review/assets/summary_template\.md\)',
+               f']({REPO}/review/assets/summary_template.md)'),
+          ]
+          for path in pathlib.Path("docs").rglob("*.md"):
+              text = path.read_text()
+              for pattern, replacement in rewrites:
+                  text = re.sub(pattern, replacement, text)
+              path.write_text(text)
+          PY
 
       - name: Build site
         run: mkdocs build --clean --strict
@@ -53,10 +72,10 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: site
 
       - name: Deploy to GitHub Pages
         id: deploy
-        uses: actions/deploy-pages@v6
+        uses: actions/deploy-pages@v5
