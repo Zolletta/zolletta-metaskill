@@ -154,7 +154,10 @@ def find_doc_files(repo_path: str, patterns: list[str] | None = None) -> list[st
     """Find all documentation files in the repository."""
     doc_files = []
     Path(repo_path)
-    skip_dirs = {".git", "node_modules", "__pycache__", ".venv", "venv", ".tox", "dist", "build"}
+    skip_dirs = {
+        ".git", "node_modules", "__pycache__", ".venv", "venv", ".tox", "dist", "build",
+        ".zolletta-metaskill",
+    }
     skip_dirs |= _load_gitignore_patterns(repo_path)
 
     if patterns:
@@ -182,7 +185,10 @@ def find_code_files(repo_path: str, scope: str = "") -> list[str]:
     """Find all code files in the repository."""
     code_files: list[str] = []
     search_path = os.path.join(repo_path, scope) if scope else repo_path
-    skip_dirs = {".git", "node_modules", "__pycache__", ".venv", "venv", ".tox", "dist", "build"}
+    skip_dirs = {
+        ".git", "node_modules", "__pycache__", ".venv", "venv", ".tox", "dist", "build",
+        ".zolletta-metaskill",
+    }
     skip_dirs |= _load_gitignore_patterns(repo_path)
 
     if not os.path.isdir(search_path):

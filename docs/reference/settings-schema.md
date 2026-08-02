@@ -16,7 +16,7 @@ skills: [setup, review, patterns, documentor, external-review, python-*, php-*]
 
 ```json
 {
-  "setup_version": "1.2.0",
+  "setup_version": "3.1.0",
   "setup_timestamp": "2026-07-16T14:30:00",
   "language": "python",
   "container_name": "myproject",
@@ -73,7 +73,7 @@ skills: [setup, review, patterns, documentor, external-review, python-*, php-*]
 
 ```json
 {
-  "setup_version": "1.3.0",
+  "setup_version": "3.1.0",
   "setup_timestamp": "2026-07-16T14:30:00",
   "language": "php",
   "container_name": "myproject",

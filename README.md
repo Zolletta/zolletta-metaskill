@@ -96,7 +96,7 @@ When a tool is not installed, Zolletta-metaskill prints a message explaining why
 
 ## Setup and settings.json
 
-`/zolletta-metaskill setup` creates `.zolletta-metaskill/settings.json` in the project root and adds `.zolletta-metaskill/` to `.gitignore`. The file is read by all other subcommands.
+`/zolletta-metaskill setup` creates `.zolletta-metaskill/settings.json` in the project root and adds `.zolletta-metaskill/` to the user's global `~/.gitignore`. The file is read by all other subcommands.
 
 For the full schema, field-by-field documentation, the `python` object (which merges `python.tools`, `python.code_style`, `python.testing`, and `python.pyproject_mtime`), the `php` object (which merges `php.code_style`, `php.testing`, and `php.composer_mtime`), the top-level `acronyms` array, and the setup guard staleness check, see [`docs/reference/settings-schema.md`](docs/reference/settings-schema.md).
 

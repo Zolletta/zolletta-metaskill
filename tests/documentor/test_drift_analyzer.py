@@ -252,6 +252,17 @@ class TestFindDocFiles:
         assert "README.md" in result
         assert all("docs" not in f for f in result)
 
+    def test_zolletta_metaskill_skipped_without_gitignore(self, tmp_path: Path) -> None:
+        """`.zolletta-metaskill/` is skipped even when not in local .gitignore."""
+        zm = tmp_path / ".zolletta-metaskill"
+        zm.mkdir()
+        (zm / "settings.json").write_text("{}", encoding="utf-8")
+        (zm / "report.md").write_text("# Report", encoding="utf-8")
+        (tmp_path / "README.md").write_text("# Test", encoding="utf-8")
+        result = find_doc_files(str(tmp_path))
+        assert "README.md" in result
+        assert all(".zolletta-metaskill" not in f for f in result)
+
     def test_sorted_output(self, tmp_path: Path) -> None:
         (tmp_path / "b.md").write_text("b", encoding="utf-8")
         (tmp_path / "a.md").write_text("a", encoding="utf-8")
@@ -288,6 +299,16 @@ class TestFindCodeFiles:
         result = find_code_files(str(tmp_path))
         assert "mod.py" in result
         assert all("__pycache__" not in f for f in result)
+
+    def test_zolletta_metaskill_skipped_without_gitignore(self, tmp_path: Path) -> None:
+        """`.zolletta-metaskill/` is skipped even when not in local .gitignore."""
+        zm = tmp_path / ".zolletta-metaskill"
+        zm.mkdir()
+        (zm / "tool.py").write_text("x = 1", encoding="utf-8")
+        (tmp_path / "mod.py").write_text("x = 1", encoding="utf-8")
+        result = find_code_files(str(tmp_path))
+        assert "mod.py" in result
+        assert all(".zolletta-metaskill" not in f for f in result)
 
 
 # ---------------------------------------------------------------------------
