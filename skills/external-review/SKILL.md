@@ -3,7 +3,7 @@ name: zolletta-metaskill-external-review
 version: 3.1.0
 license: MIT + Commons Clause
 description: >
-  Code review performed by an external LLM on the modified files of a change. Reads global rules (~/.agents/rules/) and the project's AGENTS.md, then reviews only the files touched by the change (git diff). Defaults to the `swe` model; pass another model via the `external_review_model` field in `.zolletta-metaskill/settings.json` or the `model` front-matter field.
+  Code review performed by an external LLM on the modified files of a change. Reads global rules from your agent configuration (e.g. ~/.agents/rules/) and the project's AGENTS.md, then reviews only the files touched by the change (git diff). Defaults to the `swe` model; pass another model via the `external_review_model` field in `.zolletta-metaskill/settings.json` or the `model` front-matter field.
 subagent: true
 model: swe
 allowed-tools:
@@ -46,7 +46,7 @@ Read shared guidelines from the meta-skill (parent directory):
 
 ## Procedure
 
-1. **Read all global rules**: read every `*.md` file in `~/.agents/rules/`. These rules are shared across all projects and must always be applied.
+1. **Read all global rules**: read every `*.md` file in your agent's rules directory (e.g. `~/.agents/rules/`). These rules are shared across all projects and must always be applied.
 2. **Read the current project's AGENTS.md**: look for `AGENTS.md` in the working directory. If not present, look in the parent directory. This file contains project-specific rules that add to the global rules.
 3. **Identify the modified files**: use `git diff` and `git status` to determine which files have been changed. **Only these files are in scope** — do not review untouched files.
 4. **Analyze every modified file**: read the content of each changed file and verify all applicable rules (global + project-specific).
@@ -54,9 +54,9 @@ Read shared guidelines from the meta-skill (parent directory):
 6. **Report every issue** found with: file, line, problem, impact, suggested fix.
 7. **If there are no issues**, explicitly confirm that the changes are correct and explain why.
 
-## Global rules (in `~/.agents/rules/`)
+## Global rules
 
-The global rules are markdown files in `~/.agents/rules/`. Each file covers a domain:
+The global rules are markdown files in your agent's rules directory (e.g. `~/.agents/rules/`). Each file covers a domain:
 
 - `python-rules.md` — Python rules (structure, comments, linting, typing, coverage)
 - `tokensave-rules.md` — rules for using tokensave (to be created)
@@ -64,7 +64,7 @@ The global rules are markdown files in `~/.agents/rules/`. Each file covers a do
 - `python-code-style-rules.md` — workflow for ruff, ty, mypy, uv and Docker
 - Other `*.md` files added in the future will be read automatically
 
-**Important**: always read all files in `~/.agents/rules/` at the beginning of the review. Do not assume their content is static — the files can change between sessions.
+**Important**: always read all rule files in your agent configuration at the beginning of the review. Do not assume their content is static — the files can change between sessions.
 
 ## Project-specific rules (AGENTS.md)
 
