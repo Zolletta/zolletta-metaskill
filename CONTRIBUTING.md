@@ -83,6 +83,14 @@ This project follows [Semantic Versioning](https://semver.org/). The version is 
 
 This updates `pyproject.toml`, `src/zolletta_metaskill/__init__.py`, all `SKILL.md` front-matter version fields, and `setup/assets/settings_template.json` in one pass. Review the diff, then commit.
 
+### Version clashes
+
+When multiple PRs are open at the same time, two contributors might bump to the same version. CI includes an automated **version clash check** that fails the PR if another open PR already targets the same version. If you get a clash error:
+
+1. Check which version the other PR is targeting (the error message names the branch)
+2. Re-bump to the next available version: `./.bump --to <next-version>`
+3. Push — the check re-runs automatically
+
 ## Documentation
 
 Full documentation lives in `docs/` and is published to <https://zolletta.github.io/zolletta-metaskill/> via MkDocs Material. The build runs automatically on push to `main` when `docs/` changes (see `.github/workflows/docs-pages.yml`).

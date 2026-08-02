@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 env:
   PYTHON_VERSION: "3.12"
@@ -75,3 +76,54 @@ jobs:
 
       - name: vulture
         run: uv run vulture .
+
+  version-clash:
+    name: Version clash check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Check for version clash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          THIS_VERSION=$(grep '^version = ' pyproject.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          git fetch origin main
+          MAIN_VERSION=$(git show origin/main:pyproject.toml | grep '^version = ' | head -1 | sed 's/version = "\(.*\)"/\1/')
+
+          echo "This PR version: $THIS_VERSION"
+          echo "Main version:     $MAIN_VERSION"
+
+          if [ "$THIS_VERSION" = "$MAIN_VERSION" ]; then
+            echo "No version bump in this PR — skipping clash check"
+            exit 0
+          fi
+
+          echo "Version bumped: $MAIN_VERSION → $THIS_VERSION"
+
+          CLASH=0
+          for ref in $(gh pr list --json headRefName --jq '.[].headRefName'); do
+            if [ "$ref" = "${{ github.head_ref }}" ]; then
+              continue
+            fi
+
+            PR_VERSION=$(gh api "repos/$GITHUB_REPOSITORY/contents/pyproject.toml?ref=$ref" \
+              -H "Accept: application/vnd.github.raw" 2>/dev/null | \
+              grep '^version = ' | head -1 | sed 's/version = "\(.*\)"/\1/') || true
+
+            if [ -n "$PR_VERSION" ] && [ "$PR_VERSION" = "$THIS_VERSION" ]; then
+              echo "::error::Version clash: PR on branch '$ref' also targets version $THIS_VERSION. Re-bump to a different version."
+              CLASH=1
+            fi
+          done
+
+          if [ "$CLASH" -eq 1 ]; then
+            exit 1
+          fi
+
+          echo "No version clashes detected"
