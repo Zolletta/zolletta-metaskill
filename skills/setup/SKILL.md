@@ -3,7 +3,7 @@ name: zolletta-metaskill-setup
 version: 3.0.0
 license: MIT + Commons Clause
 description: >
-  Project initialization for Zolletta-metaskill. Creates the .zolletta-metaskill/ directory, detects the project language, detects Docker container, tests tokensave availability, detects Python and PHP tooling, and writes settings.json. Also adds .zolletta-metaskill/ to .gitignore. Run automatically by the setup guard before any subcommand if settings.json is missing, or manually via /zolletta-metaskill setup.
+  Project initialization for Zolletta-metaskill. Creates the .zolletta-metaskill/ directory, detects the project language, detects Docker container, tests tokensave availability, detects Python and PHP tooling, and writes settings.json. Also adds .zolletta-metaskill/ to the user's global ~/.gitignore. Run automatically by the setup guard before any subcommand if settings.json is missing, or manually via /zolletta-metaskill setup.
 allowed-tools:
   - read
   - grep
@@ -17,7 +17,7 @@ allowed-tools:
 permissions:
   allow:
     - Write(.zolletta-metaskill/**)
-    - Write(.gitignore)
+    - Write(~/.gitignore)
     - mcp__tokensave__tokensave_status
 ---
 
@@ -39,17 +39,20 @@ Read shared guidelines from the meta-skill (parent directory):
 mkdir -p .zolletta-metaskill
 ```
 
-### Step 2 — Add .zolletta-metaskill/ to .gitignore
+### Step 2 — Add .zolletta-metaskill/ to the global ~/.gitignore
 
-1. Check if `.gitignore` exists in the project root. If it does not, create it.
-2. Read `.gitignore` and check if `.zolletta-metaskill/` is already listed. If not, append it with a leading comment on its own line:
+The `.zolletta-metaskill/` directory is a per-user review artifact, not project content, so it is ignored globally rather than per-project. This keeps every project's local `.gitignore` clean.
 
-   ```gitignore
-   # Zolletta-metaskill review artifacts
-   .zolletta-metaskill/
-   ```
+Run this single command — it is idempotent (creates `~/.gitignore` if missing, appends the entry only if it is not already present, never duplicates):
 
-   Do not duplicate the entry if it's already there. Do not modify an existing `.gitignore` beyond appending this entry.
+```bash
+grep -qxF '.zolletta-metaskill/' ~/.gitignore 2>/dev/null || {
+  touch ~/.gitignore
+  printf '\n# Zolletta-metaskill review artifacts\n.zolletta-metaskill/\n' | tee -a ~/.gitignore > /dev/null
+}
+```
+
+Do **not** touch the project's local `.gitignore`.
 
 ### Step 3 — Detect the project language
 
@@ -66,8 +69,33 @@ Determine the project's primary language by checking for language markers in the
 | `Gemfile`, `*.gemspec`                                                               | Ruby                  |
 | `CMakeLists.txt`, `Makefile` with `.c`/`.cpp` sources                                | C/C++                 |
 
-1. If no marker is found, inspect the source directory for the most common file extension.
-2. If the language cannot be determined, ask the user with `ask_user_question`.
+Run this deterministic check — it prints the first matching language (in the table order above), or nothing if no marker is found:
+
+```bash
+for markers in \
+  "python:pyproject.toml setup.py setup.cfg Pipfile uv.lock" \
+  "typescript:package.json tsconfig.json deno.json" \
+  "php:composer.json" \
+  "go:go.mod" \
+  "rust:Cargo.toml" \
+  "java:pom.xml build.gradle" \
+  "ruby:Gemfile"
+do
+  lang="${markers%%:*}"; files="${markers#*:}"
+  for f in $files; do
+    if [ -f "$f" ]; then echo "$lang"; exit 0; fi
+  done
+done
+# requirements*.txt and *.gemspec need glob expansion
+compgen -G 'requirements*.txt' >/dev/null 2>&1 && { echo python; exit 0; }
+compgen -G '*.gemspec' >/dev/null 2>&1 && { echo ruby; exit 0; }
+# C/C++: CMakeLists.txt alone, or Makefile with .c/.cpp sources
+if [ -f CMakeLists.txt ]; then echo c-cpp; exit 0; fi
+if [ -f Makefile ] && ls *.c *.cpp 2>/dev/null | grep -q .; then echo c-cpp; exit 0; fi
+```
+
+1. If the command prints nothing, inspect the source directory for the most common file extension.
+2. If the language still cannot be determined, ask the user with `ask_user_question`.
 3. Store the detected language (lowercase) for writing to `settings.json`.
 
 ### Step 4 — Detect Docker container
@@ -94,7 +122,19 @@ If the detected language from Step 3 is **not Python**, skip this step entirely 
 
 If the language is **Python**, detect which tools are available. For each tool, check in this order:
 
-1. **Check `pyproject.toml`** — read the `[tool.*]` sections. If a tool has a configuration section (e.g. `[tool.ruff]`, `[tool.mypy]`, `[tool.pytest.ini_options]`, `[tool.vulture]`), mark it as available (the project uses it).
+1. **Check `pyproject.toml`** — read the `[tool.*]` sections. If a tool has a configuration section (e.g. `[tool.ruff]`, `[tool.mypy]`, `[tool.pytest.ini_options]`, `[tool.vulture]`), mark it as available (the project uses it). Use this deterministic check per tool:
+
+   ```bash
+   # Returns exit 0 if the [tool.<section>] header exists in pyproject.toml
+   grep -q '^\[tool\.ruff\]' pyproject.toml           # ruff
+   grep -q '^\[tool\.mypy\]' pyproject.toml           # mypy
+   grep -q '^\[tool\.pytest\.ini_options\]' pyproject.toml  # pytest
+   grep -q '^\[tool\.vulture\]' pyproject.toml        # vulture
+   grep -q '^\[tool\.ty\]' pyproject.toml             # ty
+   # uv: check for [project] section or uv.lock file
+   grep -q '^\[project\]' pyproject.toml || [ -f uv.lock ]  # uv
+   ```
+
 2. **If not found in `pyproject.toml`**, try calling the command — inside the container if `container_name` is set (`docker compose exec <container_name> <command> --version`), otherwise on the host (`<command> --version`). If the command succeeds, mark it as available.
 
 The tools to detect:
@@ -154,6 +194,13 @@ Determine the project's documentation configuration:
    - If `.backstage/` exists in the project root → `dir: ".backstage"`
    - Else if `docs/` exists in the project root → `dir: "docs"`
    - Else → `dir: "docs"` (default — will be created by the `documentor` skill if needed)
+
+   Deterministic check (prints the documentation directory):
+
+   ```bash
+   [ -d .backstage ] && echo ".backstage" || echo "docs"
+   ```
+
 2. **Language**: default to `"en"` (ISO 639-1). If the project has a `documentation.language` preference, use that instead.
 
 Store both values for writing to the `documentation` object in `settings.json`. The `documentor` skill reads these fields to locate the Diátaxis docs tree and translate signpost headings if needed.
@@ -164,8 +211,27 @@ If the detected language from Step 3 is **not PHP**, skip this step entirely and
 
 If the language is **PHP**, detect which tools are available. For each tool, check in this order:
 
-1. **Check `composer.json` `require-dev`** — if the tool's package is listed (e.g. `"phpunit/phpunit"`), mark it as available (the project uses it).
-2. **Check for a config file** — if the tool's config file exists in the project root (e.g. `phpunit.xml`, `.php-cs-fixer.php`), mark it as available even if not in `require-dev` (the project intends to use it).
+1. **Check `composer.json` `require-dev`** — if the tool's package is listed (e.g. `"phpunit/phpunit"`), mark it as available (the project uses it). Use this deterministic check per tool:
+
+   ```bash
+   # Returns exit 0 if the package is listed in composer.json
+   grep -q '"phpunit/phpunit"' composer.json            # phpunit
+   grep -q '"phpstan/phpstan"' composer.json            # phpstan
+   grep -q '"vimeo/psalm"' composer.json                # psalm
+   grep -q '"friendsofphp/php-cs-fixer"' composer.json  # php_cs_fixer
+   grep -q '"squizlabs/php_codesniffer"' composer.json  # phpcs
+   ```
+
+2. **Check for a config file** — if the tool's config file exists in the project root (e.g. `phpunit.xml`, `.php-cs-fixer.php`), mark it as available even if not in `require-dev` (the project intends to use it). Use this deterministic check per tool:
+
+   ```bash
+   [ -f phpunit.xml ] || [ -f phpunit.dist.xml ]                          # phpunit
+   [ -f phpstan.neon ] || [ -f phpstan.dist.neon ]                        # phpstan
+   [ -f psalm.xml ] || [ -f psalm.dist.xml ]                              # psalm
+   [ -f .php-cs-fixer.php ] || [ -f .php-cs-fixer.dist.php ]              # php_cs_fixer
+   [ -f .phpcs.xml ] || [ -f phpcs.xml.dist ] || [ -f .phpcs.xml.dist ]   # phpcs
+   ```
+
 3. **If not found in `composer.json` or config file**, try calling the command — inside the container if `container_name` is set (`docker compose exec <container_name> vendor/bin/<tool> --version`), otherwise on the host (`vendor/bin/<tool> --version`). If the command succeeds, mark it as available.
 
 The tools to detect:
@@ -239,12 +305,22 @@ The two Python review skills (`python-code-style`, `python-testing-patterns`) ar
 Zolletta-metaskill is a **review** skill — it checks code quality but does not write code. Companion **implementation** skills can be installed separately to provide code generation alongside review. Setup detects their availability and suggests installing them if not present.
 
 1. **For PHP projects** (`language == "php"`):
-   - Check if `~/.agents/skills/php-pro/SKILL.md` exists
+   - Check if `~/.agents/skills/php-pro/SKILL.md` exists. Deterministic check:
+
+     ```bash
+     [ -f ~/.agents/skills/php-pro/SKILL.md ] && echo true || echo false
+     ```
+
    - Store `php.tools.php_pro_available` boolean (add to `php.tools` object)
    - If not available, print the php-pro "not installed" message from `../../docs/reference/tool-messages.md` in Step 9
 
 2. **For Python projects** (`language == "python"`):
-   - Check if `~/.agents/skills/python-development/SKILL.md` exists
+   - Check if `~/.agents/skills/python-development/SKILL.md` exists. Deterministic check:
+
+     ```bash
+     [ -f ~/.agents/skills/python-development/SKILL.md ] && echo true || echo false
+     ```
+
    - Store `python.tools.python_development_available` boolean (add to `python.tools` object)
    - If not available, print the python-development "not installed" message from `../../docs/reference/tool-messages.md` in Step 9
 

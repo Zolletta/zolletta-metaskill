@@ -49,7 +49,7 @@ cd /path/to/our/project
 /zolletta-metaskill setup
 ```
 
-Setup detects the project language, Docker container (if any), tokensave availability, and Python tooling (if Python). It writes `.zolletta-metaskill/settings.json` with all detected values. The file is added to `.gitignore` automatically.
+Setup detects the project language, Docker container (if any), tokensave availability, and Python tooling (if Python). It writes `.zolletta-metaskill/settings.json` with all detected values. The file is added to the user's global `~/.gitignore` automatically.
 
 Verify the configuration:
 
