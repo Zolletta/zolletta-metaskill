@@ -12,11 +12,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **`documentation.adrs` field** in `settings.json` — stores the relative path to the ADR directory within `documentation.dir` (or `null` if no ADRs found). Auto-detected during setup.
 - **ADRs 0001–0010** — the project's first 10 Architecture Decision Records, documenting existing architectural decisions (meta-skill dispatch, settings.json, Diátaxis, stdlib-only scanners, parallel subagents, setup guard, engine protocol, skills/ grouping, Python detection scripts) and the new ADR distiller feature. See `docs/adr/`.
 
-### Changed
-
-- **ADR distiller refactored into one-class-per-file modules** — the monolithic `distill_adrs.py` was split into `ADRRecord` (`adr_record.py`), `DistillReport` (`distill_report.py`), `ADRDiscovery` (`adr_discovery.py`), `ADRCache` (`adr_cache.py`), `ADRDistiller` (`adr_distiller.py`, file management), and `ADROrchestrator` (`adr_orchestrator.py`, orchestration + CLI). All constants moved inside their classes. The CLI `main()` and `if __name__` guard moved into `adr_orchestrator.py`; `distill_adrs.py` was removed. Test files split to mirror the source structure (one test class per file). Acronyms (`ADR`) kept uppercase in class names per project convention.
-- **Version bumped** from 3.1.0 to 3.2.0 across `pyproject.toml`, `__init__.py`, all `SKILL.md` frontmatter, `settings_template.json`, and `settings-schema.md`.
-
 ## [3.1.0] - 2026-08-01
 
 ### Added
@@ -133,5 +128,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Reports and references
 
-- **Report templates** — each skill ships a markdown report template with grade, tool results, severity tables, and recommendations. The Zolletta-metaskill logo is embedded as a base64 data URI in every report footer
+- **Report templates** — each skill ships a markdown report template with grade, tool results, severity tables, and recommendations
 - **Shared references** — code-exploration decision tree, general review principles, documentation standards, tool messages, review-mode rules, and scripts reference — all in `docs/`, linked from every skill

@@ -43,12 +43,9 @@ Local scripts and references are in these locations:
 ## GUIDING PRINCIPLES
 
 1. **Clarity:** Write in simple, clear, and unambiguous language.
-2. **Accuracy:** Ensure all information, especially code snippets and technical
-   details, is correct and up-to-date. Verify claims against the actual codebase.
-3. **User-Centricity:** Always prioritize the user's goal. Every document must
-   help a specific user achieve a specific task.
-4. **Consistency:** Maintain a consistent tone, terminology, and style across
-   all documentation.
+2. **Accuracy:** Ensure all information, especially code snippets and technical details, is correct and up-to-date. Verify claims against the actual codebase.
+3. **User-Centricity:** Always prioritize the user's goal. Every document must help a specific user achieve a specific task.
+4. **Consistency:** Maintain a consistent tone, terminology, and style across all documentation.
 
 ---
 
@@ -107,10 +104,8 @@ When checking accuracy, the agent MUST:
    - **If tokensave is not present**: use `grep` to find the symbol, then `read` only the relevant file section. Do not read entire files when a targeted grep + partial read suffices.
 2. **Understand the distinction between dev-only and user-facing commands.**
    A command mentioned in AGENTS.md as "dev-only" refers to the specific wrapper or invocation described — not to every occurrence of the same binary name. For example, if AGENTS.md says `./mytool` (a bash wrapper) is dev-only but the Docker image internally runs `uv run mytool`, then `uv run mytool` in a tutorial is NOT a dev-only command — it's what the Docker image runs for end users. Always verify the full context before flagging.
-3. **Distinguish illustrative from factual content.** Directory trees, schema
-   examples, and protocol definitions may be illustrative. Check whether the document presents them as current state or as hypothetical examples.
-4. **Verify previous issues are still present** before carrying them forward.
-   Read the current file state — many issues may have been fixed in recent commits.
+3. **Distinguish illustrative from factual content.** Directory trees, schema examples, and protocol definitions may be illustrative. Check whether the document presents them as current state or as hypothetical examples.
+4. **Verify previous issues are still present** before carrying them forward. Read the current file state — many issues may have been fixed in recent commits.
 
 ---
 
