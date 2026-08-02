@@ -34,7 +34,10 @@ CODE_EXTENSIONS = {
     ".py", ".js", ".ts", ".jsx", ".tsx", ".go", ".rs", ".java",
     ".c", ".cpp", ".h", ".hpp", ".rb", ".php",
 }
-SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", ".tox", "dist", "build"}
+SKIP_DIRS = {
+    ".git", "node_modules", "__pycache__", ".venv", "venv", ".tox", "dist", "build",
+    ".zolletta-metaskill",
+}
 
 
 def _load_gitignore_patterns(repo_path: str) -> set[str]:

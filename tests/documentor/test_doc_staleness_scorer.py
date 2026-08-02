@@ -215,6 +215,16 @@ class TestFindDocFiles:
         assert "README.md" in files
         assert "ignored.md" not in files
 
+    def test_zolletta_metaskill_skipped_without_gitignore(self, tmp_path: Path) -> None:
+        """`.zolletta-metaskill/` is skipped even when not in local .gitignore."""
+        zm = tmp_path / ".zolletta-metaskill"
+        zm.mkdir()
+        (zm / "report.md").write_text("# Report")
+        (tmp_path / "README.md").write_text("# Test")
+        files = find_doc_files(str(tmp_path))
+        assert "README.md" in files
+        assert all(".zolletta-metaskill" not in f for f in files)
+
 
 # ---------------------------------------------------------------------------
 # score_last_updated
