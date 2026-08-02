@@ -4,6 +4,22 @@ All notable changes to the Zolletta-metaskill skill family are documented in thi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-08-01
+
+### Changed
+
+- **`.zolletta-metaskill/` moved to global `~/.gitignore`** — setup now adds the entry to the user's global gitignore instead of the project's local `.gitignore`, since it is a per-user artifact, not project content.
+- **Inline shell commands replaced with testable Python scripts** — six detection scripts under `src/zolletta_metaskill/setup/` (`ensure_global_gitignore.py`, `detect_language.py`, `detect_pyproject_sections.py`, `detect_doc_config.py`, `detect_php_tools.py`, `detect_companion_skills.py`) replace inline shell commands in the setup skill, making detection deterministic and unit-testable.
+- **SKILL.md streamlined** — setup skill documentation reduced from 332 to 181 lines (-45%) by removing duplicated tables, wrong-scope content, and redundant warnings.
+
+### Fixed
+
+- **`.zolletta-metaskill` hardcoded in drift tool skip dirs** — added to `SKIP_DIRS` in `drift_analyzer.py` and `doc_staleness_scorer.py` so they exclude it without relying on local `.gitignore`.
+
+### Added
+
+- 62 setup tests with 100% coverage on the setup package.
+
 ## [3.0.0] - 2026-07-28
 
 ### Changed
