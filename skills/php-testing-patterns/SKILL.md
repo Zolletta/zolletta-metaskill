@@ -1,6 +1,6 @@
 ---
 name: php-testing-patterns
-version: 3.0.0
+version: 3.1.0
 license: MIT + Commons Clause
 description: >
   PHP test code review: PHPUnit test naming, directory mirroring, coverage gap

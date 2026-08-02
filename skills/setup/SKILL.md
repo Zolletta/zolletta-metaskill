@@ -1,6 +1,6 @@
 ---
 name: zolletta-metaskill-setup
-version: 3.0.0
+version: 3.1.0
 license: MIT + Commons Clause
 description: >
   Project initialization for Zolletta-metaskill. Creates the .zolletta-metaskill/ directory, detects the project language, detects Docker container, tests tokensave availability, detects Python and PHP tooling, and writes settings.json. Also adds .zolletta-metaskill/ to the user's global ~/.gitignore. Run automatically by the setup guard before any subcommand if settings.json is missing, or manually via /zolletta-metaskill setup.
@@ -332,93 +332,19 @@ Read the [settings template](assets/settings_template.json) and write `.zolletta
 
 | Field                   | Source                                                                  |
 | ----------------------- | ----------------------------------------------------------------------- |
-| `setup_version`         | `"1.2.0"` (matches the skill version)                                   |
+| `setup_version`         | Matches the skill version (current: see front-matter)                   |
 | `setup_timestamp`       | Current timestamp in ISO 8601 (`date -u +%Y-%m-%dT%H:%M:%S`)            |
 | `language`              | Detected language from Step 3                                           |
 | `container_name`        | Container name from Step 4 (`null` if no Docker)                        |
 | `tokensave_available`   | Boolean from Step 5                                                     |
 | `acronyms`              | Top-level list from Step 6.5 (extracted from `AGENTS.md`; `[]` if none) |
-| `python`                | Object from Steps 6 + 6.5 (Python only; `null` otherwise) — see below   |
-| `php`                   | Object from Steps 7 + 7.5 (PHP only; `null` otherwise) — see below     |
+| `python`                | Object from Steps 6 + 6.5 (Python only; `null` otherwise)              |
+| `php`                   | Object from Steps 7 + 7.5 (PHP only; `null` otherwise)                 |
 | `external_review_model` | `"swe"` (default; overridable by front-matter)                          |
-| `documentation`         | Object from Step 6.6 — see below                                        |
+| `documentation`         | Object from Step 6.6                                                    |
 | `reports_dir`           | `".zolletta-metaskill/reports"`                                         |
 
-The `python` subobject has this shape (Python only; `null` otherwise). Each tool in `tools` is an object with an `available` boolean and, for tools that have configuration, the effective config extracted from `pyproject.toml`:
-
-```json
-{
-  "tools": {
-    "uv":      { "available": true },
-    "ruff":    { "available": true, "line_length": 100, "target_version": "py312", "select": ["E","W","F","I","B","UP","SIM"], "ignore": ["E501"] },
-    "pytest":  { "available": true, "addopts": ["-ra"], "testpaths": ["tests"], "minversion": "8.0" },
-    "ty":      { "available": true, "python_version": "3.12" },
-    "vulture": { "available": true },
-    "mypy":    { "available": true, "strict": true, "python_version": "3.12" }
-  },
-  "code_style": {
-    "check_acronym_casing": true,
-    "check_no_relative_imports": true,
-    "check_one_class_per_file": true,
-    "check_filename_matches_class": true,
-    "check_public_docstrings": true,
-    "check_docstring_no_type_repeat": true,
-    "check_skip_obvious_docstrings": true,
-    "check_line_length": true,
-    "vulture_min_confidence": 80
-  },
-  "testing": {
-    "coverage_gap_threshold": 50,
-    "coverage_well_covered_threshold": 80,
-    "check_test_naming": true
-  },
-  "pyproject_mtime": 1718700000.0
-}
-```
-
-The `php` subobject has this shape (PHP only; `null` otherwise). Each tool in `tools` is an object with an `available` boolean and, for tools that have configuration, the effective config extracted from `composer.json` and tool config files:
-
-```json
-{
-  "tools": {
-    "phpunit": {
-      "available": true,
-      "bootstrap": "vendor/autoload.php",
-      "testpaths": ["tests"],
-      "coverage_config": true
-    },
-    "phpstan": { "available": true, "level": 6, "paths": ["src"], "memory_limit": "256M" },
-    "psalm": { "available": false, "error_level": 1, "paths": ["src"] },
-    "php_cs_fixer": { "available": true, "config_file": true },
-    "phpcs": { "available": false, "standard": "PSR12" }
-  },
-  "code_style": {
-    "check_naming_conventions": true,
-    "check_one_class_per_file": true,
-    "check_filename_matches_class": true
-  },
-  "testing": {
-    "coverage_gap_threshold": 50,
-    "coverage_well_covered_threshold": 80,
-    "check_test_naming": true
-  },
-  "autoload": {
-    "psr-4": { "App\\": "src/" },
-    "psr-4-dev": { "Tests\\": "tests/" }
-  },
-  "php_version": "8.2",
-  "composer_mtime": 1718700000.0
-}
-```
-
-The `documentation` subobject has this shape:
-
-```json
-{
-  "language": "en",
-  "dir": "docs"
-}
-```
+For the full JSON shape of each subobject (`python`, `php`, `documentation`), field-by-field descriptions, and complete Python/PHP examples, see [`../../docs/reference/settings-schema.md`](../../docs/reference/settings-schema.md) — the canonical schema reference. Do not duplicate the examples here; the schema doc is the single source of truth and stays in sync with [`assets/settings.schema.json`](assets/settings.schema.json).
 
 Use the `write` tool to create the file. The JSON must be valid and pretty-printed (2-space indent).
 
