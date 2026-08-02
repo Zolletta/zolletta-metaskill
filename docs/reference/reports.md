@@ -39,7 +39,7 @@ When running `/zolletta-metaskill review`, the orchestrator produces two additio
 
 ## Report format
 
-Each report follows the [report template](../../review/assets/summary_template.md) structure:
+Each report follows the [report template](https://github.com/Zolletta/zolletta-metaskill/blob/main/review/assets/summary_template.md) structure:
 
 1. **Grade** at the top (A–F or numeric score)
 2. **Scanning script results** (tables of raw output)
