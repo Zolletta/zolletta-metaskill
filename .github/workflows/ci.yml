@@ -33,7 +33,7 @@ jobs:
         run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        run: uv sync --extra dev --extra php
+        run: uv sync --all-extras
 
       - name: Run tests with coverage
         run: uv run pytest --cov=zolletta_metaskill --cov-report=xml --cov-report=term -q
@@ -63,7 +63,7 @@ jobs:
         run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        run: uv sync --extra dev --extra php
+        run: uv sync --all-extras
 
       - name: ruff check
         run: uv run ruff check
