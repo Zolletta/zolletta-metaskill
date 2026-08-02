@@ -43,16 +43,13 @@ mkdir -p .zolletta-metaskill
 
 The `.zolletta-metaskill/` directory is a per-user review artifact, not project content, so it is ignored globally rather than per-project. This keeps every project's local `.gitignore` clean.
 
-Run this single command — it is idempotent (creates `~/.gitignore` if missing, appends the entry only if it is not already present, never duplicates):
+Run:
 
 ```bash
-grep -qxF '.zolletta-metaskill/' ~/.gitignore 2>/dev/null || {
-  touch ~/.gitignore
-  printf '\n# Zolletta-metaskill review artifacts\n.zolletta-metaskill/\n' | tee -a ~/.gitignore > /dev/null
-}
+python3 ../../src/zolletta_metaskill/setup/ensure_global_gitignore.py
 ```
 
-Do **not** touch the project's local `.gitignore`.
+The script is idempotent — it creates `~/.gitignore` if missing, appends the entry only if it is not already present, never duplicates. Do **not** touch the project's local `.gitignore`.
 
 ### Step 3 — Detect the project language
 
@@ -69,30 +66,13 @@ Determine the project's primary language by checking for language markers in the
 | `Gemfile`, `*.gemspec`                                                               | Ruby                  |
 | `CMakeLists.txt`, `Makefile` with `.c`/`.cpp` sources                                | C/C++                 |
 
-Run this deterministic check — it prints the first matching language (in the table order above), or nothing if no marker is found:
+Run:
 
 ```bash
-for markers in \
-  "python:pyproject.toml setup.py setup.cfg Pipfile uv.lock" \
-  "typescript:package.json tsconfig.json deno.json" \
-  "php:composer.json" \
-  "go:go.mod" \
-  "rust:Cargo.toml" \
-  "java:pom.xml build.gradle" \
-  "ruby:Gemfile"
-do
-  lang="${markers%%:*}"; files="${markers#*:}"
-  for f in $files; do
-    if [ -f "$f" ]; then echo "$lang"; exit 0; fi
-  done
-done
-# requirements*.txt and *.gemspec need glob expansion
-compgen -G 'requirements*.txt' >/dev/null 2>&1 && { echo python; exit 0; }
-compgen -G '*.gemspec' >/dev/null 2>&1 && { echo ruby; exit 0; }
-# C/C++: CMakeLists.txt alone, or Makefile with .c/.cpp sources
-if [ -f CMakeLists.txt ]; then echo c-cpp; exit 0; fi
-if [ -f Makefile ] && ls *.c *.cpp 2>/dev/null | grep -q .; then echo c-cpp; exit 0; fi
+python3 ../../src/zolletta_metaskill/setup/detect_language.py
 ```
+
+The script prints the detected language (first matching marker in the table order above) and exits 0, or prints nothing and exits 1 if no marker is found.
 
 1. If the command prints nothing, inspect the source directory for the most common file extension.
 2. If the language still cannot be determined, ask the user with `ask_user_question`.
@@ -122,18 +102,13 @@ If the detected language from Step 3 is **not Python**, skip this step entirely 
 
 If the language is **Python**, detect which tools are available. For each tool, check in this order:
 
-1. **Check `pyproject.toml`** — read the `[tool.*]` sections. If a tool has a configuration section (e.g. `[tool.ruff]`, `[tool.mypy]`, `[tool.pytest.ini_options]`, `[tool.vulture]`), mark it as available (the project uses it). Use this deterministic check per tool:
+1. **Check `pyproject.toml`** — read the `[tool.*]` sections. If a tool has a configuration section (e.g. `[tool.ruff]`, `[tool.mypy]`, `[tool.pytest.ini_options]`, `[tool.vulture]`), mark it as available (the project uses it). Run:
 
    ```bash
-   # Returns exit 0 if the [tool.<section>] header exists in pyproject.toml
-   grep -q '^\[tool\.ruff\]' pyproject.toml           # ruff
-   grep -q '^\[tool\.mypy\]' pyproject.toml           # mypy
-   grep -q '^\[tool\.pytest\.ini_options\]' pyproject.toml  # pytest
-   grep -q '^\[tool\.vulture\]' pyproject.toml        # vulture
-   grep -q '^\[tool\.ty\]' pyproject.toml             # ty
-   # uv: check for [project] section or uv.lock file
-   grep -q '^\[project\]' pyproject.toml || [ -f uv.lock ]  # uv
+   python3 ../../src/zolletta_metaskill/setup/detect_pyproject_sections.py
    ```
+
+   The script prints JSON mapping each tool name to `{"available": bool}`. For `uv`, availability is `true` if either `[project]` exists or `uv.lock` is present.
 
 2. **If not found in `pyproject.toml`**, try calling the command — inside the container if `container_name` is set (`docker compose exec <container_name> <command> --version`), otherwise on the host (`<command> --version`). If the command succeeds, mark it as available.
 
@@ -195,11 +170,13 @@ Determine the project's documentation configuration:
    - Else if `docs/` exists in the project root → `dir: "docs"`
    - Else → `dir: "docs"` (default — will be created by the `documentor` skill if needed)
 
-   Deterministic check (prints the documentation directory):
+   Run:
 
    ```bash
-   [ -d .backstage ] && echo ".backstage" || echo "docs"
+   python3 ../../src/zolletta_metaskill/setup/detect_doc_config.py
    ```
+
+   The script prints `.backstage` or `docs`.
 
 2. **Language**: default to `"en"` (ISO 639-1). If the project has a `documentation.language` preference, use that instead.
 
@@ -211,26 +188,15 @@ If the detected language from Step 3 is **not PHP**, skip this step entirely and
 
 If the language is **PHP**, detect which tools are available. For each tool, check in this order:
 
-1. **Check `composer.json` `require-dev`** — if the tool's package is listed (e.g. `"phpunit/phpunit"`), mark it as available (the project uses it). Use this deterministic check per tool:
+1. **Check `composer.json` `require-dev`** and **config files** — run:
 
    ```bash
-   # Returns exit 0 if the package is listed in composer.json
-   grep -q '"phpunit/phpunit"' composer.json            # phpunit
-   grep -q '"phpstan/phpstan"' composer.json            # phpstan
-   grep -q '"vimeo/psalm"' composer.json                # psalm
-   grep -q '"friendsofphp/php-cs-fixer"' composer.json  # php_cs_fixer
-   grep -q '"squizlabs/php_codesniffer"' composer.json  # phpcs
+   python3 ../../src/zolletta_metaskill/setup/detect_php_tools.py
    ```
 
-2. **Check for a config file** — if the tool's config file exists in the project root (e.g. `phpunit.xml`, `.php-cs-fixer.php`), mark it as available even if not in `require-dev` (the project intends to use it). Use this deterministic check per tool:
+   The script prints JSON mapping each tool name to `{"available": bool}`. A tool is marked available if found in `composer.json` `require-dev` **or** if a config file exists in the project root.
 
-   ```bash
-   [ -f phpunit.xml ] || [ -f phpunit.dist.xml ]                          # phpunit
-   [ -f phpstan.neon ] || [ -f phpstan.dist.neon ]                        # phpstan
-   [ -f psalm.xml ] || [ -f psalm.dist.xml ]                              # psalm
-   [ -f .php-cs-fixer.php ] || [ -f .php-cs-fixer.dist.php ]              # php_cs_fixer
-   [ -f .phpcs.xml ] || [ -f phpcs.xml.dist ] || [ -f .phpcs.xml.dist ]   # phpcs
-   ```
+2. **If not found by the script**, try calling the command — inside the container if `container_name` is set (`docker compose exec <container_name> vendor/bin/<tool> --version`), otherwise on the host (`vendor/bin/<tool> --version`). If the command succeeds, mark it as available.
 
 3. **If not found in `composer.json` or config file**, try calling the command — inside the container if `container_name` is set (`docker compose exec <container_name> vendor/bin/<tool> --version`), otherwise on the host (`vendor/bin/<tool> --version`). If the command succeeds, mark it as available.
 
@@ -305,22 +271,19 @@ The two Python review skills (`python-code-style`, `python-testing-patterns`) ar
 Zolletta-metaskill is a **review** skill — it checks code quality but does not write code. Companion **implementation** skills can be installed separately to provide code generation alongside review. Setup detects their availability and suggests installing them if not present.
 
 1. **For PHP projects** (`language == "php"`):
-   - Check if `~/.agents/skills/php-pro/SKILL.md` exists. Deterministic check:
+   - Run:
 
      ```bash
-     [ -f ~/.agents/skills/php-pro/SKILL.md ] && echo true || echo false
+     python3 ../../src/zolletta_metaskill/setup/detect_companion_skills.py
      ```
+
+     The script prints JSON with `php_pro.available` and `python_development.available` booleans.
 
    - Store `php.tools.php_pro_available` boolean (add to `php.tools` object)
    - If not available, print the php-pro "not installed" message from `../../docs/reference/tool-messages.md` in Step 9
 
 2. **For Python projects** (`language == "python"`):
-   - Check if `~/.agents/skills/python-development/SKILL.md` exists. Deterministic check:
-
-     ```bash
-     [ -f ~/.agents/skills/python-development/SKILL.md ] && echo true || echo false
-     ```
-
+   - Use the same script output as above.
    - Store `python.tools.python_development_available` boolean (add to `python.tools` object)
    - If not available, print the python-development "not installed" message from `../../docs/reference/tool-messages.md` in Step 9
 
@@ -350,62 +313,20 @@ Use the `write` tool to create the file. The JSON must be valid and pretty-print
 
 ### Step 9 — Print "not installed" and "unconfigured" messages
 
-For each tool that is **not** available, print the corresponding "not installed" message from `../../docs/reference/tool-messages.md`. The message explains why Zolletta-metaskill benefits from the tool and links to the project homepage (where applicable).
+For each tool that is **not** available, print the corresponding "not installed" message from `../../docs/reference/tool-messages.md`. The message explains why Zolletta-metaskill benefits from the tool and links to the project homepage (where applicable). This covers `tokensave_available: false`, each unavailable `python.tools.*` / `php.tools.*` tool, and the companion implementation skills (`php_pro_available`, `python_development_available`).
 
-For each Python tool that **is** available but has **no `[tool.*]` section in `pyproject.toml`** (detected in Step 6.5), print the corresponding "unconfigured" warning from `../../docs/reference/tool-messages.md`. The warning states the tool's effective built-in defaults and links to the full options reference.
-
-For each PHP tool that **is** available but has **no config file** (detected in Step 7.5), print the corresponding "unconfigured" warning from `../../docs/reference/tool-messages.md`. The warning states the tool's effective built-in defaults and links to the full options reference.
-
-This covers:
-- `tokensave_available: false` → tokensave "not installed" message
-- For Python projects, each tool in `python.tools` with `available: false` → corresponding "not installed" message
-- For Python projects, each tool in `python.tools` with `available: true` but unconfigured → corresponding "unconfigured" warning
-- For PHP projects, each tool in `php.tools` with `available: false` → corresponding "not installed" message
-- For PHP projects, each tool in `php.tools` with `available: true` but unconfigured (no config file) → corresponding "unconfigured" warning
-- For PHP projects, if `php.tools.php_pro_available` is `false` → php-pro "not installed" message
-- For Python projects, if `python.tools.python_development_available` is `false` → python-development "not installed" message
-
-(The Python review skills are bundled inside this meta-skill, so no "not installed" message is needed for them.)
+For each tool that **is** available but has **no configuration section/file** (detected in Steps 6.5 and 7.5), print the corresponding "unconfigured" warning from `../../docs/reference/tool-messages.md`. The warning states the tool's effective built-in defaults and links to the full options reference.
 
 **Do NOT install anything.** Only inform the user.
 
 ### Step 10 — Summary
 
-Print a brief summary to the user:
+Print the following, replacing the path with the absolute path to the project's `settings.json` and making it a clickable file reference:
 
 ```text
-Zolletta-metaskill setup complete.
-
-  Language:                        <language>
-  Container:                       <container_name or none>
-  tokensave available:             <yes/no>
-  Acronyms:                        <list or none>
-  Python tooling:                  (Python only)
-    uv:                            <yes/no>
-    ruff:                          <yes/no>
-    pytest:                        <yes/no>
-    ty:                            <yes/no>
-    vulture:                       <yes/no>
-    mypy:                          <yes/no>
-  Python config:                   (Python only)
-    ruff line_length:              <value>
-    ruff target_version:           <value>
-  PHP tooling:                     (PHP only)
-    phpunit:                       <yes/no>
-    phpstan:                       <yes/no>
-    psalm:                         <yes/no>
-    php-cs-fixer:                  <yes/no>
-    phpcs:                         <yes/no>
-  PHP config:                      (PHP only)
-    php version:                   <value>
-    phpstan level:                 <value>
-    phpcs standard:                <value>
-  Settings file:                   .zolletta-metaskill/settings.json
-  Reports directory:               .zolletta-metaskill/reports
+Zolletta-metaskill setup complete. You can view the configuration by looking at <ref_file file="<project_root>/.zolletta-metaskill/settings.json" />
 ```
-
-If any tools or skills were unavailable, the "not installed" messages from Step 8 will have already been printed above this summary.
 
 ## Re-running setup
 
-`/zolletta-metaskill setup` can be run at any time to re-detect tools and refresh `settings.json`. The previous `settings.json` is overwritten. This is useful after installing tokensave, Python tooling, or PHP tooling, after adding/removing a Docker container, or after a project language change.
+`/zolletta-metaskill setup` can be run at any time to re-detect tools and refresh `settings.json`. The previous `settings.json` is overwritten.
