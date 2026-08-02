@@ -1,6 +1,6 @@
 ---
 name: zolletta-metaskill-external-review
-version: 3.1.0
+version: 3.2.0
 license: MIT + Commons Clause
 description: >
   Code review performed by an external LLM on the modified files of a change. Reads global rules from your agent configuration (e.g. ~/.agents/rules/) and the project's AGENTS.md, then reviews only the files touched by the change (git diff). Defaults to the `swe` model; pass another model via the `external_review_model` field in `.zolletta-metaskill/settings.json` or the `model` front-matter field.
@@ -50,9 +50,10 @@ Read shared guidelines from the meta-skill (parent directory):
 2. **Read the current project's AGENTS.md**: look for `AGENTS.md` in the working directory. If not present, look in the parent directory. This file contains project-specific rules that add to the global rules.
 3. **Identify the modified files**: use `git diff` and `git status` to determine which files have been changed. **Only these files are in scope** — do not review untouched files.
 4. **Analyze every modified file**: read the content of each changed file and verify all applicable rules (global + project-specific).
-5. **Use tokensave if available**: if the project has `.tokensave/`, use `tokensave_context` to understand the context of the modified code and `tokensave_impact` to evaluate the impact radius. Use `tokensave_affected` to identify which tests are affected.
-6. **Report every issue** found with: file, line, problem, impact, suggested fix.
-7. **If there are no issues**, explicitly confirm that the changes are correct and explain why.
+5. **Read architectural directives**: read `<adr_dir>/adr-distilled.md` for the project's architectural directives (distilled from Accepted ADRs). Use judgment to flag modified code that violates a binary directive as a finding, and note nuanced directive deviations as observations.
+6. **Use tokensave if available**: if the project has `.tokensave/`, use `tokensave_context` to understand the context of the modified code and `tokensave_impact` to evaluate the impact radius. Use `tokensave_affected` to identify which tests are affected.
+7. **Report every issue** found with: file, line, problem, impact, suggested fix.
+8. **If there are no issues**, explicitly confirm that the changes are correct and explain why.
 
 ## Global rules
 

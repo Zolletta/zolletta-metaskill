@@ -16,7 +16,7 @@ skills: [setup, review, patterns, documentor, external-review, python-*, php-*]
 
 ```json
 {
-  "setup_version": "3.1.0",
+  "setup_version": "3.2.0",
   "setup_timestamp": "2026-07-16T14:30:00",
   "language": "python",
   "container_name": "myproject",
@@ -73,7 +73,7 @@ skills: [setup, review, patterns, documentor, external-review, python-*, php-*]
 
 ```json
 {
-  "setup_version": "3.1.0",
+  "setup_version": "3.2.0",
   "setup_timestamp": "2026-07-16T14:30:00",
   "language": "php",
   "container_name": "myproject",
@@ -155,6 +155,7 @@ skills: [setup, review, patterns, documentor, external-review, python-*, php-*]
 |--------------------------|--------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `documentation.language` | string | ISO 639-1 code for documentation language (default: `"en"`). When not `"en"`, the `documentor` skill translates Diátaxis signpost headings before running the staleness scorer |
 | `documentation.dir`      | string | Directory where project documentation lives (default: `"docs"`). Used by the `documentor` skill to locate the Diátaxis docs tree for drift detection and staleness scoring     |
+| `documentation.adrs`     | string \| null | Relative path within `documentation.dir` where ADRs live (e.g. `"adr"`), `""` if scattered in docs root, or `null` if no ADRs found. Auto-detected during setup. Used by the ADR distiller during review |
 
 ## `python` — tooling, rules, and configuration
 

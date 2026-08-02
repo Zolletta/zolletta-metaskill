@@ -76,7 +76,7 @@
     "documentation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["language", "dir"],
+      "required": ["language", "dir", "adrs"],
       "properties": {
         "language": {
           "type": "string",
@@ -87,6 +87,11 @@
           "type": "string",
           "description": "Directory where project documentation lives (default: docs). Used by the documentor skill to locate the Diataxis docs tree.",
           "default": "docs"
+        },
+        "adrs": {
+          "type": ["string", "null"],
+          "description": "Relative path within documentation.dir where ADRs live (e.g. \"adr\"), \"\" if scattered in docs root, or null if no ADRs found. Auto-detected during setup.",
+          "default": null
         }
       }
     },

@@ -1,6 +1,6 @@
 ---
 name: zolletta-metaskill-setup
-version: 3.1.0
+version: 3.2.0
 license: MIT + Commons Clause
 description: >
   Project initialization for Zolletta-metaskill. Creates the .zolletta-metaskill/ directory, detects the project language, detects Docker container, tests tokensave availability, detects Python and PHP tooling, and writes settings.json. Also adds .zolletta-metaskill/ to the user's global ~/.gitignore. Run automatically by the setup guard before any subcommand if settings.json is missing, or manually via /zolletta-metaskill setup.
@@ -99,6 +99,15 @@ python3 ../../src/zolletta_metaskill/setup/detect_doc_config.py
 
 Prints `.backstage` or `docs`. Default documentation language is `"en"` (ISO 639-1).
 
+### Step 6.7 — Detect ADR folder
+
+```bash
+python3 ../../src/zolletta_metaskill/setup/detect_adrs.py <docs_dir>
+```
+
+Prints JSON `{"adrs_path": "adr"}` or `{"adrs_path": null}`. Store in `documentation.adrs`.
+
+
 ### Step 7 — Detect PHP tooling (PHP only)
 
 If language is not PHP, set `php: null` and skip to Step 7.6.
@@ -155,7 +164,7 @@ Read the [settings template](assets/settings_template.json) and write `.zolletta
 | `python`                | Steps 6 + 6.5 (Python only; `null` otherwise)               |
 | `php`                   | Steps 7 + 7.5 (PHP only; `null` otherwise)                  |
 | `external_review_model` | `"swe"` (default; overridable by front-matter)              |
-| `documentation`         | Step 6.6                                                     |
+| `documentation`         | Steps 6.6 + 6.7                                              |
 | `reports_dir`           | `".zolletta-metaskill/reports"`                              |
 
 For the full JSON shape of each subobject, see [`../../docs/reference/settings-schema.md`](../../docs/reference/settings-schema.md). Use the `write` tool. JSON must be valid, pretty-printed (2-space indent).
