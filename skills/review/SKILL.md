@@ -1,6 +1,6 @@
 ---
 name: zolletta-metaskill-review
-version: 3.1.0
+version: 3.2.0
 license: MIT + Commons Clause
 description: >
   Full project review orchestrator. Reads the project language from .zolletta-metaskill/settings.json (written by setup), then runs the appropriate specialist skills as subagents in parallel batches — general skills (patterns, documentor) always, plus language-specific skills when applicable (e.g. python-code-style and python-testing-patterns for Python). Saves each report to .zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/, produces an aggregated TODO.md organized by functional priority (dependency changes first, then by severity), and compares with the previous review's TODO to verify completion. Respond in the user's language.
@@ -88,6 +88,21 @@ This step ensures the tokensave index is fresh before any subagent uses it. Stal
 2. If there are previous review folders, identify the **newest** one (excluding the one you just created). Read its `TODO.md` if it exists.
 3. Keep this previous TODO for the comparison in Step 6.
 
+### Step 3.5 — Refresh ADR directives
+
+1. Read `documentation.adrs` and `documentation.dir` from `settings.json`.
+2. If `documentation.adrs` is `null`, skip this step — no ADRs in the project.
+3. Run:
+   ```bash
+   python3 ../../src/zolletta_metaskill/adr/adr_orchestrator.py --docs-dir <docs_dir> --adrs-path <adrs_path> --json
+   ```
+   The distiller uses the `adrs` field to locate ADRs, compares mtimes against the cache, and refreshes `adr-distilled.md`. On first run (no cache), it creates the file and cache from scratch.
+4. Parse the JSON report. If `has_adrs` is false, skip ADR directives for this review.
+5. For each ADR in `stale` and `new`: read the source ADR file, refine the mechanically-extracted directive in `adr-distilled.md` into a concise one-liner. Preserve category headings if present.
+6. The refreshed `adr-distilled.md` is now ready for subagents to read.
+
+> ADR distillation inspired by [Architectural Governance at AI Speed](https://www.infoq.com/articles/architectural-governance-ai-speed/) (InfoQ, 2026).
+
 ### Step 4 — Launch the review subagents in parallel
 
 Launch **one subagent per command**, all in parallel as background subagents (`is_background: true`). Issue all `run_subagent` calls in a single tool-call block so they run concurrently. Each subagent writes its own report file directly to the review folder — the orchestrator does not collect and save reports on their behalf.
@@ -145,6 +160,11 @@ issues are informational only and do not count toward the grade.
 
 settings.json: Read .zolletta-metaskill/settings.json for tool availability and config
 (python.tools.*), and rule toggles (python.code_style.*, python.testing.*).
+
+Architectural directives: Read <adr_dir>/adr-distilled.md for the project's architectural directives (distilled from Accepted ADRs). Each directive links to its source ADR. Use judgment to check whether the code you're reviewing aligns with each directive:
+- Binary directives (e.g., "use PostgreSQL", "use async events for inter-service communication") — flag clear violations as findings.
+- Nuanced directives (e.g., "adopt microservices", "prefer composition over inheritance") — note deviations as observations with context, not findings.
+The directive's content tells you whether it's binary or nuanced.
 
 You MUST write your report to this file using the write tool:
   <output_file_path>

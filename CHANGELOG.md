@@ -4,6 +4,19 @@ All notable changes to the Zolletta-metaskill skill family are documented in thi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-08-02
+
+### Added
+
+- **ADR distiller** — during setup, the ADR folder is detected and stored as `documentation.adrs` in `settings.json`. During review, the distiller extracts each Accepted ADR's Decision section into a one-line directive in `adr-distilled.md`, linked to the source ADR. An mtime cache tracks changes so only new/stale/removed ADRs are re-distilled. Review subagents read the directives as architectural context and use judgment to flag binary violations as findings and nuanced deviations as observations. Inspired by [Architectural Governance at AI Speed](https://www.infoq.com/articles/architectural-governance-ai-speed/) (InfoQ, 2026). See [ADR-0010](docs/adr/0010-add-adr-distiller.md) for the full decision.
+- **`documentation.adrs` field** in `settings.json` — stores the relative path to the ADR directory within `documentation.dir` (or `null` if no ADRs found). Auto-detected during setup.
+- **ADRs 0001–0010** — the project's first 10 Architecture Decision Records, documenting existing architectural decisions (meta-skill dispatch, settings.json, Diátaxis, stdlib-only scanners, parallel subagents, setup guard, engine protocol, skills/ grouping, Python detection scripts) and the new ADR distiller feature. See `docs/adr/`.
+
+### Changed
+
+- **ADR distiller refactored into one-class-per-file modules** — the monolithic `distill_adrs.py` was split into `ADRRecord` (`adr_record.py`), `DistillReport` (`distill_report.py`), `ADRDiscovery` (`adr_discovery.py`), `ADRCache` (`adr_cache.py`), `ADRDistiller` (`adr_distiller.py`, file management), and `ADROrchestrator` (`adr_orchestrator.py`, orchestration + CLI). All constants moved inside their classes. The CLI `main()` and `if __name__` guard moved into `adr_orchestrator.py`; `distill_adrs.py` was removed. Test files split to mirror the source structure (one test class per file). Acronyms (`ADR`) kept uppercase in class names per project convention.
+- **Version bumped** from 3.1.0 to 3.2.0 across `pyproject.toml`, `__init__.py`, all `SKILL.md` frontmatter, `settings_template.json`, and `settings-schema.md`.
+
 ## [3.1.0] - 2026-08-01
 
 ### Added

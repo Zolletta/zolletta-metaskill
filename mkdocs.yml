@@ -99,6 +99,17 @@ nav:
           - "Reports": reference/reports.md
           - "Tool messages": reference/tool-messages.md
           - "Reference index": reference/index.md
+      - "Architecture Decision Records":
+          - "ADR-0001 Meta-skill with subcommand dispatch": adr/0001-meta-skill-with-subcommand-dispatch.md
+          - "ADR-0002 Settings.json as single config source": adr/0002-settings-json-as-single-config-source.md
+          - "ADR-0003 Diataxis framework for documentation": adr/0003-diataxis-framework-for-documentation.md
+          - "ADR-0004 Python stdlib only for scanners": adr/0004-python-stdlib-only-for-scanners.md
+          - "ADR-0005 Review orchestrator with parallel subagents": adr/0005-review-orchestrator-with-parallel-subagents.md
+          - "ADR-0006 Setup guard pattern": adr/0006-setup-guard-pattern.md
+          - "ADR-0007 Language-neutral engine protocol": adr/0007-language-neutral-engine-protocol.md
+          - "ADR-0008 Skills directory grouping": adr/0008-skills-directory-grouping.md
+          - "ADR-0009 Inline shell replaced with Python scripts": adr/0009-inline-shell-replaced-with-python-scripts.md
+          - "ADR-0010 Add ADR distiller": adr/0010-add-adr-distiller.md
   - "Explanation":
       - "Code review principles":
           - "General principles": explanation/code/general-principles.md
