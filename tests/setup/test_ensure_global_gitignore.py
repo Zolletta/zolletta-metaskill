@@ -18,7 +18,7 @@ class TestEnsureGlobalGitignore:
         assert added is True
         content = gitignore.read_text(encoding="utf-8")
         assert ".zolletta-metaskill/" in content
-        assert "# Zolletta-metaskill review artifacts" in content
+        assert "# Zolletta-metaskill" in content
 
     def test_appends_to_existing_file(self, tmp_path: Path) -> None:
         gitignore = tmp_path / ".gitignore"

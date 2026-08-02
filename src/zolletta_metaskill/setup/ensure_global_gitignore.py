@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 ENTRY = ".zolletta-metaskill/"
-COMMENT = "# Zolletta-metaskill review artifacts"
+COMMENT = "# Zolletta-metaskill"
 
 
 def ensure_global_gitignore(gitignore_path: Path | None = None) -> bool:
