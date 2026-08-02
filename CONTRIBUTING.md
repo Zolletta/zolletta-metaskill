@@ -75,13 +75,13 @@ Findings from a self-review don't need to be resolved if they're informational, 
 
 ## Versioning
 
-This project follows [Semantic Versioning](https://semver.org/). Use the `.bump` script to bump the version across all files:
+This project follows [Semantic Versioning](https://semver.org/). The version is a single number shared across all files — the meta-skill and every subskill always have the same version. Use the `.bump` script to update it atomically:
 
 ```bash
 ./.bump --to <version>
 ```
 
-This updates `pyproject.toml`, `src/zolletta_metaskill/__init__.py`, all `SKILL.md` front-matter version fields, and `setup/assets/settings_template.json`. Review the diff, then commit.
+This updates `pyproject.toml`, `src/zolletta_metaskill/__init__.py`, all `SKILL.md` front-matter version fields, and `setup/assets/settings_template.json` in one pass. Review the diff, then commit.
 
 ## Documentation
 
