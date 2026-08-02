@@ -4,6 +4,19 @@ All notable changes to the Zolletta-metaskill skill family are documented in thi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **CONTRIBUTING.md** — contributing guide covering setup, development workflow, conventional commits, dogfooding, tests, versioning, and documentation preview.
+- **CI version clash check** — new `version-clash` job in `ci.yml` that fails a PR if another open PR already targets the same version. Skips automatically when no version bump is present.
+
+### Changed
+
+- **README streamlined** (159 → 95 lines, -40%) — duplicated detailed content replaced with brief summaries and links to the docs site (https://zolletta.github.io/zolletta-metaskill/). Parsers linked to their homepages (`ast`, `tree-sitter-php`). Redundant PHP install block removed.
+- **`~/.agents/rules/` references genericized** — the `rules/` directory is our own convention, not part of the `.agents/` standard. Replaced prescriptive path references with "your agent configuration" across 9 files.
+- **`uv` used consistently** — replaced `pip install` with `uv pip install` in docs and workflows. Replaced `--extra dev --extra php` with `--all-extras` in CI and CONTRIBUTING.md.
+
 ## [3.1.0] - 2026-08-01
 
 ### Changed
