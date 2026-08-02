@@ -4,7 +4,7 @@ status: stable
 skills: [setup, review, patterns, documentor, external-review, python-*]
 ---
 
-![zolletta-metaskill](assets/zolletta-meta-skill-192.png)
+![zolletta-metaskill](../assets/zolletta-meta-skill-192.png)
 
 # Zolletta-MetaSkill Documentation
 
