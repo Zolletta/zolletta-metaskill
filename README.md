@@ -64,9 +64,9 @@ cd zolletta-metaskill
 
 The `install.sh` script copies the skill to `~/.agents/skills/zolletta-metaskill` and symlinks it into every detected AI agent tool's skills directory (Claude Code, Cursor, Gemini CLI, Devin, Windsurf, and others). See the [install guide](https://zolletta.github.io/zolletta-metaskill/how-to/install/) for details and manual alternatives.
 
-### For contributors
+## Contributing
 
-Use `./.bump --to <version>` to bump the version across `pyproject.toml`, `__init__.py`, all `SKILL.md` files, and `settings_template.json`.
+See the [repository scripts reference](https://zolletta.github.io/zolletta-metaskill/reference/code/scripts/#.bump) for version bumping (`./.bump --to <version>`) and other project-management scripts.
 
 ## Reference
 
