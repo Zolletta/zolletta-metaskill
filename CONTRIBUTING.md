@@ -98,7 +98,7 @@ Full documentation lives in `docs/` and is published to <https://zolletta.github
 To preview documentation locally:
 
 ```bash
-pip install mkdocs-material
+uv pip install mkdocs-material
 mkdocs serve
 ```
 
