@@ -1,6 +1,5 @@
 ---
 name: python-code-style
-version: 3.2.0
 license: MIT
 description: Python code style, linting, formatting, naming conventions, and documentation standards. Use when writing new code, reviewing style, configuring linters, writing docstrings, or establishing project standards.
 ---
@@ -23,30 +22,30 @@ Consistent code style and clear documentation make codebases maintainable and co
 
 ## Table 1 — Always-on rules (cannot be disabled)
 
-| #   | Area       | Name                                                |
-| --- | ---------- | --------------------------------------------------- |
-| 1   | Naming     | Descriptive snake_case filenames, no abbreviations  |
-| 2   | Naming     | PascalCase class names                              |
-| 4   | Naming     | snake_case functions and variables                  |
-| 5   | Naming     | SCREAMING_SNAKE_CASE module-level constants         |
-| 6   | Imports    | Grouped import order (stdlib → third-party → local) |
-| 13  | Docstrings | Private functions exempt from docstrings            |
-| 17  | Docstrings | Test functions exempt from docstrings               |
-| 19  | Types      | Type hints required for all public APIs             |
+| #  | Area       | Name                                                |
+|----|------------|-----------------------------------------------------|
+| 1  | Naming     | Descriptive snake_case filenames, no abbreviations  |
+| 2  | Naming     | PascalCase class names                              |
+| 4  | Naming     | snake_case functions and variables                  |
+| 5  | Naming     | SCREAMING_SNAKE_CASE module-level constants         |
+| 6  | Imports    | Grouped import order (stdlib → third-party → local) |
+| 13 | Docstrings | Private functions exempt from docstrings            |
+| 17 | Docstrings | Test functions exempt from docstrings               |
+| 19 | Types      | Type hints required for all public APIs             |
 
 ## Table 2 — Configurable settings (stored in `settings.json` under `python.code_style`)
 
-| #   | Area       | Name                                                      | Key                              | Default |
-| --- | ---------- | --------------------------------------------------------- | -------------------------------- | ------- |
-| 3   | Naming     | Acronyms stay uppercase in class names                    | `check_acronym_casing`           | `true`  |
-| 7   | Imports    | Absolute imports only, no relative imports                | `check_no_relative_imports`      | `true`  |
-| 8   | Structure  | One class per file                                        | `check_one_class_per_file`       | `true`  |
-| 9   | Structure  | Filename matches class name                               | `check_filename_matches_class`   | `true`  |
-| 12  | Docstrings | Docstrings required on public classes, methods, functions | `check_public_docstrings`        | `true`  |
-| 14  | Docstrings | No type repetition in docstring Args/Returns              | `check_docstring_no_type_repeat` | `true`  |
-| 18  | Docstrings | Skip docstrings for obvious one-line functions            | `check_skip_obvious_docstrings`  | `true`  |
-| 20  | Formatting | Line length from project config                           | `check_line_length`              | `true`  |
-| 22  | Dead code  | Vulture minimum confidence + unused `__all__` exports     | `vulture_min_confidence`         | `80`    |
+| #  | Area       | Name                                                      | Key                              | Default |
+|----|------------|-----------------------------------------------------------|----------------------------------|---------|
+| 3  | Naming     | Acronyms stay uppercase in class names                    | `check_acronym_casing`           | `true`  |
+| 7  | Imports    | Absolute imports only, no relative imports                | `check_no_relative_imports`      | `true`  |
+| 8  | Structure  | One class per file                                        | `check_one_class_per_file`       | `true`  |
+| 9  | Structure  | Filename matches class name                               | `check_filename_matches_class`   | `true`  |
+| 12 | Docstrings | Docstrings required on public classes, methods, functions | `check_public_docstrings`        | `true`  |
+| 14 | Docstrings | No type repetition in docstring Args/Returns              | `check_docstring_no_type_repeat` | `true`  |
+| 18 | Docstrings | Skip docstrings for obvious one-line functions            | `check_skip_obvious_docstrings`  | `true`  |
+| 20 | Formatting | Line length from project config                           | `check_line_length`              | `true`  |
+| 22 | Dead code  | Vulture minimum confidence + unused `__all__` exports     | `vulture_min_confidence`         | `80`    |
 
 ## Detailed rule explanations
 
@@ -76,10 +75,10 @@ Classes use `PascalCase`: `UserRepository`, `OrderProcessor`. This is PEP 8 stan
 
 Class names keep acronyms fully uppercase: `HTTPClientFactory`, not `HttpClientFactory`. `APIGateway`, not `ApiGateway`. This is a deliberate convention common in codebases with domain-specific acronyms.
 
-- **Enforcement**: `scan_acronym_casing.py` from `../../src/zolletta_metaskill/python_code_style/` (deterministic). The scanner splits each PascalCase class name into words, checks each word against the configured acronym list, and flags any word that case-insensitively matches an acronym but isn't all-uppercase.
+- **Enforcement**: `acronym_casing_scanner.py` from `../../src/zolletta_metaskill/code_style/python/` (deterministic). The scanner splits each PascalCase class name into words, checks each word against the configured acronym list, and flags any word that case-insensitively matches an acronym but isn't all-uppercase.
 
 ```bash
-python3 ../../src/zolletta_metaskill/python_code_style/scan_acronym_casing.py src/ --acronyms CI,MR,AST,DI
+python3 ../../src/zolletta_metaskill/code_style/python/acronym_casing_scanner.py src/ --acronyms CI,MR,AST,DI
 ```
 
 The acronym list is built additively:
@@ -157,13 +156,13 @@ Use `from myproject.utils import retry_decorator`, not `from ..utils import retr
 
 Each class lives in its own file. No exceptions for "small helper classes" or "closely related enums" — if they're worth defining, they're worth their own file. This applies to all classes, public or private.
 
-- **Enforcement**: `scan_one_class_per_file.py` from `../../src/zolletta_metaskill/shared/`.
+- **Enforcement**: `one_class_per_file_scanner.py` from `../../src/zolletta_metaskill/code_style/general/`.
 
 **#9 — Filename matches class name** *(configurable: `check_filename_matches_class`)*
 
 The filename is the snake_case form of the class name: `user_repository.py` → `UserRepository`, `api_gateway.py` → `APIGateway`. Acronyms stay uppercase in the class name but lowercase in the filename.
 
-- **Enforcement**: `scan_one_class_per_file.py` + manual review.
+- **Enforcement**: `one_class_per_file_scanner.py` + manual review.
 
 ### Docstrings
 
@@ -193,6 +192,7 @@ If the type annotation fully describes the argument, a one-line summary docstrin
 def get_user(user_id: str) -> User:
     """Retrieve a user by their unique identifier."""
     ...
+
 
 # Good — Args only for non-obvious info
 def process_batch(
@@ -247,17 +247,11 @@ def create_user(
     name: str,
     role: UserRole = UserRole.MEMBER,
     notify: bool = True,
-) -> User:
-    ...
+) -> User: ...
+
 
 # Good: chain method calls clearly
-result = (
-    db.query(User)
-    .filter(User.active == True)
-    .order_by(User.created_at.desc())
-    .limit(10)
-    .all()
-)
+result = db.query(User).filter(User.active == True).order_by(User.created_at.desc()).limit(10).all()
 ```
 
 - **Enforcement**: ruff formatter.
@@ -279,7 +273,7 @@ If `python.tools.vulture.available` is `false` in `settings.json`, skip dead-cod
 **Supplementary check — unused `__all__` exports:** vulture treats every name in `__all__` as "used" (public API export), so it never flags `__all__` entries that are never imported anywhere. This is a known gap. After running vulture, also run:
 
 ```bash
-python3 ../../src/zolletta_metaskill/python_code_style/scan_unused_all_exports.py src/
+python3 ../../src/zolletta_metaskill/code_style/python/unused_all_exports_scanner.py src/
 ```
 
 This scanner cross-references every `__all__` entry against actual import statements across the source tree. Names listed in `__all__` but never imported by any other module are reported as unused exports. Report these as low-priority findings (same severity as vulture findings).

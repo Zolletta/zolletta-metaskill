@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from zolletta_metaskill.adr.adr_record import ADRRecord
+from zolletta_metaskill.adr.structs.adr_record import ADRRecord
 
 
 class ADRDiscovery:
@@ -22,7 +22,8 @@ class ADRDiscovery:
 
     @staticmethod
     def find_files(
-        docs_dir: Path, adrs_path: str | None,
+        docs_dir: Path,
+        adrs_path: str | None,
     ) -> list[ADRRecord]:
         """Scan for ADR files and extract metadata from each.
 

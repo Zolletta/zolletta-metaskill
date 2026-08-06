@@ -24,9 +24,11 @@ throw new UserNotFoundException("User {$id} not found");
 # BAD: generic exception
 raise Exception("User not found")
 
+
 # GOOD: specific exception
 class UserNotFoundError(RuntimeError):
     pass
+
 
 raise UserNotFoundError(f"User {user_id} not found")
 ```

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "zolletta-metaskill"
-version = "3.2.0"
+version = "1.0.0"
 description = "Generic code review skills with specializations for Python and other languages"
 readme = "README.md"
 license = { text = "MIT + Commons Clause" }
@@ -22,18 +22,18 @@ classifiers = [
 ]
 dependencies = []
 
-[project.optional-dependencies]
-php = [
-    "tree-sitter>=0.26.0",
-    "tree-sitter-php>=0.24.1",
-]
+[dependency-groups]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
+    "coverage>=7.0",
     "ruff>=0.16.0",
     "mypy>=1.10",
     "ty>=0.0.64",
     "vulture>=2.10",
+    "python-semantic-release>=9.0",
+    "tree-sitter>=0.26.0",
+    "tree-sitter-php>=0.24.1",
 ]
 
 [project.urls]
@@ -75,8 +75,28 @@ strict = false
 addopts = ["-ra", "--tb=short"]
 testpaths = ["tests"]
 minversion = "8.0"
+pythonpath = ["src"]
 
 [tool.vulture]
 min_confidence = 80
 paths = ["src"]
 exclude = [".venv/"]
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+build_command = "uv build"
+commit_parser = "conventional"
+commit_parser_options = { allowed_types = ["feat", "fix", "perf", "refactor"] }
+tag_format = "v{version}"
+allow_zero_version = true
+
+[tool.semantic_release.branches.main]
+match = "main"
+
+[tool.semantic_release.changelog]
+mode = "update"
+exclude_commit_patterns = ["chore.*", "docs.*"]
+
+[tool.semantic_release.remote]
+name = "origin"
+type = "github"

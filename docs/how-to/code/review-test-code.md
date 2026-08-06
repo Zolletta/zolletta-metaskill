@@ -45,7 +45,7 @@ When a genuine gap is found, check whether the caller's tests mock the class or 
 
 ## Scope boundary with the patterns skill
 
-The `patterns` skill runs the structural test scanner, which produces a "Missing tests" table — a structural check that reports when no test file exists for a given source module. That structural finding is owned by `patterns`. The testing-patterns skill owns coverage analysis only: whether code is actually exercised by tests, not whether a matching test file exists. The structural check is not duplicated. If the structural scanner already flagged a file as structurally missing a test, reference that finding but focus on whether the code is covered through indirect calls or integration tests.
+The `patterns` skill runs the structural test scanner, which produces a "Missing tests" table — a structural check that reports when no test file exists for a given source module. That structural finding is owned by `patterns`. The testing-style skill owns coverage analysis only: whether code is actually exercised by tests, not whether a matching test file exists. The structural check is not duplicated. If the structural scanner already flagged a file as structurally missing a test, reference that finding but focus on whether the code is covered through indirect calls or integration tests.
 
 ## Configurable rule toggles
 

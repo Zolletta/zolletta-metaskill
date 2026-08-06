@@ -6,7 +6,7 @@ skills: [review, python-*]
 
 # Review mode (read-only)
 
-Shared rules for every subcommand that runs in a **read-only review context** — i.e. when invoked as part of a `/zolletta-metaskill review` or any other read-only review flow. This file is referenced by `python-code-style`, `python-testing-patterns`, and any future language-specific review skill.
+Shared rules for every subcommand that runs in a **read-only review context** — i.e. when invoked as part of a `/zolletta-metaskill review` or any other read-only review flow. This file is referenced by `python-code-style`, `python-testing-style`, and any future language-specific review skill.
 
 > **Language-agnostic**: the two-bucket classification and anti-hedging rules apply to all review skills regardless of language. Tool-specific notes (ruff, ty, mypy, vulture) are Python-specific and clearly marked.
 

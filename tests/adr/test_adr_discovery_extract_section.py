@@ -26,7 +26,7 @@ class TestExtractSection:
         )
         assert ADRDiscovery._extract_section(content, pattern) == ""
 
-    def test_empty_section(self) -> None:
+    def test_extract_section_empty_section_returns_empty(self) -> None:
         content = "## Status\n\n## Decision\n\nDo X.\n"
         pattern = re.compile(
             r"^##\s+Status[ \t]*\n(.*?)(?=\n##\s|\Z)",

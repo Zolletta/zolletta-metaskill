@@ -8,7 +8,7 @@ skills: [python-*]
 
 > **Paths in this document are relative to the Zolletta-MetaSkill project root.**
 
-The `python-testing-patterns` skill reviews Python test suites for isolation, naming, coverage gaps, mocking patterns, fixture design, and AAA structure. This guide walks through what the skill checks, how coverage gap detection works, and how to configure the rules — so you know what to expect when the skill runs as part of a full review or on its own.
+The `python-testing-style` skill reviews Python test suites for isolation, naming, coverage gaps, mocking patterns, fixture design, and AAA structure. This guide walks through what the skill checks, how coverage gap detection works, and how to configure the rules — so you know what to expect when the skill runs as part of a full review or on its own.
 
 ## Prerequisites
 
@@ -19,7 +19,7 @@ Requires a Python project set up via `/zolletta-metaskill setup`. Reads `python.
 The skill evaluates test code across six areas, combining always-on structural rules with configurable thresholds:
 
 - **Test isolation** — tests must be independent, with no shared mutable state between them. Each test should clean up after itself. Use fixtures with appropriate scopes (`function`, `module`, `session`) to manage shared resources without coupling tests to each other.
-- **Test naming** — test functions should follow the `test_<unit>_<scenario>_<expected_outcome>` pattern so that the name alone describes what is being tested. The skill enforces this with the deterministic `src/zolletta_metaskill/python_testing_patterns/scan_test_naming.py` scanner, which counts underscore-separated segments after the `test_` prefix and flags functions with fewer than the minimum (default: 3). Good names look like `test_create_user_with_valid_data_returns_user`; bad names look like `test_1` or `test_init`.
+- **Test naming** — test functions should follow the `test_<unit>_<scenario>_<expected_outcome>` pattern so that the name alone describes what is being tested. The skill enforces this with the deterministic `src/zolletta_metaskill/testing_style/python/test_naming_scanner.py` scanner, which counts underscore-separated segments after the `test_` prefix and flags functions with fewer than the minimum (default: 3). Good names look like `test_create_user_with_valid_data_returns_user`; bad names look like `test_1` or `test_init`.
 - **Coverage gaps** — the skill runs `pytest --cov` and analyses whether code is actually exercised by tests, regardless of whether a dedicated `test_<module>.py` file exists. This is a mandatory step: never flag a coverage gap based on grep alone.
 - **Mocking patterns** — when a class has no direct test file, the skill traces the call chain to determine whether callers instantiate the class for real (with mocked dependencies) or replace it entirely with a `MagicMock` or `patch`. A real instance means the class is indirectly covered; a full mock means it is not.
 - **Fixture design** — fixtures should use the narrowest scope that makes sense and avoid coupling tests through shared mutable state. The skill checks that fixtures are not leaking state between tests.
@@ -31,7 +31,7 @@ Coverage gap detection is the most involved part of the review because a class w
 
 ### Step 1 — Run coverage and identify structurally missing files
 
-The skill runs `pytest --cov` and then runs `src/zolletta_metaskill/shared/scan_tests.py` to get the structural "Missing tests" table. Files that appear in this table are candidates — but structural absence does not mean zero coverage.
+The skill runs `pytest --cov` and then runs `src/zolletta_metaskill/testing_style/general/test_structure_scanner.py` to get the structural "Missing tests" table. Files that appear in this table are candidates — but structural absence does not mean zero coverage.
 
 ### Step 2 — Check indirect coverage for each candidate
 
@@ -47,7 +47,7 @@ When a genuine gap is found, check whether the caller's tests mock the class or 
 
 ## Scope boundary with the patterns skill
 
-The `patterns` skill runs `src/zolletta_metaskill/shared/scan_tests.py`, which produces a "Missing tests" table — a structural check that reports when no `test_<module>.py` file exists for a given source module. That structural finding is owned by `patterns`. The `python-testing-patterns` skill owns coverage analysis only: whether code is actually exercised by tests, not whether a matching test file exists. The structural check is not duplicated. If `src/zolletta_metaskill/shared/scan_tests.py` already flagged a file as structurally missing a test, reference that finding but focus on whether the code is covered through indirect calls or integration tests.
+The `patterns` skill runs `src/zolletta_metaskill/testing_style/general/test_structure_scanner.py`, which produces a "Missing tests" table — a structural check that reports when no `test_<module>.py` file exists for a given source module. That structural finding is owned by `patterns`. The `python-testing-style` skill owns coverage analysis only: whether code is actually exercised by tests, not whether a matching test file exists. The structural check is not duplicated. If `src/zolletta_metaskill/testing_style/general/test_structure_scanner.py` already flagged a file as structurally missing a test, reference that finding but focus on whether the code is covered through indirect calls or integration tests.
 
 ## Configurable rule toggles via settings.json
 
@@ -57,7 +57,7 @@ The skill reads its configurable rules from the `python.testing` object in `sett
 |-----------------------------------|-----------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `coverage_gap_threshold`          | integer (0–100) | `50`    | Module coverage below this percentage is a candidate gap (combined with the other two conditions from Step 3)                                                         |
 | `coverage_well_covered_threshold` | integer (0–100) | `80`    | Module coverage above this percentage is never flagged as a gap, even with no direct test references                                                                  |
-| `check_test_naming`               | boolean         | `true`  | When `true`, the skill runs `src/zolletta_metaskill/python_testing_patterns/scan_test_naming.py` to enforce the `test_<unit>_<scenario>_<expected>` naming convention |
+| `check_test_naming`               | boolean         | `true`  | When `true`, the skill runs `src/zolletta_metaskill/testing_style/python/test_naming_scanner.py` to enforce the `test_<unit>_<scenario>_<expected>` naming convention |
 
 The remaining rules — AAA pattern, test isolation, mandatory coverage gap detection, and the scope boundary with `patterns` — are always-on and cannot be disabled. Follows [review mode](../../../reference/code/review-mode.md) — read-only, two-bucket classification, no fixes applied.
 

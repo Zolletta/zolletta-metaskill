@@ -8,7 +8,7 @@ build/
 .mypy_cache/
 .ruff_cache/
 .tokensave/
+.zolletta-metaskill/
 coverage.xml
-.coverage
 .coverage
 TODO.md

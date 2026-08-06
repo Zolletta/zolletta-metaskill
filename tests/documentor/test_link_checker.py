@@ -9,21 +9,8 @@ from unittest.mock import patch
 
 import pytest
 
-from zolletta_metaskill.documentor.link_checker import (
-    LinkInfo,
-    _check_case_insensitive,
-    _get_headings,
-    classify_link,
-    extract_headings,
-    extract_links,
-    find_duplicate_anchors,
-    find_markdown_files,
-    generate_report,
-    main,
-    slugify_heading,
-    validate_external_url,
-    validate_link,
-)
+from zolletta_metaskill.documentor.link_checker import LinkChecker
+from zolletta_metaskill.documentor.structs.link_info import LinkInfo
 
 # ---------------------------------------------------------------------------
 # LinkInfo
@@ -31,7 +18,7 @@ from zolletta_metaskill.documentor.link_checker import (
 
 
 class TestLinkInfo:
-    def test_init(self) -> None:
+    def test_linkinfo_init_returns_none(self) -> None:
         link = LinkInfo("README.md", 5, "text", "target.md", "local_file")
         assert link.source_file == "README.md"
         assert link.line_number == 5
@@ -41,7 +28,7 @@ class TestLinkInfo:
         assert link.is_valid is None
         assert link.error is None
 
-    def test_to_dict(self) -> None:
+    def test_linkinfo_to_dict_returns_none(self) -> None:
         link = LinkInfo("README.md", 5, "text", "target.md", "local_file")
         link.is_valid = True
         d = link.to_dict()
@@ -60,32 +47,32 @@ class TestLinkInfo:
 
 
 class TestClassifyLink:
-    def test_http(self) -> None:
-        assert classify_link("http://example.com") == "external"
+    def test_classify_link_http_returns_external(self) -> None:
+        assert LinkChecker.classify_link("http://example.com") == "external"
 
-    def test_https(self) -> None:
-        assert classify_link("https://example.com") == "external"
+    def test_classify_link_https_returns_external(self) -> None:
+        assert LinkChecker.classify_link("https://example.com") == "external"
 
-    def test_ftp(self) -> None:
-        assert classify_link("ftp://example.com") == "external"
+    def test_classify_link_ftp_returns_external(self) -> None:
+        assert LinkChecker.classify_link("ftp://example.com") == "external"
 
-    def test_mailto(self) -> None:
-        assert classify_link("mailto:test@test.com") == "external"
+    def test_classify_link_mailto_returns_external(self) -> None:
+        assert LinkChecker.classify_link("mailto:test@test.com") == "external"
 
-    def test_anchor(self) -> None:
-        assert classify_link("#section") == "anchor"
+    def test_classify_link_anchor_returns_anchor(self) -> None:
+        assert LinkChecker.classify_link("#section") == "anchor"
 
-    def test_local_file(self) -> None:
-        assert classify_link("guide.md") == "local_file"
+    def test_classify_link_local_file_returns_local_file(self) -> None:
+        assert LinkChecker.classify_link("guide.md") == "local_file"
 
-    def test_image(self) -> None:
-        assert classify_link("image.png") == "image"
+    def test_classify_link_image_returns_image(self) -> None:
+        assert LinkChecker.classify_link("image.png") == "image"
 
     def test_cross_doc_anchor(self) -> None:
-        assert classify_link("guide.md#section") == "cross_doc_anchor"
+        assert LinkChecker.classify_link("guide.md#section") == "cross_doc_anchor"
 
     def test_image_with_anchor(self) -> None:
-        assert classify_link("image.png#fragment") == "image"
+        assert LinkChecker.classify_link("image.png#fragment") == "image"
 
 
 # ---------------------------------------------------------------------------
@@ -94,70 +81,70 @@ class TestClassifyLink:
 
 
 class TestExtractLinks:
-    def test_markdown_link(self, tmp_path: Path) -> None:
+    def test_extract_links_markdown_link_returns_local_file(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("See [guide](guide.md) for more.", encoding="utf-8")
-        links = extract_links(str(f), "test.md")
+        links = LinkChecker.extract_links(str(f), "test.md")
         assert len(links) == 1
         assert links[0].link_text == "guide"
         assert links[0].link_target == "guide.md"
         assert links[0].link_type == "local_file"
 
-    def test_external_link(self, tmp_path: Path) -> None:
+    def test_extract_links_external_link_returns_external(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("Visit [site](https://example.com).", encoding="utf-8")
-        links = extract_links(str(f), "test.md")
+        links = LinkChecker.extract_links(str(f), "test.md")
         assert len(links) == 1
         assert links[0].link_type == "external"
 
-    def test_anchor_link(self, tmp_path: Path) -> None:
+    def test_extract_links_anchor_link_returns_anchor(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("See [section](#section).", encoding="utf-8")
-        links = extract_links(str(f), "test.md")
+        links = LinkChecker.extract_links(str(f), "test.md")
         assert len(links) == 1
         assert links[0].link_type == "anchor"
 
-    def test_image_link(self, tmp_path: Path) -> None:
+    def test_extract_links_image_link_returns_image(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("![alt text](image.png)", encoding="utf-8")
-        links = extract_links(str(f), "test.md")
+        links = LinkChecker.extract_links(str(f), "test.md")
         assert len(links) == 1
         assert links[0].link_type == "image"
 
     def test_external_image_link(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("![alt](https://example.com/img.png)", encoding="utf-8")
-        links = extract_links(str(f), "test.md")
+        links = LinkChecker.extract_links(str(f), "test.md")
         assert len(links) == 1
         assert links[0].link_type == "external"
 
-    def test_reference_link(self, tmp_path: Path) -> None:
+    def test_extract_links_reference_link_returns_guide_md(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("[ref]: guide.md\n\nSee [text][ref].", encoding="utf-8")
-        links = extract_links(str(f), "test.md")
+        links = LinkChecker.extract_links(str(f), "test.md")
         # The ref definition is captured; the [text][ref] usage is not matched by md_link
         ref_links = [lnk for lnk in links if lnk.link_text == "ref"]
         assert len(ref_links) == 1
         assert ref_links[0].link_target == "guide.md"
 
-    def test_html_link(self, tmp_path: Path) -> None:
+    def test_extract_links_html_link_returns_1(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text('<a href="guide.md">Guide</a>', encoding="utf-8")
-        links = extract_links(str(f), "test.md")
+        links = LinkChecker.extract_links(str(f), "test.md")
         html_links = [lnk for lnk in links if lnk.link_target == "guide.md"]
         assert len(html_links) == 1
 
-    def test_html_image(self, tmp_path: Path) -> None:
+    def test_extract_links_html_image_returns_1(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text('<img src="image.png" alt="img">', encoding="utf-8")
-        links = extract_links(str(f), "test.md")
+        links = LinkChecker.extract_links(str(f), "test.md")
         img_links = [lnk for lnk in links if lnk.link_type == "image"]
         assert len(img_links) == 1
 
     def test_html_image_external_skipped(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text('<img src="https://example.com/img.png">', encoding="utf-8")
-        links = extract_links(str(f), "test.md")
+        links = LinkChecker.extract_links(str(f), "test.md")
         # External HTML images are not added as image type
         img_links = [lnk for lnk in links if lnk.link_type == "image"]
         assert len(img_links) == 0
@@ -165,29 +152,29 @@ class TestExtractLinks:
     def test_code_block_skipped(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("```\n[link](guide.md)\n```", encoding="utf-8")
-        links = extract_links(str(f), "test.md")
+        links = LinkChecker.extract_links(str(f), "test.md")
         assert len(links) == 0
 
-    def test_multiple_links(self, tmp_path: Path) -> None:
+    def test_extract_links_multiple_links_returns_2(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("[a](a.md) and [b](b.md)", encoding="utf-8")
-        links = extract_links(str(f), "test.md")
+        links = LinkChecker.extract_links(str(f), "test.md")
         assert len(links) == 2
 
-    def test_unreadable_file(self, tmp_path: Path) -> None:
+    def test_extract_links_unreadable_file_returns_empty_list(self, tmp_path: Path) -> None:
         with patch("builtins.open", side_effect=OSError("boom")):
-            links = extract_links(str(tmp_path / "test.md"), "test.md")
+            links = LinkChecker.extract_links(str(tmp_path / "test.md"), "test.md")
         assert links == []
 
-    def test_empty_file(self, tmp_path: Path) -> None:
+    def test_extract_links_empty_file_returns_empty_list(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("", encoding="utf-8")
-        assert extract_links(str(f), "test.md") == []
+        assert LinkChecker.extract_links(str(f), "test.md") == []
 
-    def test_line_numbers(self, tmp_path: Path) -> None:
+    def test_extract_links_line_numbers_returns_4(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("Line 1\n[a](a.md)\nLine 3\n[b](b.md)\n", encoding="utf-8")
-        links = extract_links(str(f), "test.md")
+        links = LinkChecker.extract_links(str(f), "test.md")
         assert links[0].line_number == 2
         assert links[1].line_number == 4
 
@@ -198,23 +185,23 @@ class TestExtractLinks:
 
 
 class TestSlugifyHeading:
-    def test_simple(self) -> None:
-        assert slugify_heading("Hello World") == "hello-world"
+    def test_slugify_heading_simple_input_returns_hello_world(self) -> None:
+        assert LinkChecker.slugify_heading("Hello World") == "hello-world"
 
-    def test_special_chars(self) -> None:
-        assert slugify_heading("Hello, World!") == "hello-world"
+    def test_slugify_heading_special_chars_returns_hello_world(self) -> None:
+        assert LinkChecker.slugify_heading("Hello, World!") == "hello-world"
 
-    def test_code_backticks(self) -> None:
-        assert slugify_heading("Hello `code`") == "hello-code"
+    def test_slugify_heading_code_backticks_returns_hello_code(self) -> None:
+        assert LinkChecker.slugify_heading("Hello `code`") == "hello-code"
 
-    def test_multiple_spaces(self) -> None:
-        assert slugify_heading("Hello   World") == "hello-world"
+    def test_slugify_heading_multiple_spaces_returns_hello_world(self) -> None:
+        assert LinkChecker.slugify_heading("Hello   World") == "hello-world"
 
     def test_leading_trailing_hyphens(self) -> None:
-        assert slugify_heading("-Hello-") == "hello"
+        assert LinkChecker.slugify_heading("-Hello-") == "hello"
 
-    def test_empty(self) -> None:
-        assert slugify_heading("") == ""
+    def test_slugify_heading_empty_input_returns_empty(self) -> None:
+        assert LinkChecker.slugify_heading("") == ""
 
 
 # ---------------------------------------------------------------------------
@@ -223,27 +210,27 @@ class TestSlugifyHeading:
 
 
 class TestExtractHeadings:
-    def test_simple_headings(self, tmp_path: Path) -> None:
+    def test_extract_headings_simple_headings_contains_sub(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("# Title\n## Section\n### Sub", encoding="utf-8")
-        headings = extract_headings(str(f))
+        headings = LinkChecker.extract_headings(str(f))
         assert "title" in headings
         assert "section" in headings
         assert "sub" in headings
 
-    def test_no_headings(self, tmp_path: Path) -> None:
+    def test_extract_headings_no_headings_succeeds(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("Just text.", encoding="utf-8")
-        assert extract_headings(str(f)) == set()
+        assert LinkChecker.extract_headings(str(f)) == set()
 
-    def test_unreadable_file(self, tmp_path: Path) -> None:
+    def test_extract_headings_unreadable_file_succeeds(self, tmp_path: Path) -> None:
         with patch("builtins.open", side_effect=OSError("boom")):
-            assert extract_headings(str(tmp_path / "test.md")) == set()
+            assert LinkChecker.extract_headings(str(tmp_path / "test.md")) == set()
 
     def test_max_six_hashes(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("###### Deep\n####### Too deep", encoding="utf-8")
-        headings = extract_headings(str(f))
+        headings = LinkChecker.extract_headings(str(f))
         assert "deep" in headings
         # 7 hashes is not a valid heading (only up to 6)
         assert "too-deep" not in headings
@@ -255,27 +242,29 @@ class TestExtractHeadings:
 
 
 class TestFindDuplicateAnchors:
-    def test_no_duplicates(self, tmp_path: Path) -> None:
+    def test_find_duplicate_anchors_no_duplicates_returns_empty_list(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("# Title\n## Section", encoding="utf-8")
-        assert find_duplicate_anchors(str(f)) == []
+        assert LinkChecker.find_duplicate_anchors(str(f)) == []
 
-    def test_duplicates(self, tmp_path: Path) -> None:
+    def test_find_duplicate_anchors_duplicates_returns_2(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("# Title\n# Title", encoding="utf-8")
-        dups = find_duplicate_anchors(str(f))
+        dups = LinkChecker.find_duplicate_anchors(str(f))
         assert len(dups) == 1
         assert dups[0][0] == "title"
         assert dups[0][1] == 2
 
-    def test_unreadable_file(self, tmp_path: Path) -> None:
+    def test_find_duplicate_anchors_unreadable_file_returns_empty_list(
+        self, tmp_path: Path
+    ) -> None:
         with patch("builtins.open", side_effect=OSError("boom")):
-            assert find_duplicate_anchors(str(tmp_path / "test.md")) == []
+            assert LinkChecker.find_duplicate_anchors(str(tmp_path / "test.md")) == []
 
-    def test_empty_file(self, tmp_path: Path) -> None:
+    def test_find_duplicate_anchors_empty_file_returns_empty_list(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("", encoding="utf-8")
-        assert find_duplicate_anchors(str(f)) == []
+        assert LinkChecker.find_duplicate_anchors(str(f)) == []
 
 
 # ---------------------------------------------------------------------------
@@ -284,42 +273,42 @@ class TestFindDuplicateAnchors:
 
 
 class TestValidateLink:
-    def test_external_skip(self) -> None:
+    def test_linkinfo_external_skip_returns_true(self) -> None:
         link = LinkInfo("README.md", 1, "text", "https://example.com", "external")
-        validate_link(link, "/repo", {}, check_external=False)
+        LinkChecker.validate_link(link, "/repo", {}, check_external=False)
         assert link.is_valid is True
 
     def test_external_check_success(self) -> None:
         link = LinkInfo("README.md", 1, "text", "https://example.com", "external")
         with patch(
-            "zolletta_metaskill.documentor.link_checker.validate_external_url",
+            "zolletta_metaskill.documentor.link_checker.LinkChecker.validate_external_url",
             return_value=(True, None),
         ):
-            validate_link(link, "/repo", {}, check_external=True)
+            LinkChecker.validate_link(link, "/repo", {}, check_external=True)
         assert link.is_valid is True
 
     def test_external_check_failure(self) -> None:
         link = LinkInfo("README.md", 1, "text", "https://example.com", "external")
         with patch(
-            "zolletta_metaskill.documentor.link_checker.validate_external_url",
+            "zolletta_metaskill.documentor.link_checker.LinkChecker.validate_external_url",
             return_value=(False, "HTTP 404"),
         ):
-            validate_link(link, "/repo", {}, check_external=True)
+            LinkChecker.validate_link(link, "/repo", {}, check_external=True)
         assert link.is_valid is False
         assert link.error == "HTTP 404"
 
-    def test_anchor_valid(self, tmp_path: Path) -> None:
+    def test_linkinfo_anchor_valid_returns_true(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("# Section\n", encoding="utf-8")
         link = LinkInfo("test.md", 1, "text", "#section", "anchor")
-        validate_link(link, str(tmp_path), {})
+        LinkChecker.validate_link(link, str(tmp_path), {})
         assert link.is_valid is True
 
-    def test_anchor_invalid(self, tmp_path: Path) -> None:
+    def test_linkinfo_anchor_invalid_contains_not_found(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("# Other\n", encoding="utf-8")
         link = LinkInfo("test.md", 1, "text", "#nonexistent", "anchor")
-        validate_link(link, str(tmp_path), {})
+        LinkChecker.validate_link(link, str(tmp_path), {})
         assert link.is_valid is False
         assert link.error is not None
         assert "not found" in link.error
@@ -329,14 +318,14 @@ class TestValidateLink:
         f.write_text("# Test", encoding="utf-8")
         (tmp_path / "guide.md").write_text("Guide", encoding="utf-8")
         link = LinkInfo("test.md", 1, "text", "guide.md", "local_file")
-        validate_link(link, str(tmp_path), {})
+        LinkChecker.validate_link(link, str(tmp_path), {})
         assert link.is_valid is True
 
     def test_local_file_invalid(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("# Test", encoding="utf-8")
         link = LinkInfo("test.md", 1, "text", "nonexistent.md", "local_file")
-        validate_link(link, str(tmp_path), {})
+        LinkChecker.validate_link(link, str(tmp_path), {})
         assert link.is_valid is False
         assert link.error is not None
         assert "not found" in link.error
@@ -350,7 +339,7 @@ class TestValidateLink:
         (tmp_path / "docs").mkdir()
         f2 = tmp_path / "docs" / "test.md"
         f2.write_text("# Test", encoding="utf-8")
-        validate_link(link, str(tmp_path), {})
+        LinkChecker.validate_link(link, str(tmp_path), {})
         assert link.is_valid is True
 
     def test_cross_doc_anchor_valid(self, tmp_path: Path) -> None:
@@ -358,7 +347,7 @@ class TestValidateLink:
         f.write_text("# Test", encoding="utf-8")
         (tmp_path / "guide.md").write_text("# Section\n", encoding="utf-8")
         link = LinkInfo("test.md", 1, "text", "guide.md#section", "cross_doc_anchor")
-        validate_link(link, str(tmp_path), {})
+        LinkChecker.validate_link(link, str(tmp_path), {})
         assert link.is_valid is True
 
     def test_cross_doc_anchor_invalid_anchor(self, tmp_path: Path) -> None:
@@ -366,7 +355,7 @@ class TestValidateLink:
         f.write_text("# Test", encoding="utf-8")
         (tmp_path / "guide.md").write_text("# Other\n", encoding="utf-8")
         link = LinkInfo("test.md", 1, "text", "guide.md#nonexistent", "cross_doc_anchor")
-        validate_link(link, str(tmp_path), {})
+        LinkChecker.validate_link(link, str(tmp_path), {})
         assert link.is_valid is False
         assert link.error is not None
         assert "anchor" in link.error.lower()
@@ -376,22 +365,22 @@ class TestValidateLink:
         f.write_text("# Test", encoding="utf-8")
         (tmp_path / "data.txt").write_text("data", encoding="utf-8")
         link = LinkInfo("test.md", 1, "text", "data.txt#section", "cross_doc_anchor")
-        validate_link(link, str(tmp_path), {})
+        LinkChecker.validate_link(link, str(tmp_path), {})
         assert link.is_valid is True
 
-    def test_image_valid(self, tmp_path: Path) -> None:
+    def test_write_bytes_image_valid_returns_true(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("# Test", encoding="utf-8")
         (tmp_path / "image.png").write_bytes(b"\x89PNG")
         link = LinkInfo("test.md", 1, "text", "image.png", "image")
-        validate_link(link, str(tmp_path), {})
+        LinkChecker.validate_link(link, str(tmp_path), {})
         assert link.is_valid is True
 
-    def test_image_invalid(self, tmp_path: Path) -> None:
+    def test_linkinfo_image_invalid_returns_false(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("# Test", encoding="utf-8")
         link = LinkInfo("test.md", 1, "text", "nonexistent.png", "image")
-        validate_link(link, str(tmp_path), {})
+        LinkChecker.validate_link(link, str(tmp_path), {})
         assert link.is_valid is False
 
     def test_case_sensitivity_mismatch(self, tmp_path: Path) -> None:
@@ -410,7 +399,7 @@ class TestValidateLink:
             return real_exists(path)  # pragma: no cover
 
         with patch("os.path.exists", side_effect=mock_exists):
-            validate_link(link, str(tmp_path), {})
+            LinkChecker.validate_link(link, str(tmp_path), {})
         assert link.is_valid is False
         assert link.error is not None
         assert "case" in link.error.lower()
@@ -419,14 +408,14 @@ class TestValidateLink:
         f = tmp_path / "test.md"
         f.write_text("# Section\n", encoding="utf-8")
         link = LinkInfo("test.md", 1, "text", "#section", "cross_doc_anchor")
-        validate_link(link, str(tmp_path), {})
+        LinkChecker.validate_link(link, str(tmp_path), {})
         assert link.is_valid is True
 
     def test_empty_file_part_with_broken_anchor(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("# Other\n", encoding="utf-8")
         link = LinkInfo("test.md", 1, "text", "#nonexistent", "cross_doc_anchor")
-        validate_link(link, str(tmp_path), {})
+        LinkChecker.validate_link(link, str(tmp_path), {})
         assert link.is_valid is False
         assert link.error is not None
         assert "not found" in link.error
@@ -436,7 +425,7 @@ class TestValidateLink:
         f.write_text("# Section\n", encoding="utf-8")
         cache: dict[str, set[str]] = {str(f): {"section"}}
         link = LinkInfo("test.md", 1, "text", "#section", "anchor")
-        validate_link(link, str(tmp_path), cache)
+        LinkChecker.validate_link(link, str(tmp_path), cache)
         assert link.is_valid is True
 
 
@@ -446,14 +435,14 @@ class TestValidateLink:
 
 
 class TestGetHeadings:
-    def test_caches_result(self, tmp_path: Path) -> None:
+    def test_get_headings_caches_result_returns_result1(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("# Title\n", encoding="utf-8")
         cache: dict[str, set[str]] = {}
-        result1 = _get_headings(str(f), cache)
+        result1 = LinkChecker._get_headings(str(f), cache)
         assert "title" in result1
         assert str(f) in cache
-        result2 = _get_headings(str(f), cache)
+        result2 = LinkChecker._get_headings(str(f), cache)
         assert result2 is result1
 
 
@@ -463,23 +452,25 @@ class TestGetHeadings:
 
 
 class TestCheckCaseInsensitive:
-    def test_finds_match(self, tmp_path: Path) -> None:
+    def test_check_case_insensitive_finds_match_contains_guide_md(self, tmp_path: Path) -> None:
         (tmp_path / "Guide.md").write_text("guide", encoding="utf-8")
-        result = _check_case_insensitive(str(tmp_path / "guide.md"))
+        result = LinkChecker._check_case_insensitive(str(tmp_path / "guide.md"))
         assert result is not None
         assert "Guide.md" in result
 
-    def test_no_match(self, tmp_path: Path) -> None:
+    def test_check_case_insensitive_no_match_returns_none(self, tmp_path: Path) -> None:
         (tmp_path / "other.md").write_text("other", encoding="utf-8")
-        assert _check_case_insensitive(str(tmp_path / "guide.md")) is None
+        assert LinkChecker._check_case_insensitive(str(tmp_path / "guide.md")) is None
 
-    def test_nonexistent_dir(self, tmp_path: Path) -> None:
-        assert _check_case_insensitive(str(tmp_path / "nonexistent" / "guide.md")) is None
+    def test_check_case_insensitive_nonexistent_dir_returns_none(self, tmp_path: Path) -> None:
+        assert (
+            LinkChecker._check_case_insensitive(str(tmp_path / "nonexistent" / "guide.md")) is None
+        )
 
-    def test_permission_error(self, tmp_path: Path) -> None:
+    def test_check_case_insensitive_permission_error_returns_none(self, tmp_path: Path) -> None:
         (tmp_path / "Guide.md").write_text("guide", encoding="utf-8")
         with patch("os.listdir", side_effect=PermissionError("denied")):
-            assert _check_case_insensitive(str(tmp_path / "guide.md")) is None
+            assert LinkChecker._check_case_insensitive(str(tmp_path / "guide.md")) is None
 
 
 # ---------------------------------------------------------------------------
@@ -488,7 +479,7 @@ class TestCheckCaseInsensitive:
 
 
 class TestValidateExternalUrl:
-    def test_success(self) -> None:
+    def test_magicmock_success_returns_none(self) -> None:
         from unittest.mock import MagicMock
 
         mock_resp = MagicMock()
@@ -496,7 +487,7 @@ class TestValidateExternalUrl:
         mock_resp.__enter__ = MagicMock(return_value=mock_resp)
         mock_resp.__exit__ = MagicMock(return_value=False)
         with patch("urllib.request.urlopen", return_value=mock_resp):
-            valid, error = validate_external_url("https://example.com")
+            valid, error = LinkChecker.validate_external_url("https://example.com")
         assert valid is True
         assert error is None
 
@@ -512,11 +503,15 @@ class TestValidateExternalUrl:
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_urlopen.side_effect = [
                 urllib.error.HTTPError(
-                    "url", 405, "Method Not Allowed", email.message.Message(), None,
+                    "url",
+                    405,
+                    "Method Not Allowed",
+                    email.message.Message(),
+                    None,
                 ),
                 mock_resp,
             ]
-            valid, error = validate_external_url("https://example.com")
+            valid, error = LinkChecker.validate_external_url("https://example.com")
         assert valid is True
 
     def test_http_error_404(self) -> None:
@@ -526,28 +521,32 @@ class TestValidateExternalUrl:
         with patch(
             "urllib.request.urlopen",
             side_effect=urllib.error.HTTPError(
-                "url", 404, "Not Found", email.message.Message(), None,
+                "url",
+                404,
+                "Not Found",
+                email.message.Message(),
+                None,
             ),
         ):
-            valid, error = validate_external_url("https://example.com")
+            valid, error = LinkChecker.validate_external_url("https://example.com")
         assert valid is False
         assert error is not None
         assert "404" in error
 
-    def test_url_error(self) -> None:
+    def test_urlerror_url_error_contains_connection_refused(self) -> None:
         import urllib.error
 
         err = urllib.error.URLError("connection refused")
         err.reason = "connection refused"
         with patch("urllib.request.urlopen", side_effect=err):
-            valid, error = validate_external_url("https://example.com")
+            valid, error = LinkChecker.validate_external_url("https://example.com")
         assert valid is False
         assert error is not None
         assert "connection refused" in error
 
-    def test_generic_exception(self) -> None:
+    def test_validate_external_url_generic_exception_contains_boom(self) -> None:
         with patch("urllib.request.urlopen", side_effect=Exception("boom")):
-            valid, error = validate_external_url("https://example.com")
+            valid, error = LinkChecker.validate_external_url("https://example.com")
         assert valid is False
         assert error is not None
         assert "boom" in error
@@ -560,10 +559,14 @@ class TestValidateExternalUrl:
         with patch(
             "urllib.request.urlopen",
             side_effect=urllib.error.HTTPError(
-                "url", 405, "Method Not Allowed", email.message.Message(), None,
+                "url",
+                405,
+                "Method Not Allowed",
+                email.message.Message(),
+                None,
             ),
         ):
-            valid, error = validate_external_url("https://example.com")
+            valid, error = LinkChecker.validate_external_url("https://example.com")
         assert valid is False
 
 
@@ -573,40 +576,40 @@ class TestValidateExternalUrl:
 
 
 class TestFindMarkdownFiles:
-    def test_directory(self, tmp_path: Path) -> None:
+    def test_find_markdown_files_directory_is_valid(self, tmp_path: Path) -> None:
         (tmp_path / "a.md").write_text("a", encoding="utf-8")
         (tmp_path / "b.markdown").write_text("b", encoding="utf-8")
         (tmp_path / "c.txt").write_text("c", encoding="utf-8")
-        result = find_markdown_files(str(tmp_path))
+        result = LinkChecker.find_markdown_files(str(tmp_path))
         assert any("a.md" in f for f in result)
         assert any("b.markdown" in f for f in result)
         assert all("c.txt" not in f for f in result)
 
-    def test_single_file(self, tmp_path: Path) -> None:
+    def test_find_markdown_files_single_file_returns_single_item(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("# Test", encoding="utf-8")
-        result = find_markdown_files(str(f))
+        result = LinkChecker.find_markdown_files(str(f))
         assert result == [str(f)]
 
     def test_single_non_markdown_file(self, tmp_path: Path) -> None:
         f = tmp_path / "test.txt"
         f.write_text("text", encoding="utf-8")
-        assert find_markdown_files(str(f)) == []
+        assert LinkChecker.find_markdown_files(str(f)) == []
 
-    def test_skips_dirs(self, tmp_path: Path) -> None:
+    def test_find_markdown_files_skips_dirs_is_valid(self, tmp_path: Path) -> None:
         (tmp_path / ".git").mkdir()
         (tmp_path / ".git" / "README.md").write_text("git", encoding="utf-8")
         (tmp_path / "README.md").write_text("# Test", encoding="utf-8")
-        result = find_markdown_files(str(tmp_path))
+        result = LinkChecker.find_markdown_files(str(tmp_path))
         assert all(".git" not in f for f in result)
 
-    def test_empty_dir(self, tmp_path: Path) -> None:
-        assert find_markdown_files(str(tmp_path)) == []
+    def test_find_markdown_files_empty_dir_returns_empty_list(self, tmp_path: Path) -> None:
+        assert LinkChecker.find_markdown_files(str(tmp_path)) == []
 
-    def test_sorted(self, tmp_path: Path) -> None:
+    def test_find_markdown_files_sorted_returns_result(self, tmp_path: Path) -> None:
         (tmp_path / "b.md").write_text("b", encoding="utf-8")
         (tmp_path / "a.md").write_text("a", encoding="utf-8")
-        result = find_markdown_files(str(tmp_path))
+        result = LinkChecker.find_markdown_files(str(tmp_path))
         assert result == sorted(result)
 
 
@@ -617,7 +620,7 @@ class TestFindMarkdownFiles:
 
 class TestGenerateReport:
     def test_empty_report_json(self) -> None:
-        report = generate_report([], {}, as_json=True)
+        report = LinkChecker.generate_report([], {}, as_json=True)
         import json
 
         data = json.loads(report)
@@ -628,18 +631,18 @@ class TestGenerateReport:
         link = LinkInfo("README.md", 5, "text", "missing.md", "local_file")
         link.is_valid = False
         link.error = "File not found"
-        report = generate_report([link], {}, as_json=True)
+        report = LinkChecker.generate_report([link], {}, as_json=True)
         import json
 
         data = json.loads(report)
         assert data["summary"]["broken"] == 1
         assert len(data["broken_links"]) == 1
 
-    def test_human_readable(self) -> None:
+    def test_linkinfo_human_readable_contains_missing_md(self) -> None:
         link = LinkInfo("README.md", 5, "text", "missing.md", "local_file")
         link.is_valid = False
         link.error = "File not found"
-        report = generate_report([link], {}, as_json=False)
+        report = LinkChecker.generate_report([link], {}, as_json=False)
         assert "Link Check Report" in report
         assert "BROKEN LINKS" in report
         assert "missing.md" in report
@@ -647,7 +650,7 @@ class TestGenerateReport:
     def test_no_issues_human_readable(self) -> None:
         link = LinkInfo("README.md", 5, "text", "guide.md", "local_file")
         link.is_valid = True
-        report = generate_report([link], {}, as_json=False)
+        report = LinkChecker.generate_report([link], {}, as_json=False)
         assert "No issues found" in report
 
     def test_broken_only_json(self) -> None:
@@ -656,7 +659,9 @@ class TestGenerateReport:
         broken_link = LinkInfo("README.md", 5, "text", "missing.md", "local_file")
         broken_link.is_valid = False
         broken_link.error = "File not found"
-        report = generate_report([valid_link, broken_link], {}, broken_only=True, as_json=True)
+        report = LinkChecker.generate_report(
+            [valid_link, broken_link], {}, broken_only=True, as_json=True
+        )
         import json
 
         data = json.loads(report)
@@ -664,29 +669,29 @@ class TestGenerateReport:
         assert len(data["broken_links"]) == 1
 
     def test_duplicate_anchors_in_report(self) -> None:
-        report = generate_report([], {"README.md": [("dup-anchor", 10)]}, as_json=False)
+        report = LinkChecker.generate_report([], {"README.md": [("dup-anchor", 10)]}, as_json=False)
         assert "DUPLICATE ANCHORS" in report
         assert "dup-anchor" in report
 
     def test_duplicate_anchors_json(self) -> None:
-        report = generate_report([], {"README.md": [("dup-anchor", 10)]}, as_json=True)
+        report = LinkChecker.generate_report([], {"README.md": [("dup-anchor", 10)]}, as_json=True)
         import json
 
         data = json.loads(report)
         assert data["summary"]["duplicate_anchors"] == 1
 
-    def test_type_breakdown(self) -> None:
+    def test_linkinfo_type_breakdown_contains_link_type_breakdown(self) -> None:
         link1 = LinkInfo("README.md", 1, "text", "guide.md", "local_file")
         link1.is_valid = True
         link2 = LinkInfo("README.md", 2, "text", "https://example.com", "external")
         link2.is_valid = True
-        report = generate_report([link1, link2], {}, as_json=False)
+        report = LinkChecker.generate_report([link1, link2], {}, as_json=False)
         assert "LINK TYPE BREAKDOWN" in report
 
-    def test_skipped_links(self) -> None:
+    def test_linkinfo_skipped_links_returns_1(self) -> None:
         link = LinkInfo("README.md", 1, "text", "https://example.com", "external")
         # is_valid is None (skipped)
-        report = generate_report([link], {}, as_json=True)
+        report = LinkChecker.generate_report([link], {}, as_json=True)
         import json
 
         data = json.loads(report)
@@ -699,12 +704,12 @@ class TestGenerateReport:
 
 
 class TestMain:
-    def test_nonexistent_path(
+    def test_module_nonexistent_path_raises_systemexit(
         self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(sys, "argv", ["prog", "/nonexistent/path/xyz"])
         with pytest.raises(SystemExit) as exc_info:
-            main()
+            LinkChecker.main()
         assert exc_info.value.code == 2
 
     def test_no_markdown_files(
@@ -712,7 +717,7 @@ class TestMain:
     ) -> None:
         monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path)])
         with pytest.raises(SystemExit) as exc_info:
-            main()
+            LinkChecker.main()
         assert exc_info.value.code == 0
         captured = capsys.readouterr()
         assert "No markdown files found" in captured.out
@@ -722,7 +727,7 @@ class TestMain:
     ) -> None:
         monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path), "--json"])
         with pytest.raises(SystemExit) as exc_info:
-            main()
+            LinkChecker.main()
         assert exc_info.value.code == 0
 
     def test_valid_links_exit_zero(
@@ -732,7 +737,7 @@ class TestMain:
         (tmp_path / "guide.md").write_text("# Guide\n", encoding="utf-8")
         monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path)])
         with pytest.raises(SystemExit) as exc_info:
-            main()
+            LinkChecker.main()
         assert exc_info.value.code == 0
 
     def test_broken_links_exit_one(
@@ -741,7 +746,7 @@ class TestMain:
         (tmp_path / "README.md").write_text("# Title\n[link](nonexistent.md)\n", encoding="utf-8")
         monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path)])
         with pytest.raises(SystemExit) as exc_info:
-            main()
+            LinkChecker.main()
         assert exc_info.value.code == 1
 
     def test_duplicate_anchors_exit_one(
@@ -750,17 +755,17 @@ class TestMain:
         (tmp_path / "README.md").write_text("# Title\n# Title\n", encoding="utf-8")
         monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path)])
         with pytest.raises(SystemExit) as exc_info:
-            main()
+            LinkChecker.main()
         assert exc_info.value.code == 1
 
-    def test_json_output(
+    def test_readouterr_json_output_raises_systemexit(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         (tmp_path / "README.md").write_text("# Title\n[link](guide.md)\n", encoding="utf-8")
         (tmp_path / "guide.md").write_text("# Guide\n", encoding="utf-8")
         monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path), "--json"])
         with pytest.raises(SystemExit) as exc_info:
-            main()
+            LinkChecker.main()
         assert exc_info.value.code == 0
         captured = capsys.readouterr()
         import json
@@ -774,7 +779,7 @@ class TestMain:
         (tmp_path / "README.md").write_text("# Title\n[link](nonexistent.md)\n", encoding="utf-8")
         monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path), "--broken-only", "--json"])
         with pytest.raises(SystemExit) as exc_info:
-            main()
+            LinkChecker.main()
         assert exc_info.value.code == 1
         captured = capsys.readouterr()
         import json
@@ -790,7 +795,7 @@ class TestMain:
         (tmp_path / "guide.md").write_text("# Guide\n", encoding="utf-8")
         monkeypatch.setattr(sys, "argv", ["prog", str(f)])
         with pytest.raises(SystemExit) as exc_info:
-            main()
+            LinkChecker.main()
         assert exc_info.value.code == 0
 
     def test_single_file_finds_git_root(
@@ -805,7 +810,7 @@ class TestMain:
         (sub / "guide.md").write_text("# Guide\n", encoding="utf-8")
         monkeypatch.setattr(sys, "argv", ["prog", str(f)])
         with pytest.raises(SystemExit) as exc_info:
-            main()
+            LinkChecker.main()
         assert exc_info.value.code == 0
 
     def test_check_external_flag(
@@ -815,11 +820,14 @@ class TestMain:
             "# Title\n[link](https://example.com)\n", encoding="utf-8"
         )
         monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path), "--check-external"])
-        with patch(
-            "zolletta_metaskill.documentor.link_checker.validate_external_url",
-            return_value=(True, None),
-        ), pytest.raises(SystemExit) as exc_info:
-            main()
+        with (
+            patch(
+                "zolletta_metaskill.documentor.link_checker.LinkChecker.validate_external_url",
+                return_value=(True, None),
+            ),
+            pytest.raises(SystemExit) as exc_info,
+        ):
+            LinkChecker.main()
         assert exc_info.value.code == 0
 
     def test_empty_markdown_file(
@@ -828,5 +836,5 @@ class TestMain:
         (tmp_path / "README.md").write_text("", encoding="utf-8")
         monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path)])
         with pytest.raises(SystemExit) as exc_info:
-            main()
+            LinkChecker.main()
         assert exc_info.value.code == 0

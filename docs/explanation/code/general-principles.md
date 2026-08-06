@@ -17,28 +17,35 @@ Each class or function should have one reason to change. Separate concerns into 
 # BAD: Handler does everything
 class UserHandler:
     async def create_user(self, request: Request) -> Response:
-        data = await request.json()           # HTTP parsing
-        if not data.get("email"):             # Validation
+        data = await request.json()  # HTTP parsing
+        if not data.get("email"):  # Validation
             return Response({"error": "email required"}, status=400)
-        user = await db.execute(              # Database access
+        user = await db.execute(  # Database access
             "INSERT INTO users (email, name) VALUES ($1, $2) RETURNING *",
-            data["email"], data["name"]
+            data["email"],
+            data["name"],
         )
         return Response({"id": user.id}, status=201)  # Response formatting
+
 
 # GOOD: Separated concerns
 class UserService:
     """Business logic only."""
+
     def __init__(self, repo: UserRepository) -> None:
         self._repo = repo
+
     async def create_user(self, data: CreateUserInput) -> User:
         user = User(email=data.email, name=data.name)
         return await self._repo.save(user)
 
+
 class UserHandler:
     """HTTP concerns only."""
+
     def __init__(self, service: UserService) -> None:
         self._service = service
+
     async def create_user(self, request: Request) -> Response:
         data = CreateUserInput(**(await request.json()))
         user = await self._service.create_user(data)
@@ -93,17 +100,22 @@ def process_pipeline(pipeline):
     elif pipeline.type == "mr":
         ...
 
+
 # GOOD: strategy pattern — adding a type = new class + register, no modification
 class PipelineType(Protocol):
     def run(self) -> None: ...
 
+
 PIPELINE_TYPES: dict[str, type[PipelineType]] = {}
+
 
 def register(name: str):
     def decorator(cls):
         PIPELINE_TYPES[name] = cls
         return cls
+
     return decorator
+
 
 @register("feature_branch")
 class FeatureBranchPipeline:
@@ -135,8 +147,10 @@ Subtypes must be substitutable for their base types. If code expects a parent cl
 class BaseValidator:
     def validate(self, data: dict) -> bool: ...
 
+
 class StrictValidator(BaseValidator):
     def validate(self, data: dict, strict_mode: bool = True) -> bool: ...
+
 
 # GOOD: same signature, strict mode is internal configuration
 class StrictValidator(BaseValidator):
@@ -158,22 +172,28 @@ class FatProtocol(Protocol):
     def list_keys(self) -> list[str]: ...
     def compress(self) -> None: ...
 
+
 class ReadOnlyImpl(FatProtocol):
     def read(self) -> bytes: ...
     def write(self, data: bytes) -> None:
         raise NotImplementedError  # ISP violation
+
     def delete(self, key: str) -> None:
         raise NotImplementedError  # ISP violation
+
 
 # GOOD: segregated protocols
 class Readable(Protocol):
     def read(self) -> bytes: ...
 
+
 class Writable(Protocol):
     def write(self, data: bytes) -> None: ...
 
+
 class ReadOnlyImpl(Readable):
     def read(self) -> bytes: ...
+
     # No stubs needed — only implements what it uses
 ```
 
@@ -188,7 +208,8 @@ High-level modules should not depend on low-level modules; both should depend on
 class Orchestrator:
     def __init__(self, config: Config):
         self.gitlab_client = GitLabClient(config.url, config.token)  # DIP violation
-        self.cache = Cache(config.cache_dir)                         # DIP violation
+        self.cache = Cache(config.cache_dir)  # DIP violation
+
 
 # GOOD: dependencies injected
 class Orchestrator:
@@ -196,6 +217,7 @@ class Orchestrator:
         self.config = config
         self.gitlab_client = gitlab_client
         self.cache = cache
+
 
 # Composition root (entry point — the ONLY place that creates objects):
 def main():
@@ -226,13 +248,17 @@ Before adding complexity, ask: does a simpler solution work?
 # Over-engineered: Factory with registration
 class OutputFormatterFactory:
     _formatters: dict[str, type[Formatter]] = {}
+
     @classmethod
     def register(cls, name: str): ...
     @classmethod
     def create(cls, name: str) -> Formatter: ...
 
+
 # Simple: Just use a dictionary
 FORMATTERS = {"json": JsonFormatter, "csv": CsvFormatter, "xml": XmlFormatter}
+
+
 def get_formatter(name: str) -> Formatter:
     return FORMATTERS[name]()
 ```
@@ -288,11 +314,13 @@ class EmailNotificationService(NotificationService):
         super().__init__()
         self._smtp = SmtpClient()  # Hard to mock
 
+
 # Composition: Flexible and testable
 class NotificationService:
     def __init__(self, email_sender: EmailSender, sms_sender: SmsSender | None = None):
         self._email = email_sender
         self._sms = sms_sender
+
 
 # Easy to test with fakes
 service = NotificationService(email_sender=FakeEmailSender(), sms_sender=FakeSmsSender())
@@ -374,6 +402,7 @@ Wait until you have three instances before abstracting. Duplication is often bet
 def process_orders(orders: list[Order]) -> list[Result]: ...
 def process_returns(returns: list[Return]) -> list[Result]: ...
 
+
 # These look similar, but different validation, different processing, different errors.
 # Duplication is often better than the wrong abstraction.
 # Only after a third case, consider if there's a real pattern.
@@ -398,6 +427,7 @@ def process_order(order: Order) -> Result:
     # 20 lines of notification...
     pass
 
+
 # Better: Composed from focused functions
 def process_order(order: Order) -> Result:
     validate_order(order)
@@ -416,13 +446,16 @@ Pass dependencies through constructors for testability. This is the mechanism th
 ```python
 from typing import Protocol
 
+
 class Logger(Protocol):
     def info(self, msg: str, **kwargs) -> None: ...
     def error(self, msg: str, **kwargs) -> None: ...
 
+
 class Cache(Protocol):
     async def get(self, key: str) -> str | None: ...
     async def set(self, key: str, value: str, ttl: int) -> None: ...
+
 
 class UserService:
     def __init__(self, repository: UserRepository, cache: Cache, logger: Logger) -> None:
@@ -430,8 +463,11 @@ class UserService:
         self._cache = cache
         self._logger = logger
 
+
 # Production
-service = UserService(repository=PostgresUserRepository(db), cache=RedisCache(redis), logger=StructlogLogger())
+service = UserService(
+    repository=PostgresUserRepository(db), cache=RedisCache(redis), logger=StructlogLogger()
+)
 # Testing
 service = UserService(repository=InMemoryUserRepository(), cache=FakeCache(), logger=NullLogger())
 ```
@@ -495,6 +531,7 @@ grep -c "public function\|private function\|protected function" src/MyClass.php
 def get_user(id: str) -> UserModel:  # SQLAlchemy model
     return db.query(UserModel).get(id)
 
+
 # GOOD: Use response schemas
 @app.get("/users/{id}")
 def get_user(id: str) -> UserResponse:
@@ -510,6 +547,7 @@ def calculate_discount(user_id: str) -> float:
     user = db.query("SELECT * FROM users WHERE id = ?", user_id)
     orders = db.query("SELECT * FROM orders WHERE user_id = ?", user_id)
     # Business logic mixed with data access
+
 
 # GOOD: Repository pattern
 def calculate_discount(user: User, order_history: list[Order]) -> float:

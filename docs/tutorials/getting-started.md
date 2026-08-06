@@ -35,7 +35,7 @@ Verify the installation by invoking the skill with no arguments:
 /zolletta-metaskill
 ```
 
-Verify the list of available subcommands: `setup`, `documentor`, `patterns`, `external-review`, `review`, `python-code-style`, `python-testing-patterns`.
+Verify the list of available subcommands: `setup`, `documentor`, `patterns`, `external-review`, `review`, `python-code-style`, `python-testing-style`.
 
 ## Step 2 — Set up the project
 
@@ -87,7 +87,7 @@ Run any skill individually for a focused review:
 /zolletta-metaskill patterns       # God classes and SOLID only
 /zolletta-metaskill documentor     # Documentation review only
 /zolletta-metaskill python-code-style    # Python code style only
-/zolletta-metaskill python-testing-patterns  # Python test code only
+/zolletta-metaskill python-testing-style  # Python test code only
 /zolletta-metaskill external-review      # External-LLM review of changes
 ```
 

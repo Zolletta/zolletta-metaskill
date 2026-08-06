@@ -8,18 +8,18 @@ skills: [patterns]
 
 > **Language-agnostic**: the scanning workflow applies to any project. The scripts support Python (via its `ast` module) and PHP (via tree-sitter-php). For other languages, apply the principles manually by reading the code — the scripts are a triage accelerator, not a requirement.
 
-All scripts live in per-skill subfolders under `src/zolletta_metaskill/` (`patterns/`, `php_patterns/`, `python_code_style/`, `python_testing_patterns/`, `shared/`). Language-agnostic scanners consume a `ModuleInfo` data model produced by a `LanguageEngine` — no code execution required.
+All scripts live in per-skill subfolders under `src/zolletta_metaskill/` (`patterns/`, `patterns/php/`, `code_style/general/`, `code_style/python/`, `testing_style/general/`, `testing_style/python/`). Language-agnostic scanners consume a `ModuleInfo` data model produced by a `LanguageEngine` — no code execution required.
 
 Every script supports `--skip` (exit 0 with "SKIPPED" message) for projects that intentionally don't follow a given convention. Scripts that report violations also support `--strict` (exit code 1 if violations found).
 
 ## Triage Scripts
 
-### scan_class_metrics.py
+### class_metrics_scanner.py
 
 Scans all `.py` files and reports every class sorted by line count, with method count, public method count, and `self.*` attribute count.
 
 ```bash
-python3 src/zolletta_metaskill/patterns/scan_class_metrics.py <directory> [--top N] [--min-lines N]
+python3 src/zolletta_metaskill/patterns/class_metrics_scanner.py <directory> [--top N] [--min-lines N]
 ```
 
 | Option          | Default | Description                       |
@@ -32,12 +32,12 @@ python3 src/zolletta_metaskill/patterns/scan_class_metrics.py <directory> [--top
 
 Use the output to identify candidates, then read the code to apply the "reason to change" test.
 
-### scan_test_god_classes.py
+### test_god_classes_scanner.py
 
 Scans test files and reports test classes sorted by size, with method count and method names. Detects test classes that test multiple unrelated SUTs.
 
 ```bash
-python3 src/zolletta_metaskill/patterns/scan_test_god_classes.py <directory> [--top N] [--show-methods]
+python3 src/zolletta_metaskill/patterns/test_god_classes_scanner.py <directory> [--top N] [--show-methods]
 ```
 
 | Option           | Default | Description                                             |
@@ -48,12 +48,12 @@ python3 src/zolletta_metaskill/patterns/scan_test_god_classes.py <directory> [--
 
 ## Structural Convention Scripts
 
-### scan_one_class_per_file.py
+### one_class_per_file_scanner.py
 
 Checks the "1 class 1 file, 1 file 1 class" convention. Reports files with 2+ classes, files with 0 classes (non-`__init__.py`), and class names that don't match the filename.
 
 ```bash
-python3 src/zolletta_metaskill/shared/scan_one_class_per_file.py <directory> [--strict] [--ignore-zero] [--skip]
+python3 src/zolletta_metaskill/code_style/general/one_class_per_file_scanner.py <directory> [--strict] [--ignore-zero] [--skip]
 ```
 
 | Option          | Default | Description                                         |
@@ -65,7 +65,7 @@ python3 src/zolletta_metaskill/shared/scan_one_class_per_file.py <directory> [--
 
 **Exceptions**: `__init__.py` is always skipped. Files with 0 classes are reported as low severity — use `--ignore-zero` to hide them.
 
-### scan_tests.py
+### test_structure_scanner.py
 
 Checks that the test directory structure mirrors the source directory structure. Outputs a markdown report with five tables:
 
@@ -76,7 +76,7 @@ Checks that the test directory structure mirrors the source directory structure.
 5. **Indirect references** — test files that reference classes from source files without a direct test. Informative only: shows which test files provide indirect coverage for otherwise untested source files.
 
 ```bash
-python3 src/zolletta_metaskill/shared/scan_tests.py \
+python3 src/zolletta_metaskill/testing_style/general/test_structure_scanner.py \
     --src <src_root> --tests <test_root> \
     [--src-package <name>] [--tests-package <name>] \
     [--ignore-dirs <dir1,dir2,...>] [--skip]
@@ -93,15 +93,15 @@ python3 src/zolletta_metaskill/shared/scan_tests.py \
 
 **File matching convention**: Test files match source files by stem prefix: `test_cache_*` matches `cache.py`.
 
-### scan_naming_conventions.py
+### naming_conventions_scanner.py
 
 Checks two naming conventions in a single pass:
 
-1. **Source file name == class name** — each source file with exactly one class should have a filename matching the class name (snake_case file → PascalCase class). Files with 0 or 2+ classes are skipped (handled by `scan_one_class_per_file.py`).
+1. **Source file name == class name** — each source file with exactly one class should have a filename matching the class name (snake_case file → PascalCase class). Files with 0 or 2+ classes are skipped (handled by `one_class_per_file_scanner.py`).
 2. **Test file naming** — every `test_*.py` file must follow `test_<source_stem><eventual_suffix>.py`, where `<source_stem>` is the stem of a source file (or the snake_case form of a source class name) in the mirrored source directory. Test files that don't match any source file or class are reported as orphan/misnamed.
 
 ```bash
-python3 src/zolletta_metaskill/shared/scan_naming_conventions.py \
+python3 src/zolletta_metaskill/code_style/general/naming_conventions_scanner.py \
     --src <src_root> --tests <test_root> \
     [--src-package <name>] [--tests-package <name>] \
     [--ignore-dirs <dir1,dir2,...>] [--strict] [--skip]
@@ -121,12 +121,12 @@ python3 src/zolletta_metaskill/shared/scan_naming_conventions.py \
 
 ## SOLID Validator Scripts
 
-### scan_dependency_inversion.py (DIP)
+### dependency_inversion_scanner.py (DIP, Python)
 
 Detects classes that instantiate their dependencies internally (`self.x = SomeClass(...)`) instead of receiving them as constructor parameters. Excludes entry points, dataclasses, factories, and stdlib types.
 
 ```bash
-python3 src/zolletta_metaskill/patterns/scan_dependency_inversion.py <directory>
+python3 src/zolletta_metaskill/patterns/dependency_inversion_scanner.py <directory>
     [--entry-points <pattern1,pattern2,...>] [--skip] [--strict]
 ```
 
@@ -139,12 +139,12 @@ python3 src/zolletta_metaskill/patterns/scan_dependency_inversion.py <directory>
 
 **Exclusions**: Excludes entry points, DI containers, dataclasses, factories, and stdlib types.
 
-### scan_interface_segregation.py (ISP)
+### interface_segregation_scanner.py (ISP, Python)
 
 Detects fat interfaces — Protocols/ABCs with many methods where implementers stub or raise NotImplementedError for methods they don't need.
 
 ```bash
-python3 src/zolletta_metaskill/patterns/scan_interface_segregation.py <directory> [--min-methods N] [--skip] [--strict]
+python3 src/zolletta_metaskill/patterns/interface_segregation_scanner.py <directory> [--min-methods N] [--skip] [--strict]
 ```
 
 | Option            | Default | Description                                  |
@@ -156,12 +156,12 @@ python3 src/zolletta_metaskill/patterns/scan_interface_segregation.py <directory
 
 **Checks**: Protocol/ABC classes with N+ methods, implementers that raise NotImplementedError or have stub bodies (pass/return None) for interface methods.
 
-### scan_open_closed.py (OCP)
+### open_closed_scanner.py (OCP, Python)
 
 Detects type-based branching (if/elif isinstance ladders, match/case on type, getattr string dispatch) that should be replaced with polymorphism.
 
 ```bash
-python3 src/zolletta_metaskill/patterns/scan_open_closed.py <directory> [--min-branches N] [--skip] [--strict]
+python3 src/zolletta_metaskill/patterns/open_closed_scanner.py <directory> [--min-branches N] [--skip] [--strict]
 ```
 
 | Option             | Default | Description                              |
@@ -171,12 +171,12 @@ python3 src/zolletta_metaskill/patterns/scan_open_closed.py <directory> [--min-b
 | `--skip`           | off     | Skip this check entirely                 |
 | `--strict`         | off     | Exit with code 1 if violations are found |
 
-### scan_liskov_substitution.py (LSP)
+### liskov_substitution_scanner.py (LSP)
 
 Detects subclass methods that break substitutability: incompatible signatures, new exception types, empty-body overrides.
 
 ```bash
-python3 src/zolletta_metaskill/patterns/scan_liskov_substitution.py <directory> [--skip] [--strict]
+python3 src/zolletta_metaskill/patterns/liskov_substitution_scanner.py <directory> [--skip] [--strict]
 ```
 
 | Option        | Default | Description                              |
@@ -189,14 +189,14 @@ python3 src/zolletta_metaskill/patterns/scan_liskov_substitution.py <directory> 
 
 ## PHP SOLID Validator Scripts
 
-These scanners live in `src/zolletta_metaskill/php_patterns/` and target PHP codebases. They use the `PHPEngine` (tree-sitter-php) to parse `.php` files. Install the optional dependency with `uv pip install zolletta-metaskill[php]`.
+These scanners live in `src/zolletta_metaskill/patterns/php/` and target PHP codebases. They use the `PHPEngine` (tree-sitter-php) to parse `.php` files. Install the optional dependency with `uv pip install zolletta-metaskill[php]`.
 
-### scan_php_dependency_inversion.py (DIP)
+### dependency_inversion_scanner.py (DIP, PHP)
 
 Detects classes that instantiate their dependencies internally (`new ConcreteClass()` in constructors or methods) instead of receiving them via dependency injection. Excludes factories, builders, and PHP built-in types.
 
 ```bash
-python3 src/zolletta_metaskill/php_patterns/scan_php_dependency_inversion.py <directory> [--skip] [--strict]
+python3 src/zolletta_metaskill/patterns/php/dependency_inversion_scanner.py <directory> [--skip] [--strict]
 ```
 
 | Option        | Default | Description                              |
@@ -209,12 +209,12 @@ python3 src/zolletta_metaskill/php_patterns/scan_php_dependency_inversion.py <di
 
 **Exclusions**: classes whose name contains `Factory` or `Builder` are treated as composition roots where object creation is expected. PHP built-in types (`stdClass`, `DateTime`, `Exception`, etc.) are excluded from dependency detection.
 
-### scan_php_interface_segregation.py (ISP)
+### interface_segregation_scanner.py (ISP, PHP)
 
 Detects fat interfaces — PHP interfaces with many methods where implementers are forced to depend on methods they do not use.
 
 ```bash
-python3 src/zolletta_metaskill/php_patterns/scan_php_interface_segregation.py <directory> [--min-methods N] [--skip] [--strict]
+python3 src/zolletta_metaskill/patterns/php/interface_segregation_scanner.py <directory> [--min-methods N] [--skip] [--strict]
 ```
 
 | Option            | Default | Description                              |
@@ -226,12 +226,12 @@ python3 src/zolletta_metaskill/php_patterns/scan_php_interface_segregation.py <d
 
 **How it works**: uses `ModuleInfo` directly (no raw AST needed). PHP interfaces are mapped to `ClassInfo` with `is_abstract=True` and no attributes. Interfaces with more than `--min-methods` methods are flagged as fat.
 
-### scan_php_open_closed.py (OCP)
+### open_closed_scanner.py (OCP, PHP)
 
 Detects `if/elseif` chains that use `instanceof` to branch on subtypes — an OCP violation. Adding a new subtype requires modifying the ladder instead of simply adding a new implementation.
 
 ```bash
-python3 src/zolletta_metaskill/php_patterns/scan_php_open_closed.py <directory> [--min-branches N] [--skip] [--strict]
+python3 src/zolletta_metaskill/patterns/php/open_closed_scanner.py <directory> [--min-branches N] [--skip] [--strict]
 ```
 
 | Option             | Default | Description                              |
@@ -247,7 +247,7 @@ python3 src/zolletta_metaskill/php_patterns/scan_php_open_closed.py <directory> 
 
 The `LanguageEngine` protocol is the seam between language-agnostic scanners and language-specific parsers. Scanners depend only on this protocol and the `ModuleInfo` data model — they never import `ast` or tree-sitter directly.
 
-### common/language_engine.py
+### core/language_engine.py
 
 Defines the `LanguageEngine` protocol (`@runtime_checkable`). Every engine must implement:
 
@@ -258,19 +258,18 @@ Defines the `LanguageEngine` protocol (`@runtime_checkable`). Every engine must 
 | `is_test_file(path)`   | Return `True` if the path is a test file for this language                 |
 | `is_source_file(path)` | Return `True` if the path is a source file for this language               |
 | `file_extensions()`    | Return the list of extensions handled (e.g. `[".py"]`, `[".php"]`)         |
-| `test_file_pattern()`  | Return the glob pattern for test files (e.g. `"test_*.py"`, `"*Test.php"`) |
+| `test_file_glob()`     | Return the glob pattern for test files (e.g. `"test_*.py"`, `"*Test.php"`) |
 
-### common/registry.py
+### core/registry.py
 
 Provides the engine registry — maps language names and file extensions to engines:
 
-| Function                    | Description                                                                                                        |
-|-----------------------------|--------------------------------------------------------------------------------------------------------------------|
-| `register_engine(engine)`   | Register an engine under its `language` identifier (raises `ValueError` on duplicate)                              |
-| `get_engine(language)`      | Return the registered engine for a language (raises `KeyError` if not found)                                       |
-| `get_engine_for_file(path)` | Return the engine that handles a file path based on its extension, or `None`                                       |
-| `ensure_engine(engine)`     | Register an engine if its language is not already registered (idempotent — safe to call from scanner entry points) |
-| `available_languages()`     | Return a sorted list of registered language identifiers                                                            |
+| Function                | Description                                                                           |
+|-------------------------|---------------------------------------------------------------------------------------|
+| `register(engine)`      | Register an engine under its `language` identifier (raises `ValueError` on duplicate) |
+| `get(language)`         | Return the registered engine for a language (raises `KeyError` if not found)          |
+| `get_for_file(path)`    | Return the engine that handles a file path based on its extension, or `None`          |
+| `available_languages()` | Return a sorted list of registered language identifiers                               |
 
 ### engines/python_engine.py & engines/php_engine.py
 
@@ -285,16 +284,20 @@ Two implementations of the `LanguageEngine` protocol:
 def parse_raw(self, path: Path) -> tuple[Tree, bytes]
 ```
 
-Returns the raw tree-sitter `Tree` and source bytes for a `.php` file. Used by PHP-specific scanners (`scan_php_dependency_inversion.py`, `scan_php_open_closed.py`) that need direct AST access for constructs not captured in `ModuleInfo` (e.g. `new` expressions, `instanceof` chains). The source bytes are needed to extract text from individual nodes via `source[node.start_byte:node.end_byte]`.
+Returns the raw tree-sitter `Tree` and source bytes for a `.php` file. Used by PHP-specific scanners (`dependency_inversion_scanner.py`, `open_closed_scanner.py`) that need direct AST access for constructs not captured in `ModuleInfo` (e.g. `new` expressions, `instanceof` chains). The source bytes are needed to extract text from individual nodes via `source[node.start_byte:node.end_byte]`.
+
+**Parameters:**
+
+- `path` — Path to the `.php` file to parse.
 
 ## Dead Code Script
 
-### scan_unused_all_exports.py
+### unused_all_exports_scanner.py
 
 Finds names listed in `__all__` that are never imported by any other module in the source tree. Complements vulture, which treats `__all__` entries as "used" (public API exports) and therefore never flags them as dead code — even when no module ever imports them.
 
 ```bash
-python3 src/zolletta_metaskill/python_code_style/scan_unused_all_exports.py <directory> [--strict] [--json] [--skip]
+python3 src/zolletta_metaskill/code_style/python/unused_all_exports_scanner.py <directory> [--strict] [--json] [--skip]
 ```
 
 | Option        | Default | Description                                  |
@@ -304,12 +307,12 @@ python3 src/zolletta_metaskill/python_code_style/scan_unused_all_exports.py <dir
 | `--json`      | off     | Output as JSON instead of markdown           |
 | `--skip`      | off     | Skip this check entirely                     |
 
-### scan_test_naming.py
+### test_naming_scanner.py
 
 Checks test function names against the `test_<unit>_<scenario>_<expected>` convention. Flags functions with fewer than `--min-segments` underscore-separated segments after the `test_` prefix. This is a deterministic replacement for manual review of test function names.
 
 ```bash
-python3 src/zolletta_metaskill/python_testing_patterns/scan_test_naming.py <directory> [--min-segments N] [--strict] [--json] [--skip]
+python3 src/zolletta_metaskill/testing_style/python/test_naming_scanner.py <directory> [--min-segments N] [--strict] [--json] [--skip]
 ```
 
 | Option             | Default | Description                              |
@@ -320,12 +323,12 @@ python3 src/zolletta_metaskill/python_testing_patterns/scan_test_naming.py <dire
 | `--json`           | off     | Output as JSON instead of markdown       |
 | `--skip`           | off     | Skip this check entirely                 |
 
-### scan_acronym_casing.py
+### acronym_casing_scanner.py
 
 Checks that acronyms in PascalCase class names stay fully uppercase (e.g. `HTTPClientFactory`, not `HttpClientFactory`). The scanner splits each PascalCase class name into words, checks each word against the configured acronym list, and flags any word that case-insensitively matches an acronym but isn't all-uppercase.
 
 ```bash
-python3 src/zolletta_metaskill/python_code_style/scan_acronym_casing.py <directory> [--acronyms <list>] [--strict] [--json] [--skip]
+python3 src/zolletta_metaskill/code_style/python/acronym_casing_scanner.py <directory> [--acronyms <list>] [--strict] [--json] [--skip]
 ```
 
 | Option        | Default                  | Description                                                  |
@@ -374,21 +377,11 @@ python3 src/zolletta_metaskill/patterns/test_splitter.py <test_file> [--dry-run]
 
 ## Complete Workflow
 
-Run scripts in order: triage (`scan_class_metrics`, `scan_test_god_classes`) → structural (`scan_one_class_per_file`, `scan_tests`, `scan_naming_conventions`) → SOLID (`scan_dependency_inversion`, `scan_interface_segregation`, `scan_open_closed`, `scan_liskov_substitution`) → PHP SOLID (PHP projects) → dead code (`scan_unused_all_exports`) → naming (`scan_test_naming`, `scan_acronym_casing`) → split (`test_splitter`). Apply the "reason to change" test to top candidates.
+Run scripts in order: triage (`class_metrics_scanner`, `test_god_classes_scanner`) → structural (`one_class_per_file_scanner`, `test_structure_scanner`, `naming_conventions_scanner`) → SOLID (`dependency_inversion_scanner`, `interface_segregation_scanner`, `open_closed_scanner`, `liskov_substitution_scanner`) → PHP SOLID (PHP projects) → dead code (`unused_all_exports_scanner`) → naming (`test_naming_scanner`, `acronym_casing_scanner`) → split (`test_splitter`). Apply the "reason to change" test to top candidates.
 
 ## Repository Scripts
 
 These are project-management scripts at the repository root, separate from the scanning scripts above.
-
-### `.bump`
-
-Bumps the Zolletta-metaskill version across all files.
-
-```bash
-./.bump --to <version>
-```
-
-Updates: `pyproject.toml`, `src/zolletta_metaskill/__init__.py`, all `SKILL.md` front-matter version fields, and `setup/assets/settings_template.json` (`setup_version`).
 
 ### `install.sh`
 

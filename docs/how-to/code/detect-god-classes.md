@@ -13,7 +13,7 @@ Identify God classes, missing tests, dependency-inversion violations, and other 
 ## Prerequisites
 
 - A codebase with `src/` and `tests/` directories (scripts use the `ast` module — no code execution required)
-- The scanning scripts at `src/zolletta_metaskill/{patterns,shared,python_code_style,python_testing_patterns}/` (or `scripts/python/` in the baseline layout)
+- The scanning scripts at `src/zolletta_metaskill/{patterns,code_style,testing_style}/` (or `scripts/python/` in the baseline layout)
 
 ## Phase 1 — Automated triage
 
@@ -22,7 +22,7 @@ Run the scanning scripts to get a structural overview. Each script produces a ma
 ### Step 1 — Class metrics
 
 ```bash
-python3 src/zolletta_metaskill/patterns/scan_class_metrics.py src --top 30 --min-lines 50
+python3 src/zolletta_metaskill/patterns/class_metrics_scanner.py src --top 30 --min-lines 50
 ```
 
 This lists the largest classes by line count, with method count, public method count, and `self.*` attribute count. Classes with many attributes and methods are God class candidates.
@@ -30,7 +30,7 @@ This lists the largest classes by line count, with method count, public method c
 ### Step 2 — Test God classes
 
 ```bash
-python3 src/zolletta_metaskill/patterns/scan_test_god_classes.py tests --show-methods
+python3 src/zolletta_metaskill/patterns/test_god_classes_scanner.py tests --show-methods
 ```
 
 This finds test classes that test multiple unrelated SUTs. Use `--show-methods` to see the method names and spot mixed SUTs.
@@ -39,33 +39,33 @@ This finds test classes that test multiple unrelated SUTs. Use `--show-methods` 
 
 ```bash
 # Dependency Inversion (DIP)
-python3 src/zolletta_metaskill/patterns/scan_dependency_inversion.py src
+python3 src/zolletta_metaskill/patterns/dependency_inversion_scanner.py src
 
 # Interface Segregation (ISP)
-python3 src/zolletta_metaskill/patterns/scan_interface_segregation.py src --min-methods 5
+python3 src/zolletta_metaskill/patterns/interface_segregation_scanner.py src --min-methods 5
 
 # Liskov Substitution (LSP)
-python3 src/zolletta_metaskill/patterns/scan_liskov_substitution.py src
+python3 src/zolletta_metaskill/patterns/liskov_substitution_scanner.py src
 
 # Open/Closed (OCP)
-python3 src/zolletta_metaskill/patterns/scan_open_closed.py src
+python3 src/zolletta_metaskill/patterns/open_closed_scanner.py src
 ```
 
 ### Step 4 — Structural conventions
 
 ```bash
 # One class per file + filename matches class
-python3 src/zolletta_metaskill/shared/scan_one_class_per_file.py src
-python3 src/zolletta_metaskill/shared/scan_naming_conventions.py --src src --tests tests
+python3 src/zolletta_metaskill/code_style/general/one_class_per_file_scanner.py src
+python3 src/zolletta_metaskill/code_style/general/naming_conventions_scanner.py --src src --tests tests
 
 # Test directory mirrors source directory
-python3 src/zolletta_metaskill/shared/scan_tests.py --src src --tests tests
+python3 src/zolletta_metaskill/testing_style/general/test_structure_scanner.py --src src --tests tests
 ```
 
 ### Step 5 — Dead code
 
 ```bash
-python3 src/zolletta_metaskill/python_code_style/scan_unused_all_exports.py src
+python3 src/zolletta_metaskill/code_style/python/unused_all_exports_scanner.py src
 ```
 
 ### Phase 2 — Judgment

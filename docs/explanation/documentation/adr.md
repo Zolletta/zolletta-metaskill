@@ -78,7 +78,7 @@ The directive's content tells the reviewer whether it's binary or nuanced. No se
 
 The [euforicio/adr-demo](https://github.com/euforicio/adr-demo) repository (a fictional e-commerce "ShopFlow" platform with 10 ADRs covering all statuses) provides realistic examples:
 
-- **Accepted ADR** → distills to a directive with a link (e.g., "Adopt microservices architecture" → `- [ADR-0003](adr/0003-adopt-microservices.md) Adopt microservices architecture for the platform.`)
+- **Accepted ADR** → distills to a directive with a link (e.g., "Adopt microservices architecture" → a line like `` `- [ADR-0003](adr/0003-adopt-microservices.md) Adopt microservices architecture for the platform.` ``)
 - **Proposed ADR** → excluded from the distilled file (not yet a decision in force)
 - **Deprecated/Superseded ADR** → excluded (no longer active)
 

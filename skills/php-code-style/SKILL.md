@@ -1,6 +1,5 @@
 ---
 name: php-code-style
-version: 3.2.0
 license: MIT + Commons Clause
 description: >
   PHP code style review: strict typing, modern PHP 8.x features, PSR-12 compliance,
@@ -40,46 +39,46 @@ Review PHP code for type safety, modern PHP feature adoption, PSR-12 compliance,
 
 ## Table 1 — Always-on rules (cannot be disabled)
 
-| #   | Area     | Name                                                       | Min PHP |
-| --- | -------- | ---------------------------------------------------------- | ------- |
-| 1   | Types    | `declare(strict_types=1)` in every file                    | 7.0+    |
-| 2   | Types    | Return type declarations on all methods                    | 7.0+    |
-| 3   | Types    | Parameter type declarations                                | 7.0+    |
-| 4   | Types    | Property type declarations                                 | 7.4+    |
-| 5   | Types    | Nullable types explicitly declared (`?Type`)               | 7.1+    |
-| 6   | Types    | Use `void`/`never` for appropriate returns                 | 8.1+    |
-| 7   | Types    | Avoid `mixed` when a specific type is possible             | 8.0+    |
-| 8   | Modern   | Constructor property promotion                             | 8.0+    |
-| 9   | Modern   | Match expression over switch                               | 8.0+    |
-| 10  | Modern   | Nullsafe operator (`?->`) for null chains                  | 8.0+    |
-| 11  | Modern   | Named arguments for clarity                                | 8.0+    |
-| 12  | Modern   | Attributes (`#[Attribute]`) for metadata (not docblocks)   | 8.0+    |
-| 13  | Modern   | Enums instead of class constants for finite sets           | 8.1+    |
-| 14  | Modern   | Readonly properties for immutable data                     | 8.1+    |
-| 15  | Modern   | Arrow functions for short closures                         | 7.4+    |
-| 16  | PSR      | PSR-4 autoloading compliance                               | all     |
-| 17  | PSR      | PSR-12 coding style compliance                             | all     |
-| 18  | PSR      | camelCase method names                                     | all     |
-| 19  | PSR      | Proper namespace usage (matches directory structure)       | all     |
-| 20  | Error    | Never use `@` error suppression operator                   | all     |
-| 21  | Security | Validate file uploads (type, size, name, storage location) | all     |
+| #  | Area     | Name                                                       | Min PHP |
+|----|----------|------------------------------------------------------------|---------|
+| 1  | Types    | `declare(strict_types=1)` in every file                    | 7.0+    |
+| 2  | Types    | Return type declarations on all methods                    | 7.0+    |
+| 3  | Types    | Parameter type declarations                                | 7.0+    |
+| 4  | Types    | Property type declarations                                 | 7.4+    |
+| 5  | Types    | Nullable types explicitly declared (`?Type`)               | 7.1+    |
+| 6  | Types    | Use `void`/`never` for appropriate returns                 | 8.1+    |
+| 7  | Types    | Avoid `mixed` when a specific type is possible             | 8.0+    |
+| 8  | Modern   | Constructor property promotion                             | 8.0+    |
+| 9  | Modern   | Match expression over switch                               | 8.0+    |
+| 10 | Modern   | Nullsafe operator (`?->`) for null chains                  | 8.0+    |
+| 11 | Modern   | Named arguments for clarity                                | 8.0+    |
+| 12 | Modern   | Attributes (`#[Attribute]`) for metadata (not docblocks)   | 8.0+    |
+| 13 | Modern   | Enums instead of class constants for finite sets           | 8.1+    |
+| 14 | Modern   | Readonly properties for immutable data                     | 8.1+    |
+| 15 | Modern   | Arrow functions for short closures                         | 7.4+    |
+| 16 | PSR      | PSR-4 autoloading compliance                               | all     |
+| 17 | PSR      | PSR-12 coding style compliance                             | all     |
+| 18 | PSR      | camelCase method names                                     | all     |
+| 19 | PSR      | Proper namespace usage (matches directory structure)       | all     |
+| 20 | Error    | Never use `@` error suppression operator                   | all     |
+| 21 | Security | Validate file uploads (type, size, name, storage location) | all     |
 
 ## Table 2 — Configurable rules (stored in `settings.json` under `php.code_style`)
 
-| #   | Area   | Name                              | Key                              | Default | Min PHP |
-| --- | ------ | --------------------------------- | -------------------------------- | ------- | ------- |
-| 22  | Types  | Union types                       | `check_union_types`              | `true`  | 8.0+    |
-| 23  | Types  | Intersection types                | `check_intersection_types`       | `true`  | 8.1+    |
-| 24  | Modern | Enums with methods                | `check_enum_methods`             | `true`  | 8.1+    |
-| 25  | Modern | First-class callable syntax       | `check_first_class_callables`    | `true`  | 8.1+    |
-| 26  | Modern | Readonly classes                  | `check_readonly_classes`         | `true`  | 8.2+    |
-| 27  | Modern | Typed class constants             | `check_typed_constants`          | `true`  | 8.3+    |
-| 28  | Modern | `#[\Override]` attribute          | `check_override_attribute`       | `true`  | 8.3+    |
-| 29  | Modern | Property hooks                    | `check_property_hooks`           | `true`  | 8.4+    |
-| 30  | Modern | Asymmetric visibility             | `check_asymmetric_visibility`    | `true`  | 8.4+    |
-| 31  | Modern | Pipe operator                     | `check_pipe_operator`            | `true`  | 8.5+    |
-| 32  | Perf   | Native array functions over loops | `check_array_functions`          | `true`  | all     |
-| 33  | Perf   | Native string functions over regex| `check_string_functions`         | `true`  | all     |
+| #  | Area   | Name                               | Key                           | Default | Min PHP |
+|----|--------|------------------------------------|-------------------------------|---------|---------|
+| 22 | Types  | Union types                        | `check_union_types`           | `true`  | 8.0+    |
+| 23 | Types  | Intersection types                 | `check_intersection_types`    | `true`  | 8.1+    |
+| 24 | Modern | Enums with methods                 | `check_enum_methods`          | `true`  | 8.1+    |
+| 25 | Modern | First-class callable syntax        | `check_first_class_callables` | `true`  | 8.1+    |
+| 26 | Modern | Readonly classes                   | `check_readonly_classes`      | `true`  | 8.2+    |
+| 27 | Modern | Typed class constants              | `check_typed_constants`       | `true`  | 8.3+    |
+| 28 | Modern | `#[\Override]` attribute           | `check_override_attribute`    | `true`  | 8.3+    |
+| 29 | Modern | Property hooks                     | `check_property_hooks`        | `true`  | 8.4+    |
+| 30 | Modern | Asymmetric visibility              | `check_asymmetric_visibility` | `true`  | 8.4+    |
+| 31 | Modern | Pipe operator                      | `check_pipe_operator`         | `true`  | 8.5+    |
+| 32 | Perf   | Native array functions over loops  | `check_array_functions`       | `true`  | all     |
+| 33 | Perf   | Native string functions over regex | `check_string_functions`      | `true`  | all     |
 
 ## Version gating
 
@@ -104,12 +103,12 @@ Read `settings.json`:
 
 For each available tool, run it and collect output:
 
-| Tool           | Command (inside container if `container_name` is set)                    |
-| -------------- | ------------------------------------------------------------------------ |
-| PHPStan        | `phpstan analyse --no-progress --error-format=raw`                       |
-| Psalm          | `psalm --no-progress --output-format=text`                               |
-| php-cs-fixer   | `php-cs-fixer fix --dry-run --diff`                                      |
-| phpcs          | `phpcs --report=emacs`                                                   |
+| Tool         | Command (inside container if `container_name` is set) |
+|--------------|-------------------------------------------------------|
+| PHPStan      | `phpstan analyse --no-progress --error-format=raw`    |
+| Psalm        | `psalm --no-progress --output-format=text`            |
+| php-cs-fixer | `php-cs-fixer fix --dry-run --diff`                   |
+| phpcs        | `phpcs --report=emacs`                                |
 
 Classify tool output:
 - **Auto-fixable** (formatting, import order, style) → informational, not graded

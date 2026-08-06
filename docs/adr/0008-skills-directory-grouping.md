@@ -23,9 +23,9 @@ zolletta-metaskill/
 │   ├── external-review/SKILL.md
 │   ├── patterns/SKILL.md
 │   ├── php-code-style/SKILL.md
-│   ├── php-testing-patterns/SKILL.md
+│   ├── php-testing-style/SKILL.md
 │   ├── python-code-style/SKILL.md
-│   ├── python-testing-patterns/SKILL.md
+│   ├── python-testing-style/SKILL.md
 │   ├── review/SKILL.md
 │   └── setup/SKILL.md
 ├── docs/
@@ -38,13 +38,16 @@ All path references in `SKILL.md`, `README.md`, docs, and sub-skill cross-refere
 ## Consequences
 
 **Positive:**
+
 - Aligns with the `.agents/` convention — other agent tools that scan for skills expect a `skills/` directory.
 - The repo root is cleaner — skill directories are grouped, non-skill directories are separate.
 - The skill inventory is immediately visible: `ls skills/` shows all available subcommands.
 
 **Negative:**
+
 - All internal path references changed (`../../docs/`, `../../src/` instead of `docs/`, `src/`). This is a one-time cost but touched many files.
 - Tools or scripts that hardcoded the old root-level paths needed updating.
 
 **Neutral:**
+
 - The `SKILL.md` at the repo root (the meta-skill) stays at the root — it is the entry point, not a sub-skill. Only sub-skills moved into `skills/`.

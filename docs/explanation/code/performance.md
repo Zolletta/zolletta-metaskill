@@ -53,11 +53,13 @@ class UserDTO:
         self.user_id = user_id
         self.name = name
         self.email = email
-        self.preferences = preferences    # expensive to load
-        self.permissions = permissions    # expensive to load
+        self.preferences = preferences  # expensive to load
+        self.permissions = permissions  # expensive to load
+
 
 # GOOD: lazy-load expensive fields
 from functools import cached_property
+
 
 class UserDTO:
     def __init__(self, user_id, name, email, pref_repo, perm_repo):
@@ -110,10 +112,12 @@ foreach (getAllUsers() as $user) {
 def get_all_users() -> list[dict]:
     return db.query("SELECT * FROM users")  # could be millions of rows
 
+
 # GOOD: generator yields one row at a time
 def get_all_users() -> Iterator[dict]:
     for row in db.query("SELECT * FROM users"):
         yield row
+
 
 # Consumer memory stays flat regardless of dataset size
 for user in get_all_users():

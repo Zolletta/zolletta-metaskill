@@ -15,8 +15,7 @@ class TestExtractMetadata:
 
     def test_extracts_all_fields(self, tmp_path: Path) -> None:
         f = tmp_path / "0001-test.md"
-        mtime = write_adr(f, "001", "Use Postgres", "Accepted",
-                          "We use PostgreSQL.")
+        mtime = write_adr(f, "001", "Use Postgres", "Accepted", "We use PostgreSQL.")
         record = ADRDiscovery._extract_metadata(f)
         assert record is not None
         assert record.number == "001"

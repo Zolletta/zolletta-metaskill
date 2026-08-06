@@ -37,10 +37,10 @@ class TestTruncateDecision:
         result = ADROrchestrator._truncate_decision("See [docs](http://example.com) for info.")
         assert result == "See docs for info."
 
-    def test_empty_text(self) -> None:
+    def test_truncate_decision_empty_text_returns_empty(self) -> None:
         assert ADROrchestrator._truncate_decision("") == ""
 
-    def test_collapses_whitespace(self) -> None:
+    def test_truncate_decision_collapses_whitespace_returns_use_postgresql_now(self) -> None:
         result = ADROrchestrator._truncate_decision("Use    PostgreSQL\n\nnow.")
         assert result == "Use PostgreSQL now."
 

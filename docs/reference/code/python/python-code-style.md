@@ -177,7 +177,7 @@ with open(input_path) as fin, open(output_path, "w") as fout:
 if match:
     if current_item and current_item in items:
         items[current_item]["parameters"] = current_params  # save previous
-    current_item = match.group(1)                            # start new
+    current_item = match.group(1)  # start new
 ```
 
 8.5. **Ruff enforcement:** Ruff `SIM` rules enforce this automatically — see [flake8-simplify](https://github.com/astral-sh/ruff/issues?q=flake8-simplify).
@@ -201,6 +201,7 @@ def process_order(order: Order) -> Receipt:
             raise ValueError("unpaid order")
     else:
         raise ValueError("None order")
+
 
 # Good — guard clauses first, happy path last and flat
 def process_order(order: Order) -> Receipt:
@@ -240,9 +241,10 @@ def process_order(order: Order) -> Receipt:
 # Bad — comments that restate the code
 def test_get_user_returns_user_when_found(self) -> None:
     """Arrange a user, Act by fetching, Assert the user is returned."""
-    user = User(id=1, name="Alice")                                          # Arrange
-    result = repo.get_user(1)                                                # Act
-    assert result == user                                                    # Assert
+    user = User(id=1, name="Alice")  # Arrange
+    result = repo.get_user(1)  # Act
+    assert result == user  # Assert
+
 
 # Good — let the code speak for itself
 def test_get_user_returns_user_when_found(self) -> None:

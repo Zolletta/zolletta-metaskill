@@ -22,7 +22,7 @@ Each class lives in its own file. The filename should match the class name using
 - Closely related tiny helper classes (e.g., an interface and its NoOp implementation — but only if both are < 20 lines)
 - Enum/constant classes grouped in one file (but consider a dedicated `enums/` package instead)
 
-**Detection (Python)**: see [scripts.md](../../reference/code/scripts.md) → `scan_one_class_per_file.py`.
+**Detection (Python)**: see [scripts.md](../../reference/code/scripts.md) → `one_class_per_file_scanner.py`.
 
 ## Test Structure Mirrors Source Structure
 
@@ -50,7 +50,7 @@ src/myproject/engine/config/config_factory.py
 - Source files with no classes (pure functions/constants) — may be tested indirectly through integration tests.
 - Test helpers, fixtures, mocks, and mixins live outside the mirrored tree (e.g., `tests/fixtures/`, `tests/mocks/`, `tests/mixins/`).
 
-**Detection (Python)**: see [scripts.md](../../reference/code/scripts.md) → `scan_tests.py`. The script outputs a markdown report with five tables: misnamed tests (rename), misplaced tests (move), orphaned tests (delete or investigate), missing tests (write new tests), and indirect references (informative only).
+**Detection (Python)**: see [scripts.md](../../reference/code/scripts.md) → `test_structure_scanner.py`. The script outputs a markdown report with five tables: misnamed tests (rename), misplaced tests (move), orphaned tests (delete or investigate), missing tests (write new tests), and indirect references (informative only).
 
 ## Naming Conventions
 
@@ -68,7 +68,7 @@ src/.../cache.py  ->  tests/.../test_cache.py
 
 Test files whose name doesn't match any source file or class in the mirrored directory are orphan or misnamed tests — they test code that has been renamed, deleted, or they use a naming pattern inconsistent with the project.
 
-**Detection (Python)**: see [scripts.md](../../reference/code/scripts.md) → `scan_naming_conventions.py` (checks both rules in a single pass).
+**Detection (Python)**: see [scripts.md](../../reference/code/scripts.md) → `naming_conventions_scanner.py` (checks both rules in a single pass).
 
 **Why this matters**: orphan or misnamed tests test code that has been renamed, deleted, or use an inconsistent naming pattern. See [PEP 8 — naming conventions](https://peps.python.org/pep-0008/#naming-conventions), [PHPUnit — test naming](https://docs.phpunit.de/en/main/organizing-tests.html).
 
@@ -126,10 +126,13 @@ Acronyms retain their uppercase form inside PascalCase class names: `HTTPClient`
 ```python
 # Good — acronyms stay uppercase
 class CITesterEngine: ...
+
+
 class JWTDecoder: ...
 
+
 # Flag — acronym lowercased mid-name
-class CiTesterEngine: ...      # should be CITesterEngine
+class CiTesterEngine: ...  # should be CITesterEngine
 ```
 
 ```php
@@ -142,7 +145,7 @@ class JWTDecoder { ... }
 class JwtDecoder { ... }       // should be JWTDecoder
 ```
 
-**Enforcement**: the acronym list is project-specific. The Python skill ships `scan_acronym_casing.py` with an additive acronym list (shipped base + `settings.json` `acronyms` array + CLI override). A class name is flagged only when a word inside it case-insensitively matches a configured acronym but is not all-uppercase.
+**Enforcement**: the acronym list is project-specific. The Python skill ships `acronym_casing_scanner.py` with an additive acronym list (shipped base + `settings.json` `acronyms` array + CLI override). A class name is flagged only when a word inside it case-insensitively matches a configured acronym but is not all-uppercase.
 
 > The acronym rule is already enforced by the `python-code-style` skill (rule #3). It is restated here because it is a *cross-language* convention — a reviewer reading PHP code should apply the same rule.
 

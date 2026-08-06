@@ -10,13 +10,13 @@ skills: [setup, review, patterns, documentor, external-review, python-*, php-*]
 
 `.zolletta-metaskill/settings.json` is created by `/zolletta-metaskill setup` and read by every other subcommand. This page documents every field.
 
-> **JSON Schema**: the machine-readable source of truth for the shape of `settings.json` lives at [`setup/assets/settings.schema.json`](../../setup/assets/settings.schema.json) (JSON Schema draft 2020-12). This prose doc is the human-readable counterpart and must stay in sync — when a field is added, removed, or renamed, update both files in the same change.
+> **JSON Schema**: the machine-readable source of truth for the shape of `settings.json` lives at [`setup/assets/settings.schema.json`](../../skills/setup/assets/settings.schema.json) (JSON Schema draft 2020-12). This prose doc is the human-readable counterpart and must stay in sync — when a field is added, removed, or renamed, update both files in the same change.
 
 ## Example (Python project)
 
 ```json
 {
-  "setup_version": "3.2.0",
+  "setup_version": "1.0.0",
   "setup_timestamp": "2026-07-16T14:30:00",
   "language": "python",
   "container_name": "myproject",
@@ -73,7 +73,7 @@ skills: [setup, review, patterns, documentor, external-review, python-*, php-*]
 
 ```json
 {
-  "setup_version": "3.2.0",
+  "setup_version": "1.0.0",
   "setup_timestamp": "2026-07-16T14:30:00",
   "language": "php",
   "container_name": "myproject",
@@ -135,26 +135,26 @@ skills: [setup, review, patterns, documentor, external-review, python-*, php-*]
 
 ## Top-level fields
 
-| Field                   | Type              | Description                                                                                                                                                                                                                           |
-|-------------------------|-------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `setup_version`         | string            | Matches the skill version that wrote the file                                                                                                                                                                                         |
-| `setup_timestamp`       | string (ISO 8601) | Timestamp of the last setup run                                                                                                                                                                                                       |
-| `language`              | string            | Detected project language (`python`, `php`, `go`, `rust`, etc.)                                                                                                                                                                       |
-| `container_name`        | string\|null      | Docker container name for running tools (`null` if no Docker)                                                                                                                                                                         |
-| `tokensave_available`   | boolean           | `true` if `tokensave_status` responds (probed directly)                                                                                                                                                                               |
-| `acronyms`              | array             | Project-specific acronyms that must stay uppercase in class names (e.g. `["CITE"]`). Extracted from `AGENTS.md` during setup; merged with the built-in list by `scan_acronym_casing.py`. Always present, even for non-Python projects |
-| `python`                | object\|null      | Python tooling, rule toggles, and effective tool configuration (Python only; `null` otherwise) — see below                                                                                                                            |
-| `php`                   | object\|null      | PHP tooling, rule toggles, autoload mapping, and effective tool configuration (PHP only; `null` otherwise) — see below                                                                                                                |
-| `external_review_model` | string            | Default model for `external-review` (overridable by front-matter)                                                                                                                                                                     |
-| `documentation`         | object            | Documentation configuration — see below                                                                                                                                                                                               |
-| `reports_dir`           | string            | Directory where review reports are saved                                                                                                                                                                                              |
+| Field                   | Type              | Description                                                                                                                                                                                                                              |
+|-------------------------|-------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `setup_version`         | string            | Matches the skill version that wrote the file                                                                                                                                                                                            |
+| `setup_timestamp`       | string (ISO 8601) | Timestamp of the last setup run                                                                                                                                                                                                          |
+| `language`              | string            | Detected project language (`python`, `php`, `go`, `rust`, etc.)                                                                                                                                                                          |
+| `container_name`        | string\|null      | Docker container name for running tools (`null` if no Docker)                                                                                                                                                                            |
+| `tokensave_available`   | boolean           | `true` if `tokensave_status` responds (probed directly)                                                                                                                                                                                  |
+| `acronyms`              | array             | Project-specific acronyms that must stay uppercase in class names (e.g. `["CITE"]`). Extracted from `AGENTS.md` during setup; merged with the built-in list by `acronym_casing_scanner.py`. Always present, even for non-Python projects |
+| `python`                | object\|null      | Python tooling, rule toggles, and effective tool configuration (Python only; `null` otherwise) — see below                                                                                                                               |
+| `php`                   | object\|null      | PHP tooling, rule toggles, autoload mapping, and effective tool configuration (PHP only; `null` otherwise) — see below                                                                                                                   |
+| `external_review_model` | string            | Default model for `external-review` (overridable by front-matter)                                                                                                                                                                        |
+| `documentation`         | object            | Documentation configuration — see below                                                                                                                                                                                                  |
+| `reports_dir`           | string            | Directory where review reports are saved                                                                                                                                                                                                 |
 
 ## `documentation` — documentation configuration
 
-| Field                    | Type   | Description                                                                                                                                                                    |
-|--------------------------|--------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `documentation.language` | string | ISO 639-1 code for documentation language (default: `"en"`). When not `"en"`, the `documentor` skill translates Diátaxis signpost headings before running the staleness scorer |
-| `documentation.dir`      | string | Directory where project documentation lives (default: `"docs"`). Used by the `documentor` skill to locate the Diátaxis docs tree for drift detection and staleness scoring     |
+| Field                    | Type           | Description                                                                                                                                                                                              |
+|--------------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `documentation.language` | string         | ISO 639-1 code for documentation language (default: `"en"`). When not `"en"`, the `documentor` skill translates Diátaxis signpost headings before running the staleness scorer                           |
+| `documentation.dir`      | string         | Directory where project documentation lives (default: `"docs"`). Used by the `documentor` skill to locate the Diátaxis docs tree for drift detection and staleness scoring                               |
 | `documentation.adrs`     | string \| null | Relative path within `documentation.dir` where ADRs live (e.g. `"adr"`), `""` if scattered in docs root, or `null` if no ADRs found. Auto-detected during setup. Used by the ADR distiller during review |
 
 ## `python` — tooling, rules, and configuration
@@ -196,7 +196,7 @@ These control which checks the `python-code-style` skill enforces. All default t
 
 ### `python.testing` — configurable rule toggles
 
-These control which checks the `python-testing-patterns` skill enforces and the coverage thresholds it uses.
+These control which checks the `python-testing-style` skill enforces and the coverage thresholds it uses.
 
 | Key                               | Type    | Default | Area     | Rule                                                         |
 |-----------------------------------|---------|---------|----------|--------------------------------------------------------------|
@@ -204,7 +204,7 @@ These control which checks the `python-testing-patterns` skill enforces and the 
 | `coverage_well_covered_threshold` | integer | `80`    | Coverage | Coverage above this % is well-covered — do not flag (0–100)  |
 | `check_test_naming`               | boolean | `true`  | Naming   | Test naming convention (`test_<unit>_<scenario>_<expected>`) |
 
-> Rules not listed here (AAA structure, test isolation, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `skills/python-testing-patterns/SKILL.md` → "Always-on rules" for the full list.
+> Rules not listed here (AAA structure, test isolation, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `skills/python-testing-style/SKILL.md` → "Always-on rules" for the full list.
 
 ### `python.pyproject_mtime` — staleness detection
 
@@ -251,7 +251,7 @@ These control which checks the `php-code-style` skill enforces. All default to `
 
 ### `php.testing` — configurable rule toggles
 
-These control which checks the `php-testing-patterns` skill enforces and the coverage thresholds it uses.
+These control which checks the `php-testing-style` skill enforces and the coverage thresholds it uses.
 
 | Key                               | Type    | Default | Area     | Rule                                                                     |
 |-----------------------------------|---------|---------|----------|--------------------------------------------------------------------------|
@@ -259,11 +259,11 @@ These control which checks the `php-testing-patterns` skill enforces and the cov
 | `coverage_well_covered_threshold` | integer | `80`    | Coverage | Coverage above this % is well-covered — do not flag (0–100)              |
 | `check_test_naming`               | boolean | `true`  | Naming   | PHPUnit test naming convention (`*Test.php`, methods start with `test_`) |
 
-> Rules not listed here (one test class per SUT, test directory mirroring per PSR-4, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `skills/php-testing-patterns/SKILL.md` → "Always-on rules" for the full list.
+> Rules not listed here (one test class per SUT, test directory mirroring per PSR-4, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `skills/php-testing-style/SKILL.md` → "Always-on rules" for the full list.
 
 ### `php.autoload` — PSR-4 namespace mapping
 
-PSR-4 namespace → directory mapping extracted from `composer.json`. The `php-code-style` and `php-testing-patterns` skills use this to resolve namespaces to directories (equivalent to how Python skills use `[tool.hatch.build.targets.wheel] packages`).
+PSR-4 namespace → directory mapping extracted from `composer.json`. The `php-code-style` and `php-testing-style` skills use this to resolve namespaces to directories (equivalent to how Python skills use `[tool.hatch.build.targets.wheel] packages`).
 
 | Field                    | Type   | Description                                                                                                                         |
 |--------------------------|--------|-------------------------------------------------------------------------------------------------------------------------------------|
@@ -296,7 +296,7 @@ If any subcommand calls a tokensave MCP tool and receives a tool-not-found / ser
 2. Prints the "not installed" message from `tool-messages.md`
 3. Continues with grep + targeted reads as fallback
 
-Python skills (`python-code-style`, `python-testing-patterns`) and PHP skills (`php-code-style`, `php-testing-patterns`) are bundled inside this meta-skill and are always available — the "not found" case does not apply to them.
+Python skills (`python-code-style`, `python-testing-style`) and PHP skills (`php-code-style`, `php-testing-style`) are bundled inside this meta-skill and are always available — the "not found" case does not apply to them.
 
 ---
 

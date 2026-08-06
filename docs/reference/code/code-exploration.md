@@ -12,7 +12,7 @@ Decision tree for choosing the right exploration tool. See [tokensave.md](tokens
 
 The standard scanning workflow (see [`scripts.md`](scripts.md)) can be enhanced:
 
-1. Run `scan_class_metrics.py` → get the largest classes (unchanged)
+1. Run `class_metrics_scanner.py` → get the largest classes (unchanged)
 2. For each top candidate, use `tokensave_context` to understand its responsibilities **without reading the full file**
 3. Use `tokensave_callees` to list what the class calls — group calls by domain (SQL, HTTP, formatting, etc.)
 4. Apply the "reason to change" test based on the domain grouping
@@ -25,8 +25,8 @@ When running as part of `/zolletta-metaskill review`, this skill is invoked by a
 
 ### When to use subagents
 
-- **Parallel class analysis**: after `scan_class_metrics.py` identifies 5+ candidates, spawn one background subagent per candidate to read the class and apply the "reason to change" test. Each subagent returns a structured verdict (God class / long-but-cohesive, with domain grouping).
-- **Parallel test file analysis**: after `scan_test_god_classes.py --show-methods` identifies test God classes, spawn one subagent per class to list which SUTs it tests and whether each SUT has its own source file.
+- **Parallel class analysis**: after `class_metrics_scanner.py` identifies 5+ candidates, spawn one background subagent per candidate to read the class and apply the "reason to change" test. Each subagent returns a structured verdict (God class / long-but-cohesive, with domain grouping).
+- **Parallel test file analysis**: after `test_god_classes_scanner.py --show-methods` identifies test God classes, spawn one subagent per class to list which SUTs it tests and whether each SUT has its own source file.
 
 ### When NOT to use subagents
 

@@ -15,6 +15,7 @@ Without a central configuration file, each subcommand would have to re-detect th
 Setup writes a single `.zolletta-metaskill/settings.json` file containing all project-wide configuration. Every other subcommand reads from this file instead of re-detecting.
 
 The file includes:
+
 - `language` — the detected project language
 - `container_name` — Docker container for running tools (or `null`)
 - `tokensave_available` — whether the semantic code-graph tool is present
@@ -27,14 +28,17 @@ A JSON Schema (`settings.schema.json`) validates the shape. A prose reference (`
 ## Consequences
 
 **Positive:**
+
 - Detection happens once (during setup) and is reused — subcommands start instantly with consistent config.
 - The setup guard ensures `settings.json` exists before any subcommand runs, so subcommands can assume it is present.
 - Staleness checks (comparing pyproject.toml/composer.json mtime against stored values) trigger a light refresh without full re-setup.
 - The JSON Schema enables CI validation and IDE autocompletion.
 
 **Negative:**
+
 - `settings.json` can become stale if the project changes without re-running setup. The staleness checks mitigate this for Python and PHP, but other config drift is possible.
 - Adding a new configuration field requires updating the schema, the template, the prose doc, and the setup skill — four files in sync.
 
 **Neutral:**
+
 - `settings.json` is a generated artifact, gitignored per-user. It is not committed to the repo.

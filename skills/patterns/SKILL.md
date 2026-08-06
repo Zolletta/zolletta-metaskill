@@ -1,6 +1,5 @@
 ---
 name: zolletta-metaskill-patterns
-version: 3.2.0
 license: MIT + Commons Clause
 description: >
   Language-agnostic design pattern analysis with automated class metrics scanning. Detects God classes, SOLID violations, tight coupling, and composition-vs-inheritance issues in Python (via AST scripts) and other languages (via manual principle application). Use when refactoring a God class, evaluating structural quality, or planning a modular architecture. Succeeds and extends python-design-patterns (MIT, wshobson/agents).
@@ -40,8 +39,8 @@ The principles are language-agnostic (KISS, SOLID, Separation of Concerns, Compo
 
 This skill is organized into a lean entry point (this file) plus shared reference files in `../../docs/`. Some are **mandatory reading** (marked with ★) — you must read them before starting any review. Others are optional and can be read on demand.
 
-| File                                                                                   | Mandatory | Content                                                                                                                                                                                                                                                                                                                         |
-| -------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| File                                                                                      | Mandatory | Content                                                                                                                                                                                                                                                                                                                         |
+|-------------------------------------------------------------------------------------------|-----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [general-principles.md](../../docs/explanation/code/general-principles.md)                | ★         | Language-agnostic principles: SOLID (SRP, OCP, LSP, ISP, DIP), KISS, Separation of Concerns, Composition over Inheritance, Rule of Three, function size, dependency injection, God class detection procedure, "What is NOT a God class" criteria, common anti-patterns, and manual checks for non-Python languages — **shared** |
 | [python-review-patterns.md](../../docs/explanation/code/python/python-review-patterns.md) | ★         | Python-specific patterns: strategy pattern with autodiscovery, Protocol vs ABC guidance — **shared**                                                                                                                                                                                                                            |
 | [structural-conventions.md](../../docs/explanation/code/structural-conventions.md)        | ★         | One-class-per-file convention, naming conventions, test structure mirroring, test God class splitting — **shared**                                                                                                                                                                                                              |
@@ -57,7 +56,7 @@ Before evaluating any findings, you MUST read the three mandatory reference file
 
 ### Mandatory judgment step for God class detection
 
-For every class in the `scan_class_metrics.py` top-15 output, you MUST apply the "reason to change" test before reporting it as a finding:
+For every class in the `class_metrics_scanner.py` top-15 output, you MUST apply the "reason to change" test before reporting it as a finding:
 
 1. List every change that could require editing the class.
 2. Group the changes by domain (HTTP/API, business logic, data access, configuration, presentation, I/O).
@@ -75,7 +74,7 @@ For every class in the `scan_class_metrics.py` top-15 output, you MUST apply the
 
 ### Missing tests — coverage cross-check
 
-The `scan_tests.py` "Missing tests" table is a **structural** signal. Before reporting any file from this table as a finding:
+The `test_structure_scanner.py` "Missing tests" table is a **structural** signal. Before reporting any file from this table as a finding:
 
 1. Run `pytest --cov` (or `pytest --cov --cov-report=term-missing` if available).
 2. Check the coverage percentage for each file in the "Missing tests" table.
@@ -86,7 +85,7 @@ This prevents the whack-a-mole cycle where every review re-reports the same stru
 
 ### Composition roots — DIP suppression
 
-The `scan_dependency_inversion.py` scanner excludes entry points by filename pattern and detects DI container creation (`make_container()`, `Container()`, etc.) semantically. If the scanner still flags a class that is clearly a composition root (it wires the DI container, creates the container, or is the top-level entry point), suppress it and note "composition root — not a DIP violation" in the report. Someone has to create the container — that is not a violation.
+The `dependency_inversion_scanner.py` scanner excludes entry points by filename pattern and detects DI container creation (`make_container()`, `Container()`, etc.) semantically. If the scanner still flags a class that is clearly a composition root (it wires the DI container, creates the container, or is the top-level entry point), suppress it and note "composition root — not a DIP violation" in the report. Someone has to create the container — that is not a violation.
 
 ## Output
 

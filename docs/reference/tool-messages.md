@@ -12,7 +12,7 @@ Verbatim messages printed by the tool-failure handler.
 
 # Tool "unconfigured" warnings
 
-## Tool unconfigured warnings
+## When a tool is not configured
 
 ---
 
@@ -71,7 +71,7 @@ Homepage: https://github.com/astral-sh/ruff
 ℹ pytest is not installed.
 
 pytest is the standard Python test runner. Zolletta-metaskill uses it to run tests
-and verify coverage. Without pytest, the testing-patterns review cannot
+and verify coverage. Without pytest, the testing-style review cannot
 execute tests or report coverage gaps.
 
 Homepage: https://github.com/pytest-dev/pytest

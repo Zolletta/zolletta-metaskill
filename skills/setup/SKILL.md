@@ -1,6 +1,5 @@
 ---
 name: zolletta-metaskill-setup
-version: 3.2.0
 license: MIT + Commons Clause
 description: >
   Project initialization for Zolletta-metaskill. Creates the .zolletta-metaskill/ directory, detects the project language, detects Docker container, tests tokensave availability, detects Python and PHP tooling, and writes settings.json. Also adds .zolletta-metaskill/ to the user's global ~/.gitignore. Run automatically by the setup guard before any subcommand if settings.json is missing, or manually via /zolletta-metaskill setup.
@@ -41,7 +40,7 @@ mkdir -p .zolletta-metaskill
 ### Step 2 — Add .zolletta-metaskill/ to the global ~/.gitignore
 
 ```bash
-python3 ../../src/zolletta_metaskill/setup/ensure_global_gitignore.py
+python3 ../../src/zolletta_metaskill/setup/global_gitignore_ensurer.py
 ```
 
 Idempotent. Do **not** touch the project's local `.gitignore`.
@@ -49,7 +48,7 @@ Idempotent. Do **not** touch the project's local `.gitignore`.
 ### Step 3 — Detect the project language
 
 ```bash
-python3 ../../src/zolletta_metaskill/setup/detect_language.py
+python3 ../../src/zolletta_metaskill/setup/language_detector.py
 ```
 
 Prints the detected language and exits 0, or prints nothing and exits 1 if no marker is found. If no marker is found, inspect the source directory for the most common file extension. If still undetermined, ask the user with `ask_user_question`.
@@ -72,7 +71,7 @@ If language is not Python, set `python: null` and skip to Step 6.6.
 1. Run:
 
    ```bash
-   python3 ../../src/zolletta_metaskill/setup/detect_pyproject_sections.py
+   python3 ../../src/zolletta_metaskill/setup/pyproject_sections_detector.py
    ```
 
    Prints JSON mapping each tool (`uv`, `ruff`, `pytest`, `ty`, `vulture`, `mypy`) to `{"available": bool}`.
@@ -94,15 +93,15 @@ For each available tool, extract its config fields into `python.tools.<tool>`. I
 ### Step 6.6 — Detect documentation configuration
 
 ```bash
-python3 ../../src/zolletta_metaskill/setup/detect_doc_config.py
+python3 ../../src/zolletta_metaskill/setup/doc_config_detector.py
 ```
 
-Prints `.backstage` or `docs`. Default documentation language is `"en"` (ISO 639-1).
+Reads `documentation.dir` from `settings.json` (default `docs`). Default documentation language is `"en"` (ISO 639-1).
 
 ### Step 6.7 — Detect ADR folder
 
 ```bash
-python3 ../../src/zolletta_metaskill/setup/detect_adrs.py <docs_dir>
+python3 ../../src/zolletta_metaskill/setup/adr_detector.py <docs_dir>
 ```
 
 Prints JSON `{"adrs_path": "adr"}` or `{"adrs_path": null}`. Store in `documentation.adrs`.
@@ -115,7 +114,7 @@ If language is not PHP, set `php: null` and skip to Step 7.6.
 1. Run:
 
    ```bash
-   python3 ../../src/zolletta_metaskill/setup/detect_php_tools.py
+   python3 ../../src/zolletta_metaskill/setup/php_tools_detector.py
    ```
 
    Prints JSON mapping each tool (`phpunit`, `phpstan`, `psalm`, `php_cs_fixer`, `phpcs`) to `{"available": bool}`. A tool is available if found in `composer.json` `require-dev` or if a config file exists.
@@ -134,12 +133,12 @@ Read `composer.json` and each tool's config file. Record `composer_mtime` (float
 
 ### Step 7.6 — Python skill availability (no action needed)
 
-The Python review skills (`python-code-style`, `python-testing-patterns`) are bundled inside this meta-skill — always available, no flags needed.
+The Python review skills (`python-code-style`, `python-testing-style`) are bundled inside this meta-skill — always available, no flags needed.
 
 ### Step 7.7 — Detect companion implementation skills
 
 ```bash
-python3 ../../src/zolletta_metaskill/setup/detect_companion_skills.py
+python3 ../../src/zolletta_metaskill/setup/companion_skill_detector.py
 ```
 
 Prints JSON with `php_pro.available` and `python_development.available` booleans.
@@ -155,15 +154,15 @@ Read the [settings template](assets/settings_template.json) and write `.zolletta
 
 | Field                   | Source                                                       |
 | ----------------------- | ------------------------------------------------------------ |
-| `setup_version`         | Matches the skill version (see front-matter)                |
+| `setup_version`         | Matches the skill version (see front-matter)                 |
 | `setup_timestamp`       | Current timestamp in ISO 8601 (`date -u +%Y-%m-%dT%H:%M:%S`) |
 | `language`              | Step 3                                                       |
 | `container_name`        | Step 4 (`null` if no Docker)                                 |
 | `tokensave_available`   | Step 5                                                       |
 | `acronyms`              | Step 6.5 (`[]` if none)                                      |
-| `python`                | Steps 6 + 6.5 (Python only; `null` otherwise)               |
-| `php`                   | Steps 7 + 7.5 (PHP only; `null` otherwise)                  |
-| `external_review_model` | `"swe"` (default; overridable by front-matter)              |
+| `python`                | Steps 6 + 6.5 (Python only; `null` otherwise)                |
+| `php`                   | Steps 7 + 7.5 (PHP only; `null` otherwise)                   |
+| `external_review_model` | `"swe"` (default; overridable by front-matter)               |
 | `documentation`         | Steps 6.6 + 6.7                                              |
 | `reports_dir`           | `".zolletta-metaskill/reports"`                              |
 
