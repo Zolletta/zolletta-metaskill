@@ -19,24 +19,32 @@ from typing import Protocol
 import importlib
 import pkgutil
 
+
 class ScenarioStrategy(Protocol):
     """Protocol for all scenario generation strategies."""
+
     def generate(self, spec: Spec) -> list[Scenario]: ...
     def get_name(self) -> str: ...
 
+
 _STRATEGIES: dict[str, type[ScenarioStrategy]] = {}
+
 
 def register_strategy(name: str):
     """Decorator to register a strategy class."""
+
     def decorator(cls):
         _STRATEGIES[name] = cls
         return cls
+
     return decorator
+
 
 @register_strategy("feature_flag")
 class FeatureFlagStrategy:
     def generate(self, spec: Spec) -> list[Scenario]: ...
     def get_name(self) -> str: ...
+
 
 def autodiscover_strategies(package: str) -> None:
     """Import all modules in a package to trigger @register_strategy decorators."""
@@ -52,7 +60,9 @@ def autodiscover_strategies(package: str) -> None:
 ```python
 class ScenarioReducerMixin:
     """Shared reduction logic for strategies that need it."""
+
     def _reduce(self, scenarios: list[Scenario]) -> list[Scenario]: ...
+
 
 @register_strategy("pipeline_type")
 class PipelineTypeStrategy(ScenarioReducerMixin):
@@ -73,13 +83,16 @@ Python offers two mechanisms for defining interfaces:
 class VerifierProtocol(Protocol):
     def verify(self, scenario: Scenario) -> VerificationResult: ...
 
+
 class MyVerifier:  # No inheritance, just matches the shape
     def verify(self, scenario: Scenario) -> VerificationResult: ...
+
 
 # ABC: nominal — must inherit
 class VerifierBase(ABC):
     @abstractmethod
     def verify(self, scenario: Scenario) -> VerificationResult: ...
+
 
 class MyVerifier(VerifierBase):  # Must inherit
     def verify(self, scenario: Scenario) -> VerificationResult: ...
@@ -221,6 +234,7 @@ New Python code uses the modern typing stack consistently. Older `typing` import
 from __future__ import annotations
 
 from collections.abc import Callable
+
 
 def filter_scenarios(
     scenarios: list[Scenario],

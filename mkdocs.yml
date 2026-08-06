@@ -97,6 +97,7 @@ nav:
           - "Subcommands": reference/subcommands.md
           - "Frontmatter": reference/frontmatter.md
           - "Reports": reference/reports.md
+          - "Example review report": reference/example-review-report/index.md
           - "Tool messages": reference/tool-messages.md
           - "Reference index": reference/index.md
       - "Architecture Decision Records":

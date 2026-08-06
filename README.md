@@ -45,12 +45,49 @@ The first time you run any subcommand in a project, the **setup guard** automati
 
 New to Zolletta-metaskill? Read the [getting started tutorial](https://zolletta.github.io/zolletta-metaskill/tutorials/getting-started/).
 
+## Usage
+
+### Full review
+
+Run `/zolletta-metaskill review` to orchestrate all subcommands in parallel. The orchestrator:
+
+1. Runs the **setup guard** — creates or refreshes `.zolletta-metaskill/settings.json` if needed.
+2. Distills ADRs into architectural directives (`adr-distiller`).
+3. Launches subagents for each review area (patterns, code style, testing style, documentor).
+4. Aggregates results into a grade, summary, and TODO file under `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/`.
+
+### Individual subcommands
+
+Each subcommand can be run standalone for targeted review:
+
+| Subcommand             | What it does                                                              |
+|------------------------|---------------------------------------------------------------------------|
+| `setup`                | Detect language, tools, Docker container, tokensave — write settings.json |
+| `patterns`             | SOLID, God classes, coupling, composition vs inheritance                  |
+| `documentor`           | Diátaxis compliance + drift detection (staleness, links, API validation)  |
+| `external-review`      | Send modified files to an external LLM for review                         |
+| `adr-distiller`        | Distill Accepted ADRs into `adr-distilled.md` directives                  |
+| `python-code-style`    | Python source style (ruff, mypy, naming, docstrings, types)               |
+| `python-testing-style` | Python test code (isolation, naming, coverage, mocking, fixtures)         |
+| `php-code-style`       | PHP source style (PSR-12, naming, one class per file, PHPDoc)             |
+| `php-testing-style`    | PHP test code (PHPUnit naming, mirroring, coverage, mocking)              |
+
+### Report output
+
+All reports are saved to `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/`:
+
+- `SUMMARY.md` — executive summary with overall grade and trend
+- `TODO.md` — prioritized action items
+- `<subcommand>.md` — detailed findings per review area
+
+See the [example review report](https://zolletta.github.io/zolletta-metaskill/reference/example-review-report/) for a real output.
+
 ### Supported languages
 
-| Language | Parser                                              | SOLID scanners     | Code style          | Testing patterns          |
-|----------|-----------------------------------------------------|--------------------|---------------------|---------------------------|
-| Python   | [ast](https://docs.python.org/3/library/ast.html) module (stdlib) | DIP, ISP, OCP, LSP | `python-code-style` | `python-testing-patterns` |
-| PHP      | [tree-sitter-php](https://github.com/tree-sitter/tree-sitter-php) | DIP, ISP, OCP      | `php-code-style`    | `php-testing-patterns`    |
+| Language | Parser                                                            | SOLID scanners     | Code style          | Testing style          |
+|----------|-------------------------------------------------------------------|--------------------|---------------------|------------------------|
+| Python   | [ast](https://docs.python.org/3/library/ast.html) module (stdlib) | DIP, ISP, OCP, LSP | `python-code-style` | `python-testing-style` |
+| PHP      | [tree-sitter-php](https://github.com/tree-sitter/tree-sitter-php) | DIP, ISP, OCP      | `php-code-style`    | `php-testing-style`    |
 
 ## Installation
 
@@ -66,7 +103,7 @@ The `install.sh` script copies the skill to `~/.agents/skills/zolletta-metaskill
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, version bumping, and the quality gate.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and the quality gate.
 
 ## Reference
 
@@ -88,7 +125,7 @@ MIT + Commons Clause. See [LICENSE](LICENSE) and the `license` field in each sub
 
 ## Attributions
 
-- **[wshobson/agents](https://github.com/wshobson/agents)** (MIT, Copyright (c) 2024 Seth Hobson) — `python-code-style` and `python-testing-patterns` skills adapted from the original Python review agents. Design pattern principles in `patterns` also adapted from wshobson's python-design-patterns
+- **[wshobson/agents](https://github.com/wshobson/agents)** (MIT, Copyright (c) 2024 Seth Hobson) — `python-code-style` and `python-testing-style` skills adapted from the original Python review agents. Design pattern principles in `patterns` also adapted from wshobson's python-design-patterns
 - **[Diátaxis Documentation Expert](https://github.com/github/awesome-copilot/blob/main/skills/documentation-writer/SKILL.md)** (MIT, github/awesome-copilot) — `documentor` skill derived from this documentation review skill
 - **[Doc Drift Detector](https://github.com/borghei/Claude-Skills/blob/main/engineering/doc-drift-detector/SKILL.md)** (MIT + Commons Clause, borghei/Claude-Skills) — drift detection pipeline in `documentor` derived from this skill
 - **[Diátaxis](https://diataxis.fr/)** — documentation framework used by the `documentor` subcommand for structure compliance checks
@@ -97,4 +134,4 @@ MIT + Commons Clause. See [LICENSE](LICENSE) and the `license` field in each sub
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md).
+Releases are automated via [python-semantic-release](https://github.com/python-semantic-release/python-semantic-release). See the [GitHub Releases](https://github.com/Zolletta/zolletta-metaskill/releases) page.

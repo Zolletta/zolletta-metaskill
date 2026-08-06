@@ -1,6 +1,5 @@
 ---
 name: zolletta-metaskill
-version: 3.2.0
 license: MIT + Commons Clause
 description: 'Zolletta-metaskill — meta-skill and registry for the zolletta-* review family. Lists available skills, shared resources, and orchestration rules.'
 argument-hint: "[subcommand]"
@@ -13,7 +12,7 @@ A family of generic code review skills with specializations for
 - Python
 - Others (Work in progress)
 
-Invoke with `/zolletta-metaskill <subcommand>` to run a specific review, or `/zolletta-metaskill` with no argument to see available subcommands.
+Invoke with `/zolletta-metaskill <subcommand>` to run a specific review, `/zolletta-metaskill help` to list available subcommands, or `/zolletta-metaskill` with no argument to see the help table.
 
 All paths are relative to where this SKILL.md is found.
 
@@ -23,17 +22,8 @@ All paths are relative to where this SKILL.md is found.
 
 ## Subcommands
 
-| Subcommand                | Path                               | Scope                                                                                                                                                                   |
-| ------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `setup`                   | `skills/setup/SKILL.md`                   | Project initialization — creates `.zolletta-metaskill/settings.json`, detects language, Docker container, tokensave, and Python/PHP tooling                             |
-| `documentor`              | `skills/documentor/SKILL.md`              | [Diátaxis](https://diataxis.fr/) compliance + drift detection for `.backstage/`                                                                                         |
-| `patterns`                | `skills/patterns/SKILL.md`                | God classes, SOLID, coupling, composition vs inheritance for `src/`                                                                                                     |
-| `external-review`         | `skills/external-review/SKILL.md`         | External-LLM code review on modified files only (default model: `swe`, override via `external_review_model` in `settings.json` or front-matter)                         |
-| `review`                  | `skills/review/SKILL.md`                  | Orchestrator — reads language from `settings.json`, runs general + language-specific skills in parallel batches, aggregates reports                                     |
-| `python-code-style`       | `skills/python-code-style/SKILL.md`       | Python source code style review (ruff, mypy, naming, docstrings, type annotations) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)           |
-| `python-testing-patterns` | `skills/python-testing-patterns/SKILL.md` | Python test code review (isolation, naming, coverage gaps, mocking, fixtures, AAA structure) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT) |
-| `php-code-style`          | `skills/php-code-style/SKILL.md`          | PHP source code style review (PSR-12, naming, one class per file, PHPDoc, type declarations)                                           |
-| `php-testing-patterns`    | `skills/php-testing-patterns/SKILL.md`    | PHP test code review (PHPUnit naming, mirroring, coverage gaps, mocking, data providers)                                              |
+The subcommand table is owned by the `help` skill — see [`skills/help/SKILL.md`](skills/help/SKILL.md) for the canonical list.
+When no subcommand is given, or the subcommand is `help`, the help table is displayed (see [Dispatch](#dispatch) below).
 
 ## Shared resources
 
@@ -42,7 +32,7 @@ All subcommands read from this skill's subdirectories:
 | Resource   | Path                                | Contents                                                                                                        |
 | ---------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | References | `docs/`                             | Shared guidelines (Diátaxis, review workflow, grading rubric, tool messages)                                    |
-| Scripts    | `src/zolletta_metaskill/`           | Scanning scripts organized by skill (patterns/, python_code_style/, python_testing_patterns/, shared/)          |
+| Scripts    | `src/zolletta_metaskill/`           | Scanning scripts organized by skill (patterns/, code_style/, testing_style/, documentor/, adr/, core/, setup/)  |
 | Settings   | `.zolletta-metaskill/settings.json` | Project-wide configuration written by `setup` (language, tool availability, external-review model, reports dir) |
 
 ## Rules
@@ -82,12 +72,12 @@ When any subcommand calls a tokensave MCP tool and receives a **tool-not-found**
 
 This handler applies to every subcommand that uses tokensave (`patterns`, `documentor`, `external-review`, `review`). Each subcommand's SKILL.md links back to this section.
 
-> **Bundled language skills**: `python-code-style`, `python-testing-patterns`, `php-code-style`, and `php-testing-patterns` are bundled inside this meta-skill, so they are always available — the "not found" case does not apply. The `*_available` flags in `settings.json` only reflect whether the project language is Python or PHP.
+> **Bundled language skills**: `python-code-style`, `python-testing-style`, `php-code-style`, and `php-testing-style` are bundled inside this meta-skill, so they are always available — the "not found" case does not apply. The `*_available` flags in `settings.json` only reflect whether the project language is Python or PHP.
 
 ## Dispatch
 
 When invoked as `/zolletta-metaskill <subcommand>`:
 
-1. Run the **setup guard** (see above) — ensure `.zolletta-metaskill/settings.json` exists.
-2. Read the SKILL.md at `skills/<subcommand>/SKILL.md` and execute its instructions.
-3. If no subcommand is given, list the available subcommands from the table above.
+1. If no subcommand is given, or the subcommand is `help`, read `skills/help/SKILL.md` and execute its instructions (display the help table). Stop — do not run the setup guard or any other subcommand.
+2. Run the **setup guard** (see above) — ensure `.zolletta-metaskill/settings.json` exists.
+3. Read the SKILL.md at `skills/<subcommand>/SKILL.md` and execute its instructions.

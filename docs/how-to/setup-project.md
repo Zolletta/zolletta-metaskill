@@ -37,8 +37,8 @@ Setup detects and records the following:
 | **Python tooling**          | ruff, pytest, ty, vulture, mypy, uv availability                              |
 | **Python config**           | Line length, target version, ruff/mypy/ty/pytest config from `pyproject.toml` |
 | **Python code-style rules** | Configurable rule toggles for `python-code-style`                             |
-| **Python testing rules**    | Configurable rule toggles for `python-testing-patterns`                       |
-| **Documentation directory** | `.backstage/` if exists, else `docs/` if exists, else default `docs/`         |
+| **Python testing rules**    | Configurable rule toggles for `python-testing-style`                          |
+| **Documentation directory** | Read from `documentation.dir` in `settings.json` (default `docs/`)            |
 
 See [settings-schema.md](../reference/settings-schema.md) for the corresponding field names.
 

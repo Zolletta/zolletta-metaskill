@@ -20,13 +20,13 @@ The timestamp format (`YYYY-MM-DD-HH-MM`) is lexicographically sortable, so find
 
 Each subcommand writes its own report file:
 
-| Subcommand                | Report file                  | Content                                                                                 |
-|---------------------------|------------------------------|-----------------------------------------------------------------------------------------|
-| `patterns`                | `patterns.md`                | God class findings, SOLID violations, coupling analysis, structural convention results  |
-| `documentor`              | `documentor.md`              | Diátaxis compliance findings, drift detection results, staleness scores, link integrity |
-| `python-code-style`       | `python-code-style.md`       | Linting findings, formatting issues, naming violations, docstring gaps, type errors     |
-| `python-testing-patterns` | `python-testing-patterns.md` | Coverage gaps, test isolation issues, naming violations, fixture design findings        |
-| `external-review`         | `external-review.md`         | External LLM review of modified files                                                   |
+| Subcommand             | Report file               | Content                                                                                 |
+|------------------------|---------------------------|-----------------------------------------------------------------------------------------|
+| `patterns`             | `patterns.md`             | God class findings, SOLID violations, coupling analysis, structural convention results  |
+| `documentor`           | `documentor.md`           | Diátaxis compliance findings, drift detection results, staleness scores, link integrity |
+| `python-code-style`    | `python-code-style.md`    | Linting findings, formatting issues, naming violations, docstring gaps, type errors     |
+| `python-testing-style` | `python-testing-style.md` | Coverage gaps, test isolation issues, naming violations, fixture design findings        |
+| `external-review`      | `external-review.md`      | External LLM review of modified files                                                   |
 
 ## Orchestrator output
 
@@ -39,7 +39,7 @@ When running `/zolletta-metaskill review`, the orchestrator produces two additio
 
 ## Report format
 
-Each report follows the [report template](../../review/assets/summary_template.md) structure:
+Each report follows the [report template](../../skills/review/assets/summary_template.md) structure:
 
 1. **Grade** at the top (A–F or numeric score)
 2. **Scanning script results** (tables of raw output)

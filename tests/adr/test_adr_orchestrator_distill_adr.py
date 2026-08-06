@@ -16,8 +16,9 @@ class TestDistillAdr:
     def test_accepted_adr_produces_directive(self, tmp_path: Path) -> None:
         docs = tmp_path / "docs"
         f = docs / "adr" / "0001-use-postgres.md"
-        write_adr(f, "001", "Use Postgres", "Accepted",
-                  "We use PostgreSQL for the primary database.")
+        write_adr(
+            f, "001", "Use Postgres", "Accepted", "We use PostgreSQL for the primary database."
+        )
         record = ADRDiscovery._extract_metadata(f)
         assert record is not None
         distiller = ADROrchestrator(docs, "adr", tmp_path / "cache.json")

@@ -1,8 +1,7 @@
 ---
 name: zolletta-metaskill-documentor
-version: 3.2.0
 description: >
-  Documentation review combining [Diátaxis](https://diataxis.fr/) compliance checks with automated drift detection. Reviews .backstage/ docs for structure, accuracy, consistency, and freshness against the codebase. Use when reviewing docs, preparing releases, running CI doc gates, or auditing doc quality.
+  Documentation review combining [Diátaxis](https://diataxis.fr/) compliance checks with automated drift detection. Reviews the project's documentation directory (from `documentation.dir` in `settings.json`) for structure, accuracy, consistency, and freshness against the codebase. Use when reviewing docs, preparing releases, running CI doc gates, or auditing doc quality.
 license: MIT + Commons Clause
 ---
 
@@ -26,7 +25,8 @@ Read shared guidelines from the meta-skill (parent directory):
 - `../../docs/explanation/documentation/standards.md` — generic doc writing standards (README, API docs, changelogs, ADRs)
 - `../../docs/explanation/code/general-principles.md` — SOLID, KISS, composition over inheritance (language-agnostic)
 - `../../docs/reference/tool-messages.md` — "not installed" messages for the tool-failure handler
-- `../../src/zolletta_metaskill/shared/` — shared scanning scripts
+- `../../src/zolletta_metaskill/code_style/general/` — shared code style scanning scripts
+- `../../src/zolletta_metaskill/testing_style/general/` — shared testing style scanning scripts
 - `../../src/zolletta_metaskill/patterns/` — pattern-specific scanning scripts
 
 **Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
@@ -123,7 +123,7 @@ When checking accuracy, the agent MUST:
 ### Tools
 
 | Tool                      | Purpose                                       | Command                                                                                        |
-| ------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+|---------------------------|-----------------------------------------------|------------------------------------------------------------------------------------------------|
 | `drift_analyzer.py`       | Full drift analysis between code and docs     | `python src/zolletta_metaskill/documentor/drift_analyzer.py <repo> --min-severity high --json` |
 | `doc_staleness_scorer.py` | Score documentation freshness 0-100           | `python src/zolletta_metaskill/documentor/doc_staleness_scorer.py <repo> --threshold 60`       |
 | `api_doc_validator.py`    | Validate API docs against Python source (AST) | `python src/zolletta_metaskill/documentor/api_doc_validator.py <src> <docs> --recursive`       |
@@ -156,7 +156,7 @@ Load on demand — keep this file lean:
 ### Assets
 
 | Asset                                              | Description                               |
-| -------------------------------------------------- | ----------------------------------------- |
+|----------------------------------------------------|-------------------------------------------|
 | [Report Template](assets/report_template.md)       | Template for drift analysis reports       |
 | [Sample Drift Data](assets/sample_drift_data.json) | Sample JSON for testing and demonstration |
 
@@ -174,7 +174,7 @@ Load on demand — keep this file lean:
    - `doc_staleness_scorer.py` — freshness score
    - **Non-English documentation**: if `documentation.language` in `settings.json` is not `"en"`, translate the English signpost headings and directory names before running the staleness scorer. Write a JSON file (see `--diataxis-translations` in `docs/reference/code/scripts.md` for the format) with the translated equivalents and pass it via `--diataxis-translations <path>`. The English signposts (e.g. `"tutorials"`, `"prerequisites"`, `"what we will learn"`) are the keys — translate each to the documentation language. Also translate the README section defaults (`installation`, `usage`, `api`, `contributing`, `license`) and include them as `readme_sections` in the JSON.
 3. **Filter false positives** using the rules above.
-4. **Inventory docs:** List all `.md` files in `.backstage/` and classify by Diátaxis quadrant.
+4. **Inventory docs:** List all `.md` files in the documentation directory (`documentation.dir` from `settings.json`, default `docs/`) and classify by Diátaxis quadrant.
 5. **Review each document** against the Diátaxis compliance checklist (this is a doc-internal check — no source reading needed).
 
 ### Phase 2: Accuracy verification (split by tool availability)

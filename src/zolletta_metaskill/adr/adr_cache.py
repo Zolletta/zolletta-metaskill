@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from zolletta_metaskill.adr.adr_record import ADRRecord
+from zolletta_metaskill.adr.structs.adr_record import ADRRecord
 
 
 class ADRCache:

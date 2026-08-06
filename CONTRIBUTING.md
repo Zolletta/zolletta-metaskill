@@ -40,17 +40,17 @@ These are the same checks CI runs (see `.github/workflows/ci.yml`). All four mus
 
 This project follows [Conventional Commits](https://www.conventionalcommits.org/). Prefix every commit with one of:
 
-| Type       | Use for                                             |
-|------------|-----------------------------------------------------|
-| `feat`     | New feature or capability                            |
-| `fix`      | Bug fix                                             |
-| `docs`     | Documentation changes                                |
-| `refactor` | Code restructuring without behavior change          |
-| `test`     | Adding or updating tests                            |
-| `chore`    | Maintenance, deps, config                           |
-| `style`    | Formatting, whitespace, naming                       |
-| `ci`       | CI/CD changes                                        |
-| `perf`     | Performance improvements                             |
+| Type       | Use for                                    |
+|------------|--------------------------------------------|
+| `feat`     | New feature or capability                  |
+| `fix`      | Bug fix                                    |
+| `docs`     | Documentation changes                      |
+| `refactor` | Code restructuring without behavior change |
+| `test`     | Adding or updating tests                   |
+| `chore`    | Maintenance, deps, config                  |
+| `style`    | Formatting, whitespace, naming             |
+| `ci`       | CI/CD changes                              |
+| `perf`     | Performance improvements                   |
 
 Example: `feat(setup): detect PHP tools from composer.json`
 
@@ -75,21 +75,7 @@ Findings from a self-review don't need to be resolved if they're informational, 
 
 ## Versioning
 
-This project follows [Semantic Versioning](https://semver.org/). The version is a single number shared across all files — the meta-skill and every subskill always have the same version. Use the `.bump` script to update it atomically:
-
-```bash
-./.bump --to <version>
-```
-
-This updates `pyproject.toml`, `src/zolletta_metaskill/__init__.py`, all `SKILL.md` front-matter version fields, and `setup/assets/settings_template.json` in one pass. Review the diff, then commit.
-
-### Version clashes
-
-When multiple PRs are open at the same time, two contributors might bump to the same version. CI includes an automated **version clash check** that fails the PR if another open PR already targets the same version. If you get a clash error:
-
-1. Check which version the other PR is targeting (the error message names the branch)
-2. Re-bump to the next available version: `./.bump --to <next-version>`
-3. Push — the check re-runs automatically
+Versioning is automated via [python-semantic-release](https://github.com/python-semantic-release/python-semantic-release). Commits following [Conventional Commits](https://www.conventionalcommits.org/) are analyzed on every push to `main` — the version is bumped, a changelog entry is generated, a git tag is created, and a GitHub Release is published automatically. No manual version bumping is needed.
 
 ## Documentation
 
@@ -112,7 +98,6 @@ skills/                   # SKILL.md files for each subcommand
 docs/                     # Diátaxis-structured documentation
 tests/                    # Test suite (mirrors src/ structure)
 assets/                   # Logos and images
-.bump                     # Version bump script
 install.sh                # One-command installer
 ```
 

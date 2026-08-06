@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [setup, review, patterns, documentor, external-review, python-*]
+skills: [help, setup, review, patterns, documentor, external-review, adr-distiller, python-*, php-*]
 ---
 
 # Subcommands Reference
@@ -10,15 +10,8 @@ Zolletta-MetaSkill is invoked as `/zolletta-metaskill <subcommand>`. Each subcom
 
 ## Subcommand table
 
-| Subcommand                | Path                                      | Scope                                                                                                                                                                   |
-|---------------------------|-------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `setup`                   | `skills/setup/SKILL.md`                   | Project initialization — creates `.zolletta-metaskill/settings.json`, detects language, Docker container, tokensave, and Python tooling                                 |
-| `documentor`              | `skills/documentor/SKILL.md`              | [Diátaxis](https://diataxis.fr/) compliance + drift detection for the configured documentation directory (default: `docs/`)                                             |
-| `patterns`                | `skills/patterns/SKILL.md`                | God classes, SOLID, coupling, composition vs inheritance for `src/`                                                                                                     |
-| `external-review`         | `skills/external-review/SKILL.md`         | External-LLM code review on modified files only (default model: `swe`, override via `external_review_model` in `settings.json` or front-matter)                         |
-| `review`                  | `skills/review/SKILL.md`                  | Orchestrator — reads language from `settings.json`, runs general + language-specific skills in parallel batches, aggregates reports                                     |
-| `python-code-style`       | `skills/python-code-style/SKILL.md`       | Python source code style review (ruff, mypy, naming, docstrings, type annotations) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT)           |
-| `python-testing-patterns` | `skills/python-testing-patterns/SKILL.md` | Python test code review (isolation, naming, coverage gaps, mocking, fixtures, AAA structure) — adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT) |
+The canonical subcommand table is owned by the `help` skill — see [`skills/help/SKILL.md`](../../skills/help/SKILL.md) for the full list.
+The table is displayed when the user runs `/zolletta-metaskill` with no argument or `/zolletta-metaskill help`.
 
 ## Setup guard
 
@@ -47,6 +40,6 @@ This handler applies to every subcommand that uses tokensave (`patterns`, `docum
 
 When invoked as `/zolletta-metaskill <subcommand>`:
 
-1. Run the **setup guard** — ensure `.zolletta-metaskill/settings.json` exists.
-2. Read the SKILL.md at `<subcommand>/SKILL.md` and execute its instructions.
-3. If no subcommand is given, list the available subcommands from the table above.
+1. If no subcommand is given, or the subcommand is `help`, read `skills/help/SKILL.md` and execute its instructions (display the help table). Stop — do not run the setup guard or any other subcommand.
+2. Run the **setup guard** — ensure `.zolletta-metaskill/settings.json` exists.
+3. Read the SKILL.md at `<subcommand>/SKILL.md` and execute its instructions.

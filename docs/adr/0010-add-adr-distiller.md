@@ -29,6 +29,7 @@ We add an ADR distiller to Zolletta-metaskill that:
 ## Consequences
 
 **Positive:**
+
 - Review subagents gain awareness of the project's architectural decisions, producing more relevant findings.
 - The distilled file serves as a quick-reference index of active decisions, useful beyond review — when writing code, onboarding, or auditing.
 - The mtime cache makes refreshes incremental and fast — only changed ADRs are re-distilled.
@@ -36,11 +37,13 @@ We add an ADR distiller to Zolletta-metaskill that:
 - The approach is inspired by a well-reasoned article (InfoQ, 2026) with attribution, not invented in isolation.
 
 **Negative:**
+
 - Adds a new `documentation.adrs` field to `settings.json` and a new settings schema entry to maintain.
 - Adds new scripts and their test suites to maintain.
 - The binary-vs-nuanced judgment is non-deterministic across reviews — the same directive may produce a finding in one review and an observation in another. This is a deliberate tradeoff: the alternative (a severity tag system mapped from Status) conflates acceptance with criticality and produces worse signal.
 - Only the Nygard ADR format is detected. Projects using other non-standard formats won't be detected — documented as a known limitation.
 
 **Neutral:**
+
 - The distilled file is committed to the repo (auto-generated but deterministic — no noisy diffs if content hasn't changed).
 - The mtime cache is machine-local and gitignored — fresh clones re-distill from scratch, producing identical output.

@@ -35,7 +35,7 @@ class TestCacheManagement:
         cache = ADRCache(cache_path)
         assert cache.load() == {}
 
-    def test_load_oserror(self, tmp_path: Path) -> None:
+    def test_adrcache_load_oserror_returns_empty_dict(self, tmp_path: Path) -> None:
         cache_path = tmp_path / "cache.json"
         cache_path.write_text("{}", encoding="utf-8")
         cache = ADRCache(cache_path)

@@ -25,14 +25,17 @@ This guarantees that every subcommand can assume `settings.json` is present and 
 ## Consequences
 
 **Positive:**
+
 - Users can invoke any subcommand on a fresh project — setup runs automatically the first time.
 - Subsequent invocations are fast because `settings.json` already exists.
 - Staleness is handled with a light refresh (re-extract config), not a full re-setup (re-detect language, Docker, tokensave).
 - The guard is centralized in the meta-skill, so subcommands do not duplicate the check.
 
 **Negative:**
+
 - The first invocation of any subcommand on a new project is slow (full setup runs). This is unavoidable — the information must be gathered once.
 - The staleness check only covers pyproject.toml and composer.json. Other config drift (e.g., a new tool installed without a config file) is not detected until the next full setup.
 
 **Neutral:**
+
 - The setup guard is a convention enforced by the meta-skill's dispatch logic, not by code. Subcommands trust that `settings.json` is present because the guard runs before them.

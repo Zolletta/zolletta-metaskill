@@ -91,7 +91,7 @@ class ADRDistiller:
             "# adr-distilled.md — Architectural Directives\n\n"
             "> Auto-generated from the project's ADRs by the adr-distiller.\n"
             "> Do not edit directly — edit the source ADRs and re-run "
-            "`/zolletta-metaskill setup` or `/zolletta-metaskill review`.\n"
+            "`/zolletta-metaskill adr-distiller` or `/zolletta-metaskill review`.\n"
             "> Each directive links to its source ADR for full context. "
             "Only Accepted decisions are included.\n\n"
         )

@@ -59,6 +59,7 @@ return f"<h1>{user.name}</h1>"
 
 # GOOD: manual escape
 import html
+
 return f"<h1>{html.escape(user.name)}</h1>"
 ```
 
@@ -101,6 +102,7 @@ def create(request: Request) -> Response:
     repo.save(user)
     return Response({"id": user.id})
 
+
 # GOOD: validate at the boundary
 def create(request: Request) -> Response:
     name = request.json.get("name", "")
@@ -139,6 +141,7 @@ client = ApiClient(api_key)
 
 # GOOD: from environment
 import os
+
 api_key = os.environ["API_KEY"]  # raises KeyError if not set
 client = ApiClient(api_key)
 ```

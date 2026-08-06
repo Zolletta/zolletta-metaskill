@@ -10,7 +10,7 @@ The patterns skill includes three mechanisms to prevent verdict oscillation betw
 
 ## 1. Mandatory judgment step for God class detection
 
-`scan_class_metrics.py` reports class size as a triage signal, never a verdict. Before reporting any class as a God class, the reviewer must apply the "reason to change" test:
+`class_metrics_scanner.py` reports class size as a triage signal, never a verdict. Before reporting any class as a God class, the reviewer must apply the "reason to change" test:
 
 1. List every change that could require editing the class.
 2. Group the changes by domain (HTTP/API, business logic, data access, configuration, presentation, I/O).
@@ -30,7 +30,7 @@ The patterns skill includes three mechanisms to prevent verdict oscillation betw
 
 ## 2. Coverage cross-check for missing tests
 
-`scan_tests.py` reports structurally missing test files. Before reporting any as a finding, the reviewer must run `pytest --cov` and check the file's coverage:
+`test_structure_scanner.py` reports structurally missing test files. Before reporting any as a finding, the reviewer must run `pytest --cov` and check the file's coverage:
 
 1. Run `pytest --cov` (or `pytest --cov --cov-report=term-missing` if available).
 2. Check the coverage percentage for each file in the "Missing tests" table.
@@ -43,7 +43,7 @@ This prevents the whack-a-mole cycle where every review re-reports the same stru
 
 ## 3. Semantic composition-root detection
 
-The `scan_dependency_inversion.py` scanner excludes entry points by filename pattern and detects DI container creation (`make_container()`, `Container()`, etc.) semantically. If the scanner still flags a class that is clearly a composition root (it wires the DI container, creates the container, or is the top-level entry point), suppress it and note "composition root — not a DIP violation" in the report.
+The `dependency_inversion_scanner.py` scanner excludes entry points by filename pattern and detects DI container creation (`make_container()`, `Container()`, etc.) semantically. If the scanner still flags a class that is clearly a composition root (it wires the DI container, creates the container, or is the top-level entry point), suppress it and note "composition root — not a DIP violation" in the report.
 
 Someone has to create the container — that is not a violation. The composition root (main, CLI entry point) is the only place where object creation belongs.
 
@@ -74,7 +74,7 @@ Before reporting drift items as per-file findings:
 
 **Common drift signals**: legacy typing (`Optional[X]`, `List[T]`), numbered test names (`test_unit_01_...`), reduced ruff ruleset (`E,F,I` only), banner-comment separators.
 
-**Why this matters**: a single sub-tree-level finding is actionable; 47 individual `Optional[str]` findings are noise. See [false-positive-prevention.md](#) → "Why these mechanisms exist".
+**Why this matters**: a single sub-tree-level finding is actionable; 47 individual `Optional[str]` findings are noise. See [Why these mechanisms exist](#why-these-mechanisms-exist).
 
 ## Why these mechanisms exist
 

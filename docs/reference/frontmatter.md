@@ -43,14 +43,14 @@ Lists the skills that reference or depend on this document. Valid skill names:
 - `documentor` — the documentation review skill
 - `external-review` — the external LLM review skill
 - `python-code-style` — the Python code style skill
-- `python-testing-patterns` — the Python testing patterns skill
+- `python-testing-style` — the Python testing style skill
 - `php-code-style` — the PHP code style skill
-- `php-testing-patterns` — the PHP testing patterns skill
+- `php-testing-style` — the PHP testing style skill
 
 **Wildcards**: language-specific skills can be referenced with wildcards instead of listing each one individually:
 
-- `python-*` — matches all Python-specific skills (`python-code-style`, `python-testing-patterns`, and any future Python skills)
-- `php-*` — matches all PHP-specific skills (`php-code-style`, `php-testing-patterns`, and any future PHP skills)
+- `python-*` — matches all Python-specific skills (`python-code-style`, `python-testing-style`, and any future Python skills)
+- `php-*` — matches all PHP-specific skills (`php-code-style`, `php-testing-style`, and any future PHP skills)
 
 Wildcards are **preferred** for language-specific skills; explicit names are still allowed for files that target a single skill only. When a new language-specific skill is added, no docs files need updating if they already use the wildcard.
 

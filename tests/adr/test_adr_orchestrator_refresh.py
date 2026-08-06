@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import time
+import os
 from pathlib import Path
 
 from zolletta_metaskill.adr.adr_orchestrator import ADROrchestrator
@@ -15,8 +15,7 @@ class TestRefresh:
 
     def test_fresh_start_creates_distilled_file(self, tmp_path: Path) -> None:
         docs = tmp_path / "docs"
-        write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted",
-                 "We do X.")
+        write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted", "We do X.")
         cache_path = tmp_path / "cache.json"
         distiller = ADROrchestrator(docs, "adr", cache_path)
         report = distiller.refresh()
@@ -59,8 +58,8 @@ class TestRefresh:
         distiller = ADROrchestrator(docs, "adr", cache_path)
         distiller.refresh()
         # Modify the ADR (change mtime)
-        time.sleep(0.01)
         write_adr(f, "001", "Test", "Accepted", "We now do Z.")
+        os.utime(f, (9999999999, 9999999999))  # far-future mtime to force staleness
         report = distiller.refresh()
         assert "ADR-001" in report.stale
         result = (docs / "adr" / "adr-distilled.md").read_text(encoding="utf-8")
@@ -68,13 +67,11 @@ class TestRefresh:
 
     def test_new_adr_added(self, tmp_path: Path) -> None:
         docs = tmp_path / "docs"
-        write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted",
-                 "We do X.")
+        write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted", "We do X.")
         cache_path = tmp_path / "cache.json"
         distiller = ADROrchestrator(docs, "adr", cache_path)
         distiller.refresh()
-        write_adr(docs / "adr" / "0002-new.md", "002", "New", "Accepted",
-                 "We do Y.")
+        write_adr(docs / "adr" / "0002-new.md", "002", "New", "Accepted", "We do Y.")
         report = distiller.refresh()
         assert "ADR-002" in report.new
         result = (docs / "adr" / "adr-distilled.md").read_text(encoding="utf-8")
@@ -82,8 +79,7 @@ class TestRefresh:
 
     def test_removed_adr_removed(self, tmp_path: Path) -> None:
         docs = tmp_path / "docs"
-        write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted",
-                 "We do X.")
+        write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted", "We do X.")
         f2 = docs / "adr" / "0002-gone.md"
         write_adr(f2, "002", "Gone", "Accepted", "We do Y.")
         cache_path = tmp_path / "cache.json"
@@ -113,8 +109,8 @@ class TestRefresh:
         cache_path = tmp_path / "cache.json"
         distiller = ADROrchestrator(docs, "adr", cache_path)
         distiller.refresh()
-        time.sleep(0.01)
         write_adr(f, "001", "Test", "Deprecated", "We do X.")
+        os.utime(f, (9999999999, 9999999999))  # far-future mtime to force staleness
         report = distiller.refresh()
         assert report.has_adrs is False
         result = (docs / "adr" / "adr-distilled.md").read_text(encoding="utf-8")
@@ -128,8 +124,8 @@ class TestRefresh:
         cache_path = tmp_path / "cache.json"
         distiller = ADROrchestrator(docs, "adr", cache_path)
         distiller.refresh()
-        time.sleep(0.01)
         write_adr(f, "001", "Test", "Accepted", "We do X.")
+        os.utime(f, (9999999999, 9999999999))  # far-future mtime to force staleness
         report = distiller.refresh()
         assert report.has_adrs is True
         assert "ADR-001" in report.stale
@@ -147,8 +143,7 @@ class TestRefresh:
     def test_distilled_file_preserves_category_headings(self, tmp_path: Path) -> None:
         """Agent-added category headings are preserved across refreshes."""
         docs = tmp_path / "docs"
-        write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted",
-                 "We do X.")
+        write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted", "We do X.")
         cache_path = tmp_path / "cache.json"
         distiller = ADROrchestrator(docs, "adr", cache_path)
         distiller.refresh()
@@ -168,10 +163,8 @@ class TestRefresh:
     def test_in_place_update_removes_directive(self, tmp_path: Path) -> None:
         """ADRDistiller.update_in_place removes directives for removed ADRs."""
         docs = tmp_path / "docs"
-        write_adr(docs / "adr" / "0001-keep.md", "001", "Keep", "Accepted",
-                 "We do X.")
-        write_adr(docs / "adr" / "0002-gone.md", "002", "Gone", "Accepted",
-                 "We do Y.")
+        write_adr(docs / "adr" / "0001-keep.md", "001", "Keep", "Accepted", "We do X.")
+        write_adr(docs / "adr" / "0002-gone.md", "002", "Gone", "Accepted", "We do Y.")
         cache_path = tmp_path / "cache.json"
         distiller = ADROrchestrator(docs, "adr", cache_path)
         distiller.refresh()
@@ -192,8 +185,7 @@ class TestRefresh:
         still works (existing_content is None, treated same as OSError).
         """
         docs = tmp_path / "docs"
-        write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted",
-                 "We do X.")
+        write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted", "We do X.")
         cache_path = tmp_path / "cache.json"
         distiller = ADROrchestrator(docs, "adr", cache_path)
         distiller.refresh()

@@ -78,7 +78,7 @@ The skill should appear in the agent's available skills list. Invoke it with:
 /zolletta-metaskill
 ```
 
-This should list the available subcommands: `setup`, `documentor`, `patterns`, `external-review`, `review`, `python-code-style`, `python-testing-patterns`.
+This should list the available subcommands: `setup`, `documentor`, `patterns`, `external-review`, `review`, `python-code-style`, `python-testing-style`.
 
 ## Post-installation
 
