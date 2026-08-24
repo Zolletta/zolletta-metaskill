@@ -33,13 +33,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install MkDocs Material
-        run: uv pip install "mkdocs-material==9.7.6"
+        run: uv tool install "mkdocs-material==9.7.6"
 
       - name: Stage assets and rewrite links for site build
         # Source docs use relative paths that escape docs_dir (../assets/,

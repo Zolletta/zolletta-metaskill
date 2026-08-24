@@ -7,6 +7,8 @@
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT + Commons Clause](https://img.shields.io/badge/license-MIT%20%2B%20Commons%20Clause-blue.svg)](LICENSE)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Zolletta/zolletta-metaskill/pulls)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg)](https://zolletta.github.io/zolletta-metaskill/)
+[![Latest release](https://img.shields.io/github/v/release/Zolletta/zolletta-metaskill?display_name=tag&sort=semver)](https://github.com/Zolletta/zolletta-metaskill/releases)
 
 A family of generic code review skills with specializations for Python and PHP (other languages in progress).
 
@@ -132,6 +134,7 @@ MIT + Commons Clause. See [LICENSE](LICENSE) and the `license` field in each sub
 - **[tokensave](https://github.com/aovestdipaperino/tokensave)** — semantic code-graph MCP server leveraged for code exploration when available
 - **[Architectural Governance at AI Speed](https://www.infoq.com/articles/architectural-governance-ai-speed/)** (InfoQ, 2026) — ADR distiller design inspired by this article's declarative architectural governance approach
 
-## Changelog
+## Changelog & Documentation
 
-Releases are automated via [python-semantic-release](https://github.com/python-semantic-release/python-semantic-release). See the [GitHub Releases](https://github.com/Zolletta/zolletta-metaskill/releases) page.
+- **Releases**: https://github.com/Zolletta/zolletta-metaskill/releases — automated via [python-semantic-release](https://github.com/python-semantic-release/python-semantic-release)
+- **Documentation**: https://zolletta.github.io/zolletta-metaskill/ — built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/) and deployed to GitHub Pages
