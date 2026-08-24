@@ -203,7 +203,7 @@ class OrderProcessor {
 }
 ```
 
-**Scanner**: [`dependency_inversion_scanner`](../../../reference/code/scripts.md#dependency_inversion_scannerpy-dip) — detects `new ConcreteClass()` inside class methods. Excludes factories, builders, and PHP built-in types.
+**Scanner**: [`dependency_inversion_scanner`](../../../reference/code/scripts.md#dependency_inversion_scannerpy-dip-php) — detects `new ConcreteClass()` inside class methods. Excludes factories, builders, and PHP built-in types.
 
 **Why this matters**: injected dependencies are substitutable and testable; `new` in a constructor is a hard coupling. See [DIP — Clean Code](https://wiki.c2.com/?DependencyInversionPrinciple).
 
@@ -275,7 +275,7 @@ class HumanWorker implements Workable, Reportable, Employable {
 }
 ```
 
-**Scanner**: [`interface_segregation_scanner`](../../../reference/code/scripts.md#interface_segregation_scannerpy-isp) — flags interfaces with more than `--min-methods` (default: 7) methods.
+**Scanner**: [`interface_segregation_scanner`](../../../reference/code/scripts.md#interface_segregation_scannerpy-isp-php) — flags interfaces with more than `--min-methods` (default: 7) methods.
 
 **Why this matters**: fat interfaces force implementers to stub methods they don't use. See [ISP — Clean Code](https://wiki.c2.com/?InterfaceSegregationPrinciple).
 
@@ -339,7 +339,7 @@ class PaymentProcessor {
 }
 ```
 
-**Scanner**: [`open_closed_scanner`](../../../reference/code/scripts.md#open_closed_scannerpy-ocp) — detects `if/elseif` chains with 3+ `instanceof` branches.
+**Scanner**: [`open_closed_scanner`](../../../reference/code/scripts.md#open_closed_scannerpy-ocp-php) — detects `if/elseif` chains with 3+ `instanceof` branches.
 
 **Why this matters**: polymorphism via interface keeps the processor closed for modification. See [OCP — Clean Code](https://wiki.c2.com/?OpenClosedPrinciple).
 

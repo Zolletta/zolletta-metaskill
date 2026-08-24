@@ -221,7 +221,6 @@ class AcronymCasingScanner:
                 combined.update(project_acronyms)
             acronyms = sorted(combined)
 
-        set(acronyms)
         acronym_lower_map = {a.lower(): a for a in acronyms}
 
         src_root = Path(args.directory)

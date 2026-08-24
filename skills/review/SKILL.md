@@ -112,7 +112,7 @@ This step ensures the tokensave index is fresh before any subagent uses it. Stal
 This step deduplicates work that every subagent would otherwise repeat: reading settings.json, ADR directives, mandatory reference docs, and running shared scanners. The orchestrator does it once and writes the results to `cache/`.
 
 1. **Write `cache/_context.md`** containing:
-   - **Settings extract**: relevant `settings.json` fields — `language`, `python.tools.*` (availability + config), `python.code_style` / `python.testing` toggles, `acronyms`, `documentation.*`. Copied once so 4 subagents don't each open `settings.json`.
+   - **Settings extract**: relevant `settings.json` fields — `language`, `container_name`, `tokensave_available`, `python.tools.*` (availability + config), `python.code_style` / `python.testing` toggles, `acronyms`, `documentation.*`. Copied once so 4 subagents don't each open `settings.json`.
    - **ADR directives**: the full content of `adr-distilled.md` (if ADRs exist from Step 3.5). Inlined so subagents don't each open the file.
    - **Judgment-rules digest**: a verbatim extract (not paraphrase) of the criteria lists from:
      - `../../docs/explanation/code/general-principles.md` — God class detection procedure + "What is NOT a God class" criteria

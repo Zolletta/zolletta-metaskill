@@ -92,6 +92,11 @@ class TestNamingScanner:
             if func.name.startswith("test_"):
                 results.append((func.name, func.lineno))
         for cls in module.classes:
+            # Only check methods on Test* classes — methods named test_* on
+            # non-test classes (e.g. protocol implementations like
+            # _StubEngine.test_file_glob) are not test functions.
+            if not cls.name.startswith("Test"):
+                continue
             for method in cls.methods:
                 if method.name.startswith("test_"):
                     results.append((method.name, method.lineno))
@@ -136,6 +141,11 @@ class TestNamingScanner:
                 )
 
         for cls in module.classes:
+            # Only check methods on Test* classes — methods named test_* on
+            # non-test classes (e.g. protocol implementations like
+            # _StubEngine.test_file_glob) are not test functions.
+            if not cls.name.startswith("Test"):
+                continue
             for method in cls.methods:
                 if not method.name.startswith("test_"):
                     continue

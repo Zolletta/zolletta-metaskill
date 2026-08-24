@@ -76,7 +76,7 @@ If language is not Python, set `python: null` and skip to Step 6.6.
 
    Prints JSON mapping each tool (`uv`, `ruff`, `pytest`, `ty`, `vulture`, `mypy`) to `{"available": bool}`.
 
-2. For tools not found in `pyproject.toml`, try calling `<command> --version` (inside the container if `container_name` is set, otherwise on the host). If it succeeds, mark as available.
+2. For tools not found in `pyproject.toml`, try calling `<command> --version` to check if the tool is installed. If `uv` is available (from step 1's JSON output), prefer `uv run <command> --version` — many tools (e.g. `ty`) are only accessible through `uv run` and would be missed by a bare `<command> --version`. If `container_name` is set, run inside the container via `docker compose exec <container_name> <command>` instead. If the version check succeeds, mark as available.
 
 ### Step 6.5 — Extract Python configuration
 
