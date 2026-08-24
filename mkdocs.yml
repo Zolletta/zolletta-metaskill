@@ -95,6 +95,7 @@ nav:
       - "Project configuration":
           - "Settings schema": reference/settings-schema.md
           - "Subcommands": reference/subcommands.md
+          - "CI/CD workflows": reference/ci-cd-workflows.md
           - "Frontmatter": reference/frontmatter.md
           - "Reports": reference/reports.md
           - "Example review report": reference/example-review-report/index.md

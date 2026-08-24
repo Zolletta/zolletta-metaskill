@@ -22,7 +22,6 @@ jobs:
   release:
     name: semantic release
     needs: tests
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -33,18 +32,11 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
+      - name: Set up environment
+        uses: ./.github/actions/setup-env
         with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
+          python-version: ${{ env.PYTHON_VERSION }}
           cache-suffix: "release"
-
-      - name: Set up Python
-        run: uv python install ${{ env.PYTHON_VERSION }}
-
-      - name: Install dependencies
-        run: uv sync
 
       - name: Python Semantic Release
         env:

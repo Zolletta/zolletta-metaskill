@@ -24,6 +24,7 @@ reference/
 │   ├── operational-rules.md
 │   ├── scoring-and-categories.md
 │   └── workflows-and-tools.md
+├── ci-cd-workflows.md
 ├── frontmatter.md
 ├── index.md
 ├── reports.md
@@ -46,6 +47,7 @@ reference/
 | [documentation/scoring-and-categories.md](documentation/scoring-and-categories.md) | Staleness scoring model, drift categories, troubleshooting    |
 | [documentation/operational-rules.md](documentation/operational-rules.md)           | Tool invocation conventions and drift report format           |
 | [settings-schema.md](settings-schema.md)                                           | Full field-by-field reference for `settings.json`             |
+| [ci-cd-workflows.md](ci-cd-workflows.md)                                           | GitHub Actions workflows: scope and triggers                  |
 | [subcommands.md](subcommands.md)                                                   | All Zolletta-metaskill subcommands                            |
 | [frontmatter.md](frontmatter.md)                                                   | SKILL.md frontmatter fields                                   |
 | [reports.md](reports.md)                                                           | Report file format and templates                              |
