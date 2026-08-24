@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.1.2 (2026-08-24)
+
+### Bug Fixes
+
+- **docs**: Fix broken links for mkdocs --strict build
+  ([`14aa3a2`](https://github.com/Zolletta/zolletta-metaskill/commit/14aa3a2138407c776d3e2225bada5e068d7fe966))
+
+
 ## v1.1.1 (2026-08-24)
 
 ### Bug Fixes
