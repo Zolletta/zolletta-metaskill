@@ -4,51 +4,56 @@ status: stable
 skills: [setup, review, patterns, documentor, external-review, python-*]
 ---
 
-# Reference Index
+# Reference
 
-Technical reference material for Zolletta-metaskill. For the full documentation index across all quadrants, see [docs/index.md](../index.md).
+Accurate technical description of the tools. Aimed at users who need facts.
 
-## Tree
+## Code review tools
 
-```text
-reference/
-├── code/
-│   ├── python/
-│   │   └── python-code-style.md
-│   ├── code-exploration.md
-│   ├── review-mode.md
-│   ├── scripts.md
-│   └── tokensave.md
-├── documentation/
-│   ├── drift-detection-tools.md
-│   ├── operational-rules.md
-│   ├── scoring-and-categories.md
-│   └── workflows-and-tools.md
-├── ci-cd-workflows.md
-├── frontmatter.md
-├── index.md
-├── reports.md
-├── settings-schema.md
-├── subcommands.md
-└── tool-messages.md
-```
+Scanners, review conventions, and language-specific style rules.
 
-## Files
+| Document                                              | Description                                    |
+|-------------------------------------------------------|------------------------------------------------|
+| [Scripts reference](code/scripts.md)                  | All scanning scripts: usage, options, examples |
+| [Review mode](code/review-mode.md)                    | Read-only review conventions                   |
+| [Code exploration](code/code-exploration.md)          | tokensave decision tree and task templates     |
+| [tokensave](code/tokensave.md)                        | tokensave MCP tools reference                  |
+| [Python code style](code/python/python-code-style.md) | Python style rules and configurable toggles    |
 
-| File                                                                               | Description                                                   |
-|------------------------------------------------------------------------------------|---------------------------------------------------------------|
-| [code/scripts.md](code/scripts.md)                                                 | All scanning scripts: usage, options, examples                |
-| [code/review-mode.md](code/review-mode.md)                                         | Read-only review conventions                                  |
-| [code/code-exploration.md](code/code-exploration.md)                               | tokensave decision tree and task templates                    |
-| [code/tokensave.md](code/tokensave.md)                                             | tokensave MCP tools reference                                 |
-| [code/python/python-code-style.md](code/python/python-code-style.md)               | Python style rules and configurable toggles                   |
-| [documentation/drift-detection-tools.md](documentation/drift-detection-tools.md)   | drift_analyzer, staleness scorer, API validator, link checker |
-| [documentation/workflows-and-tools.md](documentation/workflows-and-tools.md)       | Quick start, 5 core workflows, CI recipes                     |
-| [documentation/scoring-and-categories.md](documentation/scoring-and-categories.md) | Staleness scoring model, drift categories, troubleshooting    |
-| [documentation/operational-rules.md](documentation/operational-rules.md)           | Tool invocation conventions and drift report format           |
-| [settings-schema.md](settings-schema.md)                                           | Full field-by-field reference for `settings.json`             |
-| [ci-cd-workflows.md](ci-cd-workflows.md)                                           | GitHub Actions workflows: scope and triggers                  |
-| [subcommands.md](subcommands.md)                                                   | All Zolletta-metaskill subcommands                            |
-| [frontmatter.md](frontmatter.md)                                                   | SKILL.md frontmatter fields                                   |
-| [reports.md](reports.md)                                                           | Report file format and templates                              |
-| [tool-messages.md](tool-messages.md)                                               | "Not installed" messages for the tool-failure handler         |
+## Documentation tools
+
+Drift detection, staleness scoring, and operational conventions.
+
+| Document                                                        | Description                                                   |
+|-----------------------------------------------------------------|---------------------------------------------------------------|
+| [Drift detection tools](documentation/drift-detection-tools.md) | drift_analyzer, staleness scorer, API validator, link checker |
+| [Workflows & tools](documentation/workflows-and-tools.md)       | Quick start, 5 core workflows, CI recipes                     |
+| [Scoring & categories](documentation/scoring-and-categories.md) | Staleness scoring model, drift categories, troubleshooting    |
+| [Operational rules](documentation/operational-rules.md)         | Tool invocation conventions and drift report format           |
+
+## Project configuration
+
+Settings, subcommands, CI/CD, frontmatter, reports, and tool messages.
+
+| Document                              | Description                                           |
+|---------------------------------------|-------------------------------------------------------|
+| [Settings schema](settings-schema.md) | Full field-by-field reference for `settings.json`     |
+| [Subcommands](subcommands.md)         | All Zolletta-metaskill subcommands                    |
+| [CI/CD workflows](ci-cd-workflows.md) | GitHub Actions workflows: scope and triggers          |
+| [Frontmatter](frontmatter.md)         | SKILL.md frontmatter fields                           |
+| [Reports](reports.md)                 | Report file format and templates                      |
+| [Tool messages](tool-messages.md)     | "Not installed" messages for the tool-failure handler |
+
+## Example review report
+
+A real review output from dogfooding — see what the reports look like.
+
+| Document                                                                 | Description                                               |
+|--------------------------------------------------------------------------|-----------------------------------------------------------|
+| [Overview](example-review-report/index.md)                               | Real review output from dogfooding — overview and files   |
+| [SUMMARY.md](example-review-report/SUMMARY.md)                           | Executive summary with overall grade and trend            |
+| [TODO.md](example-review-report/TODO.md)                                 | Prioritized action items (critical, high, medium, low)    |
+| [patterns.md](example-review-report/patterns.md)                         | Design pattern review — God classes, SOLID, coupling      |
+| [documentor.md](example-review-report/documentor.md)                     | Documentation review — Diátaxis compliance, drift         |
+| [python-code-style.md](example-review-report/python-code-style.md)       | Python source code style — ruff, mypy, naming, docstrings |
+| [python-testing-style.md](example-review-report/python-testing-style.md) | Python test code review — isolation, naming, coverage     |

@@ -42,7 +42,7 @@ What becomes easier or harder to do because of this change?
 
 ## ADR Distillation
 
-The ADR distiller automatically finds ADRs in the project's documentation folder and distills each **Accepted** ADR into a one-line directive in `adr-distilled.md`. This file lives in the ADR directory (e.g. `docs/adr/adr-distilled.md`) and serves as an executable architectural manifest — a quick-reference index of the rules in force.
+The ADR distiller automatically finds ADRs in the project's documentation folder and distills each **Accepted** ADR into a one-line directive in `adr-distilled.md`. This file lives in the ADR directory (e.g. `docs/explanation/adr/adr-distilled.md`) and serves as an executable architectural manifest — a quick-reference index of the rules in force.
 
 ### How it works
 

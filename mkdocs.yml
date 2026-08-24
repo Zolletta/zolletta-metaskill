@@ -104,20 +104,16 @@ nav:
           - "CI/CD workflows": reference/ci-cd-workflows.md
           - "Frontmatter": reference/frontmatter.md
           - "Reports": reference/reports.md
-          - "Example review report": reference/example-review-report/index.md
+          - "Example review report":
+              - "Overview": reference/example-review-report/index.md
+              - "SUMMARY.md": reference/example-review-report/SUMMARY.md
+              - "TODO.md": reference/example-review-report/TODO.md
+              - "patterns.md": reference/example-review-report/patterns.md
+              - "documentor.md": reference/example-review-report/documentor.md
+              - "python-code-style.md": reference/example-review-report/python-code-style.md
+              - "python-testing-style.md": reference/example-review-report/python-testing-style.md
           - "Tool messages": reference/tool-messages.md
           - "Reference index": reference/index.md
-      - "Architecture Decision Records":
-          - "ADR-0001 Meta-skill with subcommand dispatch": adr/0001-meta-skill-with-subcommand-dispatch.md
-          - "ADR-0002 Settings.json as single config source": adr/0002-settings-json-as-single-config-source.md
-          - "ADR-0003 Diataxis framework for documentation": adr/0003-diataxis-framework-for-documentation.md
-          - "ADR-0004 Python stdlib only for scanners": adr/0004-python-stdlib-only-for-scanners.md
-          - "ADR-0005 Review orchestrator with parallel subagents": adr/0005-review-orchestrator-with-parallel-subagents.md
-          - "ADR-0006 Setup guard pattern": adr/0006-setup-guard-pattern.md
-          - "ADR-0007 Language-neutral engine protocol": adr/0007-language-neutral-engine-protocol.md
-          - "ADR-0008 Skills directory grouping": adr/0008-skills-directory-grouping.md
-          - "ADR-0009 Inline shell replaced with Python scripts": adr/0009-inline-shell-replaced-with-python-scripts.md
-          - "ADR-0010 Add ADR distiller": adr/0010-add-adr-distiller.md
   - "Explanation":
       - "Code review principles":
           - "General principles": explanation/code/general-principles.md
@@ -136,3 +132,14 @@ nav:
           - "Changelog conventions": explanation/documentation/changelog.md
           - "Architecture Decision Records": explanation/documentation/adr.md
           - "Drift prevention": explanation/documentation/drift-prevention.md
+      - "Architecture Decision Records":
+          - "1 Meta-skill dispatch": explanation/adr/0001-meta-skill-with-subcommand-dispatch.md
+          - "2 Settings.json": explanation/adr/0002-settings-json-as-single-config-source.md
+          - "3 Diátaxis framework": explanation/adr/0003-diataxis-framework-for-documentation.md
+          - "4 Python stdlib only": explanation/adr/0004-python-stdlib-only-for-scanners.md
+          - "5 Parallel subagents": explanation/adr/0005-review-orchestrator-with-parallel-subagents.md
+          - "6 Setup guard": explanation/adr/0006-setup-guard-pattern.md
+          - "7 Language-neutral engine": explanation/adr/0007-language-neutral-engine-protocol.md
+          - "8 Skills directory": explanation/adr/0008-skills-directory-grouping.md
+          - "9 Python scripts": explanation/adr/0009-inline-shell-replaced-with-python-scripts.md
+          - "10 ADR distiller": explanation/adr/0010-add-adr-distiller.md
