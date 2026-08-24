@@ -88,7 +88,7 @@ build_command = "uv build"
 commit_parser = "conventional"
 commit_parser_options = { allowed_types = ["feat", "fix", "perf", "refactor"] }
 tag_format = "v{version}"
-allow_zero_version = true
+allow_zero_version = false
 
 [tool.semantic_release.branches.main]
 match = "main"
