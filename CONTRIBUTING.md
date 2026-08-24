@@ -79,7 +79,7 @@ Versioning is automated via [python-semantic-release](https://github.com/python-
 
 ## Documentation
 
-Full documentation lives in `docs/` and is published to <https://zolletta.github.io/zolletta-metaskill/> via MkDocs Material. The build runs automatically on push to `main` when `docs/` changes (see `.github/workflows/docs-pages.yml`).
+Full documentation lives in `docs/` and is published to <https://metaskill.zolletta.org/> via MkDocs Material. The build runs automatically on push to `main` when `docs/` changes (see `.github/workflows/docs-pages.yml`).
 
 To preview documentation locally:
 

@@ -37,7 +37,7 @@ Runs only on pushes to `main`. It calls the Tests workflow as a dependency, then
 
 ## Docs (Pages)
 
-Runs only when documentation files change on `main`. Builds the MkDocs Material site and deploys it to GitHub Pages at [zolletta.github.io/zolletta-metaskill](https://zolletta.github.io/zolletta-metaskill/).
+Runs only when documentation files change on `main`. Builds the MkDocs Material site and deploys it to GitHub Pages at [metaskill.zolletta.org](https://metaskill.zolletta.org/).
 
 - **Trigger**: `push` to `main` with changes in `docs/**`, `mkdocs.yml`, or the workflow file itself
 - **Concurrency**: Only one deployment at a time; in-progress runs are cancelled

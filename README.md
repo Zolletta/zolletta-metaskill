@@ -7,7 +7,7 @@
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT + Commons Clause](https://img.shields.io/badge/license-MIT%20%2B%20Commons%20Clause-blue.svg)](LICENSE)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Zolletta/zolletta-metaskill/pulls)
-[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg)](https://zolletta.github.io/zolletta-metaskill/)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg)](https://metaskill.zolletta.org/)
 [![Latest release](https://img.shields.io/github/v/release/Zolletta/zolletta-metaskill?display_name=tag&sort=semver)](https://github.com/Zolletta/zolletta-metaskill/releases)
 
 A family of generic code review skills with specializations for Python and PHP (other languages in progress).
@@ -16,7 +16,7 @@ _Zolletta_ is Italian for sugar cubes — each skill is a compact, self-containe
 
 Zolletta-metaskill is a **meta-skill**: it dispatches to subcommands that each perform a specific review task. It leverages [tokensave](https://github.com/aovestdipaperino/tokensave) when available for semantic code-graph queries, and falls back to grep + targeted reads otherwise.
 
-📖 **Full documentation**: <https://zolletta.github.io/zolletta-metaskill/>
+📖 **Full documentation**: <https://metaskill.zolletta.org/>
 
 ## The `.agents/` convention
 
@@ -45,7 +45,7 @@ If you maintain rules as part of your agent configuration, those are the single 
 
 The first time you run any subcommand in a project, the **setup guard** automatically runs `/zolletta-metaskill setup` if `.zolletta-metaskill/settings.json` does not exist.
 
-New to Zolletta-metaskill? Read the [getting started tutorial](https://zolletta.github.io/zolletta-metaskill/tutorials/getting-started/).
+New to Zolletta-metaskill? Read the [getting started tutorial](https://metaskill.zolletta.org/tutorials/getting-started/).
 
 ## Usage
 
@@ -82,7 +82,7 @@ All reports are saved to `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/`:
 - `TODO.md` — prioritized action items
 - `<subcommand>.md` — detailed findings per review area
 
-See the [example review report](https://zolletta.github.io/zolletta-metaskill/reference/example-review-report/) for a real output.
+See the [example review report](https://metaskill.zolletta.org/reference/example-review-report/) for a real output.
 
 ### Supported languages
 
@@ -101,7 +101,7 @@ cd zolletta-metaskill
 ./install.sh
 ```
 
-The `install.sh` script copies the skill to `~/.agents/skills/zolletta-metaskill` and symlinks it into every detected AI agent tool's skills directory (Claude Code, Cursor, Gemini CLI, Devin, Windsurf, and others). See the [install guide](https://zolletta.github.io/zolletta-metaskill/how-to/install/) for details and manual alternatives.
+The `install.sh` script copies the skill to `~/.agents/skills/zolletta-metaskill` and symlinks it into every detected AI agent tool's skills directory (Claude Code, Cursor, Gemini CLI, Devin, Windsurf, and others). See the [install guide](https://metaskill.zolletta.org/how-to/install/) for details and manual alternatives.
 
 ## Contributing
 
@@ -109,17 +109,17 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and the q
 
 ## Reference
 
-- **[Subcommands](https://zolletta.github.io/zolletta-metaskill/reference/subcommands/)** — full list of `setup`, `review`, `patterns`, `documentor`, `external-review`, and language-specific skills with their scope.
-- **[Settings schema](https://zolletta.github.io/zolletta-metaskill/reference/settings-schema/)** — field-by-field reference for `.zolletta-metaskill/settings.json`, including the `python` and `php` objects, `acronyms` array, and setup guard staleness check.
-- **[Reports](https://zolletta.github.io/zolletta-metaskill/reference/reports/)** — report file format and templates. Reports are saved to `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/<subcommand>.md`.
-- **[Tool messages](https://zolletta.github.io/zolletta-metaskill/reference/tool-messages/)** — "not installed" messages for the tool-failure handler.
-- **[tokensave](https://zolletta.github.io/zolletta-metaskill/reference/code/tokensave/)** — semantic code-graph MCP server leveraged for code exploration when available.
+- **[Subcommands](https://metaskill.zolletta.org/reference/subcommands/)** — full list of `setup`, `review`, `patterns`, `documentor`, `external-review`, and language-specific skills with their scope.
+- **[Settings schema](https://metaskill.zolletta.org/reference/settings-schema/)** — field-by-field reference for `.zolletta-metaskill/settings.json`, including the `python` and `php` objects, `acronyms` array, and setup guard staleness check.
+- **[Reports](https://metaskill.zolletta.org/reference/reports/)** — report file format and templates. Reports are saved to `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/<subcommand>.md`.
+- **[Tool messages](https://metaskill.zolletta.org/reference/tool-messages/)** — "not installed" messages for the tool-failure handler.
+- **[tokensave](https://metaskill.zolletta.org/reference/code/tokensave/)** — semantic code-graph MCP server leveraged for code exploration when available.
 
 ## Explanation
 
-- **[False-positive prevention](https://zolletta.github.io/zolletta-metaskill/explanation/code/false-positive-prevention/)** — the three mechanisms (mandatory judgment step, coverage cross-check, semantic composition-root detection) that prevent verdict oscillation between reviews.
-- **[General principles](https://zolletta.github.io/zolletta-metaskill/explanation/code/general-principles/)** — SOLID, KISS, composition over inheritance, God class detection.
-- **[Documentation standards](https://zolletta.github.io/zolletta-metaskill/explanation/documentation/standards/)** — docs-as-code principles and the four types of documentation.
+- **[False-positive prevention](https://metaskill.zolletta.org/explanation/code/false-positive-prevention/)** — the three mechanisms (mandatory judgment step, coverage cross-check, semantic composition-root detection) that prevent verdict oscillation between reviews.
+- **[General principles](https://metaskill.zolletta.org/explanation/code/general-principles/)** — SOLID, KISS, composition over inheritance, God class detection.
+- **[Documentation standards](https://metaskill.zolletta.org/explanation/documentation/standards/)** — docs-as-code principles and the four types of documentation.
 
 ## License
 
@@ -137,4 +137,4 @@ MIT + Commons Clause. See [LICENSE](LICENSE) and the `license` field in each sub
 ## Changelog & Documentation
 
 - **Releases**: https://github.com/Zolletta/zolletta-metaskill/releases — automated via [python-semantic-release](https://github.com/python-semantic-release/python-semantic-release)
-- **Documentation**: https://zolletta.github.io/zolletta-metaskill/ — built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/) and deployed to GitHub Pages
+- **Documentation**: https://metaskill.zolletta.org/ — built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/) and deployed to GitHub Pages
