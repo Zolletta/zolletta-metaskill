@@ -42,7 +42,7 @@ jobs:
         run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install MkDocs Material
-        run: uv tool install "mkdocs-material==9.7.6" "mkdocs-git-revision-date-localized-plugin"
+        run: uv tool install "mkdocs==1.6.1" --with "mkdocs-material==9.7.6" --with "mkdocs-git-revision-date-localized-plugin"
 
       - name: Stage assets and rewrite links for site build
         # Source docs use relative paths that escape docs_dir (../assets/,
