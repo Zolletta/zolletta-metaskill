@@ -10,6 +10,8 @@ skills: [setup, review, patterns, documentor, external-review, python-*]
 
 The documentation follows the [Diátaxis framework](https://diataxis.fr/), organising content into four quadrants: tutorials, how-to guides, reference, and explanation.
 
+*Last updated: <!-- BUILD_DATE -->*
+
 ## Quadrants
 
 | Quadrant          | Purpose                                     | Audience                 |

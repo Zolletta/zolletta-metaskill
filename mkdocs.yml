@@ -63,6 +63,8 @@ plugins:
       type: date
       enable_creation_date: false
       fallback_to_build_date: true
+      exclude:
+          - index.md
 
 nav:
   - "Home": index.md

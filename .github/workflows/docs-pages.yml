@@ -53,7 +53,7 @@ jobs:
         run: |
           cp -r assets docs/assets
           python - <<'PY'
-          import pathlib, re
+          import pathlib, re, datetime
           REPO = "https://github.com/Zolletta/zolletta-metaskill/blob/main"
           rewrites = [
               (r'\]\(\.\./assets/', '](assets/'),
@@ -65,6 +65,12 @@ jobs:
               for pattern, replacement in rewrites:
                   text = re.sub(pattern, replacement, text)
               path.write_text(text)
+          # Inject build date into the home page
+          today = datetime.date.today().strftime("%B %d, %Y")
+          index = pathlib.Path("docs/index.md")
+          text = index.read_text()
+          text = text.replace("<!-- BUILD_DATE -->", today)
+          index.write_text(text)
           PY
 
       - name: Build site
