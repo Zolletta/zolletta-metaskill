@@ -1,5 +1,5 @@
 ---
-audience: human 
+audience: human
 status: stable
 skills: [review]
 ---
@@ -10,14 +10,14 @@ This is a real output from `/zolletta-metaskill review` run on the zolletta-meta
 
 ## Files
 
-| File | Description |
-|------|-------------|
-| [SUMMARY.md](SUMMARY.md) | Executive summary with overall grade, grades by area, strengths, weaknesses, and trend vs previous review |
-| [TODO.md](TODO.md) | Prioritized action items (critical, high, medium, low) with source, files, problem, and fix |
-| [patterns.md](patterns.md) | Design pattern review — God classes, SOLID, coupling, composition vs inheritance |
-| [documentor.md](documentor.md) | Documentation review — Diátaxis compliance, drift detection, broken links, API validation |
-| [python-code-style.md](python-code-style.md) | Python source code style — ruff, mypy, naming, docstrings, type annotations |
-| [python-testing-style.md](python-testing-style.md) | Python test code review — isolation, naming, coverage gaps, mocking, fixtures |
+| File                                               | Description                                                                                               |
+|----------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
+| [SUMMARY.md](SUMMARY.md)                           | Executive summary with overall grade, grades by area, strengths, weaknesses, and trend vs previous review |
+| [TODO.md](TODO.md)                                 | Prioritized action items (critical, high, medium, low) with source, files, problem, and fix               |
+| [patterns.md](patterns.md)                         | Design pattern review — God classes, SOLID, coupling, composition vs inheritance                          |
+| [documentor.md](documentor.md)                     | Documentation review — Diátaxis compliance, drift detection, broken links, API validation                 |
+| [python-code-style.md](python-code-style.md)       | Python source code style — ruff, mypy, naming, docstrings, type annotations                               |
+| [python-testing-style.md](python-testing-style.md) | Python test code review — isolation, naming, coverage gaps, mocking, fixtures                             |
 
 ## Report structure
 

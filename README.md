@@ -1,6 +1,6 @@
-![zolletta-metaskill](assets/zolletta-meta-skill-192.png)
-
 # Zolletta-metaskill
+
+![zolletta-metaskill](assets/zolletta-meta-skill-192.png)
 
 [![Tests](https://github.com/Zolletta/zolletta-metaskill/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Zolletta/zolletta-metaskill/actions/workflows/tests.yml)
 [![Coverage](https://codecov.io/gh/Zolletta/zolletta-metaskill/branch/main/graph/badge.svg)](https://codecov.io/gh/Zolletta/zolletta-metaskill/branch/main)
@@ -136,5 +136,5 @@ MIT + Commons Clause. See [LICENSE](LICENSE) and the `license` field in each sub
 
 ## Changelog & Documentation
 
-- **Releases**: https://github.com/Zolletta/zolletta-metaskill/releases — automated via [python-semantic-release](https://github.com/python-semantic-release/python-semantic-release)
-- **Documentation**: https://metaskill.zolletta.org/ — built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/) and deployed to GitHub Pages
+- [**Releases**](https://github.com/Zolletta/zolletta-metaskill/releases) — automated via [python-semantic-release](https://github.com/python-semantic-release/python-semantic-release)
+- [**Documentation**](https://metaskill.zolletta.org/) — built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/) and deployed to GitHub Pages
