@@ -476,8 +476,7 @@ class TestLoadDefaultAcronymsErrorHandling:
         acronyms = AcronymCasingScanner._load_default_acronyms()
         assert "API" in acronyms
         assert "HTTP" in acronyms
-        assert 42 not in acronyms
-        assert None not in acronyms
+        assert all(isinstance(a, str) for a in acronyms)
 
 
 # ---------------------------------------------------------------------------
