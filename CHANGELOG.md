@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.1.1 (2026-08-24)
+
+### Bug Fixes
+
+- **docs-pages**: Install mkdocs as tool with material + plugin as deps
+  ([`6adee5e`](https://github.com/Zolletta/zolletta-metaskill/commit/6adee5e0180a7d3df7536eb1d1b81f8f4a67af4b))
+
+
 ## v1.1.0 (2026-08-24)
 
 ### Features
