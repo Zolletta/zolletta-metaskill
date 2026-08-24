@@ -39,7 +39,9 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       - name: Set up Python
-        run: uv python install ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install MkDocs Material
         run: uv tool install "mkdocs==1.6.1" --with "mkdocs-material==9.7.6" --with "mkdocs-git-revision-date-localized-plugin"
@@ -50,7 +52,7 @@ jobs:
         # them in the staged copy only; source files stay untouched.
         run: |
           cp -r assets docs/assets
-          uv run python - <<'PY'
+          python - <<'PY'
           import pathlib, re
           REPO = "https://github.com/Zolletta/zolletta-metaskill/blob/main"
           rewrites = [
