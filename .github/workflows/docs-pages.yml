@@ -32,6 +32,8 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -40,7 +42,7 @@ jobs:
         run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install MkDocs Material
-        run: uv tool install "mkdocs-material==9.7.6"
+        run: uv tool install "mkdocs-material==9.7.6" "mkdocs-git-revision-date-localized-plugin"
 
       - name: Stage assets and rewrite links for site build
         # Source docs use relative paths that escape docs_dir (../assets/,
