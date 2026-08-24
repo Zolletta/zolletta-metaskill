@@ -56,10 +56,7 @@ jobs:
           rewrites = [
               (r'\]\(\.\./assets/', '](assets/'),
               (r'\]\(\.\./\.\./README\.md\)', f']({REPO}/README.md)'),
-              (r'\]\(\.\./\.\./setup/assets/settings\.schema\.json\)',
-               f']({REPO}/setup/assets/settings.schema.json)'),
-              (r'\]\(\.\./\.\./review/assets/summary_template\.md\)',
-               f']({REPO}/review/assets/summary_template.md)'),
+              (r'\]\(\.\./\.\./skills/', f']({REPO}/skills/'),
           ]
           for path in pathlib.Path("docs").rglob("*.md"):
               text = path.read_text()
