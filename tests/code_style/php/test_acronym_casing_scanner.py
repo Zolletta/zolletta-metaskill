@@ -413,3 +413,135 @@ class TestMain:
         data = json.loads(out)
         assert data["violation_count"] == 1
         assert data["violations"][0]["class"] == "ApiRepository"
+
+
+# ---------------------------------------------------------------------------
+# Coverage: _load_default_acronyms error handling (lines 112-118)
+# ---------------------------------------------------------------------------
+
+
+class TestLoadDefaultAcronymsErrorHandling:
+    @staticmethod
+    def _patch_acronyms_file(
+        monkeypatch: pytest.MonkeyPatch,
+        content: str | Exception,
+    ) -> None:
+        """Monkeypatch Path so paths with 'acronyms.json' exist and return *content*.
+
+        If *content* is an Exception, read_text raises it instead.
+        """
+        def fake_exists(self: Path) -> bool:
+            return "acronyms.json" in str(self)
+
+        if isinstance(content, Exception):
+            def fake_read_text(self: Path, encoding: str = "utf-8") -> str:
+                raise content
+        else:
+            def fake_read_text(self: Path, encoding: str = "utf-8") -> str:
+                return content
+
+        monkeypatch.setattr(Path, "exists", fake_exists)
+        monkeypatch.setattr(Path, "read_text", fake_read_text)
+
+    def test_corrupt_json_file_falls_back(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """When the assets file exists but contains invalid JSON, the fallback list is used."""
+        self._patch_acronyms_file(monkeypatch, "{ invalid json")
+        acronyms = AcronymCasingScanner._load_default_acronyms()
+        assert "API" in acronyms
+        assert "CI" in acronyms
+
+    def test_empty_acronyms_list_falls_back(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """When the assets file has an empty acronyms list, the fallback is used."""
+        self._patch_acronyms_file(monkeypatch, '{"acronyms": []}')
+        acronyms = AcronymCasingScanner._load_default_acronyms()
+        assert "API" in acronyms
+
+    def test_non_list_acronyms_falls_back(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """When the acronyms value is not a list, the fallback is used."""
+        self._patch_acronyms_file(monkeypatch, '{"acronyms": "not-a-list"}')
+        acronyms = AcronymCasingScanner._load_default_acronyms()
+        assert "API" in acronyms
+
+    def test_oserror_reading_file_falls_back(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """When reading the file raises OSError, the fallback is used."""
+        self._patch_acronyms_file(monkeypatch, OSError("permission denied"))
+        acronyms = AcronymCasingScanner._load_default_acronyms()
+        assert "API" in acronyms
+
+    def test_valid_json_with_non_string_entries_filters_them(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When the acronyms list contains non-string entries, they are filtered out."""
+        self._patch_acronyms_file(monkeypatch, '{"acronyms": ["API", 42, "HTTP", null]}')
+        acronyms = AcronymCasingScanner._load_default_acronyms()
+        assert "API" in acronyms
+        assert "HTTP" in acronyms
+        assert 42 not in acronyms
+        assert None not in acronyms
+
+
+# ---------------------------------------------------------------------------
+# Coverage: _get_class_names when tree-sitter-php not installed (line 188)
+# ---------------------------------------------------------------------------
+
+
+class TestGetClassNamesNoTreeSitter:
+    def test_returns_empty_when_tree_sitter_not_installed(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When tree-sitter-php is not installed, _get_class_names returns []."""
+        f = tmp_path / "Mod.php"
+        _write_php(f, "<?php\nclass Foo {}\n")
+        monkeypatch.setattr(
+            "zolletta_metaskill.code_style.php.acronym_casing_scanner._have_tree_sitter_php",
+            lambda: False,
+        )
+        assert AcronymCasingScanner._get_class_names(f) == []
+
+
+# ---------------------------------------------------------------------------
+# Coverage: main() when tree-sitter-php not installed (lines 249-270)
+# ---------------------------------------------------------------------------
+
+
+class TestMainNoTreeSitter:
+    def test_no_tree_sitter_text_output(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """When tree-sitter-php is not installed, main() prints a skip message."""
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "Mod.php").write_text("<?php\nclass Foo {}\n", encoding="utf-8")
+        monkeypatch.setattr(sys, "argv", ["scan", str(src), "--acronyms", "API"])
+        monkeypatch.setattr(
+            "zolletta_metaskill.code_style.php.acronym_casing_scanner._have_tree_sitter_php",
+            lambda: False,
+        )
+        assert AcronymCasingScanner.main() == 0
+        out = capsys.readouterr().out
+        assert "SKIPPED" in out
+        assert "tree-sitter-php not installed" in out
+
+    def test_no_tree_sitter_json_output(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """When tree-sitter-php is not installed and --json, main() prints JSON skip."""
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "Mod.php").write_text("<?php\nclass Foo {}\n", encoding="utf-8")
+        monkeypatch.setattr(sys, "argv", ["scan", str(src), "--acronyms", "API", "--json"])
+        monkeypatch.setattr(
+            "zolletta_metaskill.code_style.php.acronym_casing_scanner._have_tree_sitter_php",
+            lambda: False,
+        )
+        assert AcronymCasingScanner.main() == 0
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert data["violation_count"] == 0
+        assert data["skipped"] == "tree-sitter-php not installed"
