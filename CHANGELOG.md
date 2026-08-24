@@ -2,6 +2,40 @@
 
 <!-- version list -->
 
+## v1.2.1 (2026-08-24)
+
+### Bug Fixes
+
+- Address review findings (broken links, DIP, dead code, scanner false positives)
+  ([#31](https://github.com/Zolletta/zolletta-metaskill/pull/31),
+  [`7958409`](https://github.com/Zolletta/zolletta-metaskill/commit/79584095d11d32a368b85347e1b5a9ddac3a0167))
+
+- Replace type-unsafe assertions in test_acronym_casing_scanner
+  ([#31](https://github.com/Zolletta/zolletta-metaskill/pull/31),
+  [`7958409`](https://github.com/Zolletta/zolletta-metaskill/commit/79584095d11d32a368b85347e1b5a9ddac3a0167))
+
+### Continuous Integration
+
+- Avoid duplicate test runs on PR branches
+  ([#31](https://github.com/Zolletta/zolletta-metaskill/pull/31),
+  [`7958409`](https://github.com/Zolletta/zolletta-metaskill/commit/79584095d11d32a368b85347e1b5a9ddac3a0167))
+
+- Bump actions/cache from v4 to v5 (Node.js 24)
+  ([#31](https://github.com/Zolletta/zolletta-metaskill/pull/31),
+  [`7958409`](https://github.com/Zolletta/zolletta-metaskill/commit/79584095d11d32a368b85347e1b5a9ddac3a0167))
+
+### Refactoring
+
+- Scripts-first protocol + new run directory structure
+  ([#31](https://github.com/Zolletta/zolletta-metaskill/pull/31),
+  [`7958409`](https://github.com/Zolletta/zolletta-metaskill/commit/79584095d11d32a368b85347e1b5a9ddac3a0167))
+
+### Testing
+
+- Close coverage gaps to reach 100% ([#31](https://github.com/Zolletta/zolletta-metaskill/pull/31),
+  [`7958409`](https://github.com/Zolletta/zolletta-metaskill/commit/79584095d11d32a368b85347e1b5a9ddac3a0167))
+
+
 ## v1.2.0 (2026-08-24)
 
 
