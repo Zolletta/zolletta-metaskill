@@ -153,7 +153,7 @@ If unavailable, print the corresponding "not installed" message in Step 9.
 Read the [settings template](assets/settings_template.json) and write `.zolletta-metaskill/settings.json` with the following fields:
 
 | Field                   | Source                                                       |
-| ----------------------- | ------------------------------------------------------------ |
+|-------------------------|--------------------------------------------------------------|
 | `setup_version`         | Matches the skill version (see front-matter)                 |
 | `setup_timestamp`       | Current timestamp in ISO 8601 (`date -u +%Y-%m-%dT%H:%M:%S`) |
 | `language`              | Step 3                                                       |
@@ -164,7 +164,7 @@ Read the [settings template](assets/settings_template.json) and write `.zolletta
 | `php`                   | Steps 7 + 7.5 (PHP only; `null` otherwise)                   |
 | `external_review_model` | `"swe"` (default; overridable by front-matter)               |
 | `documentation`         | Steps 6.6 + 6.7                                              |
-| `reports_dir`           | `".zolletta-metaskill/reports"`                              |
+| `runs_dir`              | `".zolletta-metaskill"`                                      |
 
 For the full JSON shape of each subobject, see [`../../docs/reference/settings-schema.md`](../../docs/reference/settings-schema.md). Use the `write` tool. JSON must be valid, pretty-printed (2-space indent).
 

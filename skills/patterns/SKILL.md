@@ -25,6 +25,8 @@ Identify structural problems in object-oriented codebases using a two-phase appr
 
 The principles are language-agnostic (KISS, SOLID, Separation of Concerns, Composition over Inheritance, Rule of Three). The automated scripts currently support Python via its `ast` module. For PHP and other languages, apply the principles manually by reading the code — the scripts are a triage accelerator, not a requirement.
 
+> **Execution protocol**: when running a review, follow [`../../docs/reference/code/scripts-first-protocol.md`](../../docs/reference/code/scripts-first-protocol.md) — batch-run the 8 scanning scripts (class_metrics, test_god_classes, one_class_per_file, test_structure, dependency_inversion, interface_segregation, open_closed, liskov_substitution), persist their output to `cache/`, assemble deterministic report sections (scanner tables copied verbatim from cache) from cached output, then run only the judgment pass items ("reason to change" test on top-N class_metrics candidates, DIP composition-root suppression, "Missing tests" coverage cross-check). Write your report to `reports/patterns.md`. Do not re-read source files the scanners already parsed.
+
 ## When to Use This Skill
 
 - Refactoring a God class or monolithic function that has grown too large
@@ -91,7 +93,7 @@ The `dependency_inversion_scanner.py` scanner excludes entry points by filename 
 
 When this skill runs a review, it writes its findings to a markdown file using the [report template](assets/report_template.md):
 
-- **Path**: `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/patterns.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`)
+- **Path**: `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/patterns.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`; `runs_dir` from `settings.json`, default `.zolletta-metaskill`)
 - **Compound skills** (e.g. `zolletta-metaskill-review`) may override the folder and filename — follow their instructions instead
 - **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the [setup guard](../SKILL.md#setup-guard) — no manual setup needed
 - **Format**: follow the [report template](assets/report_template.md) — grade at the top, scanning script results, findings grouped by severity with file/class/issue/principle/fix columns

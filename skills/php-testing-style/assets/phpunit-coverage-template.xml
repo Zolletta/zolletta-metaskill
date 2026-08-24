@@ -32,8 +32,8 @@
     <!-- Report formats — enable the ones you need -->
     <report>
       <text outputFile="php://stdout"/>
-      <html outputDirectory=".zolletta-metaskill/reports/coverage/html"/>
-      <clover outputFile=".zolletta-metaskill/reports/coverage/clover.xml"/>
+      <html outputDirectory=".zolletta-metaskill/coverage/html"/>
+      <clover outputFile=".zolletta-metaskill/coverage/clover.xml"/>
     </report>
   </coverage>
 

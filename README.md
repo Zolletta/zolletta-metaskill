@@ -56,7 +56,7 @@ Run `/zolletta-metaskill review` to orchestrate all subcommands in parallel. The
 1. Runs the **setup guard** — creates or refreshes `.zolletta-metaskill/settings.json` if needed.
 2. Distills ADRs into architectural directives (`adr-distiller`).
 3. Launches subagents for each review area (patterns, code style, testing style, documentor).
-4. Aggregates results into a grade, summary, and TODO file under `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/`.
+4. Aggregates results into a grade, summary, and TODO file under `.zolletta-metaskill/<YYYY-MM-DD-HH-MM>/reports/`.
 
 ### Individual subcommands
 
@@ -76,7 +76,7 @@ Each subcommand can be run standalone for targeted review:
 
 ### Report output
 
-All reports are saved to `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/`:
+All reports are saved to `.zolletta-metaskill/<YYYY-MM-DD-HH-MM>/reports/`:
 
 - `SUMMARY.md` — executive summary with overall grade and trend
 - `TODO.md` — prioritized action items
@@ -111,7 +111,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and the q
 
 - **[Subcommands](https://metaskill.zolletta.org/reference/subcommands/)** — full list of `setup`, `review`, `patterns`, `documentor`, `external-review`, and language-specific skills with their scope.
 - **[Settings schema](https://metaskill.zolletta.org/reference/settings-schema/)** — field-by-field reference for `.zolletta-metaskill/settings.json`, including the `python` and `php` objects, `acronyms` array, and setup guard staleness check.
-- **[Reports](https://metaskill.zolletta.org/reference/reports/)** — report file format and templates. Reports are saved to `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/<subcommand>.md`.
+- **[Reports](https://metaskill.zolletta.org/reference/reports/)** — report file format and templates. Reports are saved to `.zolletta-metaskill/<YYYY-MM-DD-HH-MM>/reports/<subcommand>.md`.
 - **[Tool messages](https://metaskill.zolletta.org/reference/tool-messages/)** — "not installed" messages for the tool-failure handler.
 - **[tokensave](https://metaskill.zolletta.org/reference/code/tokensave/)** — semantic code-graph MCP server leveraged for code exploration when available.
 

@@ -37,7 +37,7 @@ The orchestrator collects all sub-skill reports and creates:
 - `SUMMARY.md` — overall grade, grades by area, top strengths and weaknesses, priority items
 - `TODO.md` — aggregated action items from all skills, sorted by priority
 
-The reports are saved to `.zolletta-metaskill/reports/<timestamp>/`.
+The reports are saved to `.zolletta-metaskill/<timestamp>/reports/`.
 
 ## Review mode
 
@@ -45,11 +45,11 @@ Follows [review mode](../reference/code/review-mode.md) — read-only, two-bucke
 
 ## Configuration
 
-| Setting                 | Location                            | Default                       | Description                                   |
-|-------------------------|-------------------------------------|-------------------------------|-----------------------------------------------|
-| `language`              | `.zolletta-metaskill/settings.json` | (detected)                    | Determines which language-specific skills run |
-| `reports_dir`           | `.zolletta-metaskill/settings.json` | `.zolletta-metaskill/reports` | Where report folders are created              |
-| `external_review_model` | `.zolletta-metaskill/settings.json` | `swe`                         | Model for the external review sub-skill       |
+| Setting                 | Location                            | Default               | Description                                   |
+|-------------------------|-------------------------------------|-----------------------|-----------------------------------------------|
+| `language`              | `.zolletta-metaskill/settings.json` | (detected)            | Determines which language-specific skills run |
+| `runs_dir`              | `.zolletta-metaskill/settings.json` | `.zolletta-metaskill` | Where run folders are created                 |
+| `external_review_model` | `.zolletta-metaskill/settings.json` | `swe`                 | Model for the external review sub-skill       |
 
 ## See also
 

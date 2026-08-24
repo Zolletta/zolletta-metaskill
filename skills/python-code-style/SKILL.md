@@ -12,6 +12,8 @@ Consistent code style and clear documentation make codebases maintainable and co
 
 > **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../../docs/reference/code/review-mode.md`](../../docs/reference/code/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
 
+> **Execution protocol**: when running a review, follow [`../../docs/reference/code/scripts-first-protocol.md`](../../docs/reference/code/scripts-first-protocol.md) — batch-run the scripts listed in the per-subcommand table (ruff, ty, mypy, vulture, acronym_casing_scanner, unused_all_exports_scanner, one_class_per_file_scanner), persist their output to `cache/`, assemble deterministic report sections from cached output, then run only the judgment pass items (vulture false-positive review for dynamically-accessed methods). Write your report to `reports/python-code-style.md`. Do not re-read source files the scripts already parsed.
+
 ## When to Use This Skill
 
 - Setting up linting and formatting for a new project
@@ -284,7 +286,7 @@ This scanner cross-references every `__all__` entry against actual import statem
 
 When this skill runs a review, it writes its findings to a markdown file using the [report template](assets/report_template.md):
 
-- **Path**: `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/python-code-style.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`)
+- **Path**: `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/python-code-style.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`; `runs_dir` from `settings.json`, default `.zolletta-metaskill`)
 - **Compound skills** (e.g. `zolletta-metaskill-review`) may override the folder and filename — follow their instructions instead
 - **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the [setup guard](../SKILL.md#setup-guard) — no manual setup needed
 - **Format**: follow the [report template](assets/report_template.md) — grade at the top, tool results (ruff, type checker, vulture), auto-fixable issues (informational, do not count toward grade), findings grouped by severity with file/symbol/rule ID/issue/fix columns

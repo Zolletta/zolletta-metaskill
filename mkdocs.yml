@@ -89,6 +89,7 @@ nav:
   - "Reference":
       - "Code review tools":
           - "Scripts reference": reference/code/scripts.md
+          - "Scripts-first protocol": reference/code/scripts-first-protocol.md
           - "Review mode": reference/code/review-mode.md
           - "Code exploration": reference/code/code-exploration.md
           - "tokensave": reference/code/tokensave.md
