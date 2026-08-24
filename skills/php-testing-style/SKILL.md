@@ -255,13 +255,13 @@ For each configurable rule that is `true` in `php.testing`, check it.
 
 ### Step 5 — Write report
 
-Write the report to `.zolletta-metaskill/reports/<timestamp>/php-testing-patterns.md` using the [report template](assets/report_template.md).
+Write the report to `<runs_dir>/<timestamp>/reports/php-testing-patterns.md` using the [report template](assets/report_template.md).
 
 ## Output
 
 When this skill runs a review, it writes its findings to a markdown file using the [report template](assets/report_template.md):
 
-- **Path**: `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/php-testing-patterns.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`)
+- **Path**: `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/php-testing-patterns.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`; `runs_dir` from `settings.json`, default `.zolletta-metaskill`)
 - **Compound skills** (e.g. `zolletta-metaskill-review`) may override the folder and filename — follow their instructions instead
 - **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the [setup guard](../SKILL.md#setup-guard) — no manual setup needed
 - **Format**: follow the [report template](assets/report_template.md) — grade at the top, coverage summary, coverage gaps table, findings grouped by severity with file/test-symbol/rule/issue/fix columns

@@ -65,11 +65,11 @@ cat .zolletta-metaskill/settings.json
 
 The review orchestrator runs all applicable skills in parallel — general skills (`patterns`, `documentor`, `external-review`) plus language-specific skills. See [subcommands.md](../reference/subcommands.md) for the full table.
 
-Each skill writes a report to `.zolletta-metaskill/reports/<timestamp>/`. The orchestrator creates `SUMMARY.md` with the overall grade and `TODO.md` with aggregated action items.
+Each skill writes a report to `.zolletta-metaskill/<timestamp>/reports/`. The orchestrator creates `reports/SUMMARY.md` with the overall grade and `reports/TODO.md` with aggregated action items.
 
 ## Step 4 — Read the report
 
-Open `.zolletta-metaskill/reports/<timestamp>/SUMMARY.md` to see:
+Open `.zolletta-metaskill/<timestamp>/reports/SUMMARY.md` to see:
 
 - **Overall grade** (0–100)
 - **Grades by area** — patterns, documentor, code style, testing

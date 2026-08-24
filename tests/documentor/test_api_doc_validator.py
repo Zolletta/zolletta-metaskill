@@ -675,6 +675,24 @@ class TestValidateApiDocs:
         assert len(undoc) == 1
         assert undoc[0]["name"] == "method"
 
+    def test_undocumented_init_py_is_skipped(self) -> None:
+        """An undocumented function in __init__.py is classified as 'skip' and not suggested."""
+        sig = SourceSignature("reexport", "function", "__init__.py", 1, [])
+        source_sigs = {"__init__.py": [sig]}
+        documented: dict[str, dict[str, Any]] = {}
+        issues, suggestions = APIDocValidator.validate_api_docs(source_sigs, documented)
+        undoc = [s for s in suggestions if s["type"] == "undocumented"]
+        assert len(undoc) == 0
+
+    def test_undocumented_dataclass_is_skipped(self) -> None:
+        """An undocumented dataclass is classified as 'skip' and not suggested."""
+        sig = SourceSignature("MyData", "class", "mod.py", 1, [], decorators=["dataclass"])
+        source_sigs = {"mod.py": [sig]}
+        documented: dict[str, dict[str, Any]] = {}
+        issues, suggestions = APIDocValidator.validate_api_docs(source_sigs, documented)
+        undoc = [s for s in suggestions if s["type"] == "undocumented"]
+        assert len(undoc) == 0
+
 
 # ---------------------------------------------------------------------------
 # _classify_undocumented

@@ -12,7 +12,7 @@ raises a clear :class:`ImportError` with installation instructions.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -36,6 +36,20 @@ def _have_tree_sitter_php() -> bool:
     return importlib.util.find_spec("tree_sitter_php") is not None
 
 
+def _default_parser_factory() -> Parser:
+    """Create and configure the default tree-sitter Parser for PHP.
+
+    This is the fallback used when no parser factory is injected via the
+    constructor. It imports ``tree_sitter`` and ``tree_sitter_php`` at call
+    time, keeping them as optional dependencies.
+    """
+    import tree_sitter
+    import tree_sitter_php
+
+    language = tree_sitter.Language(tree_sitter_php.language_php())
+    return tree_sitter.Parser(language)
+
+
 class PHPEngine:
     """Parse PHP source files into :class:`ModuleInfo`.
 
@@ -48,10 +62,27 @@ class PHPEngine:
     installed, the engine still instantiates and satisfies the
     :class:`~zolletta_metaskill.core.engine.language_engine.LanguageEngine`
     protocol, but :meth:`parse_module` raises an :class:`ImportError`.
+
+    Args:
+        parser_factory: Optional callable that returns a configured
+            :class:`tree_sitter.Parser`. If ``None``, a default factory
+            that imports ``tree_sitter`` and ``tree_sitter_php`` is used
+            lazily on first parse. Inject a custom factory for testability.
+        dependency_check: Optional callable that returns ``True`` if
+            ``tree-sitter-php`` is available. If ``None``, the default
+            ``_have_tree_sitter_php`` check is used.
+
     """
 
-    def __init__(self) -> None:
-        """Initialise the engine, lazily preparing a parser if possible."""
+    def __init__(
+        self,
+        *,
+        parser_factory: Callable[[], Parser] | None = None,
+        dependency_check: Callable[[], bool] | None = None,
+    ) -> None:
+        """Initialise the engine, optionally accepting injected dependencies."""
+        self._parser_factory = parser_factory
+        self._dependency_check = dependency_check
         self._parser: Parser | None = None
         self._ready: bool | None = None
 
@@ -214,17 +245,16 @@ class PHPEngine:
         if self._parser is not None:
             return self._parser
         if self._ready is None:
-            self._ready = _have_tree_sitter_php()
+            self._ready = (
+                self._dependency_check() if self._dependency_check else _have_tree_sitter_php()
+            )
         if not self._ready:
             raise ImportError(
                 "tree-sitter-php is required to parse PHP files. "
                 "Install it with: uv add tree-sitter tree-sitter-php"
             )
-        import tree_sitter
-        import tree_sitter_php
-
-        language = tree_sitter.Language(tree_sitter_php.language_php())
-        self._parser = tree_sitter.Parser(language)
+        factory = self._parser_factory or _default_parser_factory
+        self._parser = factory()
         return self._parser
 
     # -- Internal: node helpers --------------------------------------------

@@ -266,6 +266,34 @@ class TestFindDuplicateAnchors:
         f.write_text("", encoding="utf-8")
         assert LinkChecker.find_duplicate_anchors(str(f)) == []
 
+    def test_find_duplicate_anchors_skips_headings_inside_code_block(
+        self, tmp_path: Path
+    ) -> None:
+        """Headings inside code blocks are not counted as duplicate anchors."""
+        f = tmp_path / "test.md"
+        f.write_text(
+            "# Title\n```\n# Title\n```\n",
+            encoding="utf-8",
+        )
+        dups = LinkChecker.find_duplicate_anchors(str(f))
+        # The # Title inside the code block is skipped, so no duplicates
+        assert dups == []
+
+    def test_find_duplicate_anchors_code_block_with_duplicate_after(
+        self, tmp_path: Path
+    ) -> None:
+        """Headings after a code block are still checked for duplicates."""
+        f = tmp_path / "test.md"
+        f.write_text(
+            "# Title\n```\n# Title\n```\n# Title\n",
+            encoding="utf-8",
+        )
+        dups = LinkChecker.find_duplicate_anchors(str(f))
+        # Line 5 is a duplicate of line 1 (line 3 is inside code block, skipped)
+        assert len(dups) == 1
+        assert dups[0][0] == "title"
+        assert dups[0][1] == 5
+
 
 # ---------------------------------------------------------------------------
 # validate_link

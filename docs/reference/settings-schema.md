@@ -65,7 +65,7 @@ skills: [setup, review, patterns, documentor, external-review, python-*, php-*]
     "language": "en",
     "dir": "docs"
   },
-  "reports_dir": ".zolletta-metaskill/reports"
+  "runs_dir": ".zolletta-metaskill"
 }
 ```
 
@@ -129,7 +129,7 @@ skills: [setup, review, patterns, documentor, external-review, python-*, php-*]
     "language": "en",
     "dir": "docs"
   },
-  "reports_dir": ".zolletta-metaskill/reports"
+  "runs_dir": ".zolletta-metaskill"
 }
 ```
 
@@ -147,7 +147,7 @@ skills: [setup, review, patterns, documentor, external-review, python-*, php-*]
 | `php`                   | object\|null      | PHP tooling, rule toggles, autoload mapping, and effective tool configuration (PHP only; `null` otherwise) — see below                                                                                                                   |
 | `external_review_model` | string            | Default model for `external-review` (overridable by front-matter)                                                                                                                                                                        |
 | `documentation`         | object            | Documentation configuration — see below                                                                                                                                                                                                  |
-| `reports_dir`           | string            | Directory where review reports are saved                                                                                                                                                                                                 |
+| `runs_dir`              | string            | Directory where review run folders are created. Each run gets a timestamped subdirectory (`<runs_dir>/<YYYY-MM-DD-HH-MM>/`) containing `reports/` (LLM judgment) and `cache/` (deterministic script outputs)                             |
 
 ## `documentation` — documentation configuration
 

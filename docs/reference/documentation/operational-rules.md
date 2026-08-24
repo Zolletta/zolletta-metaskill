@@ -55,4 +55,4 @@ Shared rules for running documentation drift detection. These rules apply when t
 
 These rules apply only if run in isolation, not as part of a compound skill:
 
-- Save reports to `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/documentor.md`
+- Save reports to `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/documentor.md`

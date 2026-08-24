@@ -8,7 +8,7 @@
   "python": null,
   "php": null,
   "external_review_model": "swe",
-  "reports_dir": ".zolletta-metaskill/reports",
+  "runs_dir": ".zolletta-metaskill",
   "documentation": {
     "language": "en",
     "dir": "docs",

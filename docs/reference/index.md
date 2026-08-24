@@ -12,13 +12,14 @@ Accurate technical description of the tools. Aimed at users who need facts.
 
 Scanners, review conventions, and language-specific style rules.
 
-| Document                                              | Description                                    |
-|-------------------------------------------------------|------------------------------------------------|
-| [Scripts reference](code/scripts.md)                  | All scanning scripts: usage, options, examples |
-| [Review mode](code/review-mode.md)                    | Read-only review conventions                   |
-| [Code exploration](code/code-exploration.md)          | tokensave decision tree and task templates     |
-| [tokensave](code/tokensave.md)                        | tokensave MCP tools reference                  |
-| [Python code style](code/python/python-code-style.md) | Python style rules and configurable toggles    |
+| Document                                                 | Description                                                      |
+|----------------------------------------------------------|------------------------------------------------------------------|
+| [Scripts reference](code/scripts.md)                     | All scanning scripts: usage, options, examples                   |
+| [Scripts-first protocol](code/scripts-first-protocol.md) | Batch-run scripts, cache output, judgment only on deferred items |
+| [Review mode](code/review-mode.md)                       | Read-only review conventions                                     |
+| [Code exploration](code/code-exploration.md)             | tokensave decision tree and task templates                       |
+| [tokensave](code/tokensave.md)                           | tokensave MCP tools reference                                    |
+| [Python code style](code/python/python-code-style.md)    | Python style rules and configurable toggles                      |
 
 ## Documentation tools
 

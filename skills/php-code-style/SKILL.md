@@ -124,7 +124,7 @@ For each configurable rule that is `true` in `php.code_style`, check it. Skip ru
 
 ### Step 5 — Write report
 
-Write the report to `.zolletta-metaskill/reports/<timestamp>/php-code-style.md` using the [report template](assets/report_template.md).
+Write the report to `<runs_dir>/<timestamp>/reports/php-code-style.md` using the [report template](assets/report_template.md).
 
 ## Rule details
 

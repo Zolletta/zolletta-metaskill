@@ -6,15 +6,30 @@ skills: [setup, review, patterns, documentor, external-review, python-*]
 
 # Reports Reference
 
-All review reports are saved to a timestamped directory under the reports path configured in `settings.json` (default: `.zolletta-metaskill/reports`).
+All review reports are saved to a timestamped run directory under the runs path configured in `settings.json` (default: `.zolletta-metaskill`). Each run creates a `<YYYY-MM-DD-HH-MM>/` directory containing `reports/` (LLM judgment) and `cache/` (deterministic script outputs).
 
 ## Directory structure
 
 ```text
-<reports_dir>/<YYYY-MM-DD-HH-MM>/<subcommand>.md
+<runs_dir>/<YYYY-MM-DD-HH-MM>/
+├── reports/                  ← LLM judgment (subcommand reports + aggregates)
+│   ├── SUMMARY.md
+│   ├── TODO.md
+│   ├── patterns.md
+│   ├── documentor.md
+│   └── ...
+└── cache/                    ← deterministic artifacts (script outputs + shared context)
+    ├── _context.md
+    ├── class_metrics.txt
+    └── ...
 ```
 
-The timestamp format (`YYYY-MM-DD-HH-MM`) is lexicographically sortable, so finding the most recent review is a simple directory listing.
+The timestamp format (`YYYY-MM-DD-HH-MM`) is lexicographically sortable, so finding the most recent review is a simple directory listing of `<runs_dir>/*/`.
+
+### `reports/` vs `cache/`
+
+- **`reports/`** — what a human reads: findings, severity, grades, TODOs. Written by the LLM.
+- **`cache/`** — deterministic artifacts: script outputs and shared context. Written by the scripts-first protocol's Phase A. See [scripts-first-protocol.md](code/scripts-first-protocol.md) for the per-subcommand cache file list.
 
 ## Report files
 

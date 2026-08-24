@@ -16,7 +16,7 @@
     "php",
     "external_review_model",
     "documentation",
-    "reports_dir"
+    "runs_dir"
   ],
   "properties": {
     "setup_version": {
@@ -64,10 +64,10 @@
       "$ref": "#/$defs/documentation",
       "description": "Documentation configuration."
     },
-    "reports_dir": {
+    "runs_dir": {
       "type": "string",
-      "description": "Directory where review reports are saved.",
-      "default": ".zolletta-metaskill/reports"
+      "description": "Directory where review run folders are created. Each run gets a timestamped subdirectory (<runs_dir>/<YYYY-MM-DD-HH-MM>/) containing reports/ and cache/.",
+      "default": ".zolletta-metaskill"
     }
   },
 

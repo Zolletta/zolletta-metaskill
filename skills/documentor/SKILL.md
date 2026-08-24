@@ -17,6 +17,8 @@ Derived from the [Diátaxis Documentation Expert](https://github.com/github/awes
 
 > This file narrows down any eventual general rule about code exploration and documentation, i.e. `code-exploration-rules.md`, `tokensave-rules.md`, `documentation-rules.md`. If you maintain rules as part of your agent configuration, those are the single source of truth for their domain.
 
+> **Execution protocol**: when running a review, follow [`../../docs/reference/code/scripts-first-protocol.md`](../../docs/reference/code/scripts-first-protocol.md) — batch-run the 4 drift scripts (link_checker, api_doc_validator, drift_analyzer, doc_staleness_scorer), persist their output to `cache/`, assemble deterministic report sections from cached output, then run only the judgment pass items (false-positive filtering for known FP patterns — only open source files for FP candidates). Write your report to `reports/documentor.md`. Do not re-read source files the drift tools already validated.
+
 ## Shared resources
 
 Read shared guidelines from the meta-skill (parent directory):

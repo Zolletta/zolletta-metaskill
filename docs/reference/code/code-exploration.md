@@ -8,6 +8,8 @@ skills: [patterns, documentor, review, external-review]
 
 Decision tree for choosing the right exploration tool. See [tokensave.md](tokensave.md) for tool reference.
 
+> **Scripts-first protocol takes precedence for review runs**: when running as part of a review (`/zolletta-metaskill review` or any standalone review subcommand), follow [`scripts-first-protocol.md`](scripts-first-protocol.md) — run scripts first (Phase A), assemble from cache (Phase B), and only use tokensave in Phase C for the judgment candidates the scripts surface. Do not use tokensave for exploration that scripts already cover.
+
 ## Patterns-specific workflow with code graph tools
 
 The standard scanning workflow (see [`scripts.md`](scripts.md)) can be enhanced:

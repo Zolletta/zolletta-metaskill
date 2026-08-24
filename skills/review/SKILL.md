@@ -2,7 +2,7 @@
 name: zolletta-metaskill-review
 license: MIT + Commons Clause
 description: >
-  Full project review orchestrator. Reads the project language from .zolletta-metaskill/settings.json (written by setup), then runs the appropriate specialist skills as subagents in parallel batches — general skills (patterns, documentor) always, plus language-specific skills when applicable (e.g. python-code-style and python-testing-patterns for Python). Saves each report to .zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/, produces an aggregated TODO.md organized by functional priority (dependency changes first, then by severity), and compares with the previous review's TODO to verify completion. Respond in the user's language.
+  Full project review orchestrator. Reads the project language from .zolletta-metaskill/settings.json (written by setup), then runs the appropriate specialist skills as subagents in parallel batches — general skills (patterns, documentor) always, plus language-specific skills when applicable (e.g. python-code-style and python-testing-patterns for Python). Saves each report to .zolletta-metaskill/<YYYY-MM-DD-HH-MM>/reports/, produces an aggregated TODO.md organized by functional priority (dependency changes first, then by severity), and compares with the previous review's TODO to verify completion. Respond in the user's language.
 allowed-tools:
   - read
   - grep
@@ -34,6 +34,7 @@ The set of skills depends on the project's primary language: **general skills** 
 Read shared guidelines from the meta-skill (parent directory):
 
 - `../../docs/reference/code/code-exploration.md` — code graph tools (tokensave) decision tree
+- `../../docs/reference/code/scripts-first-protocol.md` — batch-run scripts, cache output, judgment only on deferred items
 - `../../docs/explanation/code/general-principles.md` — SOLID, KISS, composition over inheritance (language-agnostic)
 - `../../docs/explanation/documentation/standards.md` — generic doc writing standards (README, API docs, changelogs, ADRs)
 - `../../docs/reference/tool-messages.md` — "not installed" messages for the tool-failure handler
@@ -59,6 +60,8 @@ The setup guard (see the meta-skill's [setup guard](../SKILL.md#setup-guard)) gu
 
 This step ensures the tokensave index is fresh before any subagent uses it. Stale indices cause subagents to silently fall back to direct file reads, degrading review quality without warning. This check runs **in the orchestrator**, not in each subagent, to avoid redundant checks and race conditions on `tokensave sync`.
 
+> **Parallelization**: issue the `tokensave_status` call from this step and the `adr_orchestrator.py` exec from Step 3.5 in the **same tool-call block** so they run concurrently. Only the tokensave re-sync (if needed) blocks subsequent steps; ADR distillation is independent.
+
 **Only run this step if `tokensave_available` is `true` in `settings.json`.** If `tokensave_available` is `false`, skip this step — subagents will use the grep/read fallback as usual.
 
 1. **Call `tokensave_status`** (no arguments) via the tokensave MCP server.
@@ -75,15 +78,18 @@ This step ensures the tokensave index is fresh before any subagent uses it. Stal
 
 > **Why this runs in the orchestrator**: running `tokensave sync` inside a subagent would risk concurrent syncs if multiple subagents detect staleness simultaneously. The orchestrator syncs once, before any subagent launches, so all subagents see a consistent fresh index.
 
-### Step 2 — Create the review folder
+### Step 2 — Create the run folder
 
-1. Generate a timestamp in `YYYY-MM-DD-HH-MM` format. Use `date +%Y-%m-%d-%H-%M` to get this.
-2. Create the directory `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/`.
+1. Read `runs_dir` from `settings.json` (default `.zolletta-metaskill`).
+2. Generate a timestamp in `YYYY-MM-DD-HH-MM` format. Use `date +%Y-%m-%d-%H-%M` to get this.
+3. Create the run folder structure:
+   - `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/` — for LLM judgment (subcommand reports, SUMMARY.md, TODO.md)
+   - `<runs_dir>/<YYYY-MM-DD-HH-MM>/cache/` — for deterministic artifacts (script outputs + shared context)
 
 ### Step 3 — Check for previous reviews
 
-1. List all subdirectories under `.zolletta-metaskill/reports/` (if any exist).
-2. If there are previous review folders, identify the **newest** one (excluding the one you just created). Read its `TODO.md` if it exists.
+1. List all timestamp subdirectories directly under `<runs_dir>/` (i.e. `<runs_dir>/*/`, excluding `settings.json` and other non-directory files).
+2. If there are previous run folders, identify the **newest** one (excluding the one you just created). Read its `reports/TODO.md` if it exists.
 3. Keep this previous TODO for the comparison in Step 6.
 
 ### Step 3.5 — Refresh ADR directives
@@ -101,6 +107,31 @@ This step ensures the tokensave index is fresh before any subagent uses it. Stal
 
 > ADR distillation inspired by [Architectural Governance at AI Speed](https://www.infoq.com/articles/architectural-governance-ai-speed/) (InfoQ, 2026).
 
+### Step 3.6 — Write shared context + run shared scripts to cache/
+
+This step deduplicates work that every subagent would otherwise repeat: reading settings.json, ADR directives, mandatory reference docs, and running shared scanners. The orchestrator does it once and writes the results to `cache/`.
+
+1. **Write `cache/_context.md`** containing:
+   - **Settings extract**: relevant `settings.json` fields — `language`, `container_name`, `tokensave_available`, `python.tools.*` (availability + config), `python.code_style` / `python.testing` toggles, `acronyms`, `documentation.*`. Copied once so 4 subagents don't each open `settings.json`.
+   - **ADR directives**: the full content of `adr-distilled.md` (if ADRs exist from Step 3.5). Inlined so subagents don't each open the file.
+   - **Judgment-rules digest**: a verbatim extract (not paraphrase) of the criteria lists from:
+     - `../../docs/explanation/code/general-principles.md` — God class detection procedure + "What is NOT a God class" criteria
+     - `../../docs/explanation/code/structural-conventions.md` — one-class-per-file + test mirroring rules
+     - `../../docs/reference/code/review-mode.md` — two-bucket classification (auto-fixable vs findings)
+     Keep this to ~30 lines — only the criteria, not the full prose. Subagents that need more context can drill down to the full docs.
+
+2. **Run shared scripts once** and persist to `cache/` (these are used by multiple subagents):
+   - `one_class_per_file_scanner.py` → `cache/one_class_per_file.txt` (used by `patterns` and `python-code-style`)
+   - `test_structure_scanner.py` → `cache/test_structure.md` (used by `patterns`)
+
+   Run both in a single tool-call block of parallel `exec` calls. Subagents read from `cache/` instead of re-running them.
+
+3. The `cache/` directory is now ready for subagents. Each subagent will:
+   - Read `cache/_context.md` for shared context (settings, ADR directives, judgment rules)
+   - Read shared scanner outputs from `cache/` (already populated)
+   - Run its own subcommand-specific scripts (Phase A per the scripts-first protocol) and write them to `cache/`
+   - Assemble its report from cache (Phase B) and apply judgment (Phase C)
+
 ### Step 4 — Launch the review subagents in parallel
 
 Launch **one subagent per command**, all in parallel as background subagents (`is_background: true`). Issue all `run_subagent` calls in a single tool-call block so they run concurrently. Each subagent writes its own report file directly to the review folder — the orchestrator does not collect and save reports on their behalf.
@@ -112,12 +143,12 @@ Launch **one subagent per command**, all in parallel as background subagents (`i
 
 **Language-specific skills** (run only when the project uses the matching language):
 
-| Language | Skill                     | Scope                                                                         |
-| -------- | ------------------------- | ----------------------------------------------------------------------------- |
-| Python   | `python-code-style`       | Style, linting, formatting, naming, docstrings, type annotations              |
-| Python   | `python-testing-style`    | Test isolation, naming, coverage gaps, mocking, fixture design, AAA structure |
-| PHP      | `php-code-style`          | PSR-12, naming, one class per file, PHPDoc, type declarations                 |
-| PHP      | `php-testing-style`       | PHPUnit naming, mirroring, coverage gaps, mocking, data providers             |
+| Language | Skill                  | Scope                                                                         |
+|----------|------------------------|-------------------------------------------------------------------------------|
+| Python   | `python-code-style`    | Style, linting, formatting, naming, docstrings, type annotations              |
+| Python   | `python-testing-style` | Test isolation, naming, coverage gaps, mocking, fixture design, AAA structure |
+| PHP      | `php-code-style`       | PSR-12, naming, one class per file, PHPDoc, type declarations                 |
+| PHP      | `php-testing-style`    | PHPUnit naming, mirroring, coverage gaps, mocking, data providers             |
 
 > When support for other languages is added, extend this table with the corresponding skills.
 
@@ -126,20 +157,20 @@ Launch **one subagent per command**, all in parallel as background subagents (`i
 **Skill scopes:**
 
 | Skill                            | Type                                   | Scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| -------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|----------------------------------|----------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `python-code-style`              | bundled skill (Python only)            | Review **all Python source code** in `src/` (and any other source dirs) for style, linting, formatting, naming, docstring, and type annotation issues. Run in **review mode (read-only)** per [`../../docs/reference/code/review-mode.md`](../../docs/reference/code/review-mode.md): use `ruff check` (no `--fix`), `ruff format --check`, `ty check` (no `--fix`), and `mypy` as-is. Auto-fixable issues are informational only — do not count them toward the grade. Read rule toggles from `python.code_style` in `settings.json` and effective tool config from the `python.tools.*` fields.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `python-testing-style`           | bundled skill (Python only)            | Review **all test code** in `tests/` for testing best practices: test isolation, naming, mocking patterns, fixture design, AAA structure. **Coverage gap analysis**: run `pytest --cov` (mandatory) and flag only modules with coverage below 50% AND no direct test references AND all callers mocked. Do NOT duplicate the structural "missing test file" check from `test_structure_scanner.py` — that is owned by `/zolletta-metaskill patterns`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `/zolletta-metaskill patterns`   | zolletta-metaskill subcommand (always) | Review **all source code** in `src/` for design pattern issues: KISS violations, SRP violations, tight coupling, composition vs inheritance, God classes, premature abstraction, SOLID principle violations (OCP, LSP, ISP, DIP). Also check structural conventions: one class per file, and test directory structure mirroring source structure. **For Python projects**: run all eight scanning scripts (`class_metrics_scanner.py`, `test_god_classes_scanner.py`, `one_class_per_file_scanner.py`, `test_structure_scanner.py`, `dependency_inversion_scanner.py`, `interface_segregation_scanner.py`, `open_closed_scanner.py`, and `liskov_substitution_scanner.py` from `src/zolletta_metaskill/{patterns,code_style,testing_style}/`) for automated triage, then apply the "reason to change" test to the top candidates. **This is a mandatory step, not optional.** See `skills/patterns/SKILL.md` → "Mandatory Procedure" for the full procedure. You MUST read `../../docs/explanation/code/general-principles.md` (God class detection procedure + "What is NOT a God class") before evaluating any class. **You must NOT report a class as a God class based on size alone** — size is a triage signal, never a verdict. Classes that are parsers, strategies, orchestrators, or factories serving a single domain must be suppressed. **Use the `test_structure_scanner.py` markdown output directly in the report**: its five tables (misnamed tests, misplaced tests, orphaned tests, multi-class tests, missing tests) are **structural** findings — they check file naming and directory mirroring, not actual code coverage. Copy them into the report's findings section **except the "Missing tests" table**: before reporting any file from the "Missing tests" table as a finding, run `pytest --cov` and check the file's coverage. If coverage >50%, downgrade to informational. Only report as a finding if coverage <50% AND no indirect references. **Do not flag coverage gaps** — that is owned by `python-testing-style` which runs `pytest --cov`. **The DIP scanner excludes composition roots** (entry points by filename + classes that create DI containers via `make_container()`/`Container()` detected semantically). If the scanner still flags a class that is clearly a composition root, suppress it and note "composition root — not a DIP violation". Use `test_splitter.py` if the human decides to split a test God class. **For other languages**: apply the same principles manually (no AST scripts available yet). **If `.tokensave/` exists, use the code graph tools** (tokensave_context/callees/callers or tokensave_impact) to understand class responsibilities and assess blast radius before proposing splits — see the skill's "Code Graph Tools" section for the decision tree. |
-| `/zolletta-metaskill documentor` | zolletta-metaskill subcommand (always) | Review **project documentation** (from `documentation.dir` in `settings.json`): [Diátaxis](https://diataxis.fr/) compliance (document type correctness, audience clarity, structure, accuracy, consistency) **and** drift detection (staleness, broken links, API doc validation, structural gaps) in a single pass. **Follow `documentor/references/operational-rules.md`** for false positive patterns, correct tool invocation (project root as repo path for staleness scorer), and the recommended workflow order.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `/zolletta-metaskill documentor` | zolletta-metaskill subcommand (always) | Review **project documentation** (from `documentation.dir` in `settings.json`): [Diátaxis](https://diataxis.fr/) compliance (document type correctness, audience clarity, structure, accuracy, consistency) **and** drift detection (staleness, broken links, API doc validation, structural gaps) in a single pass. **Follow `documentor/references/operational-rules.md`** for false positive patterns, correct tool invocation (project root as repo path for staleness scorer), and the recommended workflow order.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 **Each subagent writes its own report file.** The subagent is given the output path and must use the `write` tool to save its report directly. The orchestrator does not collect subagent output and save it — that is the subagent's responsibility.
 
-| Subagent                | Output file                                                                 |
-| ----------------------- | --------------------------------------------------------------------------- |
-| python-code-style       | `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/python-code-style.md`       |
-| python-testing-patterns | `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/python-testing-patterns.md` |
-| patterns                | `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/patterns.md`                |
-| documentor              | `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/documentor.md`              |
+| Subagent                | Output file                                                        |
+|-------------------------|--------------------------------------------------------------------|
+| python-code-style       | `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/python-code-style.md`       |
+| python-testing-patterns | `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/python-testing-patterns.md` |
+| patterns                | `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/patterns.md`                |
+| documentor              | `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/documentor.md`              |
 
 **Subagent task template** (adapt for each):
 
@@ -153,13 +184,26 @@ Then apply those guidelines to review the following scope:
 
 Project root: <current working directory>
 AGENTS.md: Read the project's AGENTS.md (and ~/.agents/AGENTS.md) for project-specific and global rules.
-Review mode: follow ../../docs/reference/code/review-mode.md — read-only, no fixes applied. Auto-fixable
-issues are informational only and do not count toward the grade.
 
-settings.json: Read .zolletta-metaskill/settings.json for tool availability and config
-(python.tools.*), and rule toggles (python.code_style.*, python.testing.*).
+**Execution protocol**: follow ../../docs/reference/code/scripts-first-protocol.md —
+batch-run the scripts listed in the per-subcommand table, persist their output to cache/,
+assemble deterministic report sections from cached output, then run only the judgment
+pass items listed for this subcommand.
 
-Architectural directives: Read <adr_dir>/adr-distilled.md for the project's architectural directives (distilled from Accepted ADRs). Each directive links to its source ADR. Use judgment to check whether the code you're reviewing aligns with each directive:
+**Shared context**: Read <runs_dir>/<YYYY-MM-DD-HH-MM>/cache/_context.md FIRST — it contains
+settings.json extracts, ADR directives, and a judgment-rules digest. Do NOT re-read
+settings.json, adr-distilled.md, or the mandatory reference docs separately — they are
+already inlined in _context.md.
+
+**Shared scanner outputs**: some scripts were already run by the orchestrator and are in
+cache/ (one_class_per_file.txt, test_structure.md). Read those from cache — do NOT re-run
+them. Run only the scripts listed for your subcommand that are not already in cache/.
+
+Review mode: follow ../../docs/reference/code/review-mode.md — read-only, no fixes applied.
+Auto-fixable issues are informational only and do not count toward the grade.
+
+Architectural directives: use the ADR directives from cache/_context.md. Use judgment to
+check whether the code you're reviewing aligns with each directive:
 - Binary directives (e.g., "use PostgreSQL", "use async events for inter-service communication") — flag clear violations as findings.
 - Nuanced directives (e.g., "adopt microservices", "prefer composition over inheritance") — note deviations as observations with context, not findings.
 The directive's content tells you whether it's binary or nuanced.
@@ -211,14 +255,14 @@ If no previous review exists, skip this step (note in the TODO that this is the 
 
 ### Step 7 — Create the executive summary (SUMMARY.md)
 
-Read all report files that were produced by the subagents and extract the grade from each. Create `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/SUMMARY.md` following the [summary template](assets/summary_template.md).
+Read all report files that were produced by the subagents and extract the grade from each. Create `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/SUMMARY.md` following the [summary template](assets/summary_template.md).
 
 The SUMMARY.md is an executive overview — it contains grades, strengths, weaknesses, and trends. It does **not** duplicate the detailed findings from the specialist reports. Instead, it links to them in a "Detailed reports" section so the reader can drill down.
 
 **Overall grade calculation**: use a weighted average of the sub-grades. Only include areas that were actually run. Suggested weights for a Python project (4 skills):
 
 | Area            | Weight |
-| --------------- | ------ |
+|-----------------|--------|
 | Code style      | 30%    |
 | Testing         | 30%    |
 | Design patterns | 25%    |
@@ -227,7 +271,7 @@ The SUMMARY.md is an executive overview — it contains grades, strengths, weakn
 For non-Python projects (2 skills — patterns + documentor only):
 
 | Area            | Weight |
-| --------------- | ------ |
+|-----------------|--------|
 | Design patterns | 60%    |
 | Documentation   | 40%    |
 
@@ -237,7 +281,7 @@ If a previous review exists, include a "Trend vs previous review" subsection not
 
 ### Step 8 — Create the aggregated TODO.md
 
-Read all report files produced by the subagents. Create `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/TODO.md` following the [TODO template](assets/todo_template.md).
+Read all report files produced by the subagents. Create `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/TODO.md` following the [TODO template](assets/todo_template.md).
 
 The TODO.md is a prioritized action list — it does **not** duplicate the full findings from the specialist reports. Each item links to the relevant specialist report for full details (file path, line numbers, impact, suggested fix).
 

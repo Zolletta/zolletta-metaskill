@@ -12,6 +12,8 @@ Review skill for Python test code: test isolation, naming, coverage gaps, mockin
 
 > **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../../docs/reference/code/review-mode.md`](../../docs/reference/code/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
 
+> **Execution protocol**: when running a review, follow [`../../docs/reference/code/scripts-first-protocol.md`](../../docs/reference/code/scripts-first-protocol.md) — batch-run the scripts listed in the per-subcommand table (`pytest --cov --cov-report=term-missing`, `test_naming_scanner.py --json`), persist their output to `cache/`, assemble deterministic report sections (coverage gaps from `cache/pytest_cov.txt`, naming violations from `cache/test_naming.json`) from cached output, then run only the judgment pass items (indirect-coverage tracing for modules below the gap threshold). Write your report to `reports/python-testing-patterns.md`. Do not re-read source files the scripts already parsed.
+
 ## When to Use This Skill
 
 - Writing unit tests for Python code
@@ -135,7 +137,7 @@ python3 ../../src/zolletta_metaskill/testing_style/python/test_naming_scanner.py
 
 When this skill runs a review, it writes its findings to a markdown file using the [report template](assets/report_template.md):
 
-- **Path**: `.zolletta-metaskill/reports/<YYYY-MM-DD-HH-MM>/python-testing-patterns.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`)
+- **Path**: `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/python-testing-patterns.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`; `runs_dir` from `settings.json`, default `.zolletta-metaskill`)
 - **Compound skills** (e.g. `zolletta-metaskill-review`) may override the folder and filename — follow their instructions instead
 - **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the [setup guard](../SKILL.md#setup-guard) — no manual setup needed
 - **Format**: follow the [report template](assets/report_template.md) — grade at the top, coverage summary, coverage gaps table, findings grouped by severity with file/test-symbol/rule/issue/fix columns
