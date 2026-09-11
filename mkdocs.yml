@@ -144,3 +144,4 @@ nav:
           - "8 Skills directory": explanation/adr/0008-skills-directory-grouping.md
           - "9 Python scripts": explanation/adr/0009-inline-shell-replaced-with-python-scripts.md
           - "10 ADR distiller": explanation/adr/0010-add-adr-distiller.md
+          - "11 Skip external dependency inspector": explanation/adr/0011-skip-external-dependency-inspector.md
