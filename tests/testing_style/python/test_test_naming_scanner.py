@@ -152,6 +152,17 @@ class TestFindTestFunctions:
         assert "test_init_with_valid_stores" in names
         assert "helper" not in names
 
+    def test_skips_test_methods_in_non_test_class(self, tmp_path: Path) -> None:
+        """Methods named test_* on non-Test* classes are not test functions."""
+        f = tmp_path / "test_protocol.py"
+        f.write_text(
+            "class _StubEngine:\n"
+            "    def test_file_glob(self):\n"
+            "        pass\n",
+        )
+        result = TestNamingScanner._find_test_functions(f)
+        assert result == []
+
     def test_empty_file_returns_empty_list(self, tmp_path: Path) -> None:
         """A completely empty file yields no test functions."""
         f = tmp_path / "test_empty.py"
@@ -685,6 +696,18 @@ class TestScanModule:
         findings = TestNamingScanner.scan_file(f)
         assert len(findings) == 1
         assert "test_init" in findings[0].description
+
+    def test_test_method_in_non_test_class_skipped(self, tmp_path: Path) -> None:
+        """Methods named test_* on non-Test* classes are not flagged by scan_module."""
+        f = tmp_path / "test_protocol.py"
+        write_test_file(
+            f,
+            "class _StubEngine:\n"
+            "    def test_file_glob(self):\n"
+            "        pass\n",
+        )
+        findings = TestNamingScanner.scan_file(f)
+        assert findings == []
 
 
 # ---------------------------------------------------------------------------
