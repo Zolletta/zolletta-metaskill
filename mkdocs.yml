@@ -145,3 +145,5 @@ nav:
           - "9 Python scripts": explanation/adr/0009-inline-shell-replaced-with-python-scripts.md
           - "10 ADR distiller": explanation/adr/0010-add-adr-distiller.md
           - "11 Skip external dependency inspector": explanation/adr/0011-skip-external-dependency-inspector.md
+          - "12 Skip property-based testing sensor": explanation/adr/0012-skip-property-based-testing-sensor.md
+          - "13 Skip fuzz testing sensor": explanation/adr/0013-skip-fuzz-testing-sensor.md
