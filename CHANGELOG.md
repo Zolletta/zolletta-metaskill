@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.2.2 (2026-09-15)
+
+### Bug Fixes
+
+- **security**: Gitpython security fixes
+  ([#52](https://github.com/Zolletta/zolletta-metaskill/pull/52),
+  [`f8f81ed`](https://github.com/Zolletta/zolletta-metaskill/commit/f8f81ed239689a1a45f9073aa746769d87d24eea))
+
+
 ## v1.2.1 (2026-08-24)
 
 ### Bug Fixes
