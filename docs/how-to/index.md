@@ -28,7 +28,6 @@ Language-agnostic checks for style, test quality, and structural issues.
 | [Review test code](code/review-test-code.md)           | Check test structure, coverage gaps, naming (language-agnostic) |
 | [Detect God classes](code/detect-god-classes.md)       | Find God classes and SOLID violations                           |
 | [Split a God test class](code/split-god-test-class.md) | Break a test class into per-SUT files                           |
-| [Run an external review](code/run-external-review.md)  | Delegate review to an external model                            |
 
 ## Python-specific
 

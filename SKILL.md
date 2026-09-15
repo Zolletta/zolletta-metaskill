@@ -10,6 +10,7 @@ argument-hint: "[subcommand]"
 A family of generic code review skills with specializations for
 
 - Python
+- PHP
 - Others (Work in progress)
 
 Invoke with `/zolletta-metaskill <subcommand>` to run a specific review, `/zolletta-metaskill help` to list available subcommands, or `/zolletta-metaskill` with no argument to see the help table.
@@ -29,11 +30,11 @@ When no subcommand is given, or the subcommand is `help`, the help table is disp
 
 All subcommands read from this skill's subdirectories:
 
-| Resource   | Path                                | Contents                                                                                                        |
-|------------|-------------------------------------|-----------------------------------------------------------------------------------------------------------------|
-| References | `docs/`                             | Shared guidelines (Diátaxis, review workflow, grading rubric, tool messages)                                    |
-| Scripts    | `src/zolletta_metaskill/`           | Scanning scripts organized by skill (patterns/, code_style/, testing_style/, documentor/, adr/, core/, setup/)  |
-| Settings   | `.zolletta-metaskill/settings.json` | Project-wide configuration written by `setup` (language, tool availability, external-review model, reports dir) |
+| Resource   | Path                                | Contents                                                                                                       |
+|------------|-------------------------------------|----------------------------------------------------------------------------------------------------------------|
+| References | `docs/`                             | Shared guidelines (Diátaxis, review workflow, grading rubric, tool messages)                                   |
+| Scripts    | `src/zolletta_metaskill/`           | Scanning scripts organized by skill (patterns/, code_style/, testing_style/, documentor/, adr/, core/, setup/) |
+| Settings   | `.zolletta-metaskill/settings.json` | Project-wide configuration written by `setup` (language, tool availability, reports dir)                       |
 
 ## Rules
 
@@ -43,7 +44,7 @@ If you maintain rules as part of your agent configuration, those are the **singl
 
 Before dispatching to **any** subcommand (including `setup` itself), check if `.zolletta-metaskill/settings.json` exists in the current project root:
 
-1. If it **exists**, read it and proceed to the requested subcommand. The subcommand may read `language`, `container_name`, `tokensave_available`, `acronyms`, `python` (which merges `python.tools`, `python.code_style`, `python.testing`, and `python.pyproject_mtime`), `php` (which merges `php.tools`, `php.code_style`, `php.testing`, `php.autoload`, `php.php_version`, and `php.composer_mtime`), `external_review_model`, and `runs_dir` from it.
+1. If it **exists**, read it and proceed to the requested subcommand. The subcommand may read `language`, `container_name`, `tokensave_available`, `acronyms`, `python`, `php`, `subcommands`, and `runs_dir` from it. See [`docs/reference/settings-schema.md`](docs/reference/settings-schema.md) for the full field shape.
 2. If it **does not exist**, run the full `setup` procedure first (read `skills/setup/SKILL.md` and execute every step). Once `settings.json` is written, proceed to the requested subcommand.
 3. If the user invoked `/zolletta-metaskill setup` explicitly, run setup and stop — do not dispatch to another subcommand.
 4. **Staleness check (Python projects only)**: if `settings.json` exists and `python` is not `null`, compare `pyproject.toml`'s current modification time against `python.pyproject_mtime`. If they differ (the file was modified after the last setup), re-run **only** Step 6.5 of setup (pyproject extraction) and patch the `python.tools.*` configuration fields + `python.pyproject_mtime` in `settings.json`. Do not re-run full setup (language detection, Docker probe, tokensave probe). If `pyproject.toml` does not exist or `python` is `null`, skip this check.
@@ -70,14 +71,16 @@ When any subcommand calls a tokensave MCP tool and receives a **tool-not-found**
 2. **Print the "not installed" message**: read the tokensave message from [`docs/reference/tool-messages.md`](docs/reference/tool-messages.md) and print it. The message explains why Zolletta-metaskill benefits from the tool and links to the project homepage. **Do NOT install anything.**
 3. **Continue with fallback**: proceed using grep + targeted reads instead of the graph tool. Do not abort the subcommand — the review can still complete, just with reduced coverage.
 
-This handler applies to every subcommand that uses tokensave (`patterns`, `documentor`, `external-review`, `review`). Each subcommand's SKILL.md links back to this section.
+This handler applies to every subcommand that uses tokensave (`patterns`, `documentor`, `review`). Each subcommand's SKILL.md links back to this section.
 
 > **Bundled language skills**: `python-code-style`, `python-testing-style`, `php-code-style`, and `php-testing-style` are bundled inside this meta-skill, so they are always available — the "not found" case does not apply. The `*_available` flags in `settings.json` only reflect whether the project language is Python or PHP.
 
 ## Dispatch
 
+> The subcommand architecture follows the **Focused Agent** pattern, avoiding the **Distracted Agent** anti-pattern. See [`docs/reference/augmented-coding-patterns.md`](docs/reference/augmented-coding-patterns.md) for distilled definitions.
+
 When invoked as `/zolletta-metaskill <subcommand>`:
 
-1. If no subcommand is given, or the subcommand is `help`, read `skills/help/SKILL.md` and execute its instructions (display the help table). Stop — do not run the setup guard or any other subcommand.
+1. If no subcommand is given, does not exists, or the subcommand is `help`, read `skills/help/SKILL.md` and execute its instructions (display the help table). Stop — do not run the setup guard or any other subcommand.
 2. Run the **setup guard** (see above) — ensure `.zolletta-metaskill/settings.json` exists.
 3. Read the SKILL.md at `skills/<subcommand>/SKILL.md` and execute its instructions.

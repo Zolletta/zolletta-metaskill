@@ -10,8 +10,6 @@ allowed-tools:
   - exec
   - edit
   - write
-  - run_subagent
-  - read_subagent
   - mcp_call_tool
   - mcp_list_tools
 ---
@@ -26,6 +24,7 @@ Identify structural problems in object-oriented codebases using a two-phase appr
 The principles are language-agnostic (KISS, SOLID, Separation of Concerns, Composition over Inheritance, Rule of Three). The automated scripts currently support Python via its `ast` module. For PHP and other languages, apply the principles manually by reading the code — the scripts are a triage accelerator, not a requirement.
 
 > **Execution protocol**: when running a review, follow [`../../docs/reference/code/scripts-first-protocol.md`](../../docs/reference/code/scripts-first-protocol.md) — batch-run the 8 scanning scripts (class_metrics, test_god_classes, one_class_per_file, test_structure, dependency_inversion, interface_segregation, open_closed, liskov_substitution), persist their output to `cache/`, assemble deterministic report sections (scanner tables copied verbatim from cache) from cached output, then run only the judgment pass items ("reason to change" test on top-N class_metrics candidates, DIP composition-root suppression, "Missing tests" coverage cross-check). Write your report to `reports/patterns.md`. Do not re-read source files the scanners already parsed.
+
 
 ## When to Use This Skill
 
@@ -54,7 +53,7 @@ This skill is organized into a lean entry point (this file) plus shared referenc
 
 ## Mandatory Procedure (Python)
 
-Before evaluating any findings, you MUST read the three mandatory reference files (★) listed above. The principles in these files prevent false positives. Skipping them produces verdict oscillation between reviews.
+Before evaluating any findings, you MUST consult the relevant sections of the mandatory reference files (★) listed above. The principles in these files prevent false positives. Skipping them produces verdict oscillation between reviews.
 
 ### Mandatory judgment step for God class detection
 

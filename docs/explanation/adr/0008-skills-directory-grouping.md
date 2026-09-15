@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The project originally stored sub-skills as top-level directories in the repository root: `documentor/`, `external-review/`, `patterns/`, `python-code-style/`, etc. Each contained a `SKILL.md`.
+The project originally stored sub-skills as top-level directories in the repository root: `documentor/`, `patterns/`, `python-code-style/`, etc. Each contained a `SKILL.md`.
 
 The `.agents/` convention (agentsfolder/spec, .agents Protocol, Agents Standard) groups skills under a `skills/` subfolder. This is the emerging standard for agent skill organization.
 
@@ -20,7 +20,6 @@ All subfolders containing a `SKILL.md` are moved from the repo root into a `skil
 zolletta-metaskill/
 ├── skills/
 │   ├── documentor/SKILL.md
-│   ├── external-review/SKILL.md
 │   ├── patterns/SKILL.md
 │   ├── php-code-style/SKILL.md
 │   ├── php-testing-style/SKILL.md

@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [setup, review, patterns, documentor, external-review, python-*]
+skills: [setup, review, patterns, documentor, python-*]
 ---
 
 # Reports Reference
@@ -41,7 +41,6 @@ Each subcommand writes its own report file:
 | `documentor`           | `documentor.md`           | Diátaxis compliance findings, drift detection results, staleness scores, link integrity |
 | `python-code-style`    | `python-code-style.md`    | Linting findings, formatting issues, naming violations, docstring gaps, type errors     |
 | `python-testing-style` | `python-testing-style.md` | Coverage gaps, test isolation issues, naming violations, fixture design findings        |
-| `external-review`      | `external-review.md`      | External LLM review of modified files                                                   |
 
 ## Orchestrator output
 

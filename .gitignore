@@ -12,3 +12,4 @@ build/
 coverage.xml
 .coverage
 TODO.md
+site/

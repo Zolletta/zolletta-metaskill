@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [setup, review, patterns, documentor, external-review, python-*]
+skills: [setup, review, patterns, documentor, python-*]
 ---
 
 ![zolletta-metaskill](../assets/zolletta-meta-skill-192.png)
@@ -73,3 +73,4 @@ MIT + Commons Clause. See [LICENSE](https://github.com/Zolletta/zolletta-metaski
 - **[Diátaxis](https://diataxis.fr/)** — documentation framework used by the `documentor` subcommand for structure compliance checks
 - **[tokensave](https://github.com/aovestdipaperino/tokensave)** — semantic code-graph MCP server leveraged for code exploration when available
 - **[Architectural Governance at AI Speed](https://www.infoq.com/articles/architectural-governance-ai-speed/)** (InfoQ, 2026) — ADR distiller design inspired by this article's declarative architectural governance approach
+- **[Augmented Coding Patterns](https://lexler.github.io/augmented-coding-patterns/)** (lexler) — subcommand architecture rationale informed by the Focused Agent pattern and Distracted Agent anti-pattern

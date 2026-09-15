@@ -46,7 +46,7 @@ There is **no third bucket** between "finding" and "not a finding." Every diagno
 
 **How to suppress correctly**: if a finding is suppressed because a documented exception applies (e.g. "stdlib concurrency primitive, not a DIP violation" or "enum alias, not a constant"), do not list it in the findings table. Mention it in the manual review checks table with a PASS status and a brief note explaining why the exception applies. Suppressed findings do not count toward the grade.
 
-**How to emit correctly**: if a finding is real, emit it with a severity, a concrete file/line reference, and a specific suggested fix. Do not qualify it with "may be" or "could be considered." If you're not sure whether it's real, the rule definition is not precise enough — that's a skill bug to fix, not a reason to hedge in the report.
+**How to emit correctly**: if a finding is real, emit it with a severity, a concrete file/line reference, and a specific suggested fix. Do not qualify it with "may be" or "could be considered." If you're not sure whether it's real, the rule definition is not precise enough — that's a skill bug to fix, not a reason to hedge in the report. Make the emit-or-suppress call with your best judgment, then record the skill bug in the report — name the imprecise rule and the case that exposed it — with a link to file it: <https://github.com/Zolletta/zolletta-metaskill/issues/new>. The review surfaces the bug; filing it is the reader's call.
 
 ## Tool-specific notes (Python)
 

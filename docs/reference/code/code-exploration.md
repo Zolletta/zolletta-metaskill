@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [patterns, documentor, review, external-review]
+skills: [patterns, documentor, review]
 ---
 
 # Tools to Leverage

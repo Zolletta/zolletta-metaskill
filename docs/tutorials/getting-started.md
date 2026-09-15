@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [setup, review, patterns, documentor, external-review, python-*]
+skills: [setup, review, patterns, documentor, python-*]
 ---
 
 # Getting started
@@ -35,7 +35,7 @@ Verify the installation by invoking the skill with no arguments:
 /zolletta-metaskill
 ```
 
-Verify the list of available subcommands: `setup`, `documentor`, `patterns`, `external-review`, `review`, `python-code-style`, `python-testing-style`.
+Verify the list of available subcommands: `setup`, `documentor`, `patterns`, `review`, `python-code-style`, `python-testing-style`.
 
 ## Step 2 — Set up the project
 
@@ -63,7 +63,7 @@ cat .zolletta-metaskill/settings.json
 /zolletta-metaskill review
 ```
 
-The review orchestrator runs all applicable skills in parallel — general skills (`patterns`, `documentor`, `external-review`) plus language-specific skills. See [subcommands.md](../reference/subcommands.md) for the full table.
+The review orchestrator runs all applicable skills in parallel — general skills (`patterns`, `documentor`) plus language-specific skills. See [subcommands.md](../reference/subcommands.md) for the full table.
 
 Each skill writes a report to `.zolletta-metaskill/<timestamp>/reports/`. The orchestrator creates `reports/SUMMARY.md` with the overall grade and `reports/TODO.md` with aggregated action items.
 
@@ -88,7 +88,6 @@ Run any skill individually for a focused review:
 /zolletta-metaskill documentor     # Documentation review only
 /zolletta-metaskill python-code-style    # Python code style only
 /zolletta-metaskill python-testing-style  # Python test code only
-/zolletta-metaskill external-review      # External-LLM review of changes
 ```
 
 ## Next steps

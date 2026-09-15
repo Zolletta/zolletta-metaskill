@@ -65,7 +65,6 @@ Aggregate score: **73.8/100 (good)** — 75 documents scored (includes SKILL.md 
 | `skills/review/assets/summary_template.md`                   | 29.1  | abandoned |
 | `skills/review/assets/todo_template.md`                      | 29.1  | abandoned |
 | `docs/adr/adr-distilled.md`                                  | 31.2  | critical  |
-| `skills/external-review/SKILL.md`                            | 42.9  | critical  |
 | `skills/python-code-style/SKILL.md`                          | 45.2  | critical  |
 | `docs/adr/0009-inline-shell-replaced-with-python-scripts.md` | 46.2  | critical  |
 | `skills/patterns/SKILL.md`                                   | 48.2  | critical  |

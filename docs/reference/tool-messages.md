@@ -26,7 +26,7 @@ relationships, impact radius). Zolletta-metaskill uses it to:
   - understand class responsibilities without reading full files (patterns)
   - assess blast radius before proposing God-class splits (patterns)
   - verify documented symbols exist without grep (documentor)
-  - find affected tests after a change (review, external-review)
+  - find affected tests after a change (review)
 
 Without tokensave, Zolletta-metaskill falls back to grep + targeted reads (slower,
 higher token usage).

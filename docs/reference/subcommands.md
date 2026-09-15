@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [help, setup, review, patterns, documentor, external-review, adr-distiller, python-*, php-*]
+skills: [help, setup, review, patterns, documentor, adr-distiller, python-*, php-*]
 ---
 
 # Subcommands Reference
@@ -34,7 +34,7 @@ When any subcommand calls a tokensave MCP tool and receives a **tool-not-found**
 2. **Print the "not installed" message**: read the tokensave message from [tool-messages.md](tool-messages.md) and print it.
 3. **Continue with fallback**: proceed using grep + targeted reads instead of the graph tool. Do not abort the subcommand.
 
-This handler applies to every subcommand that uses tokensave (`patterns`, `documentor`, `external-review`, `review`).
+This handler applies to every subcommand that uses tokensave (`patterns`, `documentor`, `review`).
 
 ## Dispatch
 

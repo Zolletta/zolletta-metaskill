@@ -31,6 +31,20 @@ Initialize the `.zolletta-metaskill/` directory and write `settings.json` so tha
 
 ## Procedure
 
+### Step 0 — Migration from v1.x (if needed)
+
+If `.zolletta-metaskill/settings.json` already exists, read it and check `setup_version`:
+
+- **`"2.0.0"` or later** — no migration needed; proceed to the requested subcommand (or re-run setup if invoked explicitly).
+- **`"1.x"` or absent** — migrate before writing the new file:
+  1. If the old `subagent_profile` field exists and is non-null, it applied to all review subagents — set `subcommands.patterns.model`, `subcommands.documentor.model`, `subcommands.python-code-style.model`, `subcommands.python-testing-style.model`, `subcommands.php-code-style.model`, and `subcommands.php-testing-style.model` to its value. If it is `null` or absent, leave all review subcommand models at `null`.
+  2. Remove `external_review_model` and `subagent_profile` from the file. (`external_review_model` was for the removed `external-review` subcommand — it is not migrated.)
+  3. Add the full `subcommands` object with all six keys, preserving migrated values and defaulting unmigrated ones to `null`.
+  4. Set `setup_version` to `"2.0.0"`.
+  5. Write the migrated file and proceed.
+
+> **What changed in v2.0.0**: the `external_review_model` scalar (for the removed `external-review` subcommand) and the `subagent_profile` scalar (all review subagents) are replaced by `subcommands` — a per-subcommand map where each entry has a `model` field. The `external-review` subcommand is removed; `external_review_model` is not migrated. This lets the user configure a different model per subcommand (e.g. a strong model for `patterns`/`documentor`, a cheap one for `*-code-style`). See [`../../docs/reference/settings-schema.md`](../../docs/reference/settings-schema.md#subcommands-per-subcommand-model-configuration) for the full schema.
+
 ### Step 1 — Create the .zolletta-metaskill directory
 
 ```bash
@@ -152,19 +166,19 @@ If unavailable, print the corresponding "not installed" message in Step 9.
 
 Read the [settings template](assets/settings_template.json) and write `.zolletta-metaskill/settings.json` with the following fields:
 
-| Field                   | Source                                                       |
-|-------------------------|--------------------------------------------------------------|
-| `setup_version`         | Matches the skill version (see front-matter)                 |
-| `setup_timestamp`       | Current timestamp in ISO 8601 (`date -u +%Y-%m-%dT%H:%M:%S`) |
-| `language`              | Step 3                                                       |
-| `container_name`        | Step 4 (`null` if no Docker)                                 |
-| `tokensave_available`   | Step 5                                                       |
-| `acronyms`              | Step 6.5 (`[]` if none)                                      |
-| `python`                | Steps 6 + 6.5 (Python only; `null` otherwise)                |
-| `php`                   | Steps 7 + 7.5 (PHP only; `null` otherwise)                   |
-| `external_review_model` | `"swe"` (default; overridable by front-matter)               |
-| `documentation`         | Steps 6.6 + 6.7                                              |
-| `runs_dir`              | `".zolletta-metaskill"`                                      |
+| Field                 | Source                                                                                                                                                                                                                                  |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `setup_version`       | Matches the skill version (see front-matter)                                                                                                                                                                                            |
+| `setup_timestamp`     | Current timestamp in ISO 8601 (`date -u +%Y-%m-%dT%H:%M:%S`)                                                                                                                                                                            |
+| `language`            | Step 3                                                                                                                                                                                                                                  |
+| `container_name`      | Step 4 (`null` if no Docker)                                                                                                                                                                                                            |
+| `tokensave_available` | Step 5                                                                                                                                                                                                                                  |
+| `acronyms`            | Step 6.5 (`[]` if none)                                                                                                                                                                                                                 |
+| `python`              | Steps 6 + 6.5 (Python only; `null` otherwise)                                                                                                                                                                                           |
+| `php`                 | Steps 7 + 7.5 (PHP only; `null` otherwise)                                                                                                                                                                                              |
+| `subcommands`         | Object with one key per subcommand, each containing `model` (default `null` = harness default). See [`../../docs/reference/settings-schema.md`](../../docs/reference/settings-schema.md#subcommands-per-subcommand-model-configuration) |
+| `documentation`       | Steps 6.6 + 6.7                                                                                                                                                                                                                         |
+| `runs_dir`            | `".zolletta-metaskill"`                                                                                                                                                                                                                 |
 
 For the full JSON shape of each subobject, see [`../../docs/reference/settings-schema.md`](../../docs/reference/settings-schema.md). Use the `write` tool. JSON must be valid, pretty-printed (2-space indent).
 

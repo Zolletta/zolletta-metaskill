@@ -1,5 +1,5 @@
 {
-  "setup_version": "1.0.0",
+  "setup_version": "2.0.0",
   "setup_timestamp": "",
   "language": "",
   "container_name": null,
@@ -7,7 +7,14 @@
   "acronyms": [],
   "python": null,
   "php": null,
-  "external_review_model": "swe",
+  "subcommands": {
+    "patterns": { "model": null },
+    "documentor": { "model": null },
+    "python-code-style": { "model": null },
+    "python-testing-style": { "model": null },
+    "php-code-style": { "model": null },
+    "php-testing-style": { "model": null }
+  },
   "runs_dir": ".zolletta-metaskill",
   "documentation": {
     "language": "en",
