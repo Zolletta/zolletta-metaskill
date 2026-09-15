@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [setup, review, patterns, documentor, external-review, python-*]
+skills: [setup, review, patterns, documentor, python-*]
 ---
 
 # Frontmatter Reference
@@ -41,7 +41,6 @@ Lists the skills that reference or depend on this document. Valid skill names:
 - `review` — the review orchestrator
 - `patterns` — the design patterns skill
 - `documentor` — the documentation review skill
-- `external-review` — the external LLM review skill
 - `python-code-style` — the Python code style skill
 - `python-testing-style` — the Python testing style skill
 - `php-code-style` — the PHP code style skill
@@ -62,7 +61,7 @@ Use the explicit skill list or wildcards, not `[all]`. This allows tooling to de
 ---
 audience: human, ai
 status: stable
-skills: [patterns, documentor, review, external-review]
+skills: [patterns, documentor, review]
 ---
 ```
 

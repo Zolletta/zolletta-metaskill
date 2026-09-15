@@ -26,7 +26,7 @@ The orchestrator reads `language` from `settings.json` and determines which skil
 
 ### Step 2 — Parallel skill execution
 
-The orchestrator runs general skills (`patterns`, `documentor`, `external-review`) always, and language-specific skills when the language matches. See [subcommands.md](../reference/subcommands.md) for the full skill table.
+The orchestrator runs general skills (`patterns`, `documentor`) always, and language-specific skills when the language matches. See [subcommands.md](../reference/subcommands.md) for the full skill table.
 
 Each skill runs as a subagent and writes its findings to a markdown report in the timestamped report folder.
 
@@ -45,11 +45,11 @@ Follows [review mode](../reference/code/review-mode.md) — read-only, two-bucke
 
 ## Configuration
 
-| Setting                 | Location                            | Default               | Description                                   |
-|-------------------------|-------------------------------------|-----------------------|-----------------------------------------------|
-| `language`              | `.zolletta-metaskill/settings.json` | (detected)            | Determines which language-specific skills run |
-| `runs_dir`              | `.zolletta-metaskill/settings.json` | `.zolletta-metaskill` | Where run folders are created                 |
-| `external_review_model` | `.zolletta-metaskill/settings.json` | `swe`                 | Model for the external review sub-skill       |
+| Setting       | Location                            | Default               | Description                                                                                                                                |
+|---------------|-------------------------------------|-----------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| `language`    | `.zolletta-metaskill/settings.json` | (detected)            | Determines which language-specific skills run                                                                                              |
+| `runs_dir`    | `.zolletta-metaskill/settings.json` | `.zolletta-metaskill` | Where run folders are created                                                                                                              |
+| `subcommands` | `.zolletta-metaskill/settings.json` | (per-subcommand)      | Per-subcommand model configuration (see [settings schema](../reference/settings-schema.md#subcommands-per-subcommand-model-configuration)) |
 
 ## See also
 

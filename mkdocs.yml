@@ -80,7 +80,6 @@ nav:
           - "Review test code": how-to/code/review-test-code.md
           - "Detect God classes": how-to/code/detect-god-classes.md
           - "Split a God test class": how-to/code/split-god-test-class.md
-          - "Run an external review": how-to/code/run-external-review.md
       - "Python-specific":
           - "Review Python style": how-to/code/python/review-python-style.md
           - "Review Python tests": how-to/code/python/review-python-tests.md
@@ -114,10 +113,12 @@ nav:
               - "python-code-style.md": reference/example-review-report/python-code-style.md
               - "python-testing-style.md": reference/example-review-report/python-testing-style.md
           - "Tool messages": reference/tool-messages.md
+          - "Augmented coding patterns": reference/augmented-coding-patterns.md
           - "Reference index": reference/index.md
   - "Explanation":
       - "Code review principles":
           - "General principles": explanation/code/general-principles.md
+          - "Determinism boundary": explanation/code/determinism.md
           - "Structural conventions": explanation/code/structural-conventions.md
           - "False positive prevention": explanation/code/false-positive-prevention.md
           - "Error handling": explanation/code/error-handling.md
@@ -147,3 +148,7 @@ nav:
           - "11 Skip external dependency inspector": explanation/adr/0011-skip-external-dependency-inspector.md
           - "12 Skip property-based testing sensor": explanation/adr/0012-skip-property-based-testing-sensor.md
           - "13 Skip fuzz testing sensor": explanation/adr/0013-skip-fuzz-testing-sensor.md
+      - "Augmented Coding Patterns":
+        - "Patterns in use": explanation/patterns.md
+        - "Obstacles audit": explanation/obstacles.md
+        - "Anti-patterns audit": explanation/anti-patterns.md

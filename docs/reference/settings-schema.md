@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [setup, review, patterns, documentor, external-review, python-*, php-*]
+skills: [setup, review, patterns, documentor, python-*, php-*]
 ---
 
 # settings.json schema
@@ -60,7 +60,14 @@ skills: [setup, review, patterns, documentor, external-review, python-*, php-*]
     },
     "pyproject_mtime": 1784223225.47
   },
-  "external_review_model": "swe",
+  "subcommands": {
+    "patterns": { "model": null },
+    "documentor": { "model": null },
+    "python-code-style": { "model": null },
+    "python-testing-style": { "model": null },
+    "php-code-style": { "model": null },
+    "php-testing-style": { "model": null }
+  },
   "documentation": {
     "language": "en",
     "dir": "docs"
@@ -124,7 +131,14 @@ skills: [setup, review, patterns, documentor, external-review, python-*, php-*]
     "php_version": "8.2",
     "composer_mtime": 1718700000.0
   },
-  "external_review_model": "swe",
+  "subcommands": {
+    "patterns": { "model": null },
+    "documentor": { "model": null },
+    "python-code-style": { "model": null },
+    "python-testing-style": { "model": null },
+    "php-code-style": { "model": null },
+    "php-testing-style": { "model": null }
+  },
   "documentation": {
     "language": "en",
     "dir": "docs"
@@ -135,19 +149,42 @@ skills: [setup, review, patterns, documentor, external-review, python-*, php-*]
 
 ## Top-level fields
 
-| Field                   | Type              | Description                                                                                                                                                                                                                              |
-|-------------------------|-------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `setup_version`         | string            | Matches the skill version that wrote the file                                                                                                                                                                                            |
-| `setup_timestamp`       | string (ISO 8601) | Timestamp of the last setup run                                                                                                                                                                                                          |
-| `language`              | string            | Detected project language (`python`, `php`, `go`, `rust`, etc.)                                                                                                                                                                          |
-| `container_name`        | string\|null      | Docker container name for running tools (`null` if no Docker)                                                                                                                                                                            |
-| `tokensave_available`   | boolean           | `true` if `tokensave_status` responds (probed directly)                                                                                                                                                                                  |
-| `acronyms`              | array             | Project-specific acronyms that must stay uppercase in class names (e.g. `["CITE"]`). Extracted from `AGENTS.md` during setup; merged with the built-in list by `acronym_casing_scanner.py`. Always present, even for non-Python projects |
-| `python`                | object\|null      | Python tooling, rule toggles, and effective tool configuration (Python only; `null` otherwise) — see below                                                                                                                               |
-| `php`                   | object\|null      | PHP tooling, rule toggles, autoload mapping, and effective tool configuration (PHP only; `null` otherwise) — see below                                                                                                                   |
-| `external_review_model` | string            | Default model for `external-review` (overridable by front-matter)                                                                                                                                                                        |
-| `documentation`         | object            | Documentation configuration — see below                                                                                                                                                                                                  |
-| `runs_dir`              | string            | Directory where review run folders are created. Each run gets a timestamped subdirectory (`<runs_dir>/<YYYY-MM-DD-HH-MM>/`) containing `reports/` (LLM judgment) and `cache/` (deterministic script outputs)                             |
+| Field                 | Type              | Description                                                                                                                                                                                                                              |
+|-----------------------|-------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `setup_version`       | string            | Matches the skill version that wrote the file                                                                                                                                                                                            |
+| `setup_timestamp`     | string (ISO 8601) | Timestamp of the last setup run                                                                                                                                                                                                          |
+| `language`            | string            | Detected project language (`python`, `php`, `go`, `rust`, etc.)                                                                                                                                                                          |
+| `container_name`      | string\|null      | Docker container name for running tools (`null` if no Docker)                                                                                                                                                                            |
+| `tokensave_available` | boolean           | `true` if `tokensave_status` responds (probed directly)                                                                                                                                                                                  |
+| `acronyms`            | array             | Project-specific acronyms that must stay uppercase in class names (e.g. `["CITE"]`). Extracted from `AGENTS.md` during setup; merged with the built-in list by `acronym_casing_scanner.py`. Always present, even for non-Python projects |
+| `python`              | object\|null      | Python tooling, rule toggles, and effective tool configuration (Python only; `null` otherwise) — see below                                                                                                                               |
+| `php`                 | object\|null      | PHP tooling, rule toggles, autoload mapping, and effective tool configuration (PHP only; `null` otherwise) — see below                                                                                                                   |
+| `subcommands`         | object            | Per-subcommand configuration — see below                                                                                                                                                                                                 |
+| `documentation`       | object            | Documentation configuration — see below                                                                                                                                                                                                  |
+| `runs_dir`            | string            | Directory where review run folders are created. Each run gets a timestamped subdirectory (`<runs_dir>/<YYYY-MM-DD-HH-MM>/`) containing `reports/` (LLM judgment) and `cache/` (deterministic script outputs)                             |
+
+## `subcommands` — per-subcommand model configuration
+
+Each key is a subcommand name; each value is an object with a `model` field. The review orchestrator reads each subcommand's `model` and passes it to `run_subagent` when launching that subcommand's subagent. When `model` is `null`, the harness default is used — behavior is unchanged from v1.x.
+
+Profile/model ids are harness-specific. The user supplies a value that exists in their harness; the skill never hardcodes one. This is the opt-in mechanism for [Smart Plan, Cheap Execution](../explanation/patterns.md#19-smart-plan-cheap-execution) — set a strong model for judgment-heavy subagents (`patterns`, `documentor`) and a cheaper one for mechanical ones (`*-code-style`, `*-testing-style`), or leave all at `null`.
+
+| Field                      | Type           | Default | Description                                                                         |
+|----------------------------|----------------|---------|-------------------------------------------------------------------------------------|
+| `subcommands.<name>.model` | string \| null | `null`  | Harness-specific profile/model id for subcommand `<name>`. `null` = harness default |
+
+The six subcommand keys:
+
+| Key                    | Subcommand                       | Default `model` | Notes                                                    |
+|------------------------|----------------------------------|-----------------|----------------------------------------------------------|
+| `patterns`             | `/zolletta-metaskill patterns`   | `null`          | Judgment-heavy — design pattern analysis                 |
+| `documentor`           | `/zolletta-metaskill documentor` | `null`          | Judgment-heavy — documentation review + drift detection  |
+| `python-code-style`    | `python-code-style`              | `null`          | Mechanical — linting, formatting, naming (Python only)   |
+| `python-testing-style` | `python-testing-style`           | `null`          | Mechanical — test isolation, coverage gaps (Python only) |
+| `php-code-style`       | `php-code-style`                 | `null`          | Mechanical — PSR-12, naming, types (PHP only)            |
+| `php-testing-style`    | `php-testing-style`              | `null`          | Mechanical — PHPUnit, coverage gaps (PHP only)           |
+
+> **v1.x migration**: the `external_review_model` scalar (for the removed `external-review` subcommand) and the `subagent_profile` scalar (applied to all review subagents) are replaced by `subcommands` — a per-subcommand map. `external_review_model` is simply removed (the subcommand no longer exists); `subagent_profile` migrates to the 6 review subcommand entries. Setup migrates automatically — see `skills/setup/SKILL.md` → "Migration from v1.x".
 
 ## `documentation` — documentation configuration
 

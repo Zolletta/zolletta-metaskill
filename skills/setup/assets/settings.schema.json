@@ -14,7 +14,7 @@
     "acronyms",
     "python",
     "php",
-    "external_review_model",
+    "subcommands",
     "documentation",
     "runs_dir"
   ],
@@ -55,10 +55,9 @@
       "$ref": "#/$defs/php",
       "description": "PHP tooling, rule toggles, autoload mapping, and effective tool configuration. null for non-PHP projects."
     },
-    "external_review_model": {
-      "type": "string",
-      "description": "Default model for external-review (overridable by front-matter).",
-      "default": "swe"
+    "subcommands": {
+      "$ref": "#/$defs/subcommands",
+      "description": "Per-subcommand configuration. Each key is a subcommand name; each value is an object with a `model` field."
     },
     "documentation": {
       "$ref": "#/$defs/documentation",
@@ -91,6 +90,33 @@
         "adrs": {
           "type": ["string", "null"],
           "description": "Relative path within documentation.dir where ADRs live (e.g. \"adr\"), \"\" if scattered in docs root, or null if no ADRs found. Auto-detected during setup.",
+          "default": null
+        }
+      }
+    },
+    "subcommands": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Per-subcommand configuration. Each key is a subcommand name; each value is an object with a `model` field (string|null, null = harness default). Profile/model ids are harness-specific; the skill never hardcodes one. The review orchestrator reads each subcommand's model and passes it to run_subagent.",
+      "required": ["patterns", "documentor", "python-code-style", "python-testing-style", "php-code-style", "php-testing-style"],
+      "properties": {
+        "patterns":              { "$ref": "#/$defs/subcommand_entry" },
+        "documentor":            { "$ref": "#/$defs/subcommand_entry" },
+        "python-code-style":     { "$ref": "#/$defs/subcommand_entry" },
+        "python-testing-style":  { "$ref": "#/$defs/subcommand_entry" },
+        "php-code-style":        { "$ref": "#/$defs/subcommand_entry" },
+        "php-testing-style":     { "$ref": "#/$defs/subcommand_entry" }
+      }
+    },
+
+    "subcommand_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model"],
+      "properties": {
+        "model": {
+          "type": ["string", "null"],
+          "description": "Harness-specific profile/model id for this subcommand. null = harness default. The user supplies a value that exists in their harness; the skill never hardcodes one.",
           "default": null
         }
       }

@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [setup, review, patterns, documentor, external-review, python-*]
+skills: [setup, review, patterns, documentor, python-*]
 ---
 
 # Reference
