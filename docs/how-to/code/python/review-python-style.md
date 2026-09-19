@@ -42,6 +42,10 @@ Public classes, methods, and functions must have Google-style docstrings. The sk
 
 Imports must be absolute (no relative imports) when `check_no_relative_imports` is `true`. Import grouping (stdlib, third-party, local) is enforced by ruff's `I` rule if selected in the project's ruff configuration.
 
+### File length
+
+When `check_file_length` is `true`, the skill runs `src/zolletta_metaskill/code_style/general/file_length_scanner.py` to flag files longer than `max_file_length` lines (default: `300`). Files that legitimately exceed the limit (generated code, large enums) can be exempted via the scanner's `--exclude` flag or by raising `max_file_length`.
+
 ## Always-on vs configurable rules
 
 The rules above are tagged **always-on** (cannot be disabled) or **configurable** (toggled via `settings.json`, all default to enabled).
@@ -66,12 +70,14 @@ Configure rule toggles by editing the `python.code_style` object in `.zolletta-m
     "check_docstring_no_type_repeat": true,
     "check_skip_obvious_docstrings": true,
     "check_line_length": true,
+    "check_file_length": true,
+    "max_file_length": 300,
     "vulture_min_confidence": 80
   }
 }
 ```
 
-For example, to disable the one-class-per-file check and lower the vulture confidence threshold to 60, set `check_one_class_per_file` to `false` and `vulture_min_confidence` to `60`. The always-on rules have no corresponding keys in `settings.json` and cannot be disabled.
+For example, to disable the one-class-per-file check and lower the vulture confidence threshold to 60, set `check_one_class_per_file` to `false` and `vulture_min_confidence` to `60`. To disable the file-length check entirely, set `check_file_length` to `false`; to keep it but allow longer files, raise `max_file_length`. The always-on rules have no corresponding keys in `settings.json` and cannot be disabled.
 
 ## See also
 

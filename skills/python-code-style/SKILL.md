@@ -12,7 +12,7 @@ Consistent code style and clear documentation make codebases maintainable and co
 
 > **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../../docs/reference/code/review-mode.md`](../../docs/reference/code/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
 
-> **Execution protocol**: when running a review, follow [`../../docs/reference/code/scripts-first-protocol.md`](../../docs/reference/code/scripts-first-protocol.md) — batch-run the scripts listed in the per-subcommand table (ruff, ty, mypy, vulture, acronym_casing_scanner, unused_all_exports_scanner, one_class_per_file_scanner), persist their output to `cache/`, assemble deterministic report sections from cached output, then run only the judgment pass items (vulture false-positive review for dynamically-accessed methods). Write your report to `reports/python-code-style.md`. Do not re-read source files the scripts already parsed.
+> **Execution protocol**: when running a review, follow [`../../docs/reference/code/scripts-first-protocol.md`](../../docs/reference/code/scripts-first-protocol.md) — batch-run the scripts listed in the per-subcommand table (ruff, ty, mypy, vulture, acronym_casing_scanner, unused_all_exports_scanner, one_class_per_file_scanner, file_length_scanner), persist their output to `cache/`, assemble deterministic report sections from cached output, then run only the judgment pass items (vulture false-positive review for dynamically-accessed methods). Write your report to `reports/python-code-style.md`. Do not re-read source files the scripts already parsed.
 
 ## When to Use This Skill
 
@@ -47,6 +47,7 @@ Consistent code style and clear documentation make codebases maintainable and co
 | 14 | Docstrings | No type repetition in docstring Args/Returns              | `check_docstring_no_type_repeat` | `true`  |
 | 18 | Docstrings | Skip docstrings for obvious one-line functions            | `check_skip_obvious_docstrings`  | `true`  |
 | 20 | Formatting | Line length from project config                           | `check_line_length`              | `true`  |
+| 21 | Structure  | File length limit                                         | `check_file_length`, `max_file_length` | `true`, `300` |
 | 22 | Dead code  | Vulture minimum confidence + unused `__all__` exports     | `vulture_min_confidence`         | `80`    |
 
 ## Detailed rule explanations
@@ -165,6 +166,18 @@ Each class lives in its own file. No exceptions for "small helper classes" or "c
 The filename is the snake_case form of the class name: `user_repository.py` → `UserRepository`, `api_gateway.py` → `APIGateway`. Acronyms stay uppercase in the class name but lowercase in the filename.
 
 - **Enforcement**: `one_class_per_file_scanner.py` + manual review.
+
+**#21 — File length limit** *(configurable: `check_file_length`, `max_file_length`)*
+
+Source files must not exceed `max_file_length` lines (default: `300`, read from `python.code_style.max_file_length` in `settings.json`). File length is one of the low-hanging-fruit maintainability sensors for catching AI failure modes (Martin Fowler — *Maintainability sensors for coding agents*): overly long files usually signal a module doing too much. Some files legitimately exceed the limit (generated code, large enums) — exempt them via the scanner's `--exclude` flag or raise `max_file_length` for the project.
+
+- **Enforcement**: `file_length_scanner.py` from `../../src/zolletta_metaskill/code_style/general/` (deterministic, language-agnostic).
+
+```bash
+python3 ../../src/zolletta_metaskill/code_style/general/file_length_scanner.py src/ --max-lines <max_file_length>
+```
+
+> The scanner is the single source of truth for this rule. Do not manually flag files that the scanner doesn't flag — the line count against the configured threshold is the objective criterion.
 
 ### Docstrings
 
