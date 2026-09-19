@@ -485,6 +485,12 @@ A **God class** is not defined by size (lines, methods, attributes). It is defin
 3. If the list has items from **different domains**, the class is a God class — split it.
 4. If all changes stem from the **same domain**, the class may be appropriately sized even if it is long.
 
+**File length** is enforced deterministically by `file_length_scanner.py` (language-agnostic — pass `--extensions .php` for PHP projects):
+
+```bash
+python3 src/zolletta_metaskill/code_style/general/file_length_scanner.py src/ --max-lines 300
+```
+
 **Manual triage** (when AST scripts are unavailable — e.g. PHP, Java):
 
 ```bash

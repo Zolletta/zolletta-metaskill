@@ -65,6 +65,29 @@ python3 src/zolletta_metaskill/code_style/general/one_class_per_file_scanner.py 
 
 **Exceptions**: `__init__.py` is always skipped. Files with 0 classes are reported as low severity — use `--ignore-zero` to hide them.
 
+### file_length_scanner.py
+
+Flags files that exceed a configurable maximum line count. Language-agnostic — it does not parse code, it selects files by extension and counts lines. Implements the "file length" sensor from Martin Fowler's *Maintainability sensors for coding agents*.
+
+```bash
+python3 src/zolletta_metaskill/code_style/general/file_length_scanner.py <directory> \
+    [--max-lines N] [--extensions .py,.php] [--exclude pat1,pat2] \
+    [--ignore-dirs d1,d2] [--strict] [--json] [--skip]
+```
+
+| Option          | Default | Description                                                      |
+|-----------------|---------|------------------------------------------------------------------|
+| `<directory>`   | `src`   | Root directory to scan                                           |
+| `--max-lines N` | 300     | Maximum allowed lines per file (`max_file_length` in settings)   |
+| `--extensions`  | `.py`   | Comma-separated extensions to scan (use `.php` for PHP)          |
+| `--exclude`     | (none)  | Comma-separated filename glob patterns to skip (e.g. `*_pb2.py`) |
+| `--ignore-dirs` | (none)  | Comma-separated directory names to skip                          |
+| `--strict`      | off     | Exit with code 1 if violations are found                         |
+| `--json`        | off     | Output as JSON instead of text                                   |
+| `--skip`        | off     | Skip this check entirely                                         |
+
+**Exceptions**: `__pycache__` and common dependency/build directories (`.venv`, `venv`, `.tox`, `dist`, `build`, `node_modules`, `vendor`) are always skipped. Use `--exclude` for generated code or other files that legitimately exceed the limit.
+
 ### test_structure_scanner.py
 
 Checks that the test directory structure mirrors the source directory structure. Outputs a markdown report with five tables:
