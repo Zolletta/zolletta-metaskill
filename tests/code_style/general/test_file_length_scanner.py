@@ -287,29 +287,6 @@ class TestScanDirectory:
         findings = FileLengthScanner.scan_directory(root, max_lines=5, extensions={".py"})
         assert len(findings) == 2
 
-    def test_exclude_pattern_skips_file(self, tmp_path: Path) -> None:
-        root = tmp_path / "src"
-        root.mkdir()
-        _write_lines(root / "big_pb2.py", 10)
-        _write_lines(root / "real.py", 10)
-        findings = FileLengthScanner.scan_directory(
-            root, max_lines=5, extensions={".py"}, exclude=["*_pb2.py"]
-        )
-        assert len(findings) == 1
-        assert findings[0].file == str(root / "real.py")
-
-    def test_exclude_pattern_matches_relative_path(self, tmp_path: Path) -> None:
-        root = tmp_path / "src"
-        gen = root / "gen"
-        gen.mkdir(parents=True)
-        _write_lines(gen / "output.py", 10)
-        _write_lines(root / "real.py", 10)
-        findings = FileLengthScanner.scan_directory(
-            root, max_lines=5, extensions={".py"}, exclude=["gen/*"]
-        )
-        assert len(findings) == 1
-        assert findings[0].file == str(root / "real.py")
-
     def test_empty_directory_returns_empty(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
         root.mkdir()
@@ -439,30 +416,6 @@ class TestMain:
         assert rc == 0
         assert "long.py" in out
         assert "max 10" in out
-
-    def test_main_exclude_pattern(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
-        root = tmp_path / "src"
-        root.mkdir()
-        _write_lines(root / "big_pb2.py", 20)
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "prog",
-                str(root),
-                "--exclude",
-                "*_pb2.py",
-            ],
-        )
-        rc = FileLengthScanner.main()
-        out = capsys.readouterr().out
-        assert rc == 0
-        assert "all clear" in out
-        assert "big_pb2.py" not in out
 
     def test_main_gitignored_files_not_scanned(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch

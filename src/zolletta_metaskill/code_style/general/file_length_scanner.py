@@ -25,16 +25,12 @@ Which files are scanned and with what limit is driven entirely by
   repository every file matching the extensions is scanned.
 
 Usage:
-    python3 file_length_scanner.py [directory]
-        [--exclude pat1,pat2] [--json]
+    python3 file_length_scanner.py [directory] [--json]
 
 Arguments:
     directory       Root directory to scan (default: src)
 
 Options:
-    --exclude       Comma-separated filename glob patterns to skip
-                    (e.g. ``*_pb2.py``) — for generated code or other files
-                    that legitimately exceed the limit.
     --json          Output as JSON instead of text.
 
 Exit code: 0 on success (violations are report-only); 1 on errors such
@@ -48,8 +44,6 @@ import argparse
 import json
 import subprocess
 import sys
-from collections.abc import Sequence
-from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any
 
@@ -196,31 +190,16 @@ class FileLengthScanner:
         return files
 
     @staticmethod
-    def _iter_files(
-        root: Path,
-        extensions: set[str],
-        exclude: Sequence[str],
-    ) -> list[Path]:
+    def _iter_files(root: Path, extensions: set[str]) -> list[Path]:
         """Return files under *root* matching *extensions*, sorted by path.
 
         Git-ignored files are skipped when *root* is inside a repository;
-        outside a repo every matching file is returned. Files whose name or
-        root-relative path matches a glob in *exclude* are dropped.
+        outside a repo every matching file is returned.
         """
         candidates = FileLengthScanner._git_files(root)
         if candidates is None:
             candidates = [p for p in root.rglob("*") if p.is_file()]
-        files = []
-        for path in candidates:
-            if path.suffix.lower() not in extensions:
-                continue
-            if exclude and any(
-                fnmatch(path.name, pattern) or fnmatch(str(path.relative_to(root)), pattern)
-                for pattern in exclude
-            ):
-                continue
-            files.append(path)
-        return sorted(files)
+        return sorted(p for p in candidates if p.suffix.lower() in extensions)
 
     @staticmethod
     def count_lines(path: Path) -> int:
@@ -259,7 +238,6 @@ class FileLengthScanner:
     def scan_directory(
         root: Path,
         max_lines: int | None = None,
-        exclude: Sequence[str] = (),
         extensions: set[str] | None = None,
         settings_path: Path | None = None,
     ) -> list[Finding]:
@@ -275,7 +253,7 @@ class FileLengthScanner:
         if max_lines is None:
             max_lines = FileLengthScanner.resolve_max_lines(path)
         findings: list[Finding] = []
-        for path in FileLengthScanner._iter_files(root, extensions, exclude):
+        for path in FileLengthScanner._iter_files(root, extensions):
             try:
                 findings.extend(FileLengthScanner.scan_file(path, max_lines))
             except OSError:
@@ -294,11 +272,6 @@ class FileLengthScanner:
             nargs="?",
             default="src",
             help="Root directory to scan (default: src)",
-        )
-        parser.add_argument(
-            "--exclude",
-            default="",
-            help="Comma-separated filename glob patterns to skip (e.g. '*_pb2.py')",
         )
         parser.add_argument(
             "--json",
@@ -328,9 +301,7 @@ class FileLengthScanner:
                 print("\nResult: SKIPPED (check_file_length disabled in settings.json)\n")
             return 0
         max_lines = FileLengthScanner.resolve_max_lines(settings_path)
-        exclude = [p.strip() for p in args.exclude.split(",") if p.strip()]
-
-        files = FileLengthScanner._iter_files(root, extensions, exclude)
+        files = FileLengthScanner._iter_files(root, extensions)
         violations: list[tuple[Path, int]] = []
         for path in files:
             try:
@@ -375,7 +346,7 @@ class FileLengthScanner:
                     print(f"  {lines:>6} lines  {rel}  (over by {lines - max_lines})")
                 print(
                     "\n  Fix: split the file by responsibility, or raise "
-                    "max_file_length / add an --exclude pattern if the size is justified."
+                    "max_file_length in settings.json if the size is justified."
                 )
             else:
                 print("\n## Files exceeding the limit: none")

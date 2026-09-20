@@ -169,7 +169,7 @@ The filename is the snake_case form of the class name: `user_repository.py` → 
 
 **#21 — File length limit** *(configurable: `check_file_length`, `max_file_length`)*
 
-Source files must not exceed `max_file_length` lines (default: `800`, read from `python.code_style.max_file_length` in `settings.json`). File length is one of the low-hanging-fruit maintainability sensors for catching AI failure modes (Martin Fowler — *Maintainability sensors for coding agents*): overly long files usually signal a module doing too much. Some files legitimately exceed the limit (generated code, large enums) — exempt them via the scanner's `--exclude` flag or raise `max_file_length` for the project.
+Source files must not exceed `max_file_length` lines (default: `800`, read from `python.code_style.max_file_length` in `settings.json`). File length is one of the low-hanging-fruit maintainability sensors for catching AI failure modes (Martin Fowler — *Maintainability sensors for coding agents*): overly long files usually signal a module doing too much. Some files legitimately exceed the limit (generated code, large enums) — raise `max_file_length` for the project to exempt them.
 
 - **Enforcement**: `file_length_scanner.py` from `../../src/zolletta_metaskill/code_style/general/` (deterministic, language-agnostic).
 

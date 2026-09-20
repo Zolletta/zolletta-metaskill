@@ -45,7 +45,7 @@ The review runs the project's configured linter and formatter in check-only mode
 
 ### File length
 
-The review flags source files that exceed the project's configured maximum line count (`max_file_length`, default 800). The check is enforced by the language-agnostic `file_length_scanner.py` — it counts lines in the files of the project's configured language(s) and skips anything git ignores. Files that legitimately exceed the limit (generated code, large enums) can be exempted via the scanner's `--exclude` flag or by raising the threshold in `settings.json`.
+The review flags source files that exceed the project's configured maximum line count (`max_file_length`, default 800). The check is enforced by the language-agnostic `file_length_scanner.py` — it counts lines in the files of the project's configured language(s) and skips anything git ignores. Files that legitimately exceed the limit (generated code, large enums) can be exempted by raising the threshold in `settings.json`.
 
 ### Dead code
 
