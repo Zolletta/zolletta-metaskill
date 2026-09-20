@@ -51,6 +51,8 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
       "check_docstring_no_type_repeat": true,
       "check_skip_obvious_docstrings": true,
       "check_line_length": true,
+      "check_file_length": true,
+      "max_file_length": 800,
       "vulture_min_confidence": 80
     },
     "testing": {
@@ -117,7 +119,9 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
       "check_asymmetric_visibility": true,
       "check_pipe_operator": true,
       "check_array_functions": true,
-      "check_string_functions": true
+      "check_string_functions": true,
+      "check_file_length": true,
+      "max_file_length": 800
     },
     "testing": {
       "coverage_gap_threshold": 50,
@@ -227,6 +231,8 @@ These control which checks the `python-code-style` skill enforces. All default t
 | `check_docstring_no_type_repeat` | boolean | `true`  | Docstrings | No type repetition in docstring Args/Returns                 |
 | `check_skip_obvious_docstrings`  | boolean | `true`  | Docstrings | Skip docstrings for obvious one-line functions               |
 | `check_line_length`              | boolean | `true`  | Formatting | Line length from `python.tools.ruff.line_length`             |
+| `check_file_length`              | boolean | `true`  | Structure  | Files must not exceed `max_file_length` lines                |
+| `max_file_length`                | integer | `800`   | Structure  | Maximum allowed lines per file (enforced by `file_length_scanner.py`) |
 | `vulture_min_confidence`         | integer | `80`    | Dead code  | Minimum confidence for vulture findings (0–100)              |
 
 > Rules not listed here (naming conventions, import order, private/test function docstring exemptions, type hints for public APIs) are **always-on** and cannot be disabled. See `skills/python-code-style/SKILL.md` → Table 1 for the full list.
@@ -283,6 +289,8 @@ These control which checks the `php-code-style` skill enforces. All default to `
 | `check_pipe_operator`         | boolean | `true`  | Modern      | Pipe operator (`\|>`) for function composition                | 8.5+    |
 | `check_array_functions`       | boolean | `true`  | Performance | Use native array functions over manual loops                  | all     |
 | `check_string_functions`      | boolean | `true`  | Performance | Use native string functions over regex                        | all     |
+| `check_file_length`           | boolean | `true`  | Structure   | Files must not exceed `max_file_length` lines                 | all     |
+| `max_file_length`             | integer | `800`   | Structure   | Maximum allowed lines per file (enforced by `file_length_scanner.py`) | all     |
 
 > Rules not listed here (`declare(strict_types=1)`, return/parameter/property type declarations, nullable types, `void`/`never`, avoid `mixed`, constructor promotion, match expression, nullsafe operator, named arguments, attributes, enums, readonly properties, arrow functions, PSR-4 autoloading, PSR-12 coding style, camelCase methods, namespace usage, no `@` suppression, file upload validation) are **always-on** and cannot be disabled. See `skills/php-code-style/SKILL.md` → "Always-on rules" for the full list.
 

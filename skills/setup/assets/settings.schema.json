@@ -230,6 +230,7 @@
         "check_docstring_no_type_repeat",
         "check_skip_obvious_docstrings",
         "check_line_length",
+        "check_file_length",
         "vulture_min_confidence"
       ],
       "properties": {
@@ -241,6 +242,8 @@
         "check_docstring_no_type_repeat": { "type": "boolean", "default": true },
         "check_skip_obvious_docstrings":  { "type": "boolean", "default": true },
         "check_line_length":              { "type": "boolean", "default": true },
+        "check_file_length":              { "type": "boolean", "default": true },
+        "max_file_length":                { "type": "integer", "minimum": 1, "default": 800 },
         "vulture_min_confidence":         { "type": "integer", "minimum": 0, "maximum": 100, "default": 80 }
       }
     },
@@ -360,7 +363,9 @@
         "check_asymmetric_visibility",
         "check_pipe_operator",
         "check_array_functions",
-        "check_string_functions"
+        "check_string_functions",
+        "check_file_length",
+        "max_file_length"
       ],
       "properties": {
         "check_union_types":            { "type": "boolean", "default": true },
@@ -374,7 +379,9 @@
         "check_asymmetric_visibility":  { "type": "boolean", "default": true },
         "check_pipe_operator":          { "type": "boolean", "default": true },
         "check_array_functions":        { "type": "boolean", "default": true },
-        "check_string_functions":       { "type": "boolean", "default": true }
+        "check_string_functions":       { "type": "boolean", "default": true },
+        "check_file_length":            { "type": "boolean", "default": true },
+        "max_file_length":              { "type": "integer", "minimum": 1, "default": 800 }
       }
     },
 

@@ -43,6 +43,10 @@ All public APIs must have type annotations. The review uses the project's config
 
 The review runs the project's configured linter and formatter in check-only mode. Line length and target version are read from the project configuration (not hardcoded). Import grouping (stdlib, third-party, local) is enforced when the linter's import-sorting rule is selected.
 
+### File length
+
+The review flags source files that exceed the project's configured maximum line count (`max_file_length`, default 800). The check is enforced by the language-agnostic `file_length_scanner.py` — it counts lines in the files of the project's configured language(s) and skips anything git ignores. Files that legitimately exceed the limit (generated code, large enums) can be exempted by raising the threshold in `settings.json`.
+
 ### Dead code
 
 The review runs the project's configured dead-code detector. Findings below the confidence threshold are not reported. Each finding above the threshold is reviewed with judgment before being flagged — dead-code detectors have known false positives for dynamically-accessed methods.
@@ -51,7 +55,7 @@ The review runs the project's configured dead-code detector. Findings below the 
 
 **Always-on** (cannot be disabled): descriptive filenames, class naming convention, function/variable naming, constant naming, import grouping, private functions exempt from docs, test functions exempt from docs, type hints for public APIs.
 
-**Configurable** (toggled via `settings.json`, all default to enabled): acronym casing, absolute imports, one class per file, filename matches class, public docstrings, no type repetition in docs, skip obvious one-liner docs, line length, dead-code confidence threshold.
+**Configurable** (toggled via `settings.json`, all default to enabled): acronym casing, absolute imports, one class per file, filename matches class, file length limit, public docstrings, no type repetition in docs, skip obvious one-liner docs, line length, dead-code confidence threshold.
 
 See the language-specific guides for the exact `settings.json` keys.
 
