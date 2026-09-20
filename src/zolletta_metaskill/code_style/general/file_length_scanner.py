@@ -26,7 +26,7 @@ Which files are scanned and with what limit is driven entirely by
 
 Usage:
     python3 file_length_scanner.py [directory]
-        [--exclude pat1,pat2] [--strict] [--json]
+        [--exclude pat1,pat2] [--json]
 
 Arguments:
     directory       Root directory to scan (default: src)
@@ -35,11 +35,10 @@ Options:
     --exclude       Comma-separated filename glob patterns to skip
                     (e.g. ``*_pb2.py``) — for generated code or other files
                     that legitimately exceed the limit.
-    --strict        Exit with code 1 if violations are found.
     --json          Output as JSON instead of text.
 
-Exit code: 0 if no violations (or --strict not set or check disabled),
-           1 if violations found with --strict.
+Exit code: 0 on success (violations are report-only); 1 on errors such
+           as a missing scan directory.
 
 """
 
@@ -302,11 +301,6 @@ class FileLengthScanner:
             help="Comma-separated filename glob patterns to skip (e.g. '*_pb2.py')",
         )
         parser.add_argument(
-            "--strict",
-            action="store_true",
-            help="Exit with code 1 if violations are found",
-        )
-        parser.add_argument(
             "--json",
             action="store_true",
             help="Output as JSON instead of text",
@@ -387,15 +381,11 @@ class FileLengthScanner:
                 print("\n## Files exceeding the limit: none")
 
             print()
-            if violations and args.strict:
-                print("Result: VIOLATIONS FOUND (strict mode)")
-            elif violations:
+            if violations:
                 print("Result: violations found (report-only mode)")
             else:
                 print("Result: all clear")
 
-        if violations and args.strict:
-            return 1
         return 0
 
 

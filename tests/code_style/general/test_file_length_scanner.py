@@ -387,20 +387,6 @@ class TestMain:
         assert "long.py" in out
         assert "20" in out
 
-    def test_main_violation_strict(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
-        root = tmp_path / "src"
-        root.mkdir()
-        _write_lines(root / "long.py", 20)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--strict"])
-        rc = FileLengthScanner.main()
-        out = capsys.readouterr().out
-        assert rc == 1
-        assert "VIOLATIONS FOUND" in out
-
     def test_main_only_scans_configured_language(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:

@@ -73,15 +73,16 @@ What is scanned and with what limit is driven entirely by `.zolletta-metaskill/s
 
 ```bash
 python3 src/zolletta_metaskill/code_style/general/file_length_scanner.py <directory> \
-    [--exclude pat1,pat2] [--strict] [--json]
+    [--exclude pat1,pat2] [--json]
 ```
 
 | Option          | Default  | Description                                                                    |
 |-----------------|----------|--------------------------------------------------------------------------------|
 | `<directory>`   | `src`    | Root directory to scan                                                         |
 | `--exclude`     | (none)   | Comma-separated filename glob patterns to skip (e.g. `*_pb2.py`)               |
-| `--strict`      | off      | Exit with code 1 if violations are found                                       |
 | `--json`        | off      | Output as JSON instead of text                                                 |
+
+Violations are report-only — the scanner exits 0 whether or not any are found.
 
 **Exceptions**: use `--exclude` for generated code or other files that legitimately exceed the limit. Git-ignored files are never scanned; files with extensions not belonging to the scanned language(s) are skipped as well.
 
