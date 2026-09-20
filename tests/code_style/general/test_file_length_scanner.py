@@ -20,7 +20,11 @@ def _write_lines(path: Path, n: int) -> None:
 
 def _write_settings(dirpath: Path, **overrides: object) -> Path:
     """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
-    settings = {"language": "python", "python": {"code_style": {}}, "php": None}
+    settings: dict[str, object] = {
+        "language": "python",
+        "python": {"code_style": {}},
+        "php": None,
+    }
     settings.update(overrides)
     meta = dirpath / ".zolletta-metaskill"
     meta.mkdir(parents=True, exist_ok=True)
@@ -154,6 +158,14 @@ class TestResolveMaxLines:
     def test_missing_settings_falls_back_to_default(self, tmp_path: Path) -> None:
         missing = tmp_path / ".zolletta-metaskill" / "settings.json"
         assert FileLengthScanner.resolve_max_lines(missing) == 800
+
+    def test_language_field_without_section_falls_back(self, tmp_path: Path) -> None:
+        settings = _write_settings(tmp_path, python=None)
+        assert FileLengthScanner.resolve_max_lines(settings) == 800
+
+    def test_section_without_code_style_falls_back(self, tmp_path: Path) -> None:
+        settings = _write_settings(tmp_path, python={"tools": {}})
+        assert FileLengthScanner.resolve_max_lines(settings) == 800
 
 
 class TestScanFile:
@@ -291,6 +303,46 @@ class TestScanDirectory:
         root = tmp_path / "src"
         root.mkdir()
         assert FileLengthScanner.scan_directory(root, max_lines=5, extensions={".py"}) == []
+
+    def test_max_lines_resolved_from_settings(self, tmp_path: Path) -> None:
+        settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 5}})
+        root = tmp_path / "src"
+        root.mkdir()
+        _write_lines(root / "long.py", 10)
+        findings = FileLengthScanner.scan_directory(
+            root, extensions={".py"}, settings_path=settings
+        )
+        assert len(findings) == 1
+
+    def test_git_missing_falls_back_to_rglob(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def _no_git(*_args: object, **_kwargs: object) -> None:
+            raise FileNotFoundError("git not installed")
+
+        monkeypatch.setattr(subprocess, "run", _no_git)
+        root = tmp_path / "src"
+        root.mkdir()
+        _write_lines(root / "long.py", 10)
+        findings = FileLengthScanner.scan_directory(root, max_lines=5, extensions={".py"})
+        assert len(findings) == 1
+
+    def test_unreadable_file_warns_and_continues(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        def _fail(*_args: object, **_kwargs: object) -> list[Finding]:
+            raise OSError("unreadable")
+
+        monkeypatch.setattr(FileLengthScanner, "scan_file", _fail)
+        root = tmp_path / "src"
+        root.mkdir()
+        _write_lines(root / "a.py", 10)
+        _write_lines(root / "b.py", 10)
+        assert FileLengthScanner.scan_directory(root, max_lines=5, extensions={".py"}) == []
+        assert "Warning: could not read" in capsys.readouterr().err
 
 
 class TestMain:
@@ -526,3 +578,25 @@ class TestMain:
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
+
+    def test_main_unreadable_file_warns_and_continues(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A file that cannot be read warns on stderr and is skipped."""
+
+        def _fail(*_args: object, **_kwargs: object) -> int:
+            raise OSError("unreadable")
+
+        monkeypatch.setattr(FileLengthScanner, "count_lines", _fail)
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
+        root = tmp_path / "src"
+        root.mkdir()
+        _write_lines(root / "a.py", 20)
+        _write_lines(root / "b.py", 20)
+        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        rc = FileLengthScanner.main()
+        captured = capsys.readouterr()
+        assert rc == 0
+        assert captured.err.count("Warning: could not read") == 2
+        assert "all clear" in captured.out
