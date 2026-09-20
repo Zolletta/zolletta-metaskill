@@ -2,6 +2,53 @@
 
 <!-- version list -->
 
+## v1.3.0 (2026-09-20)
+
+### Bug Fixes
+
+- **code-style**: Ignore null language sections in settings.json
+  ([#53](https://github.com/Zolletta/zolletta-metaskill/pull/53),
+  [`55394f3`](https://github.com/Zolletta/zolletta-metaskill/commit/55394f3c747e1bf459e2674fe3f648487c910465))
+
+### Features
+
+- **code-style**: Add file length sensor
+  ([#53](https://github.com/Zolletta/zolletta-metaskill/pull/53),
+  [`55394f3`](https://github.com/Zolletta/zolletta-metaskill/commit/55394f3c747e1bf459e2674fe3f648487c910465))
+
+- **code-style**: Settings.json drives file-length sensor
+  ([#53](https://github.com/Zolletta/zolletta-metaskill/pull/53),
+  [`55394f3`](https://github.com/Zolletta/zolletta-metaskill/commit/55394f3c747e1bf459e2674fe3f648487c910465))
+
+### Refactoring
+
+- **code-style**: Drop --exclude flag from file length scanner
+  ([#53](https://github.com/Zolletta/zolletta-metaskill/pull/53),
+  [`55394f3`](https://github.com/Zolletta/zolletta-metaskill/commit/55394f3c747e1bf459e2674fe3f648487c910465))
+
+- **code-style**: Drop --max-lines and --language flags
+  ([#53](https://github.com/Zolletta/zolletta-metaskill/pull/53),
+  [`55394f3`](https://github.com/Zolletta/zolletta-metaskill/commit/55394f3c747e1bf459e2674fe3f648487c910465))
+
+- **code-style**: Drop --settings and --skip flags
+  ([#53](https://github.com/Zolletta/zolletta-metaskill/pull/53),
+  [`55394f3`](https://github.com/Zolletta/zolletta-metaskill/commit/55394f3c747e1bf459e2674fe3f648487c910465))
+
+- **code-style**: Drop --strict flag from file length scanner
+  ([#53](https://github.com/Zolletta/zolletta-metaskill/pull/53),
+  [`55394f3`](https://github.com/Zolletta/zolletta-metaskill/commit/55394f3c747e1bf459e2674fe3f648487c910465))
+
+- **code-style**: Language-aware file length sensor
+  ([#53](https://github.com/Zolletta/zolletta-metaskill/pull/53),
+  [`55394f3`](https://github.com/Zolletta/zolletta-metaskill/commit/55394f3c747e1bf459e2674fe3f648487c910465))
+
+### Testing
+
+- **code-style**: Bring file length scanner to 100% coverage
+  ([#53](https://github.com/Zolletta/zolletta-metaskill/pull/53),
+  [`55394f3`](https://github.com/Zolletta/zolletta-metaskill/commit/55394f3c747e1bf459e2674fe3f648487c910465))
+
+
 ## v1.2.2 (2026-09-15)
 
 ### Bug Fixes
