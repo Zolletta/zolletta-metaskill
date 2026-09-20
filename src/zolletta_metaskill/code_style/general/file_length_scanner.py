@@ -13,7 +13,10 @@ Which files are scanned and with what limit is driven entirely by
   ``language`` field plus each populated ``<language>`` section — and
   mapped to file extensions via the engine registry (``python`` → ``.py``,
   ``php`` → ``.php``). Polyglot projects scan every configured language.
-- The limit is read from each configured language's
+- Each language's ``code_style.check_file_length`` toggle is honoured:
+  a language with the check disabled is not scanned, and when it is off
+  for every configured language the run reports SKIPPED (exit 0).
+- The limit is read from each enabled language's
   ``code_style.max_file_length`` (the smallest wins when several are
   configured); 800 is the default when none is configured.
 - Files ignored by git (``.gitignore``, ``.git/info/exclude``,
@@ -22,24 +25,21 @@ Which files are scanned and with what limit is driven entirely by
   repository every file matching the extensions is scanned.
 
 Usage:
-    python3 file_length_scanner.py [directory] [--settings PATH]
-        [--exclude pat1,pat2] [--strict] [--json] [--skip]
+    python3 file_length_scanner.py [directory]
+        [--exclude pat1,pat2] [--strict] [--json]
 
 Arguments:
     directory       Root directory to scan (default: src)
 
 Options:
-    --settings      Path to settings.json
-                    (default: .zolletta-metaskill/settings.json).
     --exclude       Comma-separated filename glob patterns to skip
                     (e.g. ``*_pb2.py``) — for generated code or other files
                     that legitimately exceed the limit.
     --strict        Exit with code 1 if violations are found.
     --json          Output as JSON instead of text.
-    --skip          Skip this check entirely (exit 0 with 'skipped' message).
 
-Exit code: 0 if no violations (or --strict not set or --skip), 1 if
-           violations found with --strict.
+Exit code: 0 if no violations (or --strict not set or check disabled),
+           1 if violations found with --strict.
 
 """
 
@@ -99,6 +99,19 @@ class FileLengthScanner:
         return languages
 
     @staticmethod
+    def _enabled_languages(settings: dict[str, Any]) -> set[str]:
+        """Return configured languages whose ``check_file_length`` is not ``false``."""
+        enabled: set[str] = set()
+        for lang in FileLengthScanner._configured_languages(settings):
+            section = settings.get(lang)
+            if isinstance(section, dict):
+                code_style = section.get("code_style")
+                if isinstance(code_style, dict) and code_style.get("check_file_length") is False:
+                    continue
+            enabled.add(lang)
+        return enabled
+
+    @staticmethod
     def _extensions_for(languages: set[str]) -> set[str]:
         """Map language names to file extensions via the engine registry."""
         registered = set(EngineRegistry.available_languages())
@@ -114,19 +127,22 @@ class FileLengthScanner:
         """Return the file extensions to scan for the project.
 
         Languages come from settings.json — the top-level ``language``
-        field plus each populated ``<language>`` section (so polyglot
-        projects scan every configured language). If no usable language is
-        found, fall back to every registered engine's extensions.
+        field plus each populated ``<language>`` section — filtered to
+        those whose ``code_style.check_file_length`` is not ``false`` (so
+        a polyglot project only scans the languages with the check on).
+        Returns an empty set when every configured language has the check
+        disabled. When nothing usable is configured, falls back to every
+        registered engine's extensions.
         """
         FileLengthScanner._ensure_engines()
         settings = FileLengthScanner._load_settings(settings_path)
-        extensions = FileLengthScanner._extensions_for(
-            FileLengthScanner._configured_languages(settings)
-        )
-        if not extensions:
-            extensions = FileLengthScanner._extensions_for(
-                set(EngineRegistry.available_languages())
-            )
+        registered = set(EngineRegistry.available_languages())
+        if not FileLengthScanner._configured_languages(settings):
+            return FileLengthScanner._extensions_for(registered)
+        enabled = FileLengthScanner._enabled_languages(settings)
+        extensions = FileLengthScanner._extensions_for(enabled)
+        if not extensions and enabled:
+            extensions = FileLengthScanner._extensions_for(registered)
         return extensions
 
     @staticmethod
@@ -134,11 +150,11 @@ class FileLengthScanner:
         """Return the maximum allowed lines per file.
 
         The smallest ``<language>.code_style.max_file_length`` across the
-        languages configured in settings.json; falls back to
+        enabled languages configured in settings.json; falls back to
         ``DEFAULT_MAX_LINES`` when nothing is configured.
         """
         settings = FileLengthScanner._load_settings(settings_path)
-        langs = FileLengthScanner._configured_languages(settings)
+        langs = FileLengthScanner._enabled_languages(settings)
         limits = []
         for lang in sorted(langs):
             section = settings.get(lang)
@@ -281,11 +297,6 @@ class FileLengthScanner:
             help="Root directory to scan (default: src)",
         )
         parser.add_argument(
-            "--settings",
-            default=None,
-            help="Path to settings.json (default: .zolletta-metaskill/settings.json)",
-        )
-        parser.add_argument(
             "--exclude",
             default="",
             help="Comma-separated filename glob patterns to skip (e.g. '*_pb2.py')",
@@ -300,30 +311,28 @@ class FileLengthScanner:
             action="store_true",
             help="Output as JSON instead of text",
         )
-        parser.add_argument(
-            "--skip",
-            action="store_true",
-            help="Skip this check entirely (exit 0 with 'skipped' message)",
-        )
         args = parser.parse_args()
-
-        if args.skip:
-            if not args.json:
-                print("=" * 70)
-                print("FILE LENGTH — VALIDATION REPORT")
-                print("=" * 70)
-                print("\nResult: SKIPPED (--skip flag)\n")
-            return 0
 
         root = Path(args.directory)
         if not root.exists():
             print(f"Error: directory '{root}' does not exist", file=sys.stderr)
             return 1
 
-        settings_path = (
-            Path(args.settings) if args.settings else FileLengthScanner.DEFAULT_SETTINGS_PATH
-        )
+        settings_path = FileLengthScanner.DEFAULT_SETTINGS_PATH
         extensions = FileLengthScanner.resolve_extensions(settings_path)
+        if not extensions:
+            if args.json:
+                print(
+                    json.dumps(
+                        {"skipped": True, "reason": "check_file_length disabled in settings.json"}
+                    )
+                )
+            else:
+                print("=" * 70)
+                print("FILE LENGTH — VALIDATION REPORT")
+                print("=" * 70)
+                print("\nResult: SKIPPED (check_file_length disabled in settings.json)\n")
+            return 0
         max_lines = FileLengthScanner.resolve_max_lines(settings_path)
         exclude = [p.strip() for p in args.exclude.split(",") if p.strip()]
 

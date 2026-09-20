@@ -69,21 +69,19 @@ python3 src/zolletta_metaskill/code_style/general/one_class_per_file_scanner.py 
 
 Flags files that exceed a configurable maximum line count. Language-agnostic — it does not parse code, it counts lines. Implements the "file length" sensor from Martin Fowler's *Maintainability sensors for coding agents*.
 
-What is scanned and with what limit is driven entirely by `.zolletta-metaskill/settings.json`: the scanner reads the project's `language` (and any populated `<language>` sections) and scans those extensions, and reads each configured language's `code_style.max_file_length` (the smallest wins, default 800). It also skips anything git ignores (`.gitignore`, `.git/info/exclude`, `core.excludesFile`) — so `vendor/`, `node_modules/`, and build output never appear in the report. Outside a git repository every matching file is scanned.
+What is scanned and with what limit is driven entirely by `.zolletta-metaskill/settings.json`: the scanner reads the project's `language` (and any populated `<language>` sections) and scans those extensions, honours each language's `code_style.check_file_length` toggle (a disabled language is not scanned; if it is off for every configured language the run reports SKIPPED), and reads each enabled language's `code_style.max_file_length` (the smallest wins, default 800). It also skips anything git ignores (`.gitignore`, `.git/info/exclude`, `core.excludesFile`) — so `vendor/`, `node_modules/`, and build output never appear in the report. Outside a git repository every matching file is scanned.
 
 ```bash
 python3 src/zolletta_metaskill/code_style/general/file_length_scanner.py <directory> \
-    [--settings PATH] [--exclude pat1,pat2] [--strict] [--json] [--skip]
+    [--exclude pat1,pat2] [--strict] [--json]
 ```
 
-| Option          | Default                              | Description                                                                    |
-|-----------------|--------------------------------------|--------------------------------------------------------------------------------|
-| `<directory>`   | `src`                                | Root directory to scan                                                         |
-| `--settings`    | `.zolletta-metaskill/settings.json`  | Path to settings.json                                                          |
-| `--exclude`     | (none)                               | Comma-separated filename glob patterns to skip (e.g. `*_pb2.py`)               |
-| `--strict`      | off                                  | Exit with code 1 if violations are found                                       |
-| `--json`        | off                                  | Output as JSON instead of text                                                 |
-| `--skip`        | off                                  | Skip this check entirely                                                       |
+| Option          | Default  | Description                                                                    |
+|-----------------|----------|--------------------------------------------------------------------------------|
+| `<directory>`   | `src`    | Root directory to scan                                                         |
+| `--exclude`     | (none)   | Comma-separated filename glob patterns to skip (e.g. `*_pb2.py`)               |
+| `--strict`      | off      | Exit with code 1 if violations are found                                       |
+| `--json`        | off      | Output as JSON instead of text                                                 |
 
 **Exceptions**: use `--exclude` for generated code or other files that legitimately exceed the limit. Git-ignored files are never scanned; files with extensions not belonging to the scanned language(s) are skipped as well.
 

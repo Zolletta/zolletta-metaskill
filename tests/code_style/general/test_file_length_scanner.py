@@ -113,6 +113,23 @@ class TestResolveExtensions:
         bad.write_text("{ not json")
         assert FileLengthScanner.resolve_extensions(bad) == {".py", ".php"}
 
+    def test_disabled_language_not_scanned(self, tmp_path: Path) -> None:
+        settings = _write_settings(
+            tmp_path,
+            language="python",
+            python={"code_style": {"check_file_length": False}},
+            php={"code_style": {}},
+        )
+        assert FileLengthScanner.resolve_extensions(settings) == {".php"}
+
+    def test_all_languages_disabled_returns_empty(self, tmp_path: Path) -> None:
+        settings = _write_settings(
+            tmp_path,
+            language="python",
+            python={"code_style": {"check_file_length": False}},
+        )
+        assert FileLengthScanner.resolve_extensions(settings) == set()
+
 
 class TestResolveMaxLines:
     """Tests for FileLengthScanner.resolve_max_lines()."""
@@ -302,14 +319,33 @@ class TestScanDirectory:
 class TestMain:
     """Tests for FileLengthScanner.main()."""
 
-    def test_main_skip_contains_skipped(
-        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    def test_main_check_disabled_reports_skipped(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "--skip"])
+        """check_file_length=false for every configured language → SKIPPED."""
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path, python={"code_style": {"check_file_length": False}})
+        root = tmp_path / "src"
+        root.mkdir()
+        _write_lines(root / "long.py", 20)
+        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
         assert "SKIPPED" in out
+
+    def test_main_check_disabled_json(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path, python={"code_style": {"check_file_length": False}})
+        root = tmp_path / "src"
+        root.mkdir()
+        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--json"])
+        rc = FileLengthScanner.main()
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["skipped"] is True
 
     def test_main_missing_dir(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -324,11 +360,12 @@ class TestMain:
     def test_main_all_clear(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        settings = _write_settings(tmp_path)
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "short.py", 10)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--settings", str(settings)])
+        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -337,11 +374,12 @@ class TestMain:
     def test_main_violation_report_only(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "long.py", 20)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--settings", str(settings)])
+        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -352,13 +390,12 @@ class TestMain:
     def test_main_violation_strict(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "long.py", 20)
-        monkeypatch.setattr(
-            sys, "argv", ["prog", str(root), "--settings", str(settings), "--strict"]
-        )
+        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--strict"])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 1
@@ -367,14 +404,13 @@ class TestMain:
     def test_main_only_scans_configured_language(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        settings = _write_settings(
-            tmp_path, language="python", python={"code_style": {"max_file_length": 10}}
-        )
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path, language="python", python={"code_style": {"max_file_length": 10}})
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "long.php", 20)
         _write_lines(root / "short.py", 5)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--settings", str(settings)])
+        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -384,7 +420,8 @@ class TestMain:
     def test_main_php_project(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        settings = _write_settings(
+        monkeypatch.chdir(tmp_path)
+        _write_settings(
             tmp_path,
             language="php",
             python=None,
@@ -394,7 +431,7 @@ class TestMain:
         root.mkdir()
         _write_lines(root / "long.php", 20)
         _write_lines(root / "long.py", 20)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--settings", str(settings)])
+        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -405,11 +442,12 @@ class TestMain:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The limit comes from settings.json max_file_length."""
-        settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "long.py", 20)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--settings", str(settings)])
+        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -419,7 +457,8 @@ class TestMain:
     def test_main_exclude_pattern(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "big_pb2.py", 20)
@@ -429,8 +468,6 @@ class TestMain:
             [
                 "prog",
                 str(root),
-                "--settings",
-                str(settings),
                 "--exclude",
                 "*_pb2.py",
             ],
@@ -445,14 +482,15 @@ class TestMain:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _git_init(tmp_path)
-        settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
         (tmp_path / ".gitignore").write_text("vendor/\n")
         root = tmp_path / "src"
         vendor = root / "vendor"
         vendor.mkdir(parents=True)
         _write_lines(vendor / "dep.py", 20)
         _write_lines(root / "real.py", 5)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--settings", str(settings)])
+        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -462,10 +500,11 @@ class TestMain:
     def test_main_empty_dir(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        settings = _write_settings(tmp_path)
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--settings", str(settings)])
+        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -474,7 +513,8 @@ class TestMain:
     def test_main_json_output(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "long.py", 20)
@@ -482,7 +522,7 @@ class TestMain:
         monkeypatch.setattr(
             sys,
             "argv",
-            ["prog", str(root), "--settings", str(settings), "--json"],
+            ["prog", str(root), "--json"],
         )
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
@@ -496,7 +536,8 @@ class TestMain:
     def test_main_json_violations_sorted_by_lines_desc(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "medium.py", 20)
@@ -505,7 +546,7 @@ class TestMain:
         monkeypatch.setattr(
             sys,
             "argv",
-            ["prog", str(root), "--settings", str(settings), "--json"],
+            ["prog", str(root), "--json"],
         )
         rc = FileLengthScanner.main()
         report = json.loads(capsys.readouterr().out)
@@ -519,12 +560,13 @@ class TestMain:
     def test_main_default_max_lines_is_800(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        settings = _write_settings(tmp_path)
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "ok.py", 800)
         _write_lines(root / "long.py", 801)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--settings", str(settings)])
+        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -536,11 +578,11 @@ class TestMain:
     ) -> None:
         """main() with default 'src' directory."""
         monkeypatch.chdir(tmp_path)
-        settings = _write_settings(tmp_path)
+        _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "short.py", 10)
-        monkeypatch.setattr(sys, "argv", ["prog", "--settings", str(settings)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
