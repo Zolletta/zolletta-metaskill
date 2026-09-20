@@ -12,19 +12,20 @@ Reports:
   - Entries that are only imported within the same package (re-exports
     chained through ``__init__.py``) are traced to the final consumer.
 
-Usage:
-    python3 unused_all_exports_scanner.py [directory] [--strict] [--json]
+Scan roots come from ``python.paths.source`` in
+``.zolletta-metaskill/settings.json``. The check runs per configured
+language that handles ``.py`` files; when
+``<language>.code_style.check_unused_all_exports`` is ``false`` for
+every configured language the run reports SKIPPED. File enumeration is
+git-ignore aware.
 
-Arguments:
-    directory       Root source directory to scan (default: src)
+Usage:
+    python3 unused_all_exports_scanner.py [--json]
 
 Options:
-    --strict        Exit with code 1 if unused exports are found.
-    --json          Output as JSON instead of markdown.
-    --skip          Skip this check entirely (exit 0 with 'skipped' message).
+    --json    Output as JSON instead of markdown.
 
-Exit code: 0 if no unused exports (or --strict not set or --skip),
-           1 if unused exports found with --strict.
+Exit code: 0 always (report-only).
 
 """
 
@@ -36,6 +37,8 @@ import json
 import sys
 from pathlib import Path
 from typing import Any
+
+from zolletta_metaskill.core.project_config import ProjectConfig
 
 
 class UnusedAllExportsScanner:
@@ -82,7 +85,7 @@ class UnusedAllExportsScanner:
         return entries
 
     @staticmethod
-    def _extract_imported_names(src_root: Path, ignore_dirs: set[str]) -> dict[str, list[Path]]:
+    def _extract_imported_names(py_files: list[Path]) -> dict[str, list[Path]]:
         """Build an index: imported_name -> list of files that import it.
 
         Captures:
@@ -91,9 +94,7 @@ class UnusedAllExportsScanner:
           - ``import <pkg>.<name>`` (tracks the last component)
         """
         index: dict[str, list[Path]] = {}
-        for py in sorted(src_root.rglob("*.py")):
-            if any(part in ignore_dirs for part in py.parts):
-                continue
+        for py in py_files:
             try:
                 tree = ast.parse(py.read_text(encoding="utf-8"))
             except SyntaxError:
@@ -113,14 +114,10 @@ class UnusedAllExportsScanner:
         return index
 
     @staticmethod
-    def _find_all_files_with_all(
-        src_root: Path, ignore_dirs: set[str]
-    ) -> list[tuple[Path, list[str]]]:
+    def _find_all_files_with_all(py_files: list[Path]) -> list[tuple[Path, list[str]]]:
         """Find all Python files that define ``__all__`` and return their entries."""
         results: list[tuple[Path, list[str]]] = []
-        for py in sorted(src_root.rglob("*.py")):
-            if any(part in ignore_dirs for part in py.parts):
-                continue
+        for py in py_files:
             entries = UnusedAllExportsScanner._extract_all_entries(py)
             if entries:
                 results.append((py, entries))
@@ -131,43 +128,48 @@ class UnusedAllExportsScanner:
         """Entry point for the unused ``__all__`` exports scanner CLI."""
         parser = argparse.ArgumentParser(
             description="Find names in __all__ that are never imported anywhere. "
-            "Complements vulture, which treats __all__ entries as used."
+            "Complements vulture, which treats __all__ entries as used. "
+            "Scan roots come from python.paths.source in settings.json."
         )
-        parser.add_argument(
-            "directory",
-            nargs="?",
-            default="src",
-            help="Root source directory to scan (default: src)",
-        )
-        parser.add_argument("--strict", action="store_true", help="Exit 1 if unused exports found")
         parser.add_argument("--json", action="store_true", help="Output as JSON")
-        parser.add_argument(
-            "--skip",
-            action="store_true",
-            help="Skip this check entirely (exit 0 with 'skipped' message)",
-        )
         args = parser.parse_args()
 
-        if args.skip:
-            if not args.json:
-                print("=" * 70)
-                print("UNUSED __all__ EXPORTS — VALIDATION REPORT")
-                print("=" * 70)
-                print("\nResult: SKIPPED (--skip flag)\n")
+        settings = ProjectConfig.load_settings()
+        languages = ProjectConfig.scan_languages(
+            settings, "code_style.check_unused_all_exports"
+        )
+        py_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
+        if not py_langs:
+            ProjectConfig.emit_skipped(
+                args.json, "check_unused_all_exports disabled in settings.json"
+            )
             return 0
 
-        src_root = Path(args.directory)
-        if not src_root.exists():
-            print(f"Error: directory '{src_root}' does not exist", file=sys.stderr)
+        roots = ProjectConfig.existing_roots(
+            ProjectConfig.source_roots(settings, py_langs)
+        )
+        if not roots:
+            print(
+                "Error: no configured source directories exist on disk "
+                f"({', '.join(str(r) for r in ProjectConfig.source_roots(settings, py_langs))})",
+                file=sys.stderr,
+            )
             return 1
 
-        ignore_dirs = {"__pycache__", ".venv", "venv", ".tox", "dist", "build", "node_modules"}
+        # Collect .py files across all configured roots, tracking the root
+        # each file belongs to for relative reporting.
+        root_of: dict[Path, Path] = {}
+        py_files: list[Path] = []
+        for root in roots:
+            for f in ProjectConfig.iter_files(root, {".py"}):
+                py_files.append(f)
+                root_of[f] = root
 
         # Build the import index: name -> files that import it
-        import_index = UnusedAllExportsScanner._extract_imported_names(src_root, ignore_dirs)
+        import_index = UnusedAllExportsScanner._extract_imported_names(py_files)
 
         # Find all files with __all__ and their entries
-        all_files = UnusedAllExportsScanner._find_all_files_with_all(src_root, ignore_dirs)
+        all_files = UnusedAllExportsScanner._find_all_files_with_all(py_files)
 
         # Cross-reference: for each __all__ entry, check if it's imported
         # by any file OTHER than the one that defines it.
@@ -181,12 +183,14 @@ class UnusedAllExportsScanner:
                 # Filter out the file that defines __all__ itself
                 external_importers = [p for p in importers if p != file_path]
                 if not external_importers:
-                    rel = str(file_path.relative_to(src_root))
+                    rel = str(file_path.relative_to(root_of[file_path]))
                     unused.append(
                         {
                             "file": rel,
                             "symbol": entry,
-                            "importers": [str(p.relative_to(src_root)) for p in importers],
+                            "importers": [
+                                str(p.relative_to(root_of[p])) for p in importers
+                            ],
                         }
                     )
 
@@ -196,6 +200,7 @@ class UnusedAllExportsScanner:
                     {
                         "total_all_entries": total_entries,
                         "unused_count": len(unused),
+                        "directories": [str(r) for r in roots],
                         "unused": unused,
                     },
                     indent=2,
@@ -205,7 +210,7 @@ class UnusedAllExportsScanner:
             print("=" * 70)
             print("UNUSED __all__ EXPORTS — VALIDATION REPORT")
             print("=" * 70)
-            print(f"\nSource directory: {src_root}")
+            print(f"\nSource directories: {', '.join(str(r) for r in roots)}")
             print(f"Files with __all__: {len(all_files)}")
             print(f"Total __all__ entries: {total_entries}")
             print(f"Unused exports: {len(unused)}")
@@ -224,8 +229,6 @@ class UnusedAllExportsScanner:
             else:
                 print("No unused __all__ exports found.\n")
 
-        if args.strict and unused:
-            return 1
         return 0
 
 

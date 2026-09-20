@@ -121,7 +121,7 @@ For PHP projects, run the PHP equivalents from `src/zolletta_metaskill/patterns/
 | `drift_analyzer.py --json`       | `cache/drift_analyzer.json`       | always    |
 | `doc_staleness_scorer.py --json` | `cache/doc_staleness_scorer.json` | always    |
 
-See [`documentation/operational-rules.md`](../documentation/operational-rules.md) for tool invocation conventions (project root as repo path, `--include-referential` suppression, etc.).
+See [`documentation/operational-rules.md`](../documentation/operational-rules.md) for tool invocation conventions (run from the project root, `documentation.include_referential` suppression, etc.).
 
 ### `php-code-style`
 

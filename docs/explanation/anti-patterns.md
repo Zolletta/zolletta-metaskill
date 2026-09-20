@@ -242,7 +242,7 @@ The architecture is a direct implementation of the **Focused Agent** pattern, an
 | `skills/setup/SKILL.md` Step 5                  | Tests tokensave by calling `tokensave_status`                                    | Detects tool availability by actual probe, not by assuming what's installed  |
 | `skills/setup/SKILL.md` Step 6                  | Runs `pyproject_sections_detector.py` and `<command> --version`                  | Detects tools by running actual commands, not by assuming what's installed   |
 | `skills/review/SKILL.md` Step 1.5               | Checks `file_count` vs actual source files, `last_sync_at` staleness             | Validates index freshness against actual filesystem state                    |
-| `skills/setup/SKILL.md` Step 6.6-6.7            | Detects `documentation.dir` (`.backstage/…` layouts included) and the ADR folder | The project's own docs and conventions are located by scanning, not assumed  |
+| `skills/setup/SKILL.md` Steps 9-10              | Detects `documentation.dir` (`.backstage/…` layouts included) and the ADR folder | The project's own docs and conventions are located by scanning, not assumed  |
 | `skills/setup/SKILL.md` acronym extraction      | Reads naming conventions from the project's `AGENTS.md` into `acronyms`          | Project-specific conventions are extracted from the repo, not recalled       |
 
 **Not a gap:**
@@ -251,7 +251,7 @@ The architecture is a direct implementation of the **Focused Agent** pattern, an
 
 - ~~The "reason to change" test relies on the LLM's understanding of the class — library behavior assumptions could be wrong.~~ Acceptable: the same risk applies to human reviewers, who can equally misremember a framework decorator's behavior. The test is run against the actual code (not memory), and the safeguards — scanner evidence, stated suppression reasoning, no-hedge — are the ones a human review relies on. Peer review has never required infallible library recall; it requires reasoned judgment on read evidence.
 
-- ~~No reference docs for the project's own conventions.~~ The project's own documentation is already in scope: setup detects `documentation.dir` (default `docs`, `.backstage/…` layouts included) and the ADR folder (Step 6.6-6.7), and even extracts naming conventions from the project's `AGENTS.md` into `acronyms`. The documentor reviews that tree with drift detection and staleness scoring against the codebase — so conventions docs are read where they live and kept honest. ADR directives cover architectural decisions. A separate "conventions reference" would duplicate docs that are already discovered, reviewed, and drift-checked.
+- ~~No reference docs for the project's own conventions.~~ The project's own documentation is already in scope: setup detects `documentation.dir` (default `docs`, `.backstage/…` layouts included) and the ADR folder (Steps 9-10), and even extracts naming conventions from the project's `AGENTS.md` into `acronyms`. The documentor reviews that tree with drift detection and staleness scoring against the codebase — so conventions docs are read where they live and kept honest. ADR directives cover architectural decisions. A separate "conventions reference" would duplicate docs that are already discovered, reviewed, and drift-checked.
 
 
 ## 10. Silent Misalignment

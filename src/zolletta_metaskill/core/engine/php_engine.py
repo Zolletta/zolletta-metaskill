@@ -14,7 +14,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import TYPE_CHECKING
+
+from tree_sitter import Node, Parser, Tree
 
 from zolletta_metaskill.core.structs import (
     ClassInfo,
@@ -23,31 +24,7 @@ from zolletta_metaskill.core.structs import (
     ModuleInfo,
 )
 
-if TYPE_CHECKING:
-    from tree_sitter import Node, Parser, Tree
-
 __all__ = ["PHPEngine"]
-
-
-def _have_tree_sitter_php() -> bool:
-    """Return ``True`` if ``tree-sitter-php`` is importable."""
-    import importlib.util
-
-    return importlib.util.find_spec("tree_sitter_php") is not None
-
-
-def _default_parser_factory() -> Parser:
-    """Create and configure the default tree-sitter Parser for PHP.
-
-    This is the fallback used when no parser factory is injected via the
-    constructor. It imports ``tree_sitter`` and ``tree_sitter_php`` at call
-    time, keeping them as optional dependencies.
-    """
-    import tree_sitter
-    import tree_sitter_php
-
-    language = tree_sitter.Language(tree_sitter_php.language_php())
-    return tree_sitter.Parser(language)
 
 
 class PHPEngine:
@@ -70,7 +47,7 @@ class PHPEngine:
             lazily on first parse. Inject a custom factory for testability.
         dependency_check: Optional callable that returns ``True`` if
             ``tree-sitter-php`` is available. If ``None``, the default
-            ``_have_tree_sitter_php`` check is used.
+            :meth:`_have_tree_sitter_php` check is used.
 
     """
 
@@ -85,6 +62,29 @@ class PHPEngine:
         self._dependency_check = dependency_check
         self._parser: Parser | None = None
         self._ready: bool | None = None
+
+    # -- Dependencies ---------------------------------------------------------
+
+    @staticmethod
+    def _have_tree_sitter_php() -> bool:
+        """Return ``True`` if ``tree-sitter-php`` is importable."""
+        import importlib.util
+
+        return importlib.util.find_spec("tree_sitter_php") is not None
+
+    @staticmethod
+    def _default_parser_factory() -> Parser:
+        """Create and configure the default tree-sitter Parser for PHP.
+
+        This is the fallback used when no parser factory is injected via the
+        constructor. It imports ``tree_sitter`` and ``tree_sitter_php`` at call
+        time, keeping them as optional dependencies.
+        """
+        import tree_sitter
+        import tree_sitter_php
+
+        language = tree_sitter.Language(tree_sitter_php.language_php())
+        return tree_sitter.Parser(language)
 
     # -- Protocol properties ------------------------------------------------
 
@@ -246,14 +246,16 @@ class PHPEngine:
             return self._parser
         if self._ready is None:
             self._ready = (
-                self._dependency_check() if self._dependency_check else _have_tree_sitter_php()
+                self._dependency_check()
+                if self._dependency_check
+                else PHPEngine._have_tree_sitter_php()
             )
         if not self._ready:
             raise ImportError(
                 "tree-sitter-php is required to parse PHP files. "
                 "Install it with: uv add tree-sitter tree-sitter-php"
             )
-        factory = self._parser_factory or _default_parser_factory
+        factory = self._parser_factory or PHPEngine._default_parser_factory
         self._parser = factory()
         return self._parser
 

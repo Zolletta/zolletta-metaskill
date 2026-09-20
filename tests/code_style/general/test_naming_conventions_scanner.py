@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -10,6 +12,29 @@ import pytest
 from zolletta_metaskill.code_style.general.naming_conventions_scanner import (
     NamingConventionsScanner,
 )
+
+
+def _write_settings(dirpath: Path, **overrides: object) -> Path:
+    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
+    settings: dict[str, object] = {
+        "language": "python",
+        "python": {
+            "code_style": {},
+            "paths": {"source": ["src"], "tests": ["tests"], "package": "mypkg"},
+        },
+        "php": None,
+    }
+    settings.update(overrides)
+    meta = dirpath / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    path = meta / "settings.json"
+    path.write_text(json.dumps(settings))
+    return path
+
+
+def _git_init(root: Path) -> None:
+    """Initialise a git repo at *root* so gitignore rules apply."""
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
 
 
 class TestSnakeToPascal:
@@ -126,7 +151,7 @@ class TestBuildSourceIndex:
         pkg.mkdir()
         (pkg / "__init__.py").write_text("")
         (pkg / "cache.py").write_text("class Cache:\n    pass\n")
-        index = NamingConventionsScanner._build_source_index(pkg, set())
+        index = NamingConventionsScanner._build_source_index(pkg)
         assert Path(".") in index
         prefixes = index[Path(".")]
         assert "test_cache" in prefixes
@@ -137,19 +162,22 @@ class TestBuildSourceIndex:
         pkg.mkdir()
         (pkg / "__init__.py").write_text("")
         (pkg / "user_service.py").write_text("class UserService:\n    pass\n")
-        index = NamingConventionsScanner._build_source_index(pkg, set())
+        index = NamingConventionsScanner._build_source_index(pkg)
         prefixes = index[Path(".")]
         assert "test_user_service" in prefixes
         assert "test_user_service" in prefixes  # stem-based
 
-    def test_build_source_index_ignore_dirs_contains_value(self, tmp_path: Path) -> None:
+    def test_build_source_index_gitignored_dir_contains_value(self, tmp_path: Path) -> None:
+        """Git-ignored directories are excluded from the index."""
+        _git_init(tmp_path)
+        (tmp_path / ".gitignore").write_text("assets/\n")
         pkg = tmp_path / "mypkg"
         sub = pkg / "assets"
         sub.mkdir(parents=True)
         (pkg / "__init__.py").write_text("")
         (pkg / "cache.py").write_text("class Cache:\n    pass\n")
         (sub / "image.py").write_text("class Image:\n    pass\n")
-        index = NamingConventionsScanner._build_source_index(pkg, {"assets"})
+        index = NamingConventionsScanner._build_source_index(pkg)
         assert Path("assets") not in index
         assert Path(".") in index
 
@@ -157,7 +185,7 @@ class TestBuildSourceIndex:
         pkg = tmp_path / "mypkg"
         pkg.mkdir()
         (pkg / "__init__.py").write_text("")
-        index = NamingConventionsScanner._build_source_index(pkg, set())
+        index = NamingConventionsScanner._build_source_index(pkg)
         assert index == {}
 
     def test_build_source_index_nested_dirs_contains_test_item(self, tmp_path: Path) -> None:
@@ -167,7 +195,7 @@ class TestBuildSourceIndex:
         (pkg / "__init__.py").write_text("")
         (sub / "__init__.py").write_text("")
         (sub / "item.py").write_text("class Item:\n    pass\n")
-        index = NamingConventionsScanner._build_source_index(pkg, set())
+        index = NamingConventionsScanner._build_source_index(pkg)
         assert Path("models") in index
         assert "test_item" in index[Path("models")]
 
@@ -219,53 +247,67 @@ class TestMain:
         (test_pkg / "__init__.py").write_text("")
         return src_pkg, test_pkg
 
-    def test_readouterr_main_skip_contains_skipped(
+    def _run(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]
+    ) -> int:
+        """Chdir into tmp_path and run main() with *argv*."""
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", argv)
+        return NamingConventionsScanner.main()
+
+    def test_main_check_disabled_reports_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "--skip"])
-        rc = NamingConventionsScanner.main()
+        """check_filename_matches_class=false for every configured language → SKIPPED."""
+        _write_settings(
+            tmp_path, python={"code_style": {"check_filename_matches_class": False}}
+        )
+        self._make_project(tmp_path)
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "SKIPPED" in out
 
+    def test_main_check_disabled_json(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(
+            tmp_path, python={"code_style": {"check_filename_matches_class": False}}
+        )
+        self._make_project(tmp_path)
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["skipped"] is True
+
     def test_main_missing_src(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        tests = tmp_path / "tests"
-        tests.mkdir()
-        monkeypatch.setattr(
-            sys, "argv", ["prog", "--src", str(tmp_path / "nosrc"), "--tests", str(tests)]
-        )
-        rc = NamingConventionsScanner.main()
+        _write_settings(tmp_path)
+        (tmp_path / "tests").mkdir()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "does not exist" in err
+        assert "no configured source directories" in err
 
     def test_main_missing_tests(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        src = tmp_path / "src"
-        src.mkdir()
-        monkeypatch.setattr(
-            sys, "argv", ["prog", "--src", str(src), "--tests", str(tmp_path / "notests")]
-        )
-        rc = NamingConventionsScanner.main()
+        _write_settings(tmp_path)
+        (tmp_path / "src").mkdir()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "does not exist" in err
+        assert "no configured test directories" in err
 
     def test_main_all_clear(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
         (test_pkg / "test_cache.py").write_text("def test_cache():\n    pass\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", "--src", str(tmp_path / "src"), "--tests", str(tmp_path / "tests")],
-        )
-        rc = NamingConventionsScanner.main()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
@@ -273,94 +315,54 @@ class TestMain:
     def test_main_name_mismatch_report_only(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "cache.py").write_text("class WrongName:\n    pass\n")
         (test_pkg / "test_cache.py").write_text("def test_cache():\n    pass\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", "--src", str(tmp_path / "src"), "--tests", str(tmp_path / "tests")],
-        )
-        rc = NamingConventionsScanner.main()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "violations found" in out
         assert "WrongName" in out
 
-    def test_main_name_mismatch_strict(
+    def test_main_json_output(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "cache.py").write_text("class WrongName:\n    pass\n")
-        (test_pkg / "test_cache.py").write_text("def test_cache():\n    pass\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "prog",
-                "--src",
-                str(tmp_path / "src"),
-                "--tests",
-                str(tmp_path / "tests"),
-                "--strict",
-            ],
-        )
-        rc = NamingConventionsScanner.main()
-        out = capsys.readouterr().out
-        assert rc == 1
-        assert "VIOLATIONS FOUND" in out
+        (test_pkg / "test_orphan.py").write_text("def test_orphan():\n    pass\n")
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["package"] == "mypkg"
+        assert report["directories"]["source"] == ["src"]
+        assert report["violation_count"] == 2
+        assert report["name_mismatch"][0]["class"] == "WrongName"
+        assert report["orphan_tests"][0]["file"] == "test_orphan.py"
 
     def test_main_orphan_test(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
         (test_pkg / "test_orphan.py").write_text("def test_orphan():\n    pass\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", "--src", str(tmp_path / "src"), "--tests", str(tmp_path / "tests")],
-        )
-        rc = NamingConventionsScanner.main()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "test_orphan.py" in out
         assert "naming convention" in out
 
-    def test_main_orphan_test_strict(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        src_pkg, test_pkg = self._make_project(tmp_path)
-        (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
-        (test_pkg / "test_orphan.py").write_text("def test_orphan():\n    pass\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "prog",
-                "--src",
-                str(tmp_path / "src"),
-                "--tests",
-                str(tmp_path / "tests"),
-                "--strict",
-            ],
-        )
-        rc = NamingConventionsScanner.main()
-        assert rc == 1
-
     def test_main_test_with_suffix(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
         (test_pkg / "test_cache_operations.py").write_text("def test_x():\n    pass\n")
         (test_pkg / "test_cache_init.py").write_text("def test_y():\n    pass\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", "--src", str(tmp_path / "src"), "--tests", str(tmp_path / "tests")],
-        )
-        rc = NamingConventionsScanner.main()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
@@ -368,56 +370,50 @@ class TestMain:
     def test_main_class_name_based_prefix(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "user_service.py").write_text("class UserService:\n    pass\n")
         (test_pkg / "test_user_service.py").write_text("def test_x():\n    pass\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", "--src", str(tmp_path / "src"), "--tests", str(tmp_path / "tests")],
-        )
-        rc = NamingConventionsScanner.main()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
 
-    def test_main_ignore_dirs(
+    def test_main_gitignored_dirs(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        """Git-ignored dirs are excluded from source scanning and test checks."""
+        _git_init(tmp_path)
+        (tmp_path / ".gitignore").write_text("assets/\n")
+        _write_settings(tmp_path)
         src_pkg, test_pkg = self._make_project(tmp_path)
         assets = src_pkg / "assets"
         assets.mkdir()
         (assets / "image.py").write_text("class Image:\n    pass\n")
+        test_assets = test_pkg / "assets"
+        test_assets.mkdir()
+        (test_assets / "test_orphan.py").write_text("def test_orphan():\n    pass\n")
         (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
         (test_pkg / "test_cache.py").write_text("def test_cache():\n    pass\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "prog",
-                "--src",
-                str(tmp_path / "src"),
-                "--tests",
-                str(tmp_path / "tests"),
-                "--ignore-dirs",
-                "assets",
-            ],
-        )
-        rc = NamingConventionsScanner.main()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "Image" not in out
+        assert "test_orphan.py" not in out
 
     def test_main_no_package_auto_detect(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        src = tmp_path / "src"
-        tests = tmp_path / "tests"
-        src.mkdir()
-        tests.mkdir()
-        (tests / "test_x.py").write_text("def test_x():\n    pass\n")
-        monkeypatch.setattr(sys, "argv", ["prog", "--src", str(src), "--tests", str(tests)])
-        rc = NamingConventionsScanner.main()
+        _write_settings(
+            tmp_path,
+            python={
+                "code_style": {},
+                "paths": {"source": ["src"], "tests": ["tests"], "package": None},
+            },
+        )
+        (tmp_path / "src").mkdir()
+        (tmp_path / "tests").mkdir()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
         assert "auto-detect" in err
@@ -425,18 +421,16 @@ class TestMain:
     def test_main_src_package_not_exist(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        src = tmp_path / "src"
-        tests = tmp_path / "tests"
-        src.mkdir()
-        tests.mkdir()
-        (src / "other").mkdir()
-        (tests / "other").mkdir()
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", "--src", str(src), "--tests", str(tests), "--src-package", "nonexistent"],
+        _write_settings(
+            tmp_path,
+            python={
+                "code_style": {},
+                "paths": {"source": ["src"], "tests": ["tests"], "package": "nonexistent"},
+            },
         )
-        rc = NamingConventionsScanner.main()
+        (tmp_path / "src").mkdir()
+        (tmp_path / "tests").mkdir()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
         assert "does not exist" in err
@@ -444,18 +438,12 @@ class TestMain:
     def test_main_test_package_not_exist(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         tests = tmp_path / "tests"
-        src.mkdir()
+        (src / "mypkg").mkdir(parents=True)
         tests.mkdir()
-        (src / "mypkg").mkdir()
-        (src / "mypkg" / "__init__.py").write_text("")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", "--src", str(src), "--tests", str(tests), "--tests-package", "nonexistent"],
-        )
-        rc = NamingConventionsScanner.main()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
         assert "does not exist" in err
@@ -463,46 +451,33 @@ class TestMain:
     def test_main_empty_dirs(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        src_pkg, test_pkg = self._make_project(tmp_path)
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", "--src", str(tmp_path / "src"), "--tests", str(tmp_path / "tests")],
-        )
-        rc = NamingConventionsScanner.main()
+        _write_settings(tmp_path)
+        self._make_project(tmp_path)
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
 
-    def test_main_explicit_packages(
+    def test_main_package_from_settings(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        src = tmp_path / "src"
-        tests = tmp_path / "tests"
-        src_pkg = src / "mypkg"
-        test_pkg = tests / "otherpkg"
+        """python.paths.package drives the mirror base for src and tests."""
+        _write_settings(
+            tmp_path,
+            python={
+                "code_style": {},
+                "paths": {"source": ["src"], "tests": ["tests"], "package": "otherpkg"},
+            },
+        )
+        src_pkg = tmp_path / "src" / "otherpkg"
+        test_pkg = tmp_path / "tests" / "otherpkg"
         src_pkg.mkdir(parents=True)
         test_pkg.mkdir(parents=True)
         (src_pkg / "__init__.py").write_text("")
         (test_pkg / "__init__.py").write_text("")
         (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
         (test_pkg / "test_cache.py").write_text("def test_cache():\n    pass\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "prog",
-                "--src",
-                str(src),
-                "--tests",
-                str(tests),
-                "--src-package",
-                "mypkg",
-                "--tests-package",
-                "otherpkg",
-            ],
-        )
-        rc = NamingConventionsScanner.main()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
@@ -511,17 +486,13 @@ class TestMain:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test file in a subdirectory with no corresponding source dir."""
+        _write_settings(tmp_path)
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
         test_sub = test_pkg / "subdir"
         test_sub.mkdir()
         (test_sub / "test_cache.py").write_text("def test_cache():\n    pass\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", "--src", str(tmp_path / "src"), "--tests", str(tmp_path / "tests")],
-        )
-        rc = NamingConventionsScanner.main()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "no source directory" in out
@@ -529,16 +500,12 @@ class TestMain:
     def test_main_syntax_error_in_source(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "bad.py").write_text("def broken(:\n")
         (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
         (test_pkg / "test_cache.py").write_text("def test_cache():\n    pass\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", "--src", str(tmp_path / "src"), "--tests", str(tmp_path / "tests")],
-        )
-        rc = NamingConventionsScanner.main()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         # Syntax error files yield no classes, so they're skipped in name check
         assert rc == 0
 
@@ -546,15 +513,11 @@ class TestMain:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Files with 2+ classes are skipped in name check."""
+        _write_settings(tmp_path)
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "multi.py").write_text("class Foo:\n    pass\nclass Bar:\n    pass\n")
         (test_pkg / "test_multi.py").write_text("def test_multi():\n    pass\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", "--src", str(tmp_path / "src"), "--tests", str(tmp_path / "tests")],
-        )
-        rc = NamingConventionsScanner.main()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
@@ -563,16 +526,12 @@ class TestMain:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """conftest.py in tests should not be flagged as orphan."""
+        _write_settings(tmp_path)
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
         (test_pkg / "test_cache.py").write_text("def test_cache():\n    pass\n")
         (test_pkg / "conftest.py").write_text("def fixture():\n    return 1\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", "--src", str(tmp_path / "src"), "--tests", str(tmp_path / "tests")],
-        )
-        rc = NamingConventionsScanner.main()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
@@ -581,44 +540,12 @@ class TestMain:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """test_conftest.py is not flagged as orphan (common non-SUT test file)."""
+        _write_settings(tmp_path)
         src_pkg, test_pkg = self._make_project(tmp_path)
         (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
         (test_pkg / "test_cache.py").write_text("def test_cache():\n    pass\n")
         (test_pkg / "test_conftest.py").write_text("def test_conftest():\n    pass\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", "--src", str(tmp_path / "src"), "--tests", str(tmp_path / "tests")],
-        )
-        rc = NamingConventionsScanner.main()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "test_conftest.py" not in out
-
-    def test_main_ignore_dirs_on_test_files(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Test files in ignored dirs are not flagged."""
-        src_pkg, test_pkg = self._make_project(tmp_path)
-        (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
-        (test_pkg / "test_cache.py").write_text("def test_cache():\n    pass\n")
-        test_assets = test_pkg / "assets"
-        test_assets.mkdir()
-        (test_assets / "test_orphan.py").write_text("def test_orphan():\n    pass\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "prog",
-                "--src",
-                str(tmp_path / "src"),
-                "--tests",
-                str(tmp_path / "tests"),
-                "--ignore-dirs",
-                "assets",
-            ],
-        )
-        rc = NamingConventionsScanner.main()
-        out = capsys.readouterr().out
-        assert rc == 0
-        assert "test_orphan.py" not in out

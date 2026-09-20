@@ -10,12 +10,24 @@ Features:
 - Classifies drift by category and severity
 - Outputs actionable drift reports with specific mismatches
 
+Analyzes the repository at the current directory. Behavior is configured in
+``.zolletta-metaskill/settings.json``:
+
+- ``documentation.min_severity`` — minimum severity to report (default: low)
+- ``documentation.doc_patterns`` — doc file patterns (default: *.md, *.rst,
+  *.txt, *.adoc)
+- ``documentation.include_referential`` — broad referential drift detection
+  (renamed files, broken links; default: off — use link_checker.py for
+  reliable broken-link detection)
+- Code analysis scope is the union of configured source roots
+  (``python.paths.source`` / ``php.autoload.psr-4``).
+
 Usage:
-    python drift_analyzer.py /path/to/repo
-    python drift_analyzer.py /path/to/repo --json
-    python drift_analyzer.py /path/to/repo --min-severity high
-    python drift_analyzer.py /path/to/repo --scope src/
-    python drift_analyzer.py /path/to/repo --doc-patterns "*.md,*.rst"
+    python drift_analyzer.py [--json]
+
+Exit code: 0 always (report-only); 1 if the current directory is not a git
+repository.
+
 """
 
 import argparse
@@ -28,6 +40,8 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+from zolletta_metaskill.core.project_config import ProjectConfig
 
 
 class DriftAnalyzer:
@@ -769,70 +783,69 @@ class DriftAnalyzer:
     # --- Main ---
 
     @staticmethod
-    def main() -> None:
+    def main() -> int:
         """Entry point for the documentation drift analyzer CLI."""
         parser = argparse.ArgumentParser(
-            description="Analyze documentation drift in a git repository",
+            description="Analyze documentation drift in the git repository at "
+            "the current directory. Configure via documentation.* and "
+            "<lang>.paths.source in .zolletta-metaskill/settings.json.",
             formatter_class=argparse.RawDescriptionHelpFormatter,
-            epilog="""
-Examples:
-  %(prog)s /path/to/repo
-  %(prog)s /path/to/repo --json
-  %(prog)s /path/to/repo --min-severity high
-  %(prog)s /path/to/repo --scope src/
-  %(prog)s /path/to/repo --doc-patterns "*.md,*.rst"
-            """,
         )
-        parser.add_argument("repo_path", help="Path to the git repository")
         parser.add_argument("--json", action="store_true", help="Output as JSON")
-        parser.add_argument(
-            "--min-severity",
-            choices=["critical", "high", "medium", "low", "info"],
-            default="low",
-            help="Minimum severity to report (default: low)",
-        )
-        parser.add_argument("--scope", default="", help="Limit code analysis to a subdirectory")
-        parser.add_argument(
-            "--doc-patterns",
-            default=None,
-            help="Comma-separated doc file patterns (default: *.md,*.rst,*.txt,*.adoc)",
-        )
-        parser.add_argument(
-            "--include-referential",
-            action="store_true",
-            help="Include broad referential drift detection (renamed files, broken links). "
-            "By default only the edge case (renamed file where old name still "
-            "exists) is reported. "
-            "Use link_checker.py for reliable broken-link detection.",
-        )
 
         args = parser.parse_args()
 
-        repo_path = os.path.abspath(args.repo_path)
-        if not os.path.isdir(repo_path):
-            print(f"Error: {repo_path} is not a directory", file=sys.stderr)
-            sys.exit(2)
+        repo_path = os.path.abspath(".")
 
         # Verify it's a git repo
         if not os.path.isdir(os.path.join(repo_path, ".git")):
             print(f"Error: {repo_path} is not a git repository", file=sys.stderr)
-            sys.exit(2)
+            return 1
 
-        # Parse doc patterns
-        patterns = None
-        if args.doc_patterns:
-            patterns = [p.strip() for p in args.doc_patterns.split(",")]
+        settings = ProjectConfig.load_settings()
+
+        raw_min = ProjectConfig.setting(settings, "documentation.min_severity", "low")
+        min_severity = raw_min if isinstance(raw_min, str) else "low"
+
+        raw_patterns = ProjectConfig.setting(settings, "documentation.doc_patterns", None)
+        patterns = (
+            [p for p in raw_patterns if isinstance(p, str)]
+            if isinstance(raw_patterns, list)
+            else None
+        )
+
+        include_referential = bool(
+            ProjectConfig.setting(settings, "documentation.include_referential", False)
+        )
+
+        # Code scope: union of configured source roots; whole repo when the
+        # configured roots don't exist on disk.
+        languages = ProjectConfig.configured_languages(settings)
+        source_dirs = [
+            str(r)
+            for r in ProjectConfig.existing_roots(
+                ProjectConfig.source_roots(settings, languages)
+            )
+        ]
+        scopes = source_dirs or [""]
 
         # Discovery
         doc_files = DriftAnalyzer.find_doc_files(repo_path, patterns)
-        code_files = DriftAnalyzer.find_code_files(repo_path, args.scope)
+        code_files: list[str] = []
+        seen: set[str] = set()
+        for scope in scopes:
+            for f in DriftAnalyzer.find_code_files(repo_path, scope):
+                if f not in seen:
+                    seen.add(f)
+                    code_files.append(f)
+        code_files.sort()
 
         if not doc_files:
             if args.json:
                 print(json.dumps({"error": "No documentation files found"}, indent=2))
             else:
                 print("No documentation files found in the repository.")
-            sys.exit(0)
+            return 0
 
         # Map docs to code
         doc_code_map = DriftAnalyzer.map_docs_to_code(repo_path, doc_files, code_files)
@@ -857,12 +870,12 @@ Examples:
                 associated_dirs,
                 renames,
                 current_version,
-                include_referential=args.include_referential,
+                include_referential=include_referential,
             )
             all_issues.extend(issues)
 
         # Filter by severity
-        min_sev = DriftAnalyzer.SEVERITY_ORDER.get(args.min_severity, 3)
+        min_sev = DriftAnalyzer.SEVERITY_ORDER.get(min_severity, 3)
         filtered = [
             i
             for i in all_issues
@@ -873,9 +886,7 @@ Examples:
         report = DriftAnalyzer.generate_report(repo_path, filtered, doc_files, as_json=args.json)
         print(report)
 
-        # Exit code: 1 if high/critical issues found, 0 otherwise
-        has_serious = any(i["severity"] in ("critical", "high") for i in filtered)
-        sys.exit(1 if has_serious else 0)
+        return 0
 
 
 if __name__ == "__main__":  # pragma: no cover

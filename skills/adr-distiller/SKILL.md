@@ -35,11 +35,10 @@ The distiller uses an mtime cache so only **new**, **stale** (modified), and **r
 ### Step 1 — Run the distiller
 
 ```bash
-python3 ../../src/zolletta_metaskill/adr/adr_orchestrator.py \
-  --docs-dir <docs_dir> \
-  --adrs-path <adrs_path> \
-  --json
+python3 ../../src/zolletta_metaskill/adr/adr_orchestrator.py --json
 ```
+
+`documentation.dir`, `documentation.adrs`, and `runs_dir` are read from `settings.json` — no path flags.
 
 The orchestrator:
 1. Discovers ADR files in `<docs_dir>/<adrs_path>/`.

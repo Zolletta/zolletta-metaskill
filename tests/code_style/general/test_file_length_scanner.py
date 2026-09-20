@@ -357,7 +357,7 @@ class TestMain:
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "long.py", 20)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -370,7 +370,7 @@ class TestMain:
         _write_settings(tmp_path, python={"code_style": {"check_file_length": False}})
         root = tmp_path / "src"
         root.mkdir()
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--json"])
+        monkeypatch.setattr(sys, "argv", ["prog", "--json"])
         rc = FileLengthScanner.main()
         report = json.loads(capsys.readouterr().out)
         assert rc == 0
@@ -379,12 +379,14 @@ class TestMain:
     def test_main_missing_dir(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        missing = tmp_path / "nonexistent"
-        monkeypatch.setattr(sys, "argv", ["prog", str(missing)])
+        """No configured source directory on disk → usage error."""
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FileLengthScanner.main()
         err = capsys.readouterr().err
         assert rc == 1
-        assert "does not exist" in err
+        assert "no configured source directories" in err
 
     def test_main_all_clear(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -394,7 +396,7 @@ class TestMain:
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "short.py", 10)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -408,7 +410,7 @@ class TestMain:
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "long.py", 20)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -425,7 +427,7 @@ class TestMain:
         root.mkdir()
         _write_lines(root / "long.php", 20)
         _write_lines(root / "short.py", 5)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -446,7 +448,7 @@ class TestMain:
         root.mkdir()
         _write_lines(root / "long.php", 20)
         _write_lines(root / "long.py", 20)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -462,7 +464,7 @@ class TestMain:
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "long.py", 20)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -481,7 +483,7 @@ class TestMain:
         vendor.mkdir(parents=True)
         _write_lines(vendor / "dep.py", 20)
         _write_lines(root / "real.py", 5)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -495,7 +497,7 @@ class TestMain:
         _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -513,7 +515,7 @@ class TestMain:
         monkeypatch.setattr(
             sys,
             "argv",
-            ["prog", str(root), "--json"],
+            ["prog", "--json"],
         )
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
@@ -522,7 +524,8 @@ class TestMain:
         assert report["scanned"] == 2
         assert report["max_lines"] == 10
         assert report["violation_count"] == 1
-        assert report["violations"] == [{"file": "long.py", "lines": 20, "over": 10}]
+        assert report["directories"] == ["src"]
+        assert report["violations"] == [{"file": "src/long.py", "lines": 20, "over": 10}]
 
     def test_main_json_violations_sorted_by_lines_desc(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -537,15 +540,15 @@ class TestMain:
         monkeypatch.setattr(
             sys,
             "argv",
-            ["prog", str(root), "--json"],
+            ["prog", "--json"],
         )
         rc = FileLengthScanner.main()
         report = json.loads(capsys.readouterr().out)
         assert rc == 0
         assert [v["file"] for v in report["violations"]] == [
-            "biggest.py",
-            "medium.py",
-            "small_over.py",
+            "src/biggest.py",
+            "src/medium.py",
+            "src/small_over.py",
         ]
 
     def test_main_default_max_lines_is_800(
@@ -557,7 +560,7 @@ class TestMain:
         root.mkdir()
         _write_lines(root / "ok.py", 800)
         _write_lines(root / "long.py", 801)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -579,6 +582,28 @@ class TestMain:
         assert rc == 0
         assert "all clear" in out
 
+    def test_main_source_roots_from_settings(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Scan roots come from python.paths.source in settings.json."""
+        monkeypatch.chdir(tmp_path)
+        _write_settings(
+            tmp_path,
+            python={
+                "paths": {"source": ["lib"], "tests": ["tests"], "package": "myproject"},
+                "code_style": {"max_file_length": 10},
+            },
+        )
+        lib = tmp_path / "lib"
+        lib.mkdir()
+        _write_lines(lib / "long.py", 20)
+        monkeypatch.setattr(sys, "argv", ["prog", "--json"])
+        rc = FileLengthScanner.main()
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["directories"] == ["lib"]
+        assert report["violation_count"] == 1
+
     def test_main_unreadable_file_warns_and_continues(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -594,7 +619,7 @@ class TestMain:
         root.mkdir()
         _write_lines(root / "a.py", 20)
         _write_lines(root / "b.py", 20)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FileLengthScanner.main()
         captured = capsys.readouterr()
         assert rc == 0

@@ -18,26 +18,24 @@ which was non-deterministic.
 3. If it matches but is not all-uppercase, flag it as a violation.
 
 **Acronym list**: the shipped ``assets/acronyms.json`` (common SE acronyms)
-is always loaded. Project-specific acronyms from ``settings.json`` are
-**merged** with the shipped list (additive, not replacing). The
-``--acronyms`` CLI flag fully replaces both (for testing/debugging).
+is always loaded. Project-specific acronyms from ``settings.json``
+(top-level ``acronyms`` array) are **merged** with the shipped list
+(additive, not replacing).
+
+Scan roots come from ``php.autoload.psr-4`` directory mappings in
+``.zolletta-metaskill/settings.json``. The check runs per configured
+language that handles ``.php`` files; when
+``<language>.code_style.check_acronym_casing`` is ``false`` for every
+configured language the run reports SKIPPED. File enumeration is
+git-ignore aware.
 
 Usage:
-    python3 acronym_casing_scanner.py <directory> [--acronyms CI,MR,HTTP] \
-[--strict] [--json] [--skip]
-
-Arguments:
-    directory       Root source directory to scan (default: src)
+    python3 acronym_casing_scanner.py [--json]
 
 Options:
-    --acronyms LIST    Comma-separated list of acronyms to check (default: built-in list)
-    --settings PATH    Path to settings.json to read the acronym list from
-    --strict           Exit with code 1 if violations are found
-    --json             Output as JSON instead of markdown
-    --skip             Skip this check entirely (exit 0 with 'skipped' message)
+    --json    Output as JSON instead of markdown
 
-Exit code: 0 if no violations (or --strict not set or --skip),
-           1 if violations found with --strict.
+Exit code: 0 always (report-only).
 
 """
 
@@ -51,7 +49,8 @@ from pathlib import Path
 from typing import Any
 
 from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
-from zolletta_metaskill.core.engine.php_engine import PHPEngine, _have_tree_sitter_php
+from zolletta_metaskill.core.engine.php_engine import PHPEngine
+from zolletta_metaskill.core.project_config import ProjectConfig
 
 
 class AcronymCasingScanner:
@@ -79,15 +78,6 @@ class AcronymCasingScanner:
         "XML",
         "YAML",
     ]
-
-    # Directories to ignore when scanning (checked against relative path parts).
-    _IGNORE_DIRS = {
-        "vendor",
-        "node_modules",
-        "dist",
-        "build",
-        ".git",
-    }
 
     # ------------------------------------------------------------------
     # Acronym loading
@@ -119,22 +109,17 @@ class AcronymCasingScanner:
         return list(AcronymCasingScanner._FALLBACK_ACRONYMS)
 
     @staticmethod
-    def _load_acronyms_from_settings(settings_path: Path) -> list[str] | None:
-        """Load the acronym list from settings.json if present.
+    def _project_acronyms(settings: dict[str, Any]) -> list[str]:
+        """Return the project acronym list from parsed settings.json.
 
-        Reads the top-level ``acronyms`` array — a list of uppercase
-        acronym strings. Returns None if the key is absent.
+        Reads the top-level ``acronyms`` array — a list of acronym
+        strings, returned uppercased. Empty list when the key is absent
+        or not a list.
         """
-        if not settings_path.exists():
-            return None
-        try:
-            data = json.loads(settings_path.read_text(encoding="utf-8"))
-            acronyms = data.get("acronyms")
-            if isinstance(acronyms, list) and acronyms:
-                return [a.upper() for a in acronyms]
-        except (json.JSONDecodeError, OSError):
-            pass
-        return None
+        acronyms = settings.get("acronyms")
+        if isinstance(acronyms, list) and acronyms:
+            return [a.upper() for a in acronyms if isinstance(a, str)]
+        return []
 
     # ------------------------------------------------------------------
     # PascalCase splitting
@@ -184,7 +169,7 @@ class AcronymCasingScanner:
         Returns an empty list if tree-sitter-php is not installed, the
         file cannot be read, or the file has a syntax error.
         """
-        if not _have_tree_sitter_php():
+        if not PHPEngine._have_tree_sitter_php():
             return []
         AcronymCasingScanner._ensure_php_engine()
         engine = EngineRegistry.get_for_file(path)
@@ -208,53 +193,15 @@ class AcronymCasingScanner:
         parser = argparse.ArgumentParser(
             description="Check that acronyms in PHP class names stay fully uppercase. "
             "Splits PascalCase names into words and flags any word that "
-            "case-insensitively matches a known acronym but isn't all-uppercase."
+            "case-insensitively matches a known acronym but isn't all-uppercase. "
+            "Scan roots come from php.autoload.psr-4 in settings.json."
         )
-        parser.add_argument(
-            "directory",
-            nargs="?",
-            default="src",
-            help="Root source directory to scan (default: src)",
-        )
-        parser.add_argument(
-            "--acronyms",
-            default=None,
-            help="Comma-separated list of acronyms to check (overrides settings.json and defaults)",
-        )
-        parser.add_argument(
-            "--settings",
-            default=None,
-            help="Path to settings.json to read the acronym list from "
-            "(reads the top-level acronyms array)",
-        )
-        parser.add_argument("--strict", action="store_true", help="Exit 1 if violations found")
         parser.add_argument("--json", action="store_true", help="Output as JSON")
-        parser.add_argument(
-            "--skip",
-            action="store_true",
-            help="Skip this check entirely (exit 0 with 'skipped' message)",
-        )
         args = parser.parse_args()
 
-        if args.skip:
-            if not args.json:
-                print("=" * 70)
-                print("PHP ACRONYM CASING — VALIDATION REPORT")
-                print("=" * 70)
-                print("\nResult: SKIPPED (--skip flag)\n")
-            return 0
-
         # If tree-sitter-php is not installed, skip with a message.
-        if not _have_tree_sitter_php():
-            if not args.json:
-                print("=" * 70)
-                print("PHP ACRONYM CASING — VALIDATION REPORT")
-                print("=" * 70)
-                print(
-                    "\nResult: SKIPPED (tree-sitter-php not installed. "
-                    "Install with: uv add tree-sitter tree-sitter-php)\n"
-                )
-            else:
+        if not PHPEngine._have_tree_sitter_php():
+            if args.json:
                 print(
                     json.dumps(
                         {
@@ -267,65 +214,67 @@ class AcronymCasingScanner:
                         indent=2,
                     )
                 )
+            else:
+                print("=" * 70)
+                print("PHP ACRONYM CASING — VALIDATION REPORT")
+                print("=" * 70)
+                print(
+                    "\nResult: SKIPPED (tree-sitter-php not installed. "
+                    "Install with: uv add tree-sitter tree-sitter-php)\n"
+                )
             return 0
 
-        # Determine the acronym list.
-        # - --acronyms CLI flag: fully replaces (for testing/debugging)
-        # - settings.json: merged with shipped list (additive, sorted, unique)
-        # - shipped acronyms.json: always loaded as the base
-        defaults = AcronymCasingScanner._load_default_acronyms()
-        if args.acronyms is not None:
-            acronyms = [a.strip().upper() for a in args.acronyms.split(",") if a.strip()]
-        else:
-            # Start with the shipped list, then merge project-specific acronyms
-            combined = set(defaults)
-            settings_path = (
-                Path(args.settings) if args.settings else Path(".zolletta-metaskill/settings.json")
+        settings = ProjectConfig.load_settings()
+        languages = ProjectConfig.scan_languages(
+            settings, "code_style.check_acronym_casing"
+        )
+        php_langs = ProjectConfig.languages_for_extensions(languages, {".php"})
+        if not php_langs:
+            ProjectConfig.emit_skipped(
+                args.json, "check_acronym_casing disabled in settings.json"
             )
-            project_acronyms = AcronymCasingScanner._load_acronyms_from_settings(settings_path)
-            if project_acronyms:
-                combined.update(project_acronyms)
-            acronyms = sorted(combined)
+            return 0
 
-        acronym_lower_map = {a.lower(): a for a in acronyms}
-
-        src_root = Path(args.directory)
-        if not src_root.exists():
-            print(f"Error: directory '{src_root}' does not exist", file=sys.stderr)
+        roots = ProjectConfig.existing_roots(
+            ProjectConfig.source_roots(settings, php_langs)
+        )
+        if not roots:
+            print(
+                "Error: no configured source directories exist on disk "
+                f"({', '.join(str(r) for r in ProjectConfig.source_roots(settings, php_langs))})",
+                file=sys.stderr,
+            )
             return 1
+
+        # Shipped acronyms.json merged with project-specific settings acronyms.
+        combined = set(AcronymCasingScanner._load_default_acronyms())
+        combined.update(AcronymCasingScanner._project_acronyms(settings))
+        acronyms = sorted(combined)
+        acronym_lower_map = {a.lower(): a for a in acronyms}
 
         violations: list[dict[str, Any]] = []
         total_classes = 0
 
-        for php_file in sorted(src_root.rglob("*.php")):
-            # Check only the relative path parts so that system temp
-            # directories (e.g. /var/folders/...) are not mistaken for
-            # ignored source directories.
-            try:
-                rel_parts = php_file.relative_to(src_root).parts
-            except ValueError:  # pragma: no cover
-                rel_parts = php_file.parts
-            if any(part in AcronymCasingScanner._IGNORE_DIRS for part in rel_parts):
-                continue
-
-            classes = AcronymCasingScanner._get_class_names(php_file)
-            for class_name, line_no in classes:
-                total_classes += 1
-                words = AcronymCasingScanner._split_pascal_case(class_name)
-                for word in words:
-                    word_lower = word.lower()
-                    if word_lower in acronym_lower_map:
-                        expected = acronym_lower_map[word_lower]
-                        if word != expected:
-                            violations.append(
-                                {
-                                    "file": str(php_file.relative_to(src_root)),
-                                    "line": line_no,
-                                    "class": class_name,
-                                    "word": word,
-                                    "expected": expected,
-                                }
-                            )
+        for root in roots:
+            for php_file in ProjectConfig.iter_files(root, {".php"}):
+                classes = AcronymCasingScanner._get_class_names(php_file)
+                for class_name, line_no in classes:
+                    total_classes += 1
+                    words = AcronymCasingScanner._split_pascal_case(class_name)
+                    for word in words:
+                        word_lower = word.lower()
+                        if word_lower in acronym_lower_map:
+                            expected = acronym_lower_map[word_lower]
+                            if word != expected:
+                                violations.append(
+                                    {
+                                        "file": str(php_file.relative_to(root)),
+                                        "line": line_no,
+                                        "class": class_name,
+                                        "word": word,
+                                        "expected": expected,
+                                    }
+                                )
 
         if args.json:
             print(
@@ -333,7 +282,8 @@ class AcronymCasingScanner:
                     {
                         "total_classes": total_classes,
                         "violation_count": len(violations),
-                        "acronyms_checked": sorted(acronyms),
+                        "acronyms_checked": acronyms,
+                        "directories": [str(r) for r in roots],
                         "violations": violations,
                     },
                     indent=2,
@@ -343,8 +293,8 @@ class AcronymCasingScanner:
             print("=" * 70)
             print("PHP ACRONYM CASING — VALIDATION REPORT")
             print("=" * 70)
-            print(f"\nSource directory: {src_root}")
-            print(f"Acronyms checked: {', '.join(sorted(acronyms))}")
+            print(f"\nSource directories: {', '.join(str(r) for r in roots)}")
+            print(f"Acronyms checked: {', '.join(acronyms)}")
             print(f"Total classes scanned: {total_classes}")
             print(f"Violations: {len(violations)}")
             print()
@@ -364,8 +314,6 @@ class AcronymCasingScanner:
             else:
                 print("All class names use acronyms in the correct uppercase form.\n")
 
-        if args.strict and violations:
-            return 1
         return 0
 
 

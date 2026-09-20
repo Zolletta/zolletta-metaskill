@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import ast
+import json
+import subprocess
 import sys
 from pathlib import Path
 from typing import cast
@@ -295,6 +297,50 @@ class TestScanFile:
         assert len(ladders) == 0
 
 
+def _write_settings(dirpath: Path, **overrides: object) -> Path:
+    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
+    settings: dict[str, object] = {
+        "language": "python",
+        "python": {
+            "patterns": {},
+            "paths": {"source": ["src"], "tests": ["tests"], "package": "mypkg"},
+        },
+        "php": None,
+    }
+    python_overrides = overrides.pop("python", None)
+    if isinstance(python_overrides, dict):
+        base_python = settings["python"]
+        assert isinstance(base_python, dict)
+        for key, value in python_overrides.items():
+            if isinstance(value, dict) and isinstance(base_python.get(key), dict):
+                base_python[key].update(value)
+            else:
+                base_python[key] = value
+    settings.update(overrides)
+    meta = dirpath / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    path = meta / "settings.json"
+    path.write_text(json.dumps(settings))
+    return path
+
+
+def _run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]
+) -> int:
+    """Chdir into tmp_path and run main() with *argv*."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", argv)
+    return OpenClosedScanner.main()
+
+
+_LADDER_SRC = (
+    "def f(x):\n"
+    "    if isinstance(x, int):\n        pass\n"
+    "    elif isinstance(x, str):\n        pass\n"
+    "    elif isinstance(x, float):\n        pass\n"
+)
+
+
 class TestMain:
     def test_main_no_violations(
         self,
@@ -302,114 +348,98 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("def f(x):\n    return x + 1\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = OpenClosedScanner.main()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
 
-    def test_main_with_violations(
+    def test_main_with_violations_report_only(
         self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
-        (src / "mod.py").write_text(
-            "def f(x):\n"
-            "    if isinstance(x, int):\n        pass\n"
-            "    elif isinstance(x, str):\n        pass\n"
-            "    elif isinstance(x, float):\n        pass\n"
-        )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = OpenClosedScanner.main()
+        (src / "mod.py").write_text(_LADDER_SRC)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "type_ladder" in out
         assert "report-only" in out
 
-    def test_main_strict_with_violations(
+    def test_main_check_disabled(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        src = tmp_path / "src"
-        src.mkdir()
-        (src / "mod.py").write_text(
-            "def f(x):\n"
-            "    if isinstance(x, int):\n        pass\n"
-            "    elif isinstance(x, str):\n        pass\n"
-            "    elif isinstance(x, float):\n        pass\n"
-        )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--strict"])
-        rc = OpenClosedScanner.main()
-        out = capsys.readouterr().out
-        assert rc == 1
-        assert "strict mode" in out
-
-    def test_readouterr_main_skip_contains_skipped(
-        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "src", "--skip"])
-        rc = OpenClosedScanner.main()
+        _write_settings(tmp_path, python={"patterns": {"check_ocp": False}})
+        (tmp_path / "src").mkdir()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "SKIPPED" in out
 
-    def test_main_nonexistent_dir(
-        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "/nonexistent/path/xyz"])
-        rc = OpenClosedScanner.main()
-        err = capsys.readouterr().err
-        assert rc == 1
-        assert "does not exist" in err
-
-    def test_main_min_branches_filter(
+    def test_main_check_disabled_json(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path, python={"patterns": {"check_ocp": False}})
+        (tmp_path / "src").mkdir()
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["skipped"] is True
+
+    def test_main_missing_src(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
+        err = capsys.readouterr().err
+        assert rc == 1
+        assert "no configured source directories" in err
+
+    def test_main_min_branches_setting(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """``patterns.ocp_min_branches`` filters type ladders below the threshold."""
+        _write_settings(tmp_path, python={"patterns": {"ocp_min_branches": 5}})
         src = tmp_path / "src"
         src.mkdir()
-        (src / "mod.py").write_text(
-            "def f(x):\n"
-            "    if isinstance(x, int):\n        pass\n"
-            "    elif isinstance(x, str):\n        pass\n"
-            "    elif isinstance(x, float):\n        pass\n"
-        )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--min-branches", "5"])
-        rc = OpenClosedScanner.main()
+        (src / "mod.py").write_text(_LADDER_SRC)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
 
-    def test_main_default_directory(
+    def test_main_json_output(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
-        (src / "mod.py").write_text("def f(x):\n    return x\n")
-        monkeypatch.setattr(sys, "argv", ["prog"])
-        rc = OpenClosedScanner.main()
+        (src / "mod.py").write_text(_LADDER_SRC)
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
         assert rc == 0
+        assert report["violation_count"] == 1
+        assert report["violations"][0]["type"] == "type_ladder"
+        assert report["min_branches"] == 3
+        assert report["directories"] == ["src"]
 
-    def test_main_skips_pycache(
+    def test_main_gitignored_dirs_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        src = tmp_path / "src"
-        src.mkdir()
-        pycache = src / "__pycache__"
-        pycache.mkdir()
-        (pycache / "mod.py").write_text(
-            "def f(x):\n"
-            "    if isinstance(x, int):\n        pass\n"
-            "    elif isinstance(x, str):\n        pass\n"
-            "    elif isinstance(x, float):\n        pass\n"
-        )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = OpenClosedScanner.main()
+        subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+        (tmp_path / ".gitignore").write_text("src/ignored/\n")
+        _write_settings(tmp_path)
+        ignored = tmp_path / "src" / "ignored"
+        ignored.mkdir(parents=True)
+        (ignored / "mod.py").write_text(_LADDER_SRC)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out

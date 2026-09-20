@@ -11,11 +11,21 @@ Detects:
 - Deprecated items still documented as current
 - Return type annotation mismatches
 
+Source roots come from ``python.paths.source`` and the documentation
+directory from ``documentation.dir`` in ``.zolletta-metaskill/settings.json``.
+Behavior settings under ``documentation``:
+
+- ``api_docs_recursive`` — recursively scan the docs directory (default: off)
+- ``include_private`` — include ``_``-prefixed items (default: off)
+- ``suggest_coverage`` — include prioritized documentation suggestions
+  for undocumented items (default: off)
+
 Usage:
-    python api_doc_validator.py /path/to/src /path/to/docs/api.md
-    python api_doc_validator.py /path/to/src /path/to/docs/ --recursive
-    python api_doc_validator.py /path/to/src /path/to/docs/api.md --json
-    python api_doc_validator.py /path/to/src /path/to/docs/ --include-private
+    python api_doc_validator.py [--json]
+
+Exit code: 0 always (report-only); 1 when no configured source root or the
+documentation directory is missing on disk.
+
 """
 
 import argparse
@@ -26,6 +36,7 @@ import re
 import sys
 from typing import Any
 
+from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.documentor.structs.source_signature import SourceSignature
 
 
@@ -690,58 +701,62 @@ class APIDocValidator:
     # --- Main ---
 
     @staticmethod
-    def main() -> None:
+    def main() -> int:
         """Entry point for the API documentation validator CLI."""
         parser = argparse.ArgumentParser(
-            description="Validate API documentation against Python source code",
+            description="Validate API documentation against Python source code. "
+            "Source roots come from <lang>.paths.source and docs from "
+            "documentation.dir in .zolletta-metaskill/settings.json.",
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
-        parser.add_argument("source_path", help="Path to Python source directory")
-        parser.add_argument("doc_path", help="Path to API documentation (file or directory)")
         parser.add_argument("--json", action="store_true", help="Output as JSON")
-        parser.add_argument(
-            "--recursive", action="store_true", help="Recursively scan doc directory"
-        )
-        parser.add_argument(
-            "--include-private",
-            action="store_true",
-            help="Include private (_prefixed) items",
-        )
-        parser.add_argument(
-            "--suggest-coverage",
-            action="store_true",
-            help="Include prioritized documentation suggestions for undocumented items. "
-            "Items are classified as high/medium/low/skip based on heuristics "
-            "(entry points, protocols, complex classes get high priority; "
-            "dataclasses, __init__.py, simple functions get skip).",
-        )
 
         args = parser.parse_args()
 
-        source_path = os.path.abspath(args.source_path)
-        doc_path = os.path.abspath(args.doc_path)
+        settings = ProjectConfig.load_settings()
+        languages = ProjectConfig.languages_for_extensions(
+            ProjectConfig.configured_languages(settings), {".py"}
+        )
+        include_private = bool(
+            ProjectConfig.setting(settings, "documentation.include_private", False)
+        )
+        recursive = bool(
+            ProjectConfig.setting(settings, "documentation.api_docs_recursive", False)
+        )
+        suggest_coverage = bool(
+            ProjectConfig.setting(settings, "documentation.suggest_coverage", False)
+        )
 
-        if not os.path.exists(source_path):
-            print(f"Error: Source path '{source_path}' does not exist", file=sys.stderr)
-            sys.exit(2)
+        source_roots = ProjectConfig.existing_roots(
+            ProjectConfig.source_roots(settings, languages)
+        )
+        if not source_roots:
+            print(
+                "Error: no configured source directories exist on disk",
+                file=sys.stderr,
+            )
+            return 1
 
-        if not os.path.exists(doc_path):
-            print(f"Error: Doc path '{doc_path}' does not exist", file=sys.stderr)
-            sys.exit(2)
+        doc_path = ProjectConfig.docs_dir(settings)
+        if not doc_path.exists():
+            print(
+                f"Error: documentation directory '{doc_path}' does not exist",
+                file=sys.stderr,
+            )
+            return 1
 
-        # Extract source signatures
-        if os.path.isfile(source_path) and source_path.endswith(".py"):
-            sigs = APIDocValidator.extract_signatures(source_path, args.include_private)
-            source_sigs = {os.path.basename(source_path): sigs}
-        elif os.path.isdir(source_path):
-            source_sigs = APIDocValidator.extract_all_signatures(source_path, args.include_private)
-        else:
-            print("Error: Source path must be a Python file or directory", file=sys.stderr)
-            sys.exit(2)
+        # Extract source signatures across all configured source roots
+        source_sigs: dict[str, list[SourceSignature]] = {}
+        for root in source_roots:
+            for rel, sigs in APIDocValidator.extract_all_signatures(
+                str(root), include_private
+            ).items():
+                key = str(root / rel)
+                source_sigs[key] = sigs
 
         # Extract documented items
         documented_items = APIDocValidator.extract_all_documented_items(
-            doc_path, recursive=args.recursive
+            str(doc_path), recursive=recursive
         )
 
         # Count totals
@@ -758,14 +773,11 @@ class APIDocValidator:
             source_count,
             doc_count,
             as_json=args.json,
-            suggest_coverage=args.suggest_coverage,
+            suggest_coverage=suggest_coverage,
         )
         print(report)
 
-        # Exit code: 1 if high-severity issues found, 0 otherwise
-        # (undocumented items are suggestions, not issues — they don't affect exit code)
-        has_high = any(i.get("severity") == "high" for i in issues)
-        sys.exit(1 if has_high else 0)
+        return 0
 
 
 if __name__ == "__main__":  # pragma: no cover

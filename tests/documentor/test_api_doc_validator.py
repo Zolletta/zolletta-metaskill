@@ -836,174 +836,154 @@ class TestGenerateReport:
 
 
 class TestMain:
+    def _write_settings(self, tmp_path: Path, **overrides: object) -> Path:
+        """Write a minimal settings.json under ``tmp_path/.zolletta-metaskill``."""
+        settings: dict[str, object] = {
+            "language": "python",
+            "python": {"paths": {"source": ["src"], "tests": ["tests"]}},
+            "documentation": {"dir": "docs"},
+        }
+        doc_overrides = overrides.pop("documentation", None)
+        if isinstance(doc_overrides, dict):
+            base_doc = settings["documentation"]
+            assert isinstance(base_doc, dict)
+            base_doc.update(doc_overrides)
+        settings.update(overrides)
+        meta = tmp_path / ".zolletta-metaskill"
+        meta.mkdir(parents=True, exist_ok=True)
+        path = meta / "settings.json"
+        path.write_text(json.dumps(settings))
+        return path
+
+    def _run(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]
+    ) -> int:
+        """Chdir into tmp_path and run main() with *argv*."""
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", argv)
+        return APIDocValidator.main()
+
     def test_main_source_not_found(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["api_doc_validator.py", str(tmp_path / "nope"), str(tmp_path)],
-        )
-        with pytest.raises(SystemExit) as exc:
-            APIDocValidator.main()
-        assert exc.value.code == 2
+        self._write_settings(tmp_path)
+        (tmp_path / "docs").mkdir()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        err = capsys.readouterr().err
+        assert rc == 1
+        assert "source" in err
 
     def test_main_doc_not_found(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("def foo(): pass\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["api_doc_validator.py", str(src), str(tmp_path / "nope.md")],
-        )
-        with pytest.raises(SystemExit) as exc:
-            APIDocValidator.main()
-        assert exc.value.code == 2
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        err = capsys.readouterr().err
+        assert rc == 1
+        assert "documentation" in err
 
     def test_main_directory_source(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("def foo(): pass\n")
         docs = tmp_path / "docs"
         docs.mkdir()
         (docs / "api.md").write_text("### `foo()`\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["api_doc_validator.py", str(src), str(docs)],
-        )
-        with pytest.raises(SystemExit) as exc:
-            APIDocValidator.main()
-        assert exc.value.code == 0
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
+        assert rc == 0
         assert "API Documentation Validation Report" in out
 
-    def test_main_single_file_source(
+    def test_main_custom_docs_dir(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        src = tmp_path / "mod.py"
-        src.write_text("def foo(): pass\n")
-        docs = tmp_path / "api.md"
-        docs.write_text("### `foo()`\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["api_doc_validator.py", str(src), str(docs)],
-        )
-        with pytest.raises(SystemExit) as exc:
-            APIDocValidator.main()
-        assert exc.value.code == 0
+        self._write_settings(tmp_path, documentation={"dir": "api.md"})
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "mod.py").write_text("def foo(): pass\n")
+        (tmp_path / "api.md").write_text("### `foo()`\n")
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
 
     def test_main_json_output(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        src = tmp_path / "src"
-        src.mkdir()
-        (src / "mod.py").write_text("def foo(): pass\n")
-        docs = tmp_path / "api.md"
-        docs.write_text("### `foo()`\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["api_doc_validator.py", str(src), str(docs), "--json"],
-        )
-        with pytest.raises(SystemExit) as exc:
-            APIDocValidator.main()
-        assert exc.value.code == 0
-        out = capsys.readouterr().out
-        data = json.loads(out)
-        assert "summary" in data
-
-    def test_module_main_recursive_raises_systemexit(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+        self._write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("def foo(): pass\n")
         docs = tmp_path / "docs"
         docs.mkdir()
-        sub = docs / "sub"
-        sub.mkdir()
-        (sub / "api.md").write_text("### `foo()`\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["api_doc_validator.py", str(src), str(docs), "--recursive"],
-        )
-        with pytest.raises(SystemExit) as exc:
-            APIDocValidator.main()
-        assert exc.value.code == 0
+        (docs / "api.md").write_text("### `foo()`\n")
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        assert rc == 0
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert "summary" in data
 
-    def test_main_include_private(
+    def test_main_recursive_setting(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path, documentation={"api_docs_recursive": True})
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "mod.py").write_text("def foo(): pass\n")
+        docs = tmp_path / "docs"
+        sub = docs / "sub"
+        sub.mkdir(parents=True)
+        (sub / "api.md").write_text("### `foo()`\n")
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "Documented items found:  1" in out
+
+    def test_main_include_private_setting(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        self._write_settings(tmp_path, documentation={"include_private": True})
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("def _private(): pass\ndef foo(): pass\n")
-        docs = tmp_path / "api.md"
-        docs.write_text("### `foo()`\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["api_doc_validator.py", str(src), str(docs), "--include-private"],
-        )
-        with pytest.raises(SystemExit) as exc:
-            APIDocValidator.main()
-        assert exc.value.code == 0
+        docs = tmp_path / "docs"
+        docs.mkdir()
+        (docs / "api.md").write_text("### `foo()`\n")
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        assert rc == 0
+        data = json.loads(capsys.readouterr().out)
+        assert data["summary"]["source_signatures"] == 2
 
-    def test_main_suggest_coverage(
+    def test_main_suggest_coverage_setting(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path, documentation={"suggest_coverage": True})
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("def foo(): pass\n")
-        docs = tmp_path / "api.md"
-        docs.write_text("Nothing here.\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["api_doc_validator.py", str(src), str(docs), "--suggest-coverage"],
-        )
-        with pytest.raises(SystemExit) as exc:
-            APIDocValidator.main()
-        assert exc.value.code == 0
+        docs = tmp_path / "docs"
+        docs.mkdir()
+        (docs / "api.md").write_text("Nothing here.\n")
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
+        assert rc == 0
         assert "DOCUMENTATION SUGGESTIONS" in out
 
-    def test_main_high_severity_exit_1(
+    def test_main_high_severity_report_only(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("def foo(): pass\n")
-        docs = tmp_path / "api.md"
-        docs.write_text("### `phantom()`\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["api_doc_validator.py", str(src), str(docs)],
-        )
-        with pytest.raises(SystemExit) as exc:
-            APIDocValidator.main()
-        assert exc.value.code == 1
-
-    def test_main_non_python_source(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        src = tmp_path / "data.txt"
-        src.write_text("not python")
-        docs = tmp_path / "api.md"
-        docs.write_text("### `foo()`\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["api_doc_validator.py", str(src), str(docs)],
-        )
-        with pytest.raises(SystemExit) as exc:
-            APIDocValidator.main()
-        assert exc.value.code == 2
+        docs = tmp_path / "docs"
+        docs.mkdir()
+        (docs / "api.md").write_text("### `phantom()`\n")
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "phantom" in out

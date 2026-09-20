@@ -69,8 +69,10 @@ plugins:
 nav:
   - "Home": index.md
   - "Tutorials":
+      - tutorials/index.md
       - "Getting started": tutorials/getting-started.md
   - "How-to guides":
+      - how-to/index.md
       - "Getting things done":
           - "Install": how-to/install.md
           - "Set up a project": how-to/setup-project.md
@@ -116,6 +118,7 @@ nav:
           - "Augmented coding patterns": reference/augmented-coding-patterns.md
           - "Reference index": reference/index.md
   - "Explanation":
+      - explanation/index.md
       - "Code review principles":
           - "General principles": explanation/code/general-principles.md
           - "Determinism boundary": explanation/code/determinism.md
@@ -148,6 +151,8 @@ nav:
           - "11 Skip external dependency inspector": explanation/adr/0011-skip-external-dependency-inspector.md
           - "12 Skip property-based testing sensor": explanation/adr/0012-skip-property-based-testing-sensor.md
           - "13 Skip fuzz testing sensor": explanation/adr/0013-skip-fuzz-testing-sensor.md
+          - "15 Standard script CLI": explanation/adr/0015-standard-script-cli.md
+          - "Distilled directives": explanation/adr/adr-distilled.md
       - "Augmented Coding Patterns":
         - "Patterns in use": explanation/patterns.md
         - "Obstacles audit": explanation/obstacles.md

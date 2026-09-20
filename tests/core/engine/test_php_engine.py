@@ -7,9 +7,9 @@ from pathlib import Path
 import pytest
 
 from zolletta_metaskill.core.engine.language_engine import LanguageEngine
-from zolletta_metaskill.core.engine.php_engine import PHPEngine, _have_tree_sitter_php
+from zolletta_metaskill.core.engine.php_engine import PHPEngine
 
-TS_PHP_AVAILABLE = _have_tree_sitter_php()
+TS_PHP_AVAILABLE = PHPEngine._have_tree_sitter_php()
 
 
 # --- Protocol / metadata tests -------------------------------------------
@@ -417,7 +417,7 @@ def test_parse_module_missing_dependency(monkeypatch: pytest.MonkeyPatch, tmp_pa
     engine = PHPEngine()
     # Force the "not installed" state.
     monkeypatch.setattr(
-        "zolletta_metaskill.core.engine.php_engine._have_tree_sitter_php", lambda: False
+        "zolletta_metaskill.core.engine.php_engine.PHPEngine._have_tree_sitter_php", lambda: False
     )
     engine._ready = False  # noqa: SLF001
     engine._parser = None  # noqa: SLF001

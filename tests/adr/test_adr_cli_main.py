@@ -8,13 +8,32 @@ from pathlib import Path
 
 import pytest
 
-from zolletta_metaskill.adr.adr_cli import main
+from zolletta_metaskill.adr.adr_cli import ADRCLI
 
 from .conftest import write_adr
 
 
+def write_settings(tmp_path: Path, adrs: str | None = "adr") -> None:
+    """Write a minimal settings.json into ``tmp_path/.zolletta-metaskill``."""
+    meta = tmp_path / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    (meta / "settings.json").write_text(
+        json.dumps({"documentation": {"dir": "docs", "adrs": adrs}})
+    )
+
+
 class TestMain:
     """Tests for the CLI main() function."""
+
+    def _run(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        argv: list[str],
+    ) -> int:
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", argv)
+        return ADRCLI.main()
 
     def test_main_with_adrs(
         self,
@@ -22,23 +41,10 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        write_settings(tmp_path)
         docs = tmp_path / "docs"
         write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted", "We do X.")
-        cache_dir = tmp_path / ".zolletta-metaskill"
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "prog",
-                "--docs-dir",
-                str(docs),
-                "--adrs-path",
-                "adr",
-                "--cache-dir",
-                str(cache_dir),
-            ],
-        )
-        rc = main()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "1 new" in out
@@ -49,24 +55,10 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        write_settings(tmp_path)
         docs = tmp_path / "docs"
         write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted", "We do X.")
-        cache_dir = tmp_path / ".zolletta-metaskill"
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "prog",
-                "--docs-dir",
-                str(docs),
-                "--adrs-path",
-                "adr",
-                "--cache-dir",
-                str(cache_dir),
-                "--json",
-            ],
-        )
-        rc = main()
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
         out = capsys.readouterr().out
         assert rc == 0
         data = json.loads(out)
@@ -79,23 +71,9 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        docs = tmp_path / "docs"
-        docs.mkdir()
-        cache_dir = tmp_path / ".zolletta-metaskill"
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "prog",
-                "--docs-dir",
-                str(docs),
-                "--adrs-path",
-                "adr",
-                "--cache-dir",
-                str(cache_dir),
-            ],
-        )
-        rc = main()
+        write_settings(tmp_path)
+        (tmp_path / "docs").mkdir()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "no ADRs" in out
@@ -106,23 +84,9 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        docs = tmp_path / "docs"
-        docs.mkdir()
-        cache_dir = tmp_path / ".zolletta-metaskill"
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "prog",
-                "--docs-dir",
-                str(docs),
-                "--adrs-path",
-                "adr",
-                "--cache-dir",
-                str(cache_dir),
-            ],
-        )
-        rc = main()
+        write_settings(tmp_path)
+        (tmp_path / "docs").mkdir()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "no ADRs" in out
@@ -133,25 +97,11 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Empty string adrs-path means ADRs are scattered in docs root."""
+        """Empty string adrs means ADRs are scattered in docs root."""
+        write_settings(tmp_path, adrs="")
         docs = tmp_path / "docs"
         write_adr(docs / "0001-test.md", "001", "Test", "Accepted", "We do X.")
-        cache_dir = tmp_path / ".zolletta-metaskill"
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "prog",
-                "--docs-dir",
-                str(docs),
-                "--adrs-path",
-                "",
-                "--cache-dir",
-                str(cache_dir),
-                "--json",
-            ],
-        )
-        rc = main()
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
         out = capsys.readouterr().out
         assert rc == 0
         data = json.loads(out)
@@ -163,21 +113,8 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        cache_dir = tmp_path / ".zolletta-metaskill"
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "prog",
-                "--docs-dir",
-                str(tmp_path / "nope"),
-                "--adrs-path",
-                "adr",
-                "--cache-dir",
-                str(cache_dir),
-            ],
-        )
-        rc = main()
+        write_settings(tmp_path)
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
         assert "not a directory" in err
@@ -188,22 +125,8 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        cache_dir = tmp_path / ".zolletta-metaskill"
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "prog",
-                "--docs-dir",
-                str(tmp_path / "nope"),
-                "--adrs-path",
-                "adr",
-                "--cache-dir",
-                str(cache_dir),
-                "--json",
-            ],
-        )
-        rc = main()
+        write_settings(tmp_path)
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
         out = capsys.readouterr().out
         assert rc == 1
         data = json.loads(out)

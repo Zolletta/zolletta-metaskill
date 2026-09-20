@@ -31,7 +31,7 @@ Read shared guidelines from the meta-skill (parent directory):
 - `../../src/zolletta_metaskill/testing_style/general/` — shared testing style scanning scripts
 - `../../src/zolletta_metaskill/patterns/` — pattern-specific scanning scripts
 
-**Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
+**Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
 
 Local scripts and references are in these locations:
 
@@ -115,23 +115,23 @@ When checking accuracy, the agent MUST:
 
 ### Core capabilities
 
-- **Full drift analysis** — map docs to code, compare git histories, detect renamed files, version drift, and structural gaps; classify each issue by category, severity, and fix type. Per-file factual drift (only flags when specific referenced source files changed). Referential drift suppressed by default (use `--include-referential`); `link_checker.py` covers broken links more reliably.
-- **API doc validation** — AST-based extraction of Python signatures/classes compared against markdown API docs. Reports real drift (phantom docs, parameter mismatches, deprecations) as issues. Undocumented items are separated as prioritized suggestions (high/medium/low/skip) using heuristics — use `--suggest-coverage` to see them. Undocumented items do not affect the exit code or issue count.
-- **Staleness scoring** — weighted 0-100 freshness score across five dimensions with CI threshold gates and README-focused mode. Respects `.gitignore`.
-- **Link integrity audit** — validate local files, anchors, cross-document anchors, images, case-sensitivity, and duplicate anchors; optional external URL checks.
+- **Full drift analysis** — map docs to code, compare git histories, detect renamed files, version drift, and structural gaps; classify each issue by category, severity, and fix type. Per-file factual drift (only flags when specific referenced source files changed). Referential drift suppressed by default (`documentation.include_referential`); `link_checker.py` covers broken links more reliably.
+- **API doc validation** — AST-based extraction of Python signatures/classes compared against markdown API docs. Reports real drift (phantom docs, parameter mismatches, deprecations) as issues. Undocumented items are separated as prioritized suggestions (high/medium/low/skip) using heuristics — enable `documentation.suggest_coverage` to see them. Undocumented items do not affect the exit code or issue count.
+- **Staleness scoring** — weighted 0-100 freshness score across five dimensions with an optional `documentation.staleness_threshold` CI gate and README-focused mode. Respects `.gitignore`.
+- **Link integrity audit** — validate local files, anchors, cross-document anchors, images, case-sensitivity, and duplicate anchors; optional external URL checks (`documentation.check_external`).
 - **Drift classification** — structural, factual, referential, temporal categories (semantic removed as unreliable), each tagged `[AUTO]`/`[SEMI]`/`[MANUAL]` for fix routing.
-- **CI/CD integration** — non-zero exit codes, JSON output, GitHub Actions and pre-commit recipes for ongoing monitoring.
+- **CI/CD integration** — JSON output, optional staleness threshold gate, GitHub Actions and pre-commit recipes for ongoing monitoring.
 
 ### Tools
 
-| Tool                      | Purpose                                       | Command                                                                                        |
-|---------------------------|-----------------------------------------------|------------------------------------------------------------------------------------------------|
-| `drift_analyzer.py`       | Full drift analysis between code and docs     | `python src/zolletta_metaskill/documentor/drift_analyzer.py <repo> --min-severity high --json` |
-| `doc_staleness_scorer.py` | Score documentation freshness 0-100           | `python src/zolletta_metaskill/documentor/doc_staleness_scorer.py <repo> --threshold 60`       |
-| `api_doc_validator.py`    | Validate API docs against Python source (AST) | `python src/zolletta_metaskill/documentor/api_doc_validator.py <src> <docs> --recursive`       |
-| `link_checker.py`         | Audit all markdown links and anchors          | `python src/zolletta_metaskill/documentor/link_checker.py <repo> --broken-only`                |
+| Tool                      | Purpose                                       | Command                                                                     |
+|---------------------------|-----------------------------------------------|-----------------------------------------------------------------------------|
+| `drift_analyzer.py`       | Full drift analysis between code and docs     | `python src/zolletta_metaskill/documentor/drift_analyzer.py [--json]`        |
+| `doc_staleness_scorer.py` | Score documentation freshness 0-100           | `python src/zolletta_metaskill/documentor/doc_staleness_scorer.py [--json]`  |
+| `api_doc_validator.py`    | Validate API docs against Python source (AST) | `python src/zolletta_metaskill/documentor/api_doc_validator.py [--json]`     |
+| `link_checker.py`         | Audit all markdown links and anchors          | `python src/zolletta_metaskill/documentor/link_checker.py [--broken-only]`   |
 
-All tools: Python 3.8+ stdlib only, `--json` and `--help`, non-zero exit codes for CI, any OS.
+All tools: Python 3.8+ stdlib only, run from the repository root, `[--json]` and `--help`, any OS. Paths and thresholds come from `documentation.*` in `.zolletta-metaskill/settings.json` — see [settings-schema.md](../../docs/reference/settings-schema.md).
 
 ### False positive filtering
 
@@ -234,6 +234,6 @@ Produce a structured markdown report with:
 
 **Does NOT cover:**
 - Non-Python source code API validation — the AST-based validator only parses Python
-- External URL uptime monitoring — `--check-external` performs one-shot HEAD requests only
+- External URL uptime monitoring — `documentation.check_external` performs one-shot HEAD requests only
 - Automatic documentation rewriting — tools classify issues but do not generate replacement text
 - Content quality or readability assessment — staleness scoring measures freshness, not prose quality

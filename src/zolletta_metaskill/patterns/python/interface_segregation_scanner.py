@@ -12,19 +12,18 @@ Checks:
   - Protocol/ABC methods that no implementer actually calls (dead interface
     methods)
 
-Usage:
-    python3 interface_segregation_scanner.py <directory> [--min-methods N]
-        [--skip] [--strict]
+Scan roots come from ``python.paths.source`` in ``settings.json``; the
+method threshold comes from ``python.patterns.isp_min_methods`` (default
+5). The check runs when ``python.patterns.check_isp`` is not ``false``.
+File enumeration is git-ignore aware.
 
-Arguments:
-    directory       Root directory to scan (default: src)
+Usage:
+    python3 interface_segregation_scanner.py [--json]
 
 Options:
-    --min-methods N   Minimum abstract method count to flag as fat (default: 5)
-    --skip            Skip this check entirely (exit 0 with 'skipped' message)
-    --strict          Exit with code 1 if violations are found
+    --json            Output as JSON instead of markdown.
 
-Exit code: 0 if no violations (or --skip), 1 if violations found with --strict.
+Exit code: 0 always (report-only).
 
 """
 
@@ -32,9 +31,11 @@ from __future__ import annotations
 
 import argparse
 import ast
+import json
 import sys
-from pathlib import Path
 from typing import Any
+
+from zolletta_metaskill.core.project_config import ProjectConfig
 
 
 class InterfaceSegregationScanner:
@@ -118,49 +119,49 @@ class InterfaceSegregationScanner:
     def main() -> int:
         """Entry point for the Interface Segregation Principle validator CLI."""
         parser = argparse.ArgumentParser(
-            description="Interface Segregation Principle (ISP) validator."
+            description="Interface Segregation Principle (ISP) validator. "
+            "Roots come from .zolletta-metaskill/settings.json."
         )
-        parser.add_argument(
-            "directory", nargs="?", default="src", help="Root directory to scan (default: src)"
-        )
-        parser.add_argument(
-            "--min-methods",
-            type=int,
-            default=5,
-            help="Min abstract method count to flag as fat (default: 5)",
-        )
-        parser.add_argument("--skip", action="store_true", help="Skip this check entirely")
-        parser.add_argument(
-            "--strict", action="store_true", help="Exit with code 1 if violations are found"
-        )
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
         args = parser.parse_args()
 
-        if args.skip:
-            print("=" * 70)
-            print("INTERFACE SEGREGATION (ISP) — VALIDATION REPORT")
-            print("=" * 70)
-            print("\nResult: SKIPPED (--skip flag)\n")
+        settings = ProjectConfig.load_settings()
+        languages = ProjectConfig.scan_languages(settings, "patterns.check_isp")
+        py_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
+        if not py_langs:
+            ProjectConfig.emit_skipped(args.json, "check_isp disabled in settings.json")
             return 0
 
-        root = Path(args.directory)
-        if not root.exists():
-            print(f"Error: directory '{root}' does not exist", file=sys.stderr)
+        roots = ProjectConfig.existing_roots(
+            ProjectConfig.source_roots(settings, py_langs)
+        )
+        if not roots:
+            print(
+                "Error: no configured source directories exist on disk",
+                file=sys.stderr,
+            )
             return 1
 
-        # Collect all classes
+        limits: list[int] = []
+        for lang in sorted(py_langs):
+            value = ProjectConfig.setting(settings, f"{lang}.patterns.isp_min_methods", None)
+            if isinstance(value, int) and not isinstance(value, bool):
+                limits.append(value)
+        min_methods = min(limits) if limits else 5
+
+        # Collect all classes across all roots
         all_classes: dict[str, dict[str, Any]] = {}  # name -> class_info
-        for py in root.rglob("*.py"):
-            if "__pycache__" in str(py):
-                continue
-            try:
-                tree = ast.parse(py.read_text(encoding="utf-8"))
-            except SyntaxError:
-                continue
-            for node in ast.walk(tree):
-                if isinstance(node, ast.ClassDef):
-                    info = InterfaceSegregationScanner._get_class_info(node)
-                    info["file"] = str(py.relative_to(root))
-                    all_classes.setdefault(info["name"], info)
+        for root in roots:
+            for py in ProjectConfig.iter_files(root, {".py"}):
+                try:
+                    tree = ast.parse(py.read_text(encoding="utf-8"))
+                except SyntaxError:
+                    continue
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.ClassDef):
+                        info = InterfaceSegregationScanner._get_class_info(node)
+                        info["file"] = str(py.relative_to(root))
+                        all_classes.setdefault(info["name"], info)
 
         # Find protocols/ABCs
         protocols = {
@@ -181,7 +182,7 @@ class InterfaceSegregationScanner:
 
         for proto_name, proto_info in protocols.items():
             method_names = [m["name"] for m in proto_info["methods"]]
-            if len(method_names) >= args.min_methods:
+            if len(method_names) >= min_methods:
                 fat_interfaces.append(
                     {
                         "name": proto_name,
@@ -218,6 +219,21 @@ class InterfaceSegregationScanner:
 
         has_violations = bool(fat_interfaces or stub_violations)
 
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "directories": [str(root) for root in roots],
+                        "min_methods": min_methods,
+                        "fat_interfaces": fat_interfaces,
+                        "stub_violations": stub_violations,
+                        "violation_count": len(fat_interfaces) + len(stub_violations),
+                    },
+                    indent=2,
+                )
+            )
+            return 0
+
         print("=" * 70)
         print("INTERFACE SEGREGATION (ISP) — VALIDATION REPORT")
         print("=" * 70)
@@ -225,7 +241,7 @@ class InterfaceSegregationScanner:
         if fat_interfaces:
             print(
                 f"\n## Fat interfaces ({len(fat_interfaces)} found, "
-                f">= {args.min_methods} methods)\n"
+                f">= {min_methods} methods)\n"
             )
             for item in fat_interfaces:
                 print(f"  {item['name']} ({item['method_count']} methods)")
@@ -236,7 +252,7 @@ class InterfaceSegregationScanner:
                     print(f"    Implementers: {', '.join(impls)}")
                 print("    Fix: split into smaller, focused protocols")
         else:
-            print(f"\n## Fat interfaces: none (threshold: {args.min_methods} methods)")
+            print(f"\n## Fat interfaces: none (threshold: {min_methods} methods)")
 
         if stub_violations:
             print(f"\n## Implementers stubbing interface methods ({len(stub_violations)} found)\n")
@@ -252,10 +268,7 @@ class InterfaceSegregationScanner:
             print("\n## Implementers stubbing interface methods: none")
 
         print()
-        if has_violations and args.strict:
-            print("Result: ISP VIOLATIONS FOUND (strict mode)")
-            return 1
-        elif has_violations:
+        if has_violations:
             print("Result: ISP violations found (report-only mode)")
         else:
             print("Result: all clear")

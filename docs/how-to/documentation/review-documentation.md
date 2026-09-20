@@ -26,15 +26,15 @@ Review project documentation for [Diátaxis](https://diataxis.fr/) compliance, d
 ### Step 1 — Run the staleness scorer
 
 ```bash
-python3 src/zolletta_metaskill/documentor/doc_staleness_scorer.py . --threshold 50
+python3 src/zolletta_metaskill/documentor/doc_staleness_scorer.py
 ```
 
-This produces a freshness score and lists stale files below the threshold.
+This produces a freshness score; when `documentation.staleness_threshold` is set in settings it exits non-zero below it and lists stale files.
 
 ### Step 2 — Run the drift analyzer
 
 ```bash
-python3 src/zolletta_metaskill/documentor/drift_analyzer.py . --json > drift-report.json
+python3 src/zolletta_metaskill/documentor/drift_analyzer.py --json > drift-report.json
 ```
 
 This produces a full drift analysis between code and docs.
@@ -42,7 +42,7 @@ This produces a full drift analysis between code and docs.
 ### Step 3 — Run the link checker
 
 ```bash
-python3 src/zolletta_metaskill/documentor/link_checker.py .
+python3 src/zolletta_metaskill/documentor/link_checker.py
 ```
 
 This checks all internal links in the documentation directory.
@@ -50,7 +50,7 @@ This checks all internal links in the documentation directory.
 ### Step 4 — Run the API doc validator
 
 ```bash
-python3 src/zolletta_metaskill/documentor/api_doc_validator.py src/ docs/api.md
+python3 src/zolletta_metaskill/documentor/api_doc_validator.py
 ```
 
 This validates API documentation against the actual code signatures.

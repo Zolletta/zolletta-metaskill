@@ -181,7 +181,7 @@ Write the report to `<runs_dir>/<timestamp>/reports/php-code-style.md` using the
 - **#34 File length limit** — source files must not exceed `max_file_length` lines (default: `800`, read from `php.code_style.max_file_length` in `settings.json`). File length is one of the low-hanging-fruit maintainability sensors for catching AI failure modes (Martin Fowler — *Maintainability sensors for coding agents*): overly long files usually signal a class doing too much. Some files legitimately exceed the limit (generated code, large enums) — raise `max_file_length` for the project to exempt them. Enforced by the language-agnostic `file_length_scanner.py`:
 
 ```bash
-python3 ../../src/zolletta_metaskill/code_style/general/file_length_scanner.py src/
+python3 ../../src/zolletta_metaskill/code_style/general/file_length_scanner.py
 ```
 
 ### Security (#21)

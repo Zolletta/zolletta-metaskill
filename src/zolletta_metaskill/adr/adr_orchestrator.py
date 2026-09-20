@@ -226,13 +226,13 @@ class ADROrchestrator:
 
         return ADRCLI.run(argv)
 
+    @staticmethod
+    def main() -> int:
+        """Entry point for the ADR distiller CLI."""
+        from zolletta_metaskill.adr.adr_cli import ADRCLI
 
-def main() -> int:
-    """Entry point for the ADR distiller CLI."""
-    from zolletta_metaskill.adr.adr_cli import ADRCLI
-
-    return ADRCLI.run()
+        return ADRCLI.run()
 
 
 if __name__ == "__main__":  # pragma: no cover
-    sys.exit(main())
+    sys.exit(ADROrchestrator.main())

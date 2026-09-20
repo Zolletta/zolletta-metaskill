@@ -59,7 +59,7 @@ Violation rate: 0.0%
 All test functions meet the naming convention.
 ```
 
-Command: `uv run python3 src/zolletta_metaskill/testing_style/python/test_naming_scanner.py tests/ --min-segments 3`
+Command: `uv run python3 src/zolletta_metaskill/testing_style/python/test_naming_scanner.py`
 
 The scanner is the single source of truth for rule #7. Zero violations → no naming findings.
 

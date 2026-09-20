@@ -449,13 +449,12 @@ class TestMain:
     ) -> None:
         f = tmp_path / "test_god.py"
         self._write_test_file(f)
-        out_dir = tmp_path / "output"
         mapping = '{"cache": "Cache", "extract": "Extractor"}'
-        monkeypatch.setattr(
-            sys, "argv", ["prog", str(f), "--mapping", mapping, "--out", str(out_dir)]
-        )
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", ["prog", str(f), "--mapping", mapping])
         rc = TestSplitter.main()
         out = capsys.readouterr().out
+        out_dir = tmp_path / ".zolletta-metaskill" / "test_split" / "test_god"
         assert rc == 0
         assert "Done" in out
         assert (out_dir / "test_cache.py").exists()
@@ -488,11 +487,12 @@ class TestMain:
         self._write_test_file(f)
         mapping_file = tmp_path / "mapping.json"
         mapping_file.write_text(json.dumps({"cache": "Cache", "extract": "Extractor"}))
-        out_dir = tmp_path / "output"
+        monkeypatch.chdir(tmp_path)
         monkeypatch.setattr(
-            sys, "argv", ["prog", str(f), "--mapping", str(mapping_file), "--out", str(out_dir)]
+            sys, "argv", ["prog", str(f), "--mapping", str(mapping_file)]
         )
         rc = TestSplitter.main()
+        out_dir = tmp_path / ".zolletta-metaskill" / "test_split" / "test_god"
         assert rc == 0
         assert (out_dir / "test_cache.py").exists()
 
@@ -516,12 +516,11 @@ class TestMain:
     ) -> None:
         f = tmp_path / "test_god.py"
         self._write_test_file(f)
-        out_dir = tmp_path / "output"
         mapping = '{"cache": "Cache", "extract": "Extractor"}'
-        monkeypatch.setattr(
-            sys, "argv", ["prog", str(f), "--mapping", mapping, "--out", str(out_dir)]
-        )
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", ["prog", str(f), "--mapping", mapping])
         rc = TestSplitter.main()
+        out_dir = tmp_path / ".zolletta-metaskill" / "test_split" / "test_god"
         assert rc == 0
         cache_content = (out_dir / "test_cache.py").read_text()
         assert "def setup" in cache_content
@@ -562,7 +561,7 @@ class TestMain:
             "    def test_cache_get(self):\n        pass\n"
         )
         mapping = '{"cache": "Cache"}'
-        out_dir = tmp_path / "output"
+        monkeypatch.chdir(tmp_path)
         monkeypatch.setattr(
             sys,
             "argv",
@@ -571,14 +570,83 @@ class TestMain:
                 str(f),
                 "--mapping",
                 mapping,
-                "--out",
-                str(out_dir),
                 "--class",
                 "TestGodClass",
             ],
         )
         rc = TestSplitter.main()
         out = capsys.readouterr().out
+        out_dir = tmp_path / ".zolletta-metaskill" / "test_split" / "test_god"
         assert rc == 0
         assert "TestGodClass" in out
         assert (out_dir / "test_cache.py").exists()
+
+    def test_main_json_auto_derive(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        f = tmp_path / "test_god.py"
+        self._write_test_file(f)
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", ["prog", str(f), "--json"])
+        rc = TestSplitter.main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        payload = json.loads(out)
+        assert payload["class"] == "TestGodClass"
+        assert "cache" in payload["auto_prefixes"]
+        assert payload["proposed_mapping"]["cache"] == "Cache"
+
+    def test_main_json_dry_run(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        f = tmp_path / "test_god.py"
+        self._write_test_file(f)
+        mapping = '{"cache": "Cache", "extract": "Extractor"}'
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(
+            sys, "argv", ["prog", str(f), "--mapping", mapping, "--dry-run", "--json"]
+        )
+        rc = TestSplitter.main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        payload = json.loads(out)
+        assert payload["dry_run"] is True
+        assert "test_cache_get" in payload["groups"]["Cache"]
+
+    def test_main_json_writes_files(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        f = tmp_path / "test_god.py"
+        self._write_test_file(f)
+        mapping = '{"cache": "Cache", "extract": "Extractor"}'
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(
+            sys, "argv", ["prog", str(f), "--mapping", mapping, "--json"]
+        )
+        rc = TestSplitter.main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        payload = json.loads(out)
+        out_dir = tmp_path / ".zolletta-metaskill" / "test_split" / "test_god"
+        assert Path(payload["out_dir"]) == Path(
+            ".zolletta-metaskill/test_split/test_god"
+        )
+        assert "test_cache.py" in payload["written"]
+        assert (out_dir / "test_cache.py").exists()
+
+    def test_main_custom_runs_dir(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        f = tmp_path / "test_god.py"
+        self._write_test_file(f)
+        mapping = '{"cache": "Cache", "extract": "Extractor"}'
+        meta = tmp_path / ".zolletta-metaskill"
+        meta.mkdir()
+        (meta / "settings.json").write_text(
+            json.dumps({"language": "python", "runs_dir": "out_runs"})
+        )
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", ["prog", str(f), "--mapping", mapping])
+        rc = TestSplitter.main()
+        assert rc == 0
+        assert (tmp_path / "out_runs" / "test_split" / "test_god" / "test_cache.py").exists()

@@ -18,17 +18,12 @@ class TestADRCLIBuildParser:
         """build_parser returns a parser with default values."""
         parser = ADRCLI.build_parser()
         args = parser.parse_args([])
-        assert args.docs_dir == "docs"
-        assert args.adrs_path is None
-        assert args.cache_dir == ".zolletta-metaskill"
         assert args.json is False
 
-    def test_build_parser_accepts_all_args_returns_parsed(self) -> None:
-        """build_parser parses all CLI arguments."""
+    def test_build_parser_accepts_json_flag(self) -> None:
+        """build_parser parses the --json flag."""
         parser = ADRCLI.build_parser()
-        args = parser.parse_args(["--docs-dir", "/tmp/docs", "--adrs-path", "adr", "--json"])
-        assert args.docs_dir == "/tmp/docs"
-        assert args.adrs_path == "adr"
+        args = parser.parse_args(["--json"])
         assert args.json is True
 
 
@@ -82,9 +77,11 @@ class TestADRCLIRun:
         self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Run returns 1 when docs-dir does not exist."""
-        rc = ADRCLI.run(["--docs-dir", str(tmp_path / "nope"), "--adrs-path", "adr"])
+        """Run returns 1 when documentation.dir does not exist."""
+        monkeypatch.chdir(tmp_path)
+        rc = ADRCLI.run([])
         assert rc == 1
         err = capsys.readouterr().err
         assert "not a directory" in err
@@ -93,9 +90,11 @@ class TestADRCLIRun:
         self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Run returns 1 and prints JSON when docs-dir missing and --json."""
-        rc = ADRCLI.run(["--docs-dir", str(tmp_path / "nope"), "--adrs-path", "adr", "--json"])
+        """Run returns 1 and prints JSON when docs dir missing and --json."""
+        monkeypatch.chdir(tmp_path)
+        rc = ADRCLI.run(["--json"])
         assert rc == 1
         out = capsys.readouterr().out
         data = json.loads(out)

@@ -275,7 +275,7 @@ class HumanWorker implements Workable, Reportable, Employable {
 }
 ```
 
-**Scanner**: [`interface_segregation_scanner`](../../../reference/code/scripts.md#interface_segregation_scannerpy-isp-php) — flags interfaces with more than `--min-methods` (default: 7) methods.
+**Scanner**: [`interface_segregation_scanner`](../../../reference/code/scripts.md#interface_segregation_scannerpy-isp-php) — flags interfaces with more than `php.patterns.isp_min_methods` (default: 7) methods.
 
 **Why this matters**: fat interfaces force implementers to stub methods they don't use. See [ISP — Clean Code](https://wiki.c2.com/?InterfaceSegregationPrinciple).
 

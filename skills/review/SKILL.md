@@ -42,7 +42,7 @@ Read shared guidelines from the meta-skill (parent directory):
 - `../../src/zolletta_metaskill/shared/` — shared scanning scripts
 - `../../src/zolletta_metaskill/patterns/` — pattern-specific scanning scripts
 
-**Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
+**Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
 
 **Respond in the same language the user used to invoke you.** If the user wrote in Italian, respond in Italian. If in English, respond in English. And so on for any other language.
 
@@ -59,7 +59,7 @@ The orchestrator itself always runs on the model it was invoked with — only th
 
 ### Step 1 — Read the project language from settings.json
 
-The setup guard (see the meta-skill's [setup guard](../SKILL.md#setup-guard)) guarantees that `.zolletta-metaskill/settings.json` exists before this subcommand runs.
+The setup guard (see the meta-skill's [setup guard](../../SKILL.md#setup-guard)) guarantees that `.zolletta-metaskill/settings.json` exists before this subcommand runs.
 
 1. Read `.zolletta-metaskill/settings.json` and extract the `language` field.
 2. If `settings.json` is missing or `language` is empty, fall back to detecting the language using the marker list in `skills/setup/SKILL.md` Step 3.

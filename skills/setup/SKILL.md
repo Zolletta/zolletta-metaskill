@@ -31,17 +31,26 @@ Initialize the `.zolletta-metaskill/` directory and write `settings.json` so tha
 
 ## Procedure
 
-### Step 0 — Migration from v1.x (if needed)
+### Step 0 — Migration and missing-keys backfill (if needed)
 
 If `.zolletta-metaskill/settings.json` already exists, read it and check `setup_version`:
 
-- **`"2.0.0"` or later** — no migration needed; proceed to the requested subcommand (or re-run setup if invoked explicitly).
+- **`"3.0.0"` or later** — no migration needed; proceed to the requested subcommand (or re-run setup if invoked explicitly).
+- **`"2.x"`** — additively backfill the keys introduced in v3.0.0, then proceed:
+  1. `python.paths` — run Step 8's `python_paths_detector.py` and store its output (Python projects only).
+  2. `python.patterns`, `php.patterns` — copy the defaults from the schema doc.
+  3. New `python.code_style` keys (`check_zero_class_files`, `check_unused_all_exports`, `docstring_strip_*`), `python.testing.test_naming_min_segments`, `php.code_style.check_acronym_casing`, and the new `documentation.*` keys — copy the defaults from the schema doc.
+  4. **Merge only**: preserve every user-customized value; only add keys that are absent.
+  5. Set `setup_version` to `"3.0.0"`, write the file, and proceed.
 - **`"1.x"` or absent** — migrate before writing the new file:
   1. If the old `subagent_profile` field exists and is non-null, it applied to all review subagents — set `subcommands.patterns.model`, `subcommands.documentor.model`, `subcommands.python-code-style.model`, `subcommands.python-testing-style.model`, `subcommands.php-code-style.model`, and `subcommands.php-testing-style.model` to its value. If it is `null` or absent, leave all review subcommand models at `null`.
   2. Remove `external_review_model` and `subagent_profile` from the file. (`external_review_model` was for the removed `external-review` subcommand — it is not migrated.)
   3. Add the full `subcommands` object with all six keys, preserving migrated values and defaulting unmigrated ones to `null`.
-  4. Set `setup_version` to `"2.0.0"`.
-  5. Write the migrated file and proceed.
+  4. Apply the v3.0.0 backfill described above (`paths`, `patterns`, new `code_style`/`testing`/`documentation` keys).
+  5. Set `setup_version` to `"3.0.0"`.
+  6. Write the migrated file and proceed.
+
+> **What changed in v3.0.0**: every review script now resolves scan roots and rule knobs from `settings.json` instead of CLI flags (see ADR-0015). New keys: `python.paths` (source/test roots + package — the PHP-autoload equivalent Python lacked), `python.patterns` and `php.patterns` (SOLID-check toggles and thresholds), new `python.code_style`/`python.testing`/`php.code_style` toggles, and the `documentation.*` options that drive the documentor tools. Backfill is additive: user-customized values are preserved, only absent keys are added.
 
 > **What changed in v2.0.0**: the `external_review_model` scalar (for the removed `external-review` subcommand) and the `subagent_profile` scalar (all review subagents) are replaced by `subcommands` — a per-subcommand map where each entry has a `model` field. The `external-review` subcommand is removed; `external_review_model` is not migrated. This lets the user configure a different model per subcommand (e.g. a strong model for `patterns`/`documentor`, a cheap one for `*-code-style`). See [`../../docs/reference/settings-schema.md`](../../docs/reference/settings-schema.md#subcommands-per-subcommand-model-configuration) for the full schema.
 
@@ -80,7 +89,7 @@ Call `tokensave_status` (no arguments). Success → `tokensave_available: true`.
 
 ### Step 6 — Detect Python tooling (Python only)
 
-If language is not Python, set `python: null` and skip to Step 6.6.
+If language is not Python, set `python: null` and skip to Step 9.
 
 1. Run:
 
@@ -92,7 +101,7 @@ If language is not Python, set `python: null` and skip to Step 6.6.
 
 2. For tools not found in `pyproject.toml`, try calling `<command> --version` to check if the tool is installed. If `uv` is available (from step 1's JSON output), prefer `uv run <command> --version` — many tools (e.g. `ty`) are only accessible through `uv run` and would be missed by a bare `<command> --version`. If `container_name` is set, run inside the container via `docker compose exec <container_name> <command>` instead. If the version check succeeds, mark as available.
 
-### Step 6.5 — Extract Python configuration
+### Step 7 — Extract Python configuration
 
 Read `pyproject.toml` and extract effective configuration for each available tool. Record `pyproject_mtime` (float) in `python.pyproject_mtime`.
 
@@ -104,7 +113,19 @@ For each available tool, extract its config fields into `python.tools.<tool>`. I
 
 **Extract acronyms from `AGENTS.md`**: if the project's `AGENTS.md` contains an "Acronyms stay uppercase" naming convention line (matching `acronyms fully uppercase` followed by examples like `APIGateway`, `MRBranchResolver`), extract the uppercase tokens and store them as the top-level `acronyms` field (e.g. `["API", "MR", "AST"]`). If none found, `acronyms: []`. This field is top-level, always present even for non-Python projects.
 
-### Step 6.6 — Detect documentation configuration
+**Write `python.patterns`** — copy the default SOLID-check toggles and thresholds from the schema doc. Same merge behavior: preserve user-customized values, only add new keys.
+
+### Step 8 — Detect Python source layout
+
+```bash
+python3 ../../src/zolletta_metaskill/setup/python_paths_detector.py
+```
+
+Prints JSON `{"source": ["src"], "tests": ["tests"], "package": "zolletta_metaskill"}`. Store the result in `python.paths` — these are the source/test roots every review script scans (the PHP-autoload equivalent Python lacked). The detector reads `pyproject.toml` (`[tool.hatch.build.targets.wheel] packages` → `[tool.setuptools] package-dir`/`packages.find where` → `[tool.poetry] packages` → pytest `testpaths`) and falls back to the `src/`+`tests/` layout.
+
+Re-run this step whenever `pyproject_mtime` changes (the SKILL.md staleness guard already re-runs Step 7, so `paths` stays fresh when pyproject changes).
+
+### Step 9 — Detect documentation configuration
 
 ```bash
 python3 ../../src/zolletta_metaskill/setup/doc_config_detector.py
@@ -112,7 +133,7 @@ python3 ../../src/zolletta_metaskill/setup/doc_config_detector.py
 
 Reads `documentation.dir` from `settings.json` (default `docs`). Default documentation language is `"en"` (ISO 639-1).
 
-### Step 6.7 — Detect ADR folder
+### Step 10 — Detect ADR folder
 
 ```bash
 python3 ../../src/zolletta_metaskill/setup/adr_detector.py <docs_dir>
@@ -121,9 +142,9 @@ python3 ../../src/zolletta_metaskill/setup/adr_detector.py <docs_dir>
 Prints JSON `{"adrs_path": "adr"}` or `{"adrs_path": null}`. Store in `documentation.adrs`.
 
 
-### Step 7 — Detect PHP tooling (PHP only)
+### Step 11 — Detect PHP tooling (PHP only)
 
-If language is not PHP, set `php: null` and skip to Step 7.6.
+If language is not PHP, set `php: null` and skip to Step 13.
 
 1. Run:
 
@@ -135,7 +156,7 @@ If language is not PHP, set `php: null` and skip to Step 7.6.
 
 2. For tools not found by the script, try calling `vendor/bin/<tool> --version` (inside the container if `container_name` is set, otherwise on the host). If it succeeds, mark as available.
 
-### Step 7.5 — Extract PHP configuration
+### Step 12 — Extract PHP configuration
 
 Read `composer.json` and each tool's config file. Record `composer_mtime` (float) in `php.composer_mtime`.
 
@@ -143,13 +164,13 @@ Read `composer.json` and each tool's config file. Record `composer_mtime` (float
 - **`autoload`**: read `autoload.psr-4` and `autoload-dev.psr-4` into `php.autoload` (empty objects for missing keys).
 - **Per-tool config**: for each available tool, extract its config fields into `php.tools.<tool>`. If no config file exists, store built-in defaults and print the "unconfigured" warning. See the schema doc for the full field list and defaults.
 
-**Write `php.code_style` and `php.testing`** — same merge behavior as Python.
+**Write `php.code_style`, `php.testing`, and `php.patterns`** — same merge behavior as Python. PHP source/test roots resolve from `php.autoload` (`psr-4`/`psr-4-dev` values) — no `php.paths` is written.
 
-### Step 7.6 — Python skill availability (no action needed)
+### Step 13 — Python skill availability (no action needed)
 
 The Python review skills (`python-code-style`, `python-testing-style`) are bundled inside this meta-skill — always available, no flags needed.
 
-### Step 7.7 — Detect companion implementation skills
+### Step 14 — Detect companion implementation skills
 
 ```bash
 python3 ../../src/zolletta_metaskill/setup/companion_skill_detector.py
@@ -160,9 +181,9 @@ Prints JSON with `php_pro.available` and `python_development.available` booleans
 - For PHP projects: store `php.tools.php_pro_available`
 - For Python projects: store `python.tools.python_development_available`
 
-If unavailable, print the corresponding "not installed" message in Step 9.
+If unavailable, print the corresponding "not installed" message in Step 16.
 
-### Step 8 — Write settings.json
+### Step 15 — Write settings.json
 
 Read the [settings template](assets/settings_template.json) and write `.zolletta-metaskill/settings.json` with the following fields:
 
@@ -173,24 +194,24 @@ Read the [settings template](assets/settings_template.json) and write `.zolletta
 | `language`            | Step 3                                                                                                                                                                                                                                  |
 | `container_name`      | Step 4 (`null` if no Docker)                                                                                                                                                                                                            |
 | `tokensave_available` | Step 5                                                                                                                                                                                                                                  |
-| `acronyms`            | Step 6.5 (`[]` if none)                                                                                                                                                                                                                 |
-| `python`              | Steps 6 + 6.5 (Python only; `null` otherwise)                                                                                                                                                                                           |
-| `php`                 | Steps 7 + 7.5 (PHP only; `null` otherwise)                                                                                                                                                                                              |
+| `acronyms`            | Step 7 (`[]` if none)                                                                                                                                                                                                                   |
+| `python`              | Steps 6 + 7 + 8 (Python only; `null` otherwise)                                                                                                                                                                                         |
+| `php`                 | Steps 11 + 12 (PHP only; `null` otherwise)                                                                                                                                                                                              |
 | `subcommands`         | Object with one key per subcommand, each containing `model` (default `null` = harness default). See [`../../docs/reference/settings-schema.md`](../../docs/reference/settings-schema.md#subcommands-per-subcommand-model-configuration) |
-| `documentation`       | Steps 6.6 + 6.7                                                                                                                                                                                                                         |
+| `documentation`       | Steps 9 + 10                                                                                                                                                                                                                            |
 | `runs_dir`            | `".zolletta-metaskill"`                                                                                                                                                                                                                 |
 
 For the full JSON shape of each subobject, see [`../../docs/reference/settings-schema.md`](../../docs/reference/settings-schema.md). Use the `write` tool. JSON must be valid, pretty-printed (2-space indent).
 
-### Step 9 — Print "not installed" and "unconfigured" messages
+### Step 16 — Print "not installed" and "unconfigured" messages
 
 For each tool that is **not** available, print the corresponding "not installed" message from `../../docs/reference/tool-messages.md`. This covers `tokensave_available: false`, unavailable `python.tools.*` / `php.tools.*`, and companion skills (`php_pro_available`, `python_development_available`).
 
-For each tool that **is** available but has **no configuration section/file** (detected in Steps 6.5 and 7.5), print the corresponding "unconfigured" warning from `../../docs/reference/tool-messages.md`.
+For each tool that **is** available but has **no configuration section/file** (detected in Steps 7 and 12), print the corresponding "unconfigured" warning from `../../docs/reference/tool-messages.md`.
 
 **Do NOT install anything.** Only inform the user.
 
-### Step 10 — Summary
+### Step 17 — Summary
 
 Print the following, replacing the path with the absolute path to the project's `settings.json` and making it a clickable file reference:
 

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -923,42 +925,75 @@ class TestGenerateReport:
 
 
 class TestMain:
-    def test_not_a_directory(
-        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> None:
-        nonexistent = tmp_path / "nonexistent"
-        monkeypatch.setattr(sys, "argv", ["prog", str(nonexistent)])
-        with pytest.raises(SystemExit) as exc_info:
-            DriftAnalyzer.main()
-        assert exc_info.value.code == 2
+    def _write_settings(self, tmp_path: Path, **overrides: object) -> Path:
+        """Write a minimal settings.json under ``tmp_path/.zolletta-metaskill``."""
+        settings: dict[str, object] = {
+            "language": "python",
+            "documentation": {},
+        }
+        doc_overrides = overrides.pop("documentation", None)
+        if isinstance(doc_overrides, dict):
+            base_doc = settings["documentation"]
+            assert isinstance(base_doc, dict)
+            base_doc.update(doc_overrides)
+        settings.update(overrides)
+        meta = tmp_path / ".zolletta-metaskill"
+        meta.mkdir(parents=True, exist_ok=True)
+        path = meta / "settings.json"
+        path.write_text(json.dumps(settings))
+        return path
+
+    def _run(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]
+    ) -> int:
+        """Chdir into tmp_path and run main() with *argv*."""
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", argv)
+        return DriftAnalyzer.main()
+
+    def _patch_git(self) -> Any:
+        """Patch the git-dependent helpers so no real git history is needed."""
+        return (
+            patch(
+                "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.get_file_last_modified",
+                return_value=None,
+            ),
+            patch(
+                "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.get_renamed_files",
+                return_value=[],
+            ),
+            patch(
+                "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.get_current_version_from_git",
+                return_value=None,
+            ),
+        )
 
     def test_not_a_git_repo(
         self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path)])
-        with pytest.raises(SystemExit) as exc_info:
-            DriftAnalyzer.main()
-        assert exc_info.value.code == 2
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        captured = capsys.readouterr()
+        assert rc == 1
+        assert "not a git repository" in captured.err
 
     def test_no_doc_files(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         (tmp_path / ".git").mkdir()
-        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path)])
-        with pytest.raises(SystemExit) as exc_info:
-            DriftAnalyzer.main()
-        assert exc_info.value.code == 0
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         captured = capsys.readouterr()
+        assert rc == 0
         assert "No documentation files found" in captured.out
 
     def test_no_doc_files_json(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         (tmp_path / ".git").mkdir()
-        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path), "--json"])
-        with pytest.raises(SystemExit) as exc_info:
-            DriftAnalyzer.main()
-        assert exc_info.value.code == 0
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        captured = capsys.readouterr()
+        assert rc == 0
+        data = json.loads(captured.out)
+        assert data["error"] == "No documentation files found"
 
     def test_full_run_with_docs(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -967,25 +1002,10 @@ class TestMain:
         (tmp_path / "README.md").write_text(
             "# Test\n## Usage\n## Installation\n## License\n", encoding="utf-8"
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path)])
-        with (
-            patch(
-                "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.get_file_last_modified",
-                return_value=None,
-            ),
-            patch(
-                "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.get_renamed_files",
-                return_value=[],
-            ),
-            patch(
-                "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.get_current_version_from_git",
-                return_value=None,
-            ),
-            pytest.raises(SystemExit) as exc_info,
-        ):
-            DriftAnalyzer.main()
-        # No high/critical issues -> exit 0
-        assert exc_info.value.code == 0
+        p1, p2, p3 = self._patch_git()
+        with p1, p2, p3:
+            rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
 
     def test_full_run_json(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -994,80 +1014,81 @@ class TestMain:
         (tmp_path / "README.md").write_text(
             "# Test\n## Usage\n## Installation\n## License\n", encoding="utf-8"
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path), "--json"])
-        with (
-            patch(
-                "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.get_file_last_modified",
-                return_value=None,
-            ),
-            patch(
-                "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.get_renamed_files",
-                return_value=[],
-            ),
-            patch(
-                "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.get_current_version_from_git",
-                return_value=None,
-            ),
-            pytest.raises(SystemExit) as exc_info,
-        ):
-            DriftAnalyzer.main()
-        assert exc_info.value.code == 0
+        p1, p2, p3 = self._patch_git()
+        with p1, p2, p3:
+            rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        assert rc == 0
         captured = capsys.readouterr()
-        import json
-
         data = json.loads(captured.out)
         assert "summary" in data
 
-    def test_doc_patterns_arg(
+    def test_doc_patterns_setting(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path, documentation={"doc_patterns": ["*.md"]})
         (tmp_path / ".git").mkdir()
         (tmp_path / "README.md").write_text("# Test", encoding="utf-8")
         (tmp_path / "data.txt").write_text("data", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path), "--doc-patterns", "*.md"])
-        with (
-            patch(
-                "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.get_file_last_modified",
-                return_value=None,
-            ),
-            patch(
-                "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.get_renamed_files",
-                return_value=[],
-            ),
-            patch(
-                "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.get_current_version_from_git",
-                return_value=None,
-            ),
-            pytest.raises(SystemExit) as exc_info,
-        ):
-            DriftAnalyzer.main()
-        assert exc_info.value.code == 0
+        p1, p2, p3 = self._patch_git()
+        with p1, p2, p3:
+            rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert data["summary"]["total_docs"] == 1
 
-    def test_min_severity_filter(
+    def test_min_severity_setting(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path, documentation={"min_severity": "critical"})
         (tmp_path / ".git").mkdir()
         (tmp_path / "README.md").write_text(
             "# Test\n## Usage\n## Installation\n## License\n", encoding="utf-8"
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path), "--min-severity", "critical"])
+        p1, p2, p3 = self._patch_git()
+        with p1, p2, p3:
+            rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert data["summary"]["total_issues"] == 0
+
+    def test_source_scope_from_settings(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Configured source roots scope the code-file discovery."""
+        self._write_settings(
+            tmp_path, python={"paths": {"source": ["src"], "tests": ["tests"]}}
+        )
+        (tmp_path / ".git").mkdir()
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "main.py").write_text("x = 1\n", encoding="utf-8")
+        (tmp_path / "README.md").write_text("# Test\n", encoding="utf-8")
+        p1, p2, p3 = self._patch_git()
+        with p1, p2, p3:
+            rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
+
+    def test_include_referential_setting(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        self._write_settings(tmp_path, documentation={"include_referential": True})
+        (tmp_path / ".git").mkdir()
+        (tmp_path / "guide.md").write_text("# Guide\n", encoding="utf-8")
+        p1, p2, p3 = self._patch_git()
         with (
+            p1,
+            p2,
+            p3,
             patch(
-                "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.get_file_last_modified",
-                return_value=None,
-            ),
-            patch(
-                "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.get_renamed_files",
+                "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.detect_drift_for_doc",
                 return_value=[],
-            ),
-            patch(
-                "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.get_current_version_from_git",
-                return_value=None,
-            ),
-            pytest.raises(SystemExit) as exc_info,
+            ) as mock_detect,
         ):
-            DriftAnalyzer.main()
-        assert exc_info.value.code == 0
+            rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
+        assert mock_detect.call_args.kwargs["include_referential"] is True
 
     def test_non_readme_doc_no_associated_dirs(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -1075,21 +1096,7 @@ class TestMain:
         """A non-README doc with no code files gets default associated_dirs=['']."""
         (tmp_path / ".git").mkdir()
         (tmp_path / "guide.md").write_text("# Guide\n\nSome content.\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path)])
-        with (
-            patch(
-                "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.get_file_last_modified",
-                return_value=None,
-            ),
-            patch(
-                "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.get_renamed_files",
-                return_value=[],
-            ),
-            patch(
-                "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.get_current_version_from_git",
-                return_value=None,
-            ),
-            pytest.raises(SystemExit) as exc_info,
-        ):
-            DriftAnalyzer.main()
-        assert exc_info.value.code == 0
+        p1, p2, p3 = self._patch_git()
+        with p1, p2, p3:
+            rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0

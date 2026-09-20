@@ -198,31 +198,77 @@ class TestFindTestFunctions:
 
 
 # ---------------------------------------------------------------------------
-# TestNamingScanner.main() — skip flag
+# Settings helper + settings-driven runner
 # ---------------------------------------------------------------------------
 
 
-class TestMainSkip:
-    """``--skip`` short-circuits the scan and exits 0."""
+def _write_settings(dirpath: Path, **overrides: object) -> Path:
+    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
+    settings: dict[str, object] = {
+        "language": "python",
+        "python": {
+            "testing": {},
+            "paths": {"source": ["src"], "tests": ["tests"], "package": "mypkg"},
+        },
+        "php": None,
+    }
+    python_overrides = overrides.pop("python", None)
+    if isinstance(python_overrides, dict):
+        base_python = settings["python"]
+        assert isinstance(base_python, dict)
+        for key, value in python_overrides.items():
+            if isinstance(value, dict) and isinstance(base_python.get(key), dict):
+                base_python[key].update(value)
+            else:
+                base_python[key] = value
+    settings.update(overrides)
+    meta = dirpath / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    path = meta / "settings.json"
+    path.write_text(json.dumps(settings))
+    return path
 
-    def test_skip_prints_skipped_message(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """``--skip`` prints a SKIPPED banner and returns 0."""
-        rc = main_with_argv(["scan", str(tmp_path), "--skip"])
-        assert rc == 0
-        out = capsys.readouterr().out
-        assert "SKIPPED" in out
-        assert "--skip flag" in out
 
-    def test_skip_with_json_prints_nothing(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+def run_scan(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]
+) -> int:
+    """Chdir into *tmp_path* and run ``main()`` with *argv*."""
+    monkeypatch.chdir(tmp_path)
+    return main_with_argv(["scan", *argv])
+
+
+def write_test_module(tmp_path: Path, name: str, content: str) -> Path:
+    """Write a test file under ``tmp_path/tests``."""
+    path = tmp_path / "tests" / name
+    write_test_file(path, content)
+    return path
+
+
+# ---------------------------------------------------------------------------
+# TestNamingScanner.main() — disabled check
+# ---------------------------------------------------------------------------
+
+
+class TestMainDisabled:
+    """``testing.check_test_naming: false`` emits a SKIPPED report."""
+
+    def test_disabled_prints_skipped_message(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """``--skip --json`` produces no output and returns 0."""
-        rc = main_with_argv(["scan", str(tmp_path), "--skip", "--json"])
+        _write_settings(tmp_path, python={"testing": {"check_test_naming": False}})
+        (tmp_path / "tests").mkdir()
+        rc = run_scan(tmp_path, monkeypatch, [])
         assert rc == 0
-        captured = capsys.readouterr()
-        assert captured.out == ""
+        assert "SKIPPED" in capsys.readouterr().out
+
+    def test_disabled_json(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path, python={"testing": {"check_test_naming": False}})
+        (tmp_path / "tests").mkdir()
+        rc = run_scan(tmp_path, monkeypatch, ["--json"])
+        assert rc == 0
+        assert json.loads(capsys.readouterr().out)["skipped"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -231,18 +277,17 @@ class TestMainSkip:
 
 
 class TestMainDirectoryErrors:
-    """Missing directories produce an error on stderr and exit 1."""
+    """Missing configured test directories produce an error and exit 1."""
 
-    def test_nonexistent_directory_returns_one(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    def test_missing_test_dir_returns_one(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """A non-existent directory prints an error to stderr and returns 1."""
-        missing = tmp_path / "does_not_exist"
-        rc = main_with_argv(["scan", str(missing)])
+        _write_settings(tmp_path)
+        rc = run_scan(tmp_path, monkeypatch, [])
         assert rc == 1
         err = capsys.readouterr().err
-        assert "does not exist" in err
-        assert str(missing) in err
+        assert "no configured test directories" in err
+        assert "tests" in err
 
 
 # ---------------------------------------------------------------------------
@@ -253,11 +298,12 @@ class TestMainDirectoryErrors:
 class TestMainNoTestFiles:
     """An empty or test-file-free directory reports zero functions."""
 
-    def test_readouterr_empty_directory_contains_long_string(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    def test_empty_directory(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """An empty directory scans zero functions and reports success."""
-        rc = main_with_argv(["scan", str(tmp_path)])
+        _write_settings(tmp_path)
+        (tmp_path / "tests").mkdir()
+        rc = run_scan(tmp_path, monkeypatch, [])
         assert rc == 0
         out = capsys.readouterr().out
         assert "Total test functions scanned: 0" in out
@@ -265,15 +311,16 @@ class TestMainNoTestFiles:
         assert "All test functions meet the naming convention." in out
 
     def test_directory_with_only_non_test_files(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Non-test ``.py`` files do not contribute to the scan."""
-        (tmp_path / "helpers.py").write_text("def helper():\n    pass\n")
-        (tmp_path / "conftest.py").write_text("def fixture():\n    pass\n")
-        rc = main_with_argv(["scan", str(tmp_path)])
+        _write_settings(tmp_path)
+        tests = tmp_path / "tests"
+        tests.mkdir()
+        (tests / "helpers.py").write_text("def helper():\n    pass\n")
+        (tests / "conftest.py").write_text("def fixture():\n    pass\n")
+        rc = run_scan(tmp_path, monkeypatch, [])
         assert rc == 0
-        out = capsys.readouterr().out
-        assert "Total test functions scanned: 0" in out
+        assert "Total test functions scanned: 0" in capsys.readouterr().out
 
 
 # ---------------------------------------------------------------------------
@@ -282,62 +329,48 @@ class TestMainNoTestFiles:
 
 
 class TestMainViolationsMarkdown:
-    """Markdown report lists violations and respects ``--strict``."""
+    """Markdown report lists violations; findings are report-only."""
 
-    def test_violations_listed_no_strict_returns_zero(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    def test_violations_listed_returns_zero(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Violations are listed but exit code stays 0 without ``--strict``."""
-        write_test_file(
-            tmp_path / "test_bad.py",
-            "def test_init():\n    assert True\n",
-        )
-        rc = main_with_argv(["scan", str(tmp_path)])
+        """Violations are listed but the exit code stays 0 (report-only)."""
+        _write_settings(tmp_path)
+        write_test_module(tmp_path, "test_bad.py", "def test_init():\n    assert True\n")
+        rc = run_scan(tmp_path, monkeypatch, [])
         assert rc == 0
         out = capsys.readouterr().out
         assert "Violations: 1" in out
         assert "test_init" in out
         assert "test_bad.py" in out
 
-    def test_violations_with_strict_returns_one(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    def test_no_violations(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """``--strict`` flips the exit code to 1 when violations exist."""
-        write_test_file(
-            tmp_path / "test_bad.py",
-            "def test_init():\n    assert True\n",
-        )
-        rc = main_with_argv(["scan", str(tmp_path), "--strict"])
-        assert rc == 1
-        out = capsys.readouterr().out
-        assert "Violations: 1" in out
-
-    def test_no_violations_with_strict_returns_zero(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """``--strict`` with no violations still returns 0."""
-        write_test_file(
-            tmp_path / "test_good.py",
+        _write_settings(tmp_path)
+        write_test_module(
+            tmp_path,
+            "test_good.py",
             "def test_init_with_valid_stores_attrs():\n    assert True\n",
         )
-        rc = main_with_argv(["scan", str(tmp_path), "--strict"])
+        rc = run_scan(tmp_path, monkeypatch, [])
         assert rc == 0
         out = capsys.readouterr().out
         assert "Violations: 0" in out
         assert "All test functions meet the naming convention." in out
 
     def test_violation_rate_displayed_when_functions_present(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """The violation rate is printed only when test functions exist."""
-        # One good (3 segments), one bad (1 segment) -> 50% violation rate
-        write_test_file(
-            tmp_path / "test_mixed.py",
+        _write_settings(tmp_path)
+        write_test_module(
+            tmp_path,
+            "test_mixed.py",
             "def test_unit_scenario_expected():\n    assert True\n"
             "\n"
             "def test_init():\n    assert True\n",
         )
-        rc = main_with_argv(["scan", str(tmp_path)])
+        rc = run_scan(tmp_path, monkeypatch, [])
         assert rc == 0
         out = capsys.readouterr().out
         assert "Total test functions scanned: 2" in out
@@ -345,19 +378,20 @@ class TestMainViolationsMarkdown:
         assert "Violation rate: 50.0%" in out
 
     def test_no_violation_rate_when_zero_functions(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """No violation rate line is shown when there are no test functions."""
-        rc = main_with_argv(["scan", str(tmp_path)])
+        _write_settings(tmp_path)
+        (tmp_path / "tests").mkdir()
+        rc = run_scan(tmp_path, monkeypatch, [])
         assert rc == 0
-        out = capsys.readouterr().out
-        assert "Violation rate" not in out
+        assert "Violation rate" not in capsys.readouterr().out
 
     def test_report_header_present(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """The markdown report always starts with the validation banner."""
-        main_with_argv(["scan", str(tmp_path)])
+        _write_settings(tmp_path)
+        (tmp_path / "tests").mkdir()
+        run_scan(tmp_path, monkeypatch, [])
         out = capsys.readouterr().out
         assert "TEST FUNCTION NAMING" in out
         assert "VALIDATION REPORT" in out
@@ -371,19 +405,18 @@ class TestMainViolationsMarkdown:
 class TestMainJsonOutput:
     """``--json`` emits a machine-readable report."""
 
-    def test_json_with_violations(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-        """JSON output includes total counts and full violation details."""
-        write_test_file(
-            tmp_path / "test_bad.py",
-            "def test_init():\n    assert True\n",
-        )
-        rc = main_with_argv(["scan", str(tmp_path), "--json"])
+    def test_json_with_violations(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        write_test_module(tmp_path, "test_bad.py", "def test_init():\n    assert True\n")
+        rc = run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
-        out = capsys.readouterr().out
-        data = json.loads(out)
+        data = json.loads(capsys.readouterr().out)
         assert data["total_test_functions"] == 1
         assert data["violation_count"] == 1
         assert data["min_segments"] == 3
+        assert data["directories"] == ["tests"]
         assert len(data["violations"]) == 1
         v = data["violations"][0]
         assert v["function"] == "test_init"
@@ -392,140 +425,124 @@ class TestMainJsonOutput:
         assert v["file"] == "test_bad.py"
         assert v["line"] == 1
 
-    def test_json_no_violations(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-        """JSON output with compliant tests reports zero violations."""
-        write_test_file(
-            tmp_path / "test_good.py",
+    def test_json_no_violations(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        write_test_module(
+            tmp_path,
+            "test_good.py",
             "def test_unit_scenario_expected():\n    assert True\n",
         )
-        rc = main_with_argv(["scan", str(tmp_path), "--json"])
+        rc = run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
         data = json.loads(capsys.readouterr().out)
         assert data["total_test_functions"] == 1
         assert data["violation_count"] == 0
         assert data["violations"] == []
 
-    def test_json_empty_directory(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-        """JSON output for an empty directory reports all-zero counts."""
-        rc = main_with_argv(["scan", str(tmp_path), "--json"])
+    def test_json_empty_directory(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        (tmp_path / "tests").mkdir()
+        rc = run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
         data = json.loads(capsys.readouterr().out)
         assert data["total_test_functions"] == 0
         assert data["violation_count"] == 0
 
-    def test_json_with_strict_violations_returns_one(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """``--json --strict`` returns 1 when violations are present."""
-        write_test_file(
-            tmp_path / "test_bad.py",
-            "def test_init():\n    assert True\n",
-        )
-        rc = main_with_argv(["scan", str(tmp_path), "--json", "--strict"])
-        assert rc == 1
-
 
 # ---------------------------------------------------------------------------
-# TestNamingScanner.main() — min-segments
+# TestNamingScanner.main() — test_naming_min_segments setting
 # ---------------------------------------------------------------------------
 
 
 class TestMainMinSegments:
-    """Custom ``--min-segments`` thresholds change what counts as a violation."""
+    """``testing.test_naming_min_segments`` changes the violation threshold."""
 
-    def test_custom_min_segments_higher(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    def test_min_segments_higher(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Raising ``--min-segments`` turns previously-compliant names into violations."""
-        # 3 segments — fine at default 3, violation at 4
-        write_test_file(
-            tmp_path / "test_edge.py",
+        _write_settings(tmp_path, python={"testing": {"test_naming_min_segments": 4}})
+        write_test_module(
+            tmp_path,
+            "test_edge.py",
             "def test_unit_scenario_expected():\n    assert True\n",
         )
-        rc = main_with_argv(["scan", str(tmp_path), "--min-segments", "4", "--json"])
+        rc = run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
         data = json.loads(capsys.readouterr().out)
         assert data["violation_count"] == 1
         assert data["min_segments"] == 4
 
-    def test_custom_min_segments_lower(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    def test_min_segments_lower(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Lowering ``--min-segments`` lets short names pass."""
-        # 1 segment — violation at default 3, fine at 1
-        write_test_file(
-            tmp_path / "test_short.py",
-            "def test_init():\n    assert True\n",
-        )
-        rc = main_with_argv(["scan", str(tmp_path), "--min-segments", "1", "--json"])
+        _write_settings(tmp_path, python={"testing": {"test_naming_min_segments": 1}})
+        write_test_module(tmp_path, "test_short.py", "def test_init():\n    assert True\n")
+        rc = run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
         data = json.loads(capsys.readouterr().out)
         assert data["violation_count"] == 0
 
 
 # ---------------------------------------------------------------------------
-# TestNamingScanner.main() — ignore dirs and file filtering
+# TestNamingScanner.main() — file filtering and gitignore
 # ---------------------------------------------------------------------------
 
 
-class TestMainIgnoreDirs:
-    """Ignored directories and non-test files are skipped during the scan."""
+class TestMainFileFiltering:
+    """Non-test files are skipped; git-ignored files are not scanned."""
 
-    @pytest.mark.parametrize("ignored", ["__pycache__", ".venv", "venv", ".tox", "dist", "build"])
-    def test_ignored_directory_skipped(
-        self, tmp_path: Path, ignored: str, capsys: pytest.CaptureFixture[str]
+    def test_gitignored_directory_skipped(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Each configured ignore-dir is excluded from the recursive scan."""
-        sub = tmp_path / ignored
-        sub.mkdir()
+        import subprocess
+
+        subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+        _write_settings(tmp_path)
+        (tmp_path / ".gitignore").write_text("tests/ignored/\n")
         write_test_file(
-            sub / "test_bad.py",
+            tmp_path / "tests" / "ignored" / "test_bad.py",
             "def test_init():\n    assert True\n",
         )
-        rc = main_with_argv(["scan", str(tmp_path), "--json"])
+        rc = run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
         data = json.loads(capsys.readouterr().out)
         assert data["total_test_functions"] == 0
         assert data["violation_count"] == 0
 
     def test_non_test_py_file_skipped(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """A ``.py`` file that is neither ``test_*.py`` nor ``*_test.py`` is skipped."""
-        write_test_file(
-            tmp_path / "utils.py",
-            "def test_init():\n    assert True\n",
-        )
-        rc = main_with_argv(["scan", str(tmp_path), "--json"])
+        _write_settings(tmp_path)
+        write_test_module(tmp_path, "utils.py", "def test_init():\n    assert True\n")
+        rc = run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
         data = json.loads(capsys.readouterr().out)
         assert data["total_test_functions"] == 0
 
     def test_suffix_test_file_scanned(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """``*_test.py`` files are treated as test files and scanned."""
-        write_test_file(
-            tmp_path / "feature_test.py",
-            "def test_init():\n    assert True\n",
-        )
-        rc = main_with_argv(["scan", str(tmp_path), "--json"])
+        _write_settings(tmp_path)
+        write_test_module(tmp_path, "feature_test.py", "def test_init():\n    assert True\n")
+        rc = run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
         data = json.loads(capsys.readouterr().out)
         assert data["total_test_functions"] == 1
         assert data["violation_count"] == 1
 
     def test_nested_directory_scanned(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """``rglob`` recurses into nested subdirectories."""
-        nested = tmp_path / "subdir" / "deep"
-        nested.mkdir(parents=True)
+        _write_settings(tmp_path)
         write_test_file(
-            nested / "test_bad.py",
+            tmp_path / "tests" / "subdir" / "deep" / "test_bad.py",
             "def test_init():\n    assert True\n",
         )
-        rc = main_with_argv(["scan", str(tmp_path), "--json"])
+        rc = run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
         data = json.loads(capsys.readouterr().out)
         assert data["total_test_functions"] == 1
@@ -534,30 +551,32 @@ class TestMainIgnoreDirs:
 
 
 # ---------------------------------------------------------------------------
-# TestNamingScanner.main() — default directory
+# TestNamingScanner.main() — multiple test roots
 # ---------------------------------------------------------------------------
 
 
-class TestMainDefaultDirectory:
-    """Omitting the directory argument defaults to ``tests``."""
+class TestMainMultipleRoots:
+    """All configured test roots are scanned."""
 
-    def test_default_directory_is_tests(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    def test_multiple_test_dirs(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """With no directory argument the scanner targets ``./tests``."""
-        # Create a tests/ dir in the cwd and chdir into tmp_path so the default
-        # "tests" resolves to our temp directory.
-        tests_dir = tmp_path / "tests"
-        tests_dir.mkdir()
-        write_test_file(
-            tests_dir / "test_default.py",
-            "def test_init():\n    assert True\n",
+        _write_settings(
+            tmp_path,
+            python={"paths": {"tests": ["tests", "spec"]}},
         )
-        monkeypatch.chdir(tmp_path)
-        rc = main_with_argv(["scan"])  # no directory -> defaults to "tests"
+        write_test_file(
+            tmp_path / "tests" / "test_a.py", "def test_init():\n    assert True\n"
+        )
+        write_test_file(
+            tmp_path / "spec" / "test_b.py", "def test_add():\n    assert True\n"
+        )
+        rc = run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
-        out = capsys.readouterr().out
-        assert "Total test functions scanned: 1" in out
+        data = json.loads(capsys.readouterr().out)
+        assert data["total_test_functions"] == 2
+        assert data["violation_count"] == 2
+        assert data["directories"] == ["tests", "spec"]
 
 
 # ---------------------------------------------------------------------------
@@ -569,19 +588,21 @@ class TestMainMixedScenarios:
     """Combined real-world scenarios across multiple files."""
 
     def test_multiple_files_some_good_some_bad(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Good and bad files in one run are aggregated correctly."""
-        write_test_file(
-            tmp_path / "test_good.py",
+        _write_settings(tmp_path)
+        write_test_module(
+            tmp_path,
+            "test_good.py",
             "def test_init_with_valid_stores_attrs():\n    assert True\n"
             "def test_add_with_two_ints_returns_sum():\n    assert True\n",
         )
-        write_test_file(
-            tmp_path / "test_bad.py",
+        write_test_module(
+            tmp_path,
+            "test_bad.py",
             "def test_init():\n    assert True\ndef test_add():\n    assert True\n",
         )
-        rc = main_with_argv(["scan", str(tmp_path), "--json"])
+        rc = run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
         data = json.loads(capsys.readouterr().out)
         assert data["total_test_functions"] == 4
@@ -590,31 +611,31 @@ class TestMainMixedScenarios:
         assert bad_files == {"test_bad.py"}
 
     def test_syntax_error_file_does_not_crash(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """A syntax-error file is skipped while valid files are still scanned."""
-        (tmp_path / "test_broken.py").write_text("def test_foo(:\n    pass\n")
-        write_test_file(
-            tmp_path / "test_good.py",
+        _write_settings(tmp_path)
+        (tmp_path / "tests").mkdir()
+        (tmp_path / "tests" / "test_broken.py").write_text("def test_foo(:\n    pass\n")
+        write_test_module(
+            tmp_path,
+            "test_good.py",
             "def test_unit_scenario_expected():\n    assert True\n",
         )
-        rc = main_with_argv(["scan", str(tmp_path), "--json"])
+        rc = run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
         data = json.loads(capsys.readouterr().out)
         assert data["total_test_functions"] == 1
         assert data["violation_count"] == 0
 
     def test_relative_path_in_violations(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Violation file paths are reported relative to the scan root."""
-        sub = tmp_path / "pkg"
-        sub.mkdir()
+        _write_settings(tmp_path)
         write_test_file(
-            sub / "test_bad.py",
+            tmp_path / "tests" / "pkg" / "test_bad.py",
             "def test_init():\n    assert True\n",
         )
-        rc = main_with_argv(["scan", str(tmp_path), "--json"])
+        rc = run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
         data = json.loads(capsys.readouterr().out)
         assert data["violations"][0]["file"] == str(Path("pkg") / "test_bad.py")

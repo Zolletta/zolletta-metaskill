@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -492,15 +494,61 @@ class TestScanFile:
         assert results == []
 
 
+def _write_settings(dirpath: Path, **overrides: object) -> Path:
+    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
+    settings: dict[str, object] = {
+        "language": "python",
+        "python": {
+            "patterns": {},
+            "paths": {"source": ["src"], "tests": ["tests"], "package": "mypkg"},
+        },
+        "php": None,
+    }
+    python_overrides = overrides.pop("python", None)
+    if isinstance(python_overrides, dict):
+        base_python = settings["python"]
+        assert isinstance(base_python, dict)
+        for key, value in python_overrides.items():
+            if isinstance(value, dict) and isinstance(base_python.get(key), dict):
+                base_python[key].update(value)
+            else:
+                base_python[key] = value
+    settings.update(overrides)
+    meta = dirpath / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    path = meta / "settings.json"
+    path.write_text(json.dumps(settings))
+    return path
+
+
+def _run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]
+) -> int:
+    """Chdir into tmp_path and run main() with *argv*."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", argv)
+    return LiskovSubstitutionScanner.main()
+
+
+_LSP_VIOLATION_SRC = (
+    "class Animal:\n"
+    "    def speak(self):\n"
+    "        return 'sound'\n"
+    "class Dog(Animal):\n"
+    "    def speak(self, extra):\n"
+    "        return 'woof'\n"
+)
+
+
 class TestMain:
     def test_main_success_no_violations(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("class Foo:\n    def bar(self):\n        return 1\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = LiskovSubstitutionScanner.main()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
@@ -508,122 +556,115 @@ class TestMain:
     def test_main_with_violations_report_only(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
-        (src / "mod.py").write_text(
-            "class Animal:\n"
-            "    def speak(self):\n"
-            "        return 'sound'\n"
-            "class Dog(Animal):\n"
-            "    def speak(self, extra):\n"
-            "        return 'woof'\n"
-        )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = LiskovSubstitutionScanner.main()
+        (src / "mod.py").write_text(_LSP_VIOLATION_SRC)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "extra_required_params" in out
         assert "report-only mode" in out
 
-    def test_main_with_violations_strict(
+    def test_main_check_disabled(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        src = tmp_path / "src"
-        src.mkdir()
-        (src / "mod.py").write_text(
-            "class Animal:\n"
-            "    def speak(self):\n"
-            "        return 'sound'\n"
-            "class Dog(Animal):\n"
-            "    def speak(self, extra):\n"
-            "        return 'woof'\n"
-        )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--strict"])
-        rc = LiskovSubstitutionScanner.main()
-        out = capsys.readouterr().out
-        assert rc == 1
-        assert "strict mode" in out
-
-    def test_readouterr_main_skip_contains_skipped(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path), "--skip"])
-        rc = LiskovSubstitutionScanner.main()
+        _write_settings(tmp_path, python={"patterns": {"check_lsp": False}})
+        (tmp_path / "src").mkdir()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "SKIPPED" in out
 
-    def test_main_nonexistent_dir(
-        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    def test_main_check_disabled_json(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "/nonexistent/path/xyz"])
-        rc = LiskovSubstitutionScanner.main()
+        _write_settings(tmp_path, python={"patterns": {"check_lsp": False}})
+        (tmp_path / "src").mkdir()
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["skipped"] is True
+
+    def test_main_missing_src(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "does not exist" in err
+        assert "no configured source directories" in err
 
     def test_main_empty_dir(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        src = tmp_path / "src"
-        src.mkdir()
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = LiskovSubstitutionScanner.main()
+        _write_settings(tmp_path)
+        (tmp_path / "src").mkdir()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
+
+    def test_main_json_output(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "mod.py").write_text(_LSP_VIOLATION_SRC)
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["violation_count"] >= 1
+        assert report["violations"][0]["type"] == "extra_required_params"
+        assert report["directories"] == ["src"]
+
+    def test_main_json_no_violations(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "mod.py").write_text("class Foo:\n    pass\n")
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["violation_count"] == 0
 
     def test_main_syntax_error_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "bad.py").write_text("class Foo:\n    def bar(:\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = LiskovSubstitutionScanner.main()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
 
-    def test_main_pycache_ignored(
+    def test_main_gitignored_dirs_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        src = tmp_path / "src"
-        pycache = src / "__pycache__"
-        pycache.mkdir(parents=True)
-        (pycache / "mod.py").write_text("class Foo:\n    pass\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = LiskovSubstitutionScanner.main()
+        subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+        (tmp_path / ".gitignore").write_text("src/ignored/\n")
+        _write_settings(tmp_path)
+        ignored = tmp_path / "src" / "ignored"
+        ignored.mkdir(parents=True)
+        (ignored / "mod.py").write_text(_LSP_VIOLATION_SRC)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
-
-    def test_main_default_directory(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.chdir(tmp_path)
-        src = tmp_path / "src"
-        src.mkdir()
-        (src / "mod.py").write_text("class Foo:\n    def bar(self):\n        return 1\n")
-        monkeypatch.setattr(sys, "argv", ["prog"])
-        rc = LiskovSubstitutionScanner.main()
-        assert rc == 0
 
     def test_main_violation_output_contains_fix(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
-        (src / "mod.py").write_text(
-            "class Animal:\n"
-            "    def speak(self):\n"
-            "        return 'sound'\n"
-            "class Dog(Animal):\n"
-            "    def speak(self, extra):\n"
-            "        return 'woof'\n"
-        )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = LiskovSubstitutionScanner.main()
+        (src / "mod.py").write_text(_LSP_VIOLATION_SRC)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "Fix:" in out
@@ -632,6 +673,7 @@ class TestMain:
     def test_main_new_exception_violation(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text(
@@ -642,8 +684,7 @@ class TestMain:
             "    def speak(self):\n"
             "        raise KeyError('x')\n"
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = LiskovSubstitutionScanner.main()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "new_exceptions" in out
@@ -651,6 +692,7 @@ class TestMain:
     def test_main_fewer_params_violation(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text(
@@ -661,8 +703,27 @@ class TestMain:
             "    def speak(self):\n"
             "        return 'woof'\n"
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = LiskovSubstitutionScanner.main()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "fewer_params" in out
+
+    def test_main_multiple_roots(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Cross-root violations: parent in one root, child in another."""
+        _write_settings(tmp_path, python={"paths": {"source": ["src", "lib"]}})
+        src = tmp_path / "src"
+        lib = tmp_path / "lib"
+        src.mkdir()
+        lib.mkdir()
+        (src / "animal.py").write_text(
+            "class Animal:\n    def speak(self):\n        return 's'\n"
+        )
+        (lib / "dog.py").write_text(
+            "class Dog(Animal):\n    def speak(self, extra):\n        return 'w'\n"
+        )
+        rc = _run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "extra_required_params" in out

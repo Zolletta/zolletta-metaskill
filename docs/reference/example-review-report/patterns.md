@@ -72,7 +72,7 @@ All 15 classes are suppressed per "What is NOT a God class": static helper colle
 
 *None — all test files and directories match a source counterpart.*
 
-> Note: the scanner initially reported 3 orphaned directories (`.pytest_cache/`, `.pytest_cache/v/`, `.pytest_cache/v/cache/`). These are pytest cache artifacts, not test files. Suppressed with `--ignore-dirs .pytest_cache`.
+> Note: the scanner initially reported 3 orphaned directories (`.pytest_cache/`, `.pytest_cache/v/`, `.pytest_cache/v/cache/`). These are pytest cache artifacts, not test files — they are excluded once `.pytest_cache/` is gitignored (file enumeration is git-aware).
 
 #### 4. Missing tests (0)
 

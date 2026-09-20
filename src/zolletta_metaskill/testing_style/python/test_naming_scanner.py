@@ -21,20 +21,18 @@ The scanner is deterministic: the same input always produces the same output.
 This replaces manual AI review of test function names, which was
 non-deterministic and produced different violation counts on each run.
 
-Usage:
-    python3 test_naming_scanner.py <directory> [--min-segments N] [--strict] [--json] [--skip]
+Test roots come from ``python.paths.tests`` in ``settings.json``; the
+minimum segment count comes from ``python.testing.test_naming_min_segments``
+(default 3). The check runs when ``python.testing.check_test_naming`` is
+not ``false``. File enumeration is git-ignore aware.
 
-Arguments:
-    directory       Root test directory to scan (default: tests)
+Usage:
+    python3 test_naming_scanner.py [--json]
 
 Options:
-    --min-segments N   Minimum segments after test_ (default: 3)
-    --strict           Exit with code 1 if violations are found
     --json             Output as JSON instead of markdown
-    --skip             Skip this check entirely (exit 0 with 'skipped' message)
 
-Exit code: 0 if no violations (or --strict not set or --skip),
-           1 if violations found with --strict.
+Exit code: 0 always (report-only).
 
 """
 
@@ -48,6 +46,7 @@ from typing import Any
 
 from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
 from zolletta_metaskill.core.engine.python_engine import PythonEngine
+from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.core.structs import Finding, ModuleInfo
 
 
@@ -193,77 +192,73 @@ class TestNamingScanner:
         """Entry point for the test naming convention checker CLI."""
         parser = argparse.ArgumentParser(
             description="Check test function naming: test_<unit>_<scenario>_<expected>. "
-            "Flags functions with fewer than --min-segments segments after test_."
+            "Flags functions with fewer than testing.test_naming_min_segments "
+            "segments after test_."
         )
-        parser.add_argument(
-            "directory",
-            nargs="?",
-            default="tests",
-            help="Root test directory to scan (default: tests)",
-        )
-        parser.add_argument(
-            "--min-segments",
-            type=int,
-            default=3,
-            help="Minimum segments after test_ prefix (default: 3)",
-        )
-        parser.add_argument("--strict", action="store_true", help="Exit 1 if violations found")
         parser.add_argument("--json", action="store_true", help="Output as JSON")
-        parser.add_argument(
-            "--skip",
-            action="store_true",
-            help="Skip this check entirely (exit 0 with 'skipped' message)",
-        )
         args = parser.parse_args()
 
         TestNamingScanner._ensure_python_engine()
-        if args.skip:
-            if not args.json:
-                print("=" * 70)
-                print("TEST FUNCTION NAMING — VALIDATION REPORT")
-                print("=" * 70)
-                print("\nResult: SKIPPED (--skip flag)\n")
+        settings = ProjectConfig.load_settings()
+        languages = ProjectConfig.scan_languages(settings, "testing.check_test_naming")
+        py_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
+        if not py_langs:
+            ProjectConfig.emit_skipped(
+                args.json, "check_test_naming disabled in settings.json"
+            )
             return 0
 
-        test_root = Path(args.directory)
-        if not test_root.exists():
-            print(f"Error: directory '{test_root}' does not exist", file=sys.stderr)
+        roots = ProjectConfig.existing_roots(ProjectConfig.test_roots(settings, py_langs))
+        if not roots:
+            print(
+                "Error: no configured test directories exist on disk "
+                f"({', '.join(str(r) for r in ProjectConfig.test_roots(settings, py_langs))})",
+                file=sys.stderr,
+            )
             return 1
 
-        ignore_dirs = {"__pycache__", ".venv", "venv", ".tox", "dist", "build"}
+        limits: list[int] = []
+        for lang in sorted(py_langs):
+            value = ProjectConfig.setting(
+                settings, f"{lang}.testing.test_naming_min_segments", None
+            )
+            if isinstance(value, int) and not isinstance(value, bool):
+                limits.append(value)
+        min_segments = min(limits) if limits else 3
 
         violations: list[dict[str, Any]] = []
         total_test_functions = 0
 
-        for py in sorted(test_root.rglob("*.py")):
-            if any(part in ignore_dirs for part in py.parts):
-                continue
-            # Only scan test files (test_*.py or *_test.py)
-            if not (py.name.startswith("test_") or py.name.endswith("_test.py")):
-                continue
+        for test_root in roots:
+            for py in ProjectConfig.iter_files(test_root, {".py"}):
+                # Only scan test files (test_*.py or *_test.py)
+                if not (py.name.startswith("test_") or py.name.endswith("_test.py")):
+                    continue
 
-            test_funcs = TestNamingScanner._find_test_functions(py)
-            for func_name, line_no in test_funcs:
-                total_test_functions += 1
-                segments = TestNamingScanner._count_segments(func_name)
-                if segments < args.min_segments:
-                    violations.append(
-                        {
-                            "file": str(py.relative_to(test_root)),
-                            "line": line_no,
-                            "function": func_name,
-                            "segments": segments,
-                            "min_required": args.min_segments,
-                        }
-                    )
+                test_funcs = TestNamingScanner._find_test_functions(py)
+                for func_name, line_no in test_funcs:
+                    total_test_functions += 1
+                    segments = TestNamingScanner._count_segments(func_name)
+                    if segments < min_segments:
+                        violations.append(
+                            {
+                                "file": str(py.relative_to(test_root)),
+                                "line": line_no,
+                                "function": func_name,
+                                "segments": segments,
+                                "min_required": min_segments,
+                            }
+                        )
 
+        directories = [str(root) for root in roots]
         if args.json:
             print(
                 json.dumps(
                     {
+                        "directories": directories,
                         "total_test_functions": total_test_functions,
                         "violation_count": len(violations),
-                        "min_segments": args.min_segments,
+                        "min_segments": min_segments,
                         "violations": violations,
                     },
                     indent=2,
@@ -273,8 +268,8 @@ class TestNamingScanner:
             print("=" * 70)
             print("TEST FUNCTION NAMING — VALIDATION REPORT")
             print("=" * 70)
-            print(f"\nTest directory: {test_root}")
-            print(f"Minimum segments after test_: {args.min_segments}")
+            print(f"\nTest directories: {', '.join(directories)}")
+            print(f"Minimum segments after test_: {min_segments}")
             print(f"Total test functions scanned: {total_test_functions}")
             print(f"Violations: {len(violations)}")
             if total_test_functions > 0:
@@ -288,15 +283,13 @@ class TestNamingScanner:
                 for v in violations:
                     print(f"{v['file']:<55} {v['line']:>5} {v['function']:<45} {v['segments']:>5}")
                 print()
-                print(f"These test functions have fewer than {args.min_segments} segments")
+                print(f"These test functions have fewer than {min_segments} segments")
                 print("after the test_ prefix. The convention expects:")
                 print("  test_<unit>_<scenario>_<expected_outcome>")
                 print("Rename to include the scenario and expected outcome.")
             else:
                 print("All test functions meet the naming convention.\n")
 
-        if args.strict and violations:
-            return 1
         return 0
 
 

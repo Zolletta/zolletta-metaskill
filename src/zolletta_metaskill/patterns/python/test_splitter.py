@@ -14,8 +14,8 @@ SUT detection uses method-name prefix grouping:
     after ``test_`` and prints a proposed mapping for the human to review.
 
 Usage:
-    python3 test_splitter.py <test_file> [--mapping <json>] [--out <dir>]
-        [--class <TestClass>] [--dry-run]
+    python3 test_splitter.py <test_file> [--mapping <json>]
+        [--class <TestClass>] [--dry-run] [--json]
 
 Arguments:
     test_file       Path to the test .py file to split.
@@ -24,10 +24,12 @@ Options:
     --mapping <json>    JSON file or inline JSON string mapping prefix to SUT
                         class name. Example: {"cache": "Cache", "extract_defaults":
                         "DefaultsExtractor"}
-    --out <dir>         Output directory (default: .zolletta-metaskill/test_split/<filename>/)
     --class <name>      Name of the test class to split (default: first test class
                         in the file, i.e. first ClassDef with test methods)
     --dry-run           Show the proposed split without writing any files.
+    --json              Output the proposed split as JSON.
+    Output directory is ``<runs_dir>/test_split/<filename>/`` from
+    ``settings.json`` (``runs_dir``, default ``.zolletta-metaskill``).
 
 Exit code: 0 on success, 1 on error.
 
@@ -40,7 +42,9 @@ import ast
 import json
 import sys
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
+
+from zolletta_metaskill.core.project_config import ProjectConfig
 
 
 class TestSplitter:
@@ -218,11 +222,6 @@ class TestSplitter:
             help="JSON file or inline JSON string mapping prefix to SUT class name",
         )
         parser.add_argument(
-            "--out",
-            default=None,
-            help="Output directory (default: .zolletta-metaskill/test_split/<filename>/)",
-        )
-        parser.add_argument(
             "--class",
             dest="class_name",
             default=None,
@@ -233,6 +232,7 @@ class TestSplitter:
             action="store_true",
             help="Show the proposed split without writing any files",
         )
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
         args = parser.parse_args()
 
         test_file = Path(args.test_file)
@@ -273,19 +273,31 @@ class TestSplitter:
             print(f"Error: class {class_node.name} has no test methods", file=sys.stderr)
             return 1
 
-        print("=" * 70)
-        print(f"TEST SPLITTER — {test_file.name}")
-        print("=" * 70)
-        print(f"\nClass: {class_node.name}")
-        print(f"Test methods: {len(test_methods)}")
-        print(f"Shared methods (fixtures/helpers): {len(shared_methods)}")
+        result: dict[str, Any] = {
+            "test_file": str(test_file),
+            "class": class_node.name,
+            "test_methods": len(test_methods),
+            "shared_methods": len(shared_methods),
+        }
 
         # Load or auto-derive mapping
         mapping = TestSplitter._load_mapping(args.mapping)
 
         if not mapping:
-            print("\nNo --mapping provided. Auto-deriving prefixes from method names:")
             auto = TestSplitter._auto_derive_prefixes(test_methods)
+            proposed = {p: TestSplitter._snake_to_pascal(p) for p in auto}
+            if args.json:
+                result["auto_prefixes"] = auto
+                result["proposed_mapping"] = proposed
+                print(json.dumps(result, indent=2))
+                return 0
+            print("=" * 70)
+            print(f"TEST SPLITTER — {test_file.name}")
+            print("=" * 70)
+            print(f"\nClass: {class_node.name}")
+            print(f"Test methods: {len(test_methods)}")
+            print(f"Shared methods (fixtures/helpers): {len(shared_methods)}")
+            print("\nNo --mapping provided. Auto-deriving prefixes from method names:")
             for prefix, names in sorted(auto.items()):
                 print(
                     f"  {prefix}: {len(names)} methods -> "
@@ -293,7 +305,6 @@ class TestSplitter:
                 )
             print('\nUse --mapping \'{"prefix": "SutClass", ...}\' to specify SUT names.')
             print("Example:")
-            proposed = {p: TestSplitter._snake_to_pascal(p) for p in auto}
             print(f"  --mapping '{json.dumps(proposed)}'")
             print("\nRe-run with --mapping to split. Use --dry-run to preview first.")
             return 0
@@ -301,36 +312,50 @@ class TestSplitter:
         # Group methods by SUT
         groups = TestSplitter._group_methods(test_methods, mapping)
 
-        print(f"\nProposed split ({len(groups)} groups):")
-        for sut, methods in sorted(groups.items()):
-            if sut == "_unmatched":
-                print(f"\n  _unmatched ({len(methods)} methods):")
-                for m in methods:
-                    print(f"    {m.name}")
-                print("    (No prefix matched — review and add to mapping)")
-            else:
-                print(f"\n  {sut} -> Test{sut} ({len(methods)} methods):")
-                for m in methods:
-                    print(f"    {m.name}")
+        result["groups"] = {
+            sut: [m.name for m in methods] for sut, methods in sorted(groups.items())
+        }
 
-        if "_unmatched" in groups:
-            unmatched = groups["_unmatched"]
-            print(f"\n⚠  {len(unmatched)} methods unmatched. Add their prefixes to --mapping")
-            print("   or they will be placed in a separate _unmatched test file.")
-
-        if args.dry_run:
-            print("\n--dry-run: no files written.")
-            return 0
-
-        # Determine output directory
-        if args.out:
-            out_dir = Path(args.out)
+        if args.json:
+            if args.dry_run:
+                result["dry_run"] = True
+                print(json.dumps(result, indent=2))
+                return 0
         else:
-            out_dir = Path(".zolletta-metaskill/test_split") / test_file.stem
+            print("=" * 70)
+            print(f"TEST SPLITTER — {test_file.name}")
+            print("=" * 70)
+            print(f"\nClass: {class_node.name}")
+            print(f"Test methods: {len(test_methods)}")
+            print(f"Shared methods (fixtures/helpers): {len(shared_methods)}")
+            print(f"\nProposed split ({len(groups)} groups):")
+            for sut, methods in sorted(groups.items()):
+                if sut == "_unmatched":
+                    print(f"\n  _unmatched ({len(methods)} methods):")
+                    for m in methods:
+                        print(f"    {m.name}")
+                    print("    (No prefix matched — review and add to mapping)")
+                else:
+                    print(f"\n  {sut} -> Test{sut} ({len(methods)} methods):")
+                    for m in methods:
+                        print(f"    {m.name}")
+
+            if "_unmatched" in groups:
+                unmatched = groups["_unmatched"]
+                print(f"\n⚠  {len(unmatched)} methods unmatched. Add their prefixes to --mapping")
+                print("   or they will be placed in a separate _unmatched test file.")
+
+            if args.dry_run:
+                print("\n--dry-run: no files written.")
+                return 0
+
+        # Output directory: <runs_dir>/test_split/<test_file stem>
+        settings = ProjectConfig.load_settings()
+        out_dir = ProjectConfig.runs_dir(settings) / "test_split" / test_file.stem
 
         out_dir.mkdir(parents=True, exist_ok=True)
-        print(f"\nWriting split files to: {out_dir}/")
 
+        written: list[str] = []
         for sut, methods in sorted(groups.items()):
             if sut == "_unmatched" and not methods:  # pragma: no cover
                 continue
@@ -340,9 +365,18 @@ class TestSplitter:
                 tree, class_node, sut, methods, shared_methods, class_node.name
             )
             filepath.write_text(content, encoding="utf-8")
-            print(f"  {filename} ({len(methods)} test methods)")
+            written.append(filename)
 
-        print(f"\nDone. {len(groups)} files written to {out_dir}/")
+        if args.json:
+            result["out_dir"] = str(out_dir)
+            result["written"] = written
+            print(json.dumps(result, indent=2))
+            return 0
+
+        print(f"\nWriting split files to: {out_dir}/")
+        for filename in written:
+            print(f"  {filename}")
+        print(f"\nDone. {len(written)} files written to {out_dir}/")
         print("Review the split files, then move them to replace the original.")
         print(f"Original file {test_file} was NOT modified.")
         return 0

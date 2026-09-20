@@ -488,7 +488,7 @@ A **God class** is not defined by size (lines, methods, attributes). It is defin
 **File length** is enforced deterministically by `file_length_scanner.py` (language-agnostic — it counts lines; it scans the extensions of the project's configured language(s), reads the limit from `max_file_length` in `settings.json`, and skips anything git ignores):
 
 ```bash
-python3 src/zolletta_metaskill/code_style/general/file_length_scanner.py src/
+python3 src/zolletta_metaskill/code_style/general/file_length_scanner.py
 ```
 
 **Manual triage** (when AST scripts are unavailable — e.g. PHP, Java):

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import json
 import sys
 from pathlib import Path
 
@@ -10,6 +11,24 @@ import pytest
 
 from zolletta_metaskill.code_style.python.docstring_streamliner import DocstringStreamliner
 from zolletta_metaskill.code_style.python.structs import FileReport
+
+
+def _write_settings(dirpath: Path, **overrides: object) -> Path:
+    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
+    settings: dict[str, object] = {
+        "language": "python",
+        "python": {
+            "code_style": {},
+            "paths": {"source": ["src"], "tests": ["tests"], "package": "mypkg"},
+        },
+        "php": None,
+    }
+    settings.update(overrides)
+    meta = dirpath / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    path = meta / "settings.json"
+    path.write_text(json.dumps(settings))
+    return path
 
 # ---------------------------------------------------------------------------
 # _is_section_header
@@ -767,11 +786,17 @@ class TestApplyEdits:
 
 
 class TestRel:
-    def test_rel_relative_path_returns_foo_py(self) -> None:
-        assert DocstringStreamliner._rel(Path("src/foo.py"), Path("src")) == "foo.py"
+    def test_rel_relative_path_returns_foo_py(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        assert DocstringStreamliner._rel(Path("src/foo.py").resolve()) == "src/foo.py"
 
-    def test_rel_not_relative_returns_other_foo_py(self) -> None:
-        assert DocstringStreamliner._rel(Path("/other/foo.py"), Path("src")) == "/other/foo.py"
+    def test_rel_not_relative_returns_other_foo_py(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        assert DocstringStreamliner._rel(Path("/other/foo.py")) == "/other/foo.py"
 
 
 # ---------------------------------------------------------------------------
@@ -783,7 +808,7 @@ class TestPrintReport:
     def test_print_report_no_findings_contains_all_clear(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        total = DocstringStreamliner.print_report([], Path("src"), apply_mode=False)
+        total = DocstringStreamliner.print_report([], apply_mode=False)
         captured = capsys.readouterr()
         assert total == 0
         assert "all clear" in captured.out
@@ -802,7 +827,7 @@ class TestPrintReport:
         )
         assert finding is not None
         report = FileReport(path=Path("src/mod.py"), findings=[finding])
-        total = DocstringStreamliner.print_report([report], Path("src"), apply_mode=False)
+        total = DocstringStreamliner.print_report([report], apply_mode=False)
         captured = capsys.readouterr()
         assert total == 1
         assert "Redundant" in captured.out
@@ -821,7 +846,7 @@ class TestPrintReport:
         )
         assert finding is not None
         report = FileReport(path=Path("src/mod.py"), findings=[finding])
-        total = DocstringStreamliner.print_report([report], Path("src"), apply_mode=True)
+        total = DocstringStreamliner.print_report([report], apply_mode=True)
         captured = capsys.readouterr()
         assert total == 1
         assert "apply mode" in captured.out
@@ -833,70 +858,117 @@ class TestPrintReport:
 
 
 class TestMain:
-    def test_readouterr_skip_flag_contains_skipped(
-        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "src", "--skip"])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
-        assert rc == 0
-        assert "SKIPPED" in captured.out
+    """Tests for DocstringStreamliner.main()."""
 
-    def test_readouterr_nonexistent_directory_contains_does_not_exist(
-        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "/nonexistent/path/xyz"])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
-        assert rc == 1
-        assert "does not exist" in captured.err
+    def _run(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]
+    ) -> int:
+        """Chdir into tmp_path and run main() with *argv*."""
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", argv)
+        return DocstringStreamliner.main()
 
-    def test_readouterr_no_findings_contains_all_clear(
+    def test_check_disabled_reports_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(
+            tmp_path,
+            python={"code_style": {"check_docstring_no_type_repeat": False}},
+        )
+        (tmp_path / "src").mkdir()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "SKIPPED" in out
+
+    def test_check_disabled_json(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(
+            tmp_path,
+            python={"code_style": {"check_docstring_no_type_repeat": False}},
+        )
+        (tmp_path / "src").mkdir()
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["skipped"] is True
+
+    def test_missing_src_reports_error(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        err = capsys.readouterr().err
+        assert rc == 1
+        assert "no configured Python source directories" in err
+
+    def test_no_findings_contains_all_clear(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text(
             'def f(x: int) -> None:\n    """Summary."""\n    pass\n',
             encoding="utf-8",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
         assert rc == 0
-        assert "all clear" in captured.out
+        assert "all clear" in out
 
     def test_findings_dry_run(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text(
             'def f(x: int) -> None:\n    """Summary.\n\nArgs:\n    x: int"""\n    pass\n',
             encoding="utf-8",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
         assert rc == 0
-        assert "dry-run" in captured.out
+        assert "dry-run" in out
 
-    def test_module_strict_flag_returns_1(
+    def test_findings_report_only(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        """Findings never produce a non-zero exit code."""
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text(
             'def f(x: int) -> None:\n    """Summary.\n\nArgs:\n    x: int"""\n    pass\n',
             encoding="utf-8",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--strict"])
-        rc = DocstringStreamliner.main()
-        assert rc == 1
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
 
-    def test_readouterr_apply_flag_excludes_value(
+    def test_json_output(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "mod.py").write_text(
+            'def f(x: int) -> None:\n    """Summary.\n\nArgs:\n    x: int"""\n    pass\n',
+            encoding="utf-8",
+        )
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["total"] == 1
+        assert report["apply_mode"] is False
+        assert report["findings"][0]["kind"] == "redundant"
+        assert "src" in report["directories"]
+
+    def test_apply_flag_writes_changes(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         mod = src / "mod.py"
@@ -904,33 +976,38 @@ class TestMain:
             'def f(x: int) -> None:\n    """Summary.\n\nArgs:\n    x: int"""\n    pass\n',
             encoding="utf-8",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--apply"])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--apply"])
+        out = capsys.readouterr().out
         assert rc == 0
-        assert "apply mode" in captured.out
-        # The file should have been modified
+        assert "apply mode" in out
         new_content = mod.read_text(encoding="utf-8")
         assert "Args:" not in new_content
 
-    def test_strip_private_flag(
+    def test_strip_private_setting(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(
+            tmp_path,
+            python={"code_style": {"docstring_strip_private": True}},
+        )
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text(
             'def _helper() -> None:\n    """Helper."""\n    pass\n',
             encoding="utf-8",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--strip-private"])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
         assert rc == 0
-        assert "Private" in captured.out
+        assert "Private" in out
 
-    def test_strip_tests_flag(
+    def test_strip_tests_setting(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(
+            tmp_path,
+            python={"code_style": {"docstring_strip_tests": True}},
+        )
         src = tmp_path / "src"
         tests = src / "tests"
         tests.mkdir(parents=True)
@@ -938,30 +1015,36 @@ class TestMain:
             'def test_foo() -> None:\n    """Test foo."""\n    pass\n',
             encoding="utf-8",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--strip-tests"])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
         assert rc == 0
-        assert "Test function" in captured.out
+        assert "Test function" in out
 
-    def test_strip_nested_flag(
+    def test_strip_nested_setting(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(
+            tmp_path,
+            python={"code_style": {"docstring_strip_nested": True}},
+        )
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text(
             'def outer():\n    def inner():\n        """Nested."""\n        pass\n    pass\n',
             encoding="utf-8",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--strip-nested"])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
         assert rc == 0
-        assert "Nested" in captured.out
+        assert "Nested" in out
 
-    def test_strip_obvious_init_flag(
+    def test_strip_obvious_init_setting(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(
+            tmp_path,
+            python={"code_style": {"docstring_strip_obvious_init": True}},
+        )
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text(
@@ -971,45 +1054,46 @@ class TestMain:
             "        pass\n",
             encoding="utf-8",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--strip-obvious-init"])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
         assert rc == 0
-        assert "obvious" in captured.out.lower()
+        assert "obvious" in out.lower()
 
-    def test_readouterr_ignore_dirs_contains_all_clear(
+    def test_empty_directory_contains_all_clear(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        src = tmp_path / "src"
-        skip = src / "skipme"
-        skip.mkdir(parents=True)
-        (skip / "mod.py").write_text(
-            'def f(x: int) -> None:\n    """Summary.\n\nArgs:\n    x: int"""\n    pass\n',
-            encoding="utf-8",
-        )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--ignore-dirs", "skipme"])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
+        _write_settings(tmp_path)
+        (tmp_path / "src").mkdir()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
         assert rc == 0
-        assert "all clear" in captured.out
-
-    def test_readouterr_empty_directory_contains_all_clear(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        src = tmp_path / "src"
-        src.mkdir()
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
-        assert rc == 0
-        assert "all clear" in captured.out
+        assert "all clear" in out
 
     def test_syntax_error_file_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "bad.py").write_text("def f(:\n    pass\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = DocstringStreamliner.main()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         assert rc == 0
+
+    def test_gitignored_files_skipped(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import subprocess
+
+        subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+        (tmp_path / ".gitignore").write_text("ignored/\n")
+        _write_settings(tmp_path)
+        ignored = tmp_path / "src" / "ignored"
+        ignored.mkdir(parents=True)
+        (ignored / "mod.py").write_text(
+            'def f(x: int) -> None:\n    """Summary.\n\nArgs:\n    x: int"""\n    pass\n',
+            encoding="utf-8",
+        )
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "all clear" in out

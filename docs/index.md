@@ -4,7 +4,7 @@ status: stable
 skills: [setup, review, patterns, documentor, python-*]
 ---
 
-![zolletta-metaskill](../assets/zolletta-meta-skill-192.png)
+![zolletta-metaskill](assets/zolletta-meta-skill-192.png)
 
 A family of generic code review skills with specializations for Python and PHP (other languages in progress).
 

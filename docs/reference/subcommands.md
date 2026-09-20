@@ -10,7 +10,7 @@ Zolletta-MetaSkill is invoked as `/zolletta-metaskill <subcommand>`. Each subcom
 
 ## Subcommand table
 
-The canonical subcommand table is owned by the `help` skill — see [`skills/help/SKILL.md`](../../skills/help/SKILL.md) for the full list.
+The canonical subcommand table is owned by the `help` skill — see [`skills/help/SKILL.md`](https://github.com/Zolletta/zolletta-metaskill/blob/main/skills/help/SKILL.md) for the full list.
 The table is displayed when the user runs `/zolletta-metaskill` with no argument or `/zolletta-metaskill help`.
 
 ## Setup guard

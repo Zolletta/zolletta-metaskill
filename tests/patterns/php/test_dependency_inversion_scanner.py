@@ -10,18 +10,19 @@ dependency is not installed.
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
 import pytest
 
-from zolletta_metaskill.core.engine.php_engine import _have_tree_sitter_php
+from zolletta_metaskill.core.engine.php_engine import PHPEngine
 from zolletta_metaskill.core.structs import Finding
 from zolletta_metaskill.patterns.php.dependency_inversion_scanner import (
     DependencyInversionScanner,
 )
 
-TS_PHP_AVAILABLE = _have_tree_sitter_php()
+TS_PHP_AVAILABLE = PHPEngine._have_tree_sitter_php()
 _skip_no_ts = pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
 
 
@@ -334,20 +335,74 @@ class TestScanModule:
 # ---------------------------------------------------------------------------
 
 
+def _write_settings(dirpath: Path, **overrides: object) -> Path:
+    """Write a minimal PHP settings.json under ``dirpath/.zolletta-metaskill``."""
+    settings: dict[str, object] = {
+        "language": "php",
+        "python": None,
+        "php": {
+            "autoload": {"psr-4": {"App\\": "src/"}},
+            "patterns": {},
+        },
+    }
+    php_overrides = overrides.pop("php", None)
+    if isinstance(php_overrides, dict):
+        base_php = settings["php"]
+        assert isinstance(base_php, dict)
+        for key, value in php_overrides.items():
+            if isinstance(value, dict) and isinstance(base_php.get(key), dict):
+                base_php[key].update(value)
+            else:
+                base_php[key] = value
+    settings.update(overrides)
+    meta = dirpath / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    path = meta / "settings.json"
+    path.write_text(json.dumps(settings))
+    return path
+
+
+def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
+    """Chdir into tmp_path and run main() with *argv*."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", argv)
+    return DependencyInversionScanner.main()
+
+
+_DIP_VIOLATION = (
+    "<?php\nclass Bad {\n"
+    "    public function __construct() {\n"
+    "        $this->dep = new Dep();\n"
+    "    }\n}\n"
+)
+
+
 class TestMain:
     """Tests for ``main()`` CLI entry point."""
 
-    def test_readouterr_main_skip_contains_skipped(
+    def test_check_disabled_reports_skipped(
         self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "--skip"])
-        rc = DependencyInversionScanner.main()
+        _write_settings(tmp_path, php={"patterns": {"check_dip": False}})
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "SKIPPED" in out
+
+    def test_check_disabled_json(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _write_settings(tmp_path, php={"patterns": {"check_dip": False}})
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert json.loads(out)["skipped"] is True
 
     def test_main_missing_dir(
         self,
@@ -355,12 +410,11 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        missing = tmp_path / "nonexistent"
-        monkeypatch.setattr(sys, "argv", ["prog", str(missing)])
-        rc = DependencyInversionScanner.main()
+        _write_settings(tmp_path)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "does not exist" in err
+        assert "source" in err
 
     @_skip_no_ts
     def test_main_all_clear(
@@ -369,17 +423,15 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        root = tmp_path / "src"
-        root.mkdir()
+        _write_settings(tmp_path)
         _write_php(
-            root / "Good.php",
+            tmp_path / "src" / "Good.php",
             "<?php\nclass Good {\n"
             "    public function __construct(Dep $dep) {\n"
             "        $this->dep = $dep;\n"
             "    }\n}\n",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
-        rc = DependencyInversionScanner.main()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
@@ -391,40 +443,28 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        root = tmp_path / "src"
-        root.mkdir()
-        _write_php(
-            root / "Bad.php",
-            "<?php\nclass Bad {\n"
-            "    public function __construct() {\n"
-            "        $this->dep = new Dep();\n"
-            "    }\n}\n",
-        )
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
-        rc = DependencyInversionScanner.main()
+        _write_settings(tmp_path)
+        _write_php(tmp_path / "src" / "Bad.php", _DIP_VIOLATION)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "DIP violations" in out
         assert "Dep" in out
+        assert "report-only" in out
 
     @_skip_no_ts
-    def test_main_strict_mode(
+    def test_main_json_output(
         self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        root = tmp_path / "src"
-        root.mkdir()
-        _write_php(
-            root / "Bad.php",
-            "<?php\nclass Bad {\n"
-            "    public function __construct() {\n"
-            "        $this->dep = new Dep();\n"
-            "    }\n}\n",
-        )
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--strict"])
-        rc = DependencyInversionScanner.main()
+        _write_settings(tmp_path)
+        _write_php(tmp_path / "src" / "Bad.php", _DIP_VIOLATION)
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
         out = capsys.readouterr().out
-        assert rc == 1
-        assert "strict mode" in out
+        assert rc == 0
+        payload = json.loads(out)
+        assert payload["violation_count"] == 1
+        assert payload["scanned_files"] == 1
+        assert payload["violations"][0]["severity"] == "medium"

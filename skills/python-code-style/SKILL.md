@@ -81,13 +81,12 @@ Class names keep acronyms fully uppercase: `HTTPClientFactory`, not `HttpClientF
 - **Enforcement**: `acronym_casing_scanner.py` from `../../src/zolletta_metaskill/code_style/python/` (deterministic). The scanner splits each PascalCase class name into words, checks each word against the configured acronym list, and flags any word that case-insensitively matches an acronym but isn't all-uppercase.
 
 ```bash
-python3 ../../src/zolletta_metaskill/code_style/python/acronym_casing_scanner.py src/ --acronyms CI,MR,AST,DI
+python3 ../../src/zolletta_metaskill/code_style/python/acronym_casing_scanner.py
 ```
 
 The acronym list is built additively:
 1. **Shipped base**: `python-code-style/assets/acronyms.json` (common SE acronyms: CI, CD, CICD, HTTP, HTTPS, JSON, SQL, URL, etc.) — always loaded
 2. **Project-specific**: the top-level `acronyms` array in `settings.json` — merged with the shipped list (additive, not replacing). Use this for domain-specific acronyms not in the shipped list (e.g. `XML`, `SVG`)
-3. **`--acronyms` CLI flag**: fully replaces both (for testing/debugging only)
 
 To configure project-specific acronyms, add them to `settings.json`:
 ```json
@@ -174,7 +173,7 @@ Source files must not exceed `max_file_length` lines (default: `800`, read from 
 - **Enforcement**: `file_length_scanner.py` from `../../src/zolletta_metaskill/code_style/general/` (deterministic, language-agnostic).
 
 ```bash
-python3 ../../src/zolletta_metaskill/code_style/general/file_length_scanner.py src/
+python3 ../../src/zolletta_metaskill/code_style/general/file_length_scanner.py
 ```
 
 > The scanner is the single source of truth for this rule. Do not manually flag files that the scanner doesn't flag — the line count against the configured threshold is the objective criterion.
@@ -288,7 +287,7 @@ If `python.tools.vulture.available` is `false` in `settings.json`, skip dead-cod
 **Supplementary check — unused `__all__` exports:** vulture treats every name in `__all__` as "used" (public API export), so it never flags `__all__` entries that are never imported anywhere. This is a known gap. After running vulture, also run:
 
 ```bash
-python3 ../../src/zolletta_metaskill/code_style/python/unused_all_exports_scanner.py src/
+python3 ../../src/zolletta_metaskill/code_style/python/unused_all_exports_scanner.py
 ```
 
 This scanner cross-references every `__all__` entry against actual import statements across the source tree. Names listed in `__all__` but never imported by any other module are reported as unused exports. Report these as low-priority findings (same severity as vulture findings).
@@ -301,7 +300,7 @@ When this skill runs a review, it writes its findings to a markdown file using t
 
 - **Path**: `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/python-code-style.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`; `runs_dir` from `settings.json`, default `.zolletta-metaskill`)
 - **Compound skills** (e.g. `zolletta-metaskill-review`) may override the folder and filename — follow their instructions instead
-- **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the [setup guard](../SKILL.md#setup-guard) — no manual setup needed
+- **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the [setup guard](../../SKILL.md#setup-guard) — no manual setup needed
 - **Format**: follow the [report template](assets/report_template.md) — grade at the top, tool results (ruff, type checker, vulture), auto-fixable issues (informational, do not count toward grade), findings grouped by severity with file/symbol/rule ID/issue/fix columns
 
 ## Attribution

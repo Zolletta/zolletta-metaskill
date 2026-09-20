@@ -45,9 +45,11 @@ python3 src/zolletta_metaskill/patterns/python/test_splitter.py <test_file> \
 |--------------------|----------------------------------------------|------------------------------------------------------|
 | `<test_file>`      | (required)                                   | Path to the test .py file to split                   |
 | `--mapping <json>` | (none)                                       | JSON file or inline JSON mapping prefix to SUT class |
-| `--out <dir>`      | `.zolletta-metaskill/test_split/<filename>/` | Output directory                                     |
 | `--class <name>`   | first test class                             | Name of the test class to split                      |
 | `--dry-run`        | off                                          | Show the proposed split without writing files        |
+| `--json`           | off                                          | Output the split plan as JSON                        |
+
+Split files are written under `<runs_dir>/test_split/<filename>/` — `runs_dir` defaults to `.zolletta-metaskill/` in `settings.json`.
 
 ## Workflow
 
