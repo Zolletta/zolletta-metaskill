@@ -47,7 +47,7 @@ Consistent code style and clear documentation make codebases maintainable and co
 | 14 | Docstrings | No type repetition in docstring Args/Returns              | `check_docstring_no_type_repeat` | `true`  |
 | 18 | Docstrings | Skip docstrings for obvious one-line functions            | `check_skip_obvious_docstrings`  | `true`  |
 | 20 | Formatting | Line length from project config                           | `check_line_length`              | `true`  |
-| 21 | Structure  | File length limit                                         | `check_file_length`, `max_file_length` | `true`, `300` |
+| 21 | Structure  | File length limit                                         | `check_file_length`, `max_file_length` | `true`, `800` |
 | 22 | Dead code  | Vulture minimum confidence + unused `__all__` exports     | `vulture_min_confidence`         | `80`    |
 
 ## Detailed rule explanations
@@ -169,7 +169,7 @@ The filename is the snake_case form of the class name: `user_repository.py` → 
 
 **#21 — File length limit** *(configurable: `check_file_length`, `max_file_length`)*
 
-Source files must not exceed `max_file_length` lines (default: `300`, read from `python.code_style.max_file_length` in `settings.json`). File length is one of the low-hanging-fruit maintainability sensors for catching AI failure modes (Martin Fowler — *Maintainability sensors for coding agents*): overly long files usually signal a module doing too much. Some files legitimately exceed the limit (generated code, large enums) — exempt them via the scanner's `--exclude` flag or raise `max_file_length` for the project.
+Source files must not exceed `max_file_length` lines (default: `800`, read from `python.code_style.max_file_length` in `settings.json`). File length is one of the low-hanging-fruit maintainability sensors for catching AI failure modes (Martin Fowler — *Maintainability sensors for coding agents*): overly long files usually signal a module doing too much. Some files legitimately exceed the limit (generated code, large enums) — exempt them via the scanner's `--exclude` flag or raise `max_file_length` for the project.
 
 - **Enforcement**: `file_length_scanner.py` from `../../src/zolletta_metaskill/code_style/general/` (deterministic, language-agnostic).
 

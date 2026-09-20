@@ -243,7 +243,7 @@
         "check_skip_obvious_docstrings":  { "type": "boolean", "default": true },
         "check_line_length":              { "type": "boolean", "default": true },
         "check_file_length":              { "type": "boolean", "default": true },
-        "max_file_length":                { "type": "integer", "minimum": 1, "default": 300 },
+        "max_file_length":                { "type": "integer", "minimum": 1, "default": 800 },
         "vulture_min_confidence":         { "type": "integer", "minimum": 0, "maximum": 100, "default": 80 }
       }
     },
@@ -381,7 +381,7 @@
         "check_array_functions":        { "type": "boolean", "default": true },
         "check_string_functions":       { "type": "boolean", "default": true },
         "check_file_length":            { "type": "boolean", "default": true },
-        "max_file_length":              { "type": "integer", "minimum": 1, "default": 300 }
+        "max_file_length":              { "type": "integer", "minimum": 1, "default": 800 }
       }
     },
 

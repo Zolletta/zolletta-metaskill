@@ -4,29 +4,37 @@
 Language-agnostic sensor for the "file length" rule from Martin Fowler's
 *Maintainability sensors for coding agents* ("Rules for typical AI
 shortcomings"). Line count is trivial to compute for any language, so the
-scanner does not use a parsing engine — it selects files by extension and
-counts lines.
+scanner does not parse code — it counts lines.
+
+Which files are scanned:
+
+- The project's language is read from ``.zolletta-metaskill/settings.json``
+  (top-level ``language`` plus any ``<language>.code_style`` section), and
+  mapped to file extensions via the engine registry (``python`` → ``.py``,
+  ``php`` → ``.php``). When settings.json is absent or the language has no
+  registered engine, every registered engine's extensions are scanned.
+- Files ignored by git (``.gitignore``, ``.git/info/exclude``,
+  ``core.excludesFile``) are skipped — this is what keeps ``vendor/``,
+  ``node_modules/``, build output, etc. out of the report. Outside a git
+  repository every file matching the extensions is scanned.
 
 Usage:
     python3 file_length_scanner.py [directory] [--max-lines N]
-        [--extensions .py,.php] [--exclude pat1,pat2]
-        [--ignore-dirs d1,d2] [--strict] [--json] [--skip]
+        [--settings PATH] [--exclude pat1,pat2]
+        [--strict] [--json] [--skip]
 
 Arguments:
     directory       Root directory to scan (default: src)
 
 Options:
-    --max-lines N   Maximum allowed lines per file (default: 300). Read from
+    --max-lines N   Maximum allowed lines per file (default: 800). Read from
                     ``python.code_style.max_file_length`` or
                     ``php.code_style.max_file_length`` in settings.json.
-    --extensions    Comma-separated file extensions to scan (default: .py).
-                    Pass ``.php`` for PHP projects.
+    --settings      Path to settings.json to read the project language from
+                    (default: .zolletta-metaskill/settings.json).
     --exclude       Comma-separated filename glob patterns to skip
-                    (e.g. ``*_pb2.py,generated_*.py``) — for generated code or
-                    other files that legitimately exceed the limit.
-    --ignore-dirs   Comma-separated directory names to skip.
-                    ``__pycache__`` and common dependency/build directories
-                    are always skipped.
+                    (e.g. ``*_pb2.py``) — for generated code or other files
+                    that legitimately exceed the limit.
     --strict        Exit with code 1 if violations are found.
     --json          Output as JSON instead of text.
     --skip          Skip this check entirely (exit 0 with 'skipped' message).
@@ -40,21 +48,124 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from collections.abc import Sequence
 from fnmatch import fnmatch
 from pathlib import Path
+from typing import Any
 
+from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
+from zolletta_metaskill.core.engine.php_engine import PHPEngine
+from zolletta_metaskill.core.engine.python_engine import PythonEngine
 from zolletta_metaskill.core.structs import Finding
 
 
 class FileLengthScanner:
     """Flag files that exceed a configurable maximum line count."""
 
-    DEFAULT_MAX_LINES = 300
-    DEFAULT_IGNORE_DIRS = frozenset(
-        {"__pycache__", ".venv", "venv", ".tox", "dist", "build", "node_modules", "vendor"}
-    )
+    DEFAULT_MAX_LINES = 800
+    DEFAULT_SETTINGS_PATH = Path(".zolletta-metaskill/settings.json")
+
+    @staticmethod
+    def _ensure_engines() -> None:
+        """Register the bundled engines so extensions can be resolved."""
+        EngineRegistry.ensure(PythonEngine())
+        EngineRegistry.ensure(PHPEngine())
+
+    @staticmethod
+    def _load_settings(settings_path: Path) -> dict[str, Any]:
+        """Return parsed settings.json, or an empty dict if unreadable."""
+        try:
+            data = json.loads(settings_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {}
+        return data if isinstance(data, dict) else {}
+
+    @staticmethod
+    def resolve_extensions(settings_path: Path) -> set[str]:
+        """Return the file extensions to scan for the project.
+
+        Languages come from settings.json — the top-level ``language`` field
+        plus each ``<language>`` section that has a registered engine (so
+        polyglot projects scan every configured language). If no usable
+        language is found, fall back to every registered engine's extensions.
+        """
+        FileLengthScanner._ensure_engines()
+        settings = FileLengthScanner._load_settings(settings_path)
+        registered = set(EngineRegistry.available_languages())
+
+        languages: set[str] = set()
+        language = settings.get("language")
+        if isinstance(language, str) and language:
+            languages.add(language)
+        languages.update(lang for lang in registered if lang in settings)
+
+        extensions: set[str] = set()
+        for lang in sorted(languages & registered):
+            extensions.update(EngineRegistry.get(lang).file_extensions())
+        for lang in sorted(languages - registered):
+            print(f"Warning: no engine for language '{lang}'", file=sys.stderr)
+
+        if not extensions:
+            for lang in sorted(registered):
+                extensions.update(EngineRegistry.get(lang).file_extensions())
+        return extensions
+
+    @staticmethod
+    def _git_files(root: Path) -> list[Path] | None:
+        """Return non-ignored files under *root*, or ``None`` outside a git repo.
+
+        Uses ``git ls-files`` so tracked files are always included and
+        untracked files are filtered by every exclude source git honours
+        (.gitignore, .git/info/exclude, core.excludesFile). Paths outside
+        *root* (shown with ``../`` prefixes) are dropped.
+        """
+        try:
+            result = subprocess.run(
+                ["git", "-C", str(root), "ls-files", "-c", "-o", "--exclude-standard", "-z"],
+                capture_output=True,
+                timeout=30,
+            )
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            return None
+        if result.returncode != 0:
+            return None
+        files = []
+        for rel in result.stdout.decode("utf-8", errors="surrogateescape").split("\0"):
+            if not rel or rel.startswith("../"):
+                continue
+            path = root / rel
+            if path.is_file():
+                files.append(path)
+        return files
+
+    @staticmethod
+    def _iter_files(
+        root: Path,
+        extensions: set[str],
+        exclude: Sequence[str],
+    ) -> list[Path]:
+        """Return files under *root* matching *extensions*, sorted by path.
+
+        Git-ignored files are skipped when *root* is inside a repository;
+        outside a repo every matching file is returned. Files whose name or
+        root-relative path matches a glob in *exclude* are dropped.
+        """
+        candidates = FileLengthScanner._git_files(root)
+        if candidates is None:
+            candidates = [p for p in root.rglob("*") if p.is_file()]
+        files = []
+        for path in candidates:
+            if path.suffix.lower() not in extensions:
+                continue
+            if exclude and any(
+                fnmatch(path.name, pattern) or fnmatch(str(path.relative_to(root)), pattern)
+                for pattern in exclude
+            ):
+                continue
+            files.append(path)
+        return sorted(files)
 
     @staticmethod
     def count_lines(path: Path) -> int:
@@ -68,48 +179,6 @@ class FileLengthScanner:
         if not data:
             return 0
         return data.count(b"\n") + (0 if data.endswith(b"\n") else 1)
-
-    @staticmethod
-    def _parse_extensions(raw: str) -> set[str]:
-        """Normalize a comma-separated extension list to dot-prefixed lowercase.
-
-        Accepts entries with or without a leading dot (``"py,.php"``).
-        Returns ``{".py"}`` when the list is empty.
-        """
-        extensions = set()
-        for part in raw.split(","):
-            part = part.strip().lower()
-            if part:
-                extensions.add(part if part.startswith(".") else f".{part}")
-        return extensions or {".py"}
-
-    @staticmethod
-    def _iter_files(
-        root: Path,
-        extensions: set[str],
-        ignore_dirs: set[str] | None,
-        exclude: Sequence[str],
-    ) -> list[Path]:
-        """Return matching files under *root*, sorted by path.
-
-        ``__pycache__`` and the entries of ``DEFAULT_IGNORE_DIRS`` are always
-        skipped, along with any directory named in *ignore_dirs* and any file
-        whose name or root-relative path matches a glob in *exclude*.
-        """
-        ignored = FileLengthScanner.DEFAULT_IGNORE_DIRS | (ignore_dirs or set())
-        files = []
-        for path in root.rglob("*"):
-            if not path.is_file() or path.suffix.lower() not in extensions:
-                continue
-            if any(part in ignored for part in path.parts):
-                continue
-            if exclude and any(
-                fnmatch(path.name, pattern) or fnmatch(str(path.relative_to(root)), pattern)
-                for pattern in exclude
-            ):
-                continue
-            files.append(path)
-        return sorted(files)
 
     @staticmethod
     def scan_file(path: Path, max_lines: int = DEFAULT_MAX_LINES) -> list[Finding]:
@@ -135,18 +204,22 @@ class FileLengthScanner:
     def scan_directory(
         root: Path,
         max_lines: int = DEFAULT_MAX_LINES,
-        extensions: set[str] | None = None,
-        ignore_dirs: set[str] | None = None,
         exclude: Sequence[str] = (),
+        extensions: set[str] | None = None,
+        settings_path: Path | None = None,
     ) -> list[Finding]:
-        """Scan all matching files under *root* for file-length violations.
+        """Scan matching files under *root* for file-length violations.
 
-        Files that cannot be read are skipped with a warning on stderr.
+        When *extensions* is omitted it is resolved from *settings_path*
+        (default ``.zolletta-metaskill/settings.json``). Files that cannot be
+        read are skipped with a warning on stderr.
         """
+        if extensions is None:
+            extensions = FileLengthScanner.resolve_extensions(
+                settings_path or FileLengthScanner.DEFAULT_SETTINGS_PATH
+            )
         findings: list[Finding] = []
-        for path in FileLengthScanner._iter_files(
-            root, extensions or {".py"}, ignore_dirs, exclude
-        ):
+        for path in FileLengthScanner._iter_files(root, extensions, exclude):
             try:
                 findings.extend(FileLengthScanner.scan_file(path, max_lines))
             except OSError:
@@ -157,8 +230,8 @@ class FileLengthScanner:
     def main() -> int:
         """Entry point for the file length scanner CLI."""
         parser = argparse.ArgumentParser(
-            description="Flag files that exceed a maximum line count "
-            "(language-agnostic; selects files by extension)."
+            description="Flag source files that exceed a maximum line count "
+            "(language-agnostic; counts lines)."
         )
         parser.add_argument(
             "directory",
@@ -170,23 +243,18 @@ class FileLengthScanner:
             "--max-lines",
             type=int,
             default=FileLengthScanner.DEFAULT_MAX_LINES,
-            help="Maximum allowed lines per file (default: 300)",
+            help="Maximum allowed lines per file (default: 800)",
         )
         parser.add_argument(
-            "--extensions",
-            default=".py",
-            help="Comma-separated file extensions to scan (default: .py; use .php for PHP)",
+            "--settings",
+            default=None,
+            help="Path to settings.json to read the project language from "
+            "(default: .zolletta-metaskill/settings.json)",
         )
         parser.add_argument(
             "--exclude",
             default="",
-            help="Comma-separated filename glob patterns to skip (e.g. '*_pb2.py,generated_*.py')",
-        )
-        parser.add_argument(
-            "--ignore-dirs",
-            default="",
-            help="Comma-separated directory names to skip "
-            "(__pycache__ and dependency/build dirs are always skipped)",
+            help="Comma-separated filename glob patterns to skip (e.g. '*_pb2.py')",
         )
         parser.add_argument(
             "--strict",
@@ -218,11 +286,13 @@ class FileLengthScanner:
             print(f"Error: directory '{root}' does not exist", file=sys.stderr)
             return 1
 
-        extensions = FileLengthScanner._parse_extensions(args.extensions)
-        ignore_dirs = set(args.ignore_dirs.split(",")) if args.ignore_dirs else set()
+        settings_path = (
+            Path(args.settings) if args.settings else FileLengthScanner.DEFAULT_SETTINGS_PATH
+        )
+        extensions = FileLengthScanner.resolve_extensions(settings_path)
         exclude = [p.strip() for p in args.exclude.split(",") if p.strip()]
 
-        files = FileLengthScanner._iter_files(root, extensions, ignore_dirs, exclude)
+        files = FileLengthScanner._iter_files(root, extensions, exclude)
         violations: list[tuple[Path, int]] = []
         for path in files:
             try:
@@ -258,10 +328,7 @@ class FileLengthScanner:
             print("=" * 70)
             print("FILE LENGTH — VALIDATION REPORT")
             print("=" * 70)
-            print(
-                f"\nScanned {len(files)} files under {root} "
-                f"(extensions: {', '.join(sorted(extensions))}; max {args.max_lines} lines)"
-            )
+            print(f"\nScanned {len(files)} files under {root} (max {args.max_lines} lines)")
 
             if violations:
                 print(f"\n## Files exceeding the limit ({len(violations)} files)\n")

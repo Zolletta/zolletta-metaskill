@@ -44,7 +44,7 @@ Imports must be absolute (no relative imports) when `check_no_relative_imports` 
 
 ### File length
 
-When `check_file_length` is `true`, the skill runs `src/zolletta_metaskill/code_style/general/file_length_scanner.py` to flag files longer than `max_file_length` lines (default: `300`). Files that legitimately exceed the limit (generated code, large enums) can be exempted via the scanner's `--exclude` flag or by raising `max_file_length`.
+When `check_file_length` is `true`, the skill runs `src/zolletta_metaskill/code_style/general/file_length_scanner.py` to flag files longer than `max_file_length` lines (default: `800`). Files that legitimately exceed the limit (generated code, large enums) can be exempted via the scanner's `--exclude` flag or by raising `max_file_length`.
 
 ## Always-on vs configurable rules
 
@@ -71,7 +71,7 @@ Configure rule toggles by editing the `python.code_style` object in `.zolletta-m
     "check_skip_obvious_docstrings": true,
     "check_line_length": true,
     "check_file_length": true,
-    "max_file_length": 300,
+    "max_file_length": 800,
     "vulture_min_confidence": 80
   }
 }

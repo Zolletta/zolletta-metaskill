@@ -131,7 +131,7 @@ See [`documentation/operational-rules.md`](../documentation/operational-rules.md
 | `vendor/bin/psalm`                      | `cache/psalm.txt`        | `php.tools.psalm.available`        |
 | `vendor/bin/php-cs-fixer fix --dry-run` | `cache/php_cs_fixer.txt` | `php.tools.php_cs_fixer.available` |
 | `vendor/bin/phpcs`                      | `cache/phpcs.txt`        | `php.tools.phpcs.available`        |
-| `file_length_scanner.py --extensions .php --max-lines N` | `cache/file_length.txt` | `php.code_style.check_file_length` |
+| `file_length_scanner.py --max-lines N` | `cache/file_length.txt`  | `php.code_style.check_file_length` |
 
 ### `php-testing-style`
 

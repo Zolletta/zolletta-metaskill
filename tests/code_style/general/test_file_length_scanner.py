@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -15,6 +16,23 @@ from zolletta_metaskill.core.structs import Finding
 def _write_lines(path: Path, n: int) -> None:
     """Write a file with exactly *n* lines."""
     path.write_text("\n".join(f"line {i}" for i in range(n)) + "\n")
+
+
+def _write_settings(dirpath: Path, **overrides: object) -> Path:
+    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
+    settings = {"language": "python", "python": {"code_style": {}}}
+    settings.update(overrides)
+    settings = {k: v for k, v in settings.items() if v is not None}
+    meta = dirpath / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    path = meta / "settings.json"
+    path.write_text(json.dumps(settings))
+    return path
+
+
+def _git_init(root: Path) -> None:
+    """Initialise a git repo at *root* so gitignore rules apply."""
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
 
 
 class TestCountLines:
@@ -61,23 +79,40 @@ class TestCountLines:
         assert FileLengthScanner.count_lines(f) == 2
 
 
-class TestParseExtensions:
-    """Tests for FileLengthScanner._parse_extensions()."""
+class TestResolveExtensions:
+    """Tests for FileLengthScanner.resolve_extensions()."""
 
-    def test_single_extension_with_dot(self) -> None:
-        assert FileLengthScanner._parse_extensions(".py") == {".py"}
+    def test_python_language_returns_py(self, tmp_path: Path) -> None:
+        settings = _write_settings(tmp_path, language="python")
+        assert FileLengthScanner.resolve_extensions(settings) == {".py"}
 
-    def test_single_extension_without_dot(self) -> None:
-        assert FileLengthScanner._parse_extensions("php") == {".php"}
+    def test_php_language_returns_php(self, tmp_path: Path) -> None:
+        settings = _write_settings(tmp_path, language="php", python=None, php={"code_style": {}})
+        assert FileLengthScanner.resolve_extensions(settings) == {".php"}
 
-    def test_multiple_extensions(self) -> None:
-        assert FileLengthScanner._parse_extensions(".py,.php") == {".py", ".php"}
+    def test_polyglot_settings_scans_all_configured_languages(self, tmp_path: Path) -> None:
+        settings = _write_settings(tmp_path, language="python", php={"code_style": {}})
+        assert FileLengthScanner.resolve_extensions(settings) == {".py", ".php"}
 
-    def test_empty_input_defaults_to_py(self) -> None:
-        assert FileLengthScanner._parse_extensions("") == {".py"}
+    def test_missing_settings_falls_back_to_all_engines(self, tmp_path: Path) -> None:
+        missing = tmp_path / ".zolletta-metaskill" / "settings.json"
+        assert FileLengthScanner.resolve_extensions(missing) == {".py", ".php"}
 
-    def test_whitespace_and_case_normalized(self) -> None:
-        assert FileLengthScanner._parse_extensions(" PY , .PHP ") == {".py", ".php"}
+    def test_unknown_language_falls_back_to_all_engines(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        settings = _write_settings(tmp_path, language="go", python=None)
+        result = FileLengthScanner.resolve_extensions(settings)
+        err = capsys.readouterr().err
+        assert "no engine for language 'go'" in err
+        assert result == {".py", ".php"}
+
+    def test_invalid_json_falls_back(self, tmp_path: Path) -> None:
+        meta = tmp_path / ".zolletta-metaskill"
+        meta.mkdir()
+        bad = meta / "settings.json"
+        bad.write_text("{ not json")
+        assert FileLengthScanner.resolve_extensions(bad) == {".py", ".php"}
 
 
 class TestScanFile:
@@ -86,17 +121,17 @@ class TestScanFile:
     def test_file_under_limit_returns_empty(self, tmp_path: Path) -> None:
         f = tmp_path / "short.py"
         _write_lines(f, 10)
-        assert FileLengthScanner.scan_file(f, max_lines=300) == []
+        assert FileLengthScanner.scan_file(f, max_lines=800) == []
 
     def test_file_at_limit_returns_empty(self, tmp_path: Path) -> None:
         f = tmp_path / "exact.py"
-        _write_lines(f, 300)
-        assert FileLengthScanner.scan_file(f, max_lines=300) == []
+        _write_lines(f, 800)
+        assert FileLengthScanner.scan_file(f, max_lines=800) == []
 
     def test_file_over_limit_returns_finding(self, tmp_path: Path) -> None:
         f = tmp_path / "long.py"
-        _write_lines(f, 301)
-        findings = FileLengthScanner.scan_file(f, max_lines=300)
+        _write_lines(f, 801)
+        findings = FileLengthScanner.scan_file(f, max_lines=800)
         assert len(findings) == 1
         assert isinstance(findings[0], Finding)
         assert findings[0].category == "file_length"
@@ -106,16 +141,16 @@ class TestScanFile:
 
     def test_finding_line_points_past_limit(self, tmp_path: Path) -> None:
         f = tmp_path / "long.py"
-        _write_lines(f, 350)
-        findings = FileLengthScanner.scan_file(f, max_lines=300)
-        assert findings[0].line == 301
+        _write_lines(f, 850)
+        findings = FileLengthScanner.scan_file(f, max_lines=800)
+        assert findings[0].line == 801
 
     def test_finding_description_includes_counts(self, tmp_path: Path) -> None:
         f = tmp_path / "long.py"
-        _write_lines(f, 350)
-        findings = FileLengthScanner.scan_file(f, max_lines=300)
-        assert "350" in findings[0].description
-        assert "300" in findings[0].description
+        _write_lines(f, 850)
+        findings = FileLengthScanner.scan_file(f, max_lines=800)
+        assert "850" in findings[0].description
+        assert "800" in findings[0].description
 
     def test_custom_max_lines(self, tmp_path: Path) -> None:
         f = tmp_path / "mid.py"
@@ -127,81 +162,117 @@ class TestScanFile:
 class TestScanDirectory:
     """Tests for FileLengthScanner.scan_directory()."""
 
-    def test_scans_only_matching_extension_by_default(self, tmp_path: Path) -> None:
-        root = tmp_path / "src"
-        root.mkdir()
-        _write_lines(root / "long.py", 10)
-        _write_lines(root / "long.php", 10)
-        findings = FileLengthScanner.scan_directory(root, max_lines=5)
-        assert len(findings) == 1
-        assert findings[0].file == str(root / "long.py")
-
-    def test_scans_php_when_extension_given(self, tmp_path: Path) -> None:
-        root = tmp_path / "src"
-        root.mkdir()
-        _write_lines(root / "long.php", 10)
-        _write_lines(root / "long.py", 10)
-        findings = FileLengthScanner.scan_directory(root, max_lines=5, extensions={".php"})
-        assert len(findings) == 1
-        assert findings[0].file == str(root / "long.php")
-
-    def test_scans_multiple_extensions(self, tmp_path: Path) -> None:
+    def test_scans_only_matching_extension(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "a.py", 10)
         _write_lines(root / "b.php", 10)
         _write_lines(root / "c.txt", 10)
-        findings = FileLengthScanner.scan_directory(root, max_lines=5, extensions={".py", ".php"})
-        assert len(findings) == 2
+        findings = FileLengthScanner.scan_directory(root, max_lines=5, extensions={".py"})
+        assert len(findings) == 1
+        assert findings[0].file == str(root / "a.py")
+
+    def test_php_project_scans_php_only(self, tmp_path: Path) -> None:
+        settings = _write_settings(tmp_path, language="php", python=None, php={"code_style": {}})
+        root = tmp_path / "src"
+        root.mkdir()
+        _write_lines(root / "a.py", 10)
+        _write_lines(root / "b.php", 10)
+        findings = FileLengthScanner.scan_directory(root, max_lines=5, settings_path=settings)
+        assert len(findings) == 1
+        assert findings[0].file == str(root / "b.php")
 
     def test_nested_directories_scanned(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
         sub = root / "pkg" / "sub"
         sub.mkdir(parents=True)
         _write_lines(sub / "deep.py", 10)
-        findings = FileLengthScanner.scan_directory(root, max_lines=5)
+        findings = FileLengthScanner.scan_directory(root, max_lines=5, extensions={".py"})
         assert len(findings) == 1
         assert findings[0].file == str(sub / "deep.py")
 
-    def test_pycache_always_ignored(self, tmp_path: Path) -> None:
+    def test_gitignored_file_skipped(self, tmp_path: Path) -> None:
+        _git_init(tmp_path)
+        (tmp_path / ".gitignore").write_text("ignored.py\n")
         root = tmp_path / "src"
-        cache = root / "__pycache__"
-        cache.mkdir(parents=True)
-        _write_lines(cache / "junk.py", 10)
-        findings = FileLengthScanner.scan_directory(root, max_lines=5)
-        assert findings == []
-
-    def test_ignore_dirs_skips_directory(self, tmp_path: Path) -> None:
-        root = tmp_path / "src"
-        gen = root / "generated"
-        gen.mkdir(parents=True)
-        _write_lines(gen / "gen.py", 10)
+        root.mkdir()
+        _write_lines(root / "ignored.py", 10)
         _write_lines(root / "real.py", 10)
-        findings = FileLengthScanner.scan_directory(root, max_lines=5, ignore_dirs={"generated"})
+        findings = FileLengthScanner.scan_directory(root, max_lines=5, extensions={".py"})
         assert len(findings) == 1
         assert findings[0].file == str(root / "real.py")
 
-    def test_vendor_always_ignored(self, tmp_path: Path) -> None:
+    def test_gitignored_directory_skipped(self, tmp_path: Path) -> None:
+        _git_init(tmp_path)
+        (tmp_path / ".gitignore").write_text("vendor/\nbuild/\n")
         root = tmp_path / "src"
         vendor = root / "vendor"
         vendor.mkdir(parents=True)
         _write_lines(vendor / "dep.py", 10)
-        findings = FileLengthScanner.scan_directory(root, max_lines=5)
-        assert findings == []
+        _write_lines(root / "real.py", 10)
+        findings = FileLengthScanner.scan_directory(root, max_lines=5, extensions={".py"})
+        assert len(findings) == 1
+        assert findings[0].file == str(root / "real.py")
+
+    def test_gitignore_wildcard_skipped(self, tmp_path: Path) -> None:
+        _git_init(tmp_path)
+        (tmp_path / ".gitignore").write_text("*_pb2.py\n")
+        root = tmp_path / "src"
+        root.mkdir()
+        _write_lines(root / "big_pb2.py", 10)
+        _write_lines(root / "real.py", 10)
+        findings = FileLengthScanner.scan_directory(root, max_lines=5, extensions={".py"})
+        assert len(findings) == 1
+        assert findings[0].file == str(root / "real.py")
+
+    def test_tracked_file_despite_gitignore_still_scanned(self, tmp_path: Path) -> None:
+        """A tracked file matching .gitignore is not ignored (git semantics)."""
+        _git_init(tmp_path)
+        (tmp_path / ".gitignore").write_text("committed.py\n")
+        root = tmp_path / "src"
+        root.mkdir()
+        _write_lines(root / "committed.py", 10)
+        subprocess.run(["git", "add", "-f", "src/committed.py"], cwd=tmp_path, check=True)
+        findings = FileLengthScanner.scan_directory(root, max_lines=5, extensions={".py"})
+        assert len(findings) == 1
+        assert findings[0].file == str(root / "committed.py")
+
+    def test_outside_git_repo_scans_everything(self, tmp_path: Path) -> None:
+        root = tmp_path / "src"
+        vendor = root / "vendor"
+        vendor.mkdir(parents=True)
+        _write_lines(vendor / "dep.py", 10)
+        _write_lines(root / "real.py", 10)
+        findings = FileLengthScanner.scan_directory(root, max_lines=5, extensions={".py"})
+        assert len(findings) == 2
 
     def test_exclude_pattern_skips_file(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "big_pb2.py", 10)
         _write_lines(root / "real.py", 10)
-        findings = FileLengthScanner.scan_directory(root, max_lines=5, exclude=["*_pb2.py"])
+        findings = FileLengthScanner.scan_directory(
+            root, max_lines=5, extensions={".py"}, exclude=["*_pb2.py"]
+        )
+        assert len(findings) == 1
+        assert findings[0].file == str(root / "real.py")
+
+    def test_exclude_pattern_matches_relative_path(self, tmp_path: Path) -> None:
+        root = tmp_path / "src"
+        gen = root / "gen"
+        gen.mkdir(parents=True)
+        _write_lines(gen / "output.py", 10)
+        _write_lines(root / "real.py", 10)
+        findings = FileLengthScanner.scan_directory(
+            root, max_lines=5, extensions={".py"}, exclude=["gen/*"]
+        )
         assert len(findings) == 1
         assert findings[0].file == str(root / "real.py")
 
     def test_empty_directory_returns_empty(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
         root.mkdir()
-        assert FileLengthScanner.scan_directory(root, max_lines=5) == []
+        assert FileLengthScanner.scan_directory(root, max_lines=5, extensions={".py"}) == []
 
 
 class TestMain:
@@ -229,10 +300,11 @@ class TestMain:
     def test_main_all_clear(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        settings = _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "short.py", 10)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--settings", str(settings)])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -241,10 +313,15 @@ class TestMain:
     def test_main_violation_report_only(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        settings = _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "long.py", 20)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--max-lines", "10"])
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["prog", str(root), "--settings", str(settings), "--max-lines", "10"],
+        )
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -255,32 +332,51 @@ class TestMain:
     def test_main_violation_strict(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        settings = _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "long.py", 20)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--max-lines", "10", "--strict"])
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "prog",
+                str(root),
+                "--settings",
+                str(settings),
+                "--max-lines",
+                "10",
+                "--strict",
+            ],
+        )
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 1
         assert "VIOLATIONS FOUND" in out
 
-    def test_main_default_max_lines(
+    def test_main_only_scans_configured_language(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        settings = _write_settings(tmp_path, language="python")
         root = tmp_path / "src"
         root.mkdir()
-        _write_lines(root / "ok.py", 300)
-        _write_lines(root / "long.py", 301)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        _write_lines(root / "long.php", 20)
+        _write_lines(root / "short.py", 5)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["prog", str(root), "--settings", str(settings), "--max-lines", "10"],
+        )
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
-        assert "long.py" in out
-        assert "ok.py" not in out
+        assert "all clear" in out
+        assert "long.php" not in out
 
-    def test_main_extensions_php(
+    def test_main_php_project(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        settings = _write_settings(tmp_path, language="php", python=None, php={"code_style": {}})
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "long.php", 20)
@@ -288,7 +384,7 @@ class TestMain:
         monkeypatch.setattr(
             sys,
             "argv",
-            ["prog", str(root), "--max-lines", "10", "--extensions", ".php"],
+            ["prog", str(root), "--settings", str(settings), "--max-lines", "10"],
         )
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
@@ -299,13 +395,23 @@ class TestMain:
     def test_main_exclude_pattern(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        settings = _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "big_pb2.py", 20)
         monkeypatch.setattr(
             sys,
             "argv",
-            ["prog", str(root), "--max-lines", "10", "--exclude", "*_pb2.py"],
+            [
+                "prog",
+                str(root),
+                "--settings",
+                str(settings),
+                "--max-lines",
+                "10",
+                "--exclude",
+                "*_pb2.py",
+            ],
         )
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
@@ -313,29 +419,35 @@ class TestMain:
         assert "all clear" in out
         assert "big_pb2.py" not in out
 
-    def test_main_ignore_dirs(
+    def test_main_gitignored_files_not_scanned(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _git_init(tmp_path)
+        settings = _write_settings(tmp_path)
+        (tmp_path / ".gitignore").write_text("vendor/\n")
         root = tmp_path / "src"
-        gen = root / "generated"
-        gen.mkdir(parents=True)
-        _write_lines(gen / "gen.py", 20)
+        vendor = root / "vendor"
+        vendor.mkdir(parents=True)
+        _write_lines(vendor / "dep.py", 20)
+        _write_lines(root / "real.py", 5)
         monkeypatch.setattr(
             sys,
             "argv",
-            ["prog", str(root), "--max-lines", "10", "--ignore-dirs", "generated"],
+            ["prog", str(root), "--settings", str(settings), "--max-lines", "10"],
         )
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
+        assert "dep.py" not in out
 
     def test_main_empty_dir(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        settings = _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--settings", str(settings)])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -344,11 +456,24 @@ class TestMain:
     def test_main_json_output(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        settings = _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "long.py", 20)
         _write_lines(root / "short.py", 5)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--max-lines", "10", "--json"])
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "prog",
+                str(root),
+                "--settings",
+                str(settings),
+                "--max-lines",
+                "10",
+                "--json",
+            ],
+        )
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -361,12 +486,25 @@ class TestMain:
     def test_main_json_violations_sorted_by_lines_desc(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        settings = _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "medium.py", 20)
         _write_lines(root / "biggest.py", 50)
         _write_lines(root / "small_over.py", 12)
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--max-lines", "10", "--json"])
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "prog",
+                str(root),
+                "--settings",
+                str(settings),
+                "--max-lines",
+                "10",
+                "--json",
+            ],
+        )
         rc = FileLengthScanner.main()
         report = json.loads(capsys.readouterr().out)
         assert rc == 0
@@ -376,15 +514,31 @@ class TestMain:
             "small_over.py",
         ]
 
+    def test_main_default_max_lines_is_800(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        settings = _write_settings(tmp_path)
+        root = tmp_path / "src"
+        root.mkdir()
+        _write_lines(root / "ok.py", 800)
+        _write_lines(root / "long.py", 801)
+        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--settings", str(settings)])
+        rc = FileLengthScanner.main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "long.py" in out
+        assert "ok.py" not in out
+
     def test_main_default_src(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """main() with default 'src' directory."""
         monkeypatch.chdir(tmp_path)
+        settings = _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "short.py", 10)
-        monkeypatch.setattr(sys, "argv", ["prog"])
+        monkeypatch.setattr(sys, "argv", ["prog", "--settings", str(settings)])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
