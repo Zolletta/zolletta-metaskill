@@ -69,19 +69,16 @@ python3 src/zolletta_metaskill/code_style/general/one_class_per_file_scanner.py 
 
 Flags files that exceed a configurable maximum line count. Language-agnostic — it does not parse code, it counts lines. Implements the "file length" sensor from Martin Fowler's *Maintainability sensors for coding agents*.
 
-What is scanned and with what limit is driven by `.zolletta-metaskill/settings.json`: the scanner reads the project's `language` (and any populated `<language>` sections) and scans those extensions, and reads each configured language's `code_style.max_file_length` (the smallest wins). It also skips anything git ignores (`.gitignore`, `.git/info/exclude`, `core.excludesFile`) — so `vendor/`, `node_modules/`, and build output never appear in the report. Outside a git repository every matching file is scanned.
+What is scanned and with what limit is driven entirely by `.zolletta-metaskill/settings.json`: the scanner reads the project's `language` (and any populated `<language>` sections) and scans those extensions, and reads each configured language's `code_style.max_file_length` (the smallest wins, default 800). It also skips anything git ignores (`.gitignore`, `.git/info/exclude`, `core.excludesFile`) — so `vendor/`, `node_modules/`, and build output never appear in the report. Outside a git repository every matching file is scanned.
 
 ```bash
 python3 src/zolletta_metaskill/code_style/general/file_length_scanner.py <directory> \
-    [--max-lines N] [--language python,php] [--settings PATH] \
-    [--exclude pat1,pat2] [--strict] [--json] [--skip]
+    [--settings PATH] [--exclude pat1,pat2] [--strict] [--json] [--skip]
 ```
 
 | Option          | Default                              | Description                                                                    |
 |-----------------|--------------------------------------|--------------------------------------------------------------------------------|
 | `<directory>`   | `src`                                | Root directory to scan                                                         |
-| `--max-lines N` | `max_file_length` from settings      | Overrides settings; falls back to the smallest configured value, else 800      |
-| `--language`    | (settings)                           | Comma-separated languages to scan; overrides detection from settings.json      |
 | `--settings`    | `.zolletta-metaskill/settings.json`  | Path to settings.json                                                          |
 | `--exclude`     | (none)                               | Comma-separated filename glob patterns to skip (e.g. `*_pb2.py`)               |
 | `--strict`      | off                                  | Exit with code 1 if violations are found                                       |

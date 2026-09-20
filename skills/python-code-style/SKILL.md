@@ -174,7 +174,7 @@ Source files must not exceed `max_file_length` lines (default: `800`, read from 
 - **Enforcement**: `file_length_scanner.py` from `../../src/zolletta_metaskill/code_style/general/` (deterministic, language-agnostic).
 
 ```bash
-python3 ../../src/zolletta_metaskill/code_style/general/file_length_scanner.py src/ --language python
+python3 ../../src/zolletta_metaskill/code_style/general/file_length_scanner.py src/
 ```
 
 > The scanner is the single source of truth for this rule. Do not manually flag files that the scanner doesn't flag — the line count against the configured threshold is the objective criterion.

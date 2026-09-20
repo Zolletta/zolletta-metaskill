@@ -88,7 +88,7 @@ The canonical script reference is [`scripts.md`](scripts.md) — refer to it for
 | `acronym_casing_scanner.py --json`     | `cache/acronym_casing.json`     | `python.code_style.check_acronym_casing`     |
 | `unused_all_exports_scanner.py --json` | `cache/unused_all_exports.json` | always                                       |
 | `one_class_per_file_scanner.py`        | `cache/one_class_per_file.txt`  | `python.code_style.check_one_class_per_file` |
-| `file_length_scanner.py --language python` | `cache/file_length.txt` | `python.code_style.check_file_length` |
+| `file_length_scanner.py` | `cache/file_length.txt` | `python.code_style.check_file_length` |
 
 ### `python-testing-style`
 
@@ -131,7 +131,7 @@ See [`documentation/operational-rules.md`](../documentation/operational-rules.md
 | `vendor/bin/psalm`                      | `cache/psalm.txt`        | `php.tools.psalm.available`        |
 | `vendor/bin/php-cs-fixer fix --dry-run` | `cache/php_cs_fixer.txt` | `php.tools.php_cs_fixer.available` |
 | `vendor/bin/phpcs`                      | `cache/phpcs.txt`        | `php.tools.phpcs.available`        |
-| `file_length_scanner.py --language php` | `cache/file_length.txt` | `php.code_style.check_file_length` |
+| `file_length_scanner.py` | `cache/file_length.txt` | `php.code_style.check_file_length` |
 
 ### `php-testing-style`
 

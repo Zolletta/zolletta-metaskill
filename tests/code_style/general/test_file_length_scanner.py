@@ -113,14 +113,6 @@ class TestResolveExtensions:
         bad.write_text("{ not json")
         assert FileLengthScanner.resolve_extensions(bad) == {".py", ".php"}
 
-    def test_language_override_wins_over_settings(self, tmp_path: Path) -> None:
-        settings = _write_settings(tmp_path, language="python")
-        assert FileLengthScanner.resolve_extensions(settings, ["php"]) == {".php"}
-
-    def test_language_override_multiple(self, tmp_path: Path) -> None:
-        settings = _write_settings(tmp_path, language="python")
-        assert FileLengthScanner.resolve_extensions(settings, ["python", "php"]) == {".py", ".php"}
-
 
 class TestResolveMaxLines:
     """Tests for FileLengthScanner.resolve_max_lines()."""
@@ -128,10 +120,6 @@ class TestResolveMaxLines:
     def test_reads_max_file_length_from_settings(self, tmp_path: Path) -> None:
         settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 500}})
         assert FileLengthScanner.resolve_max_lines(settings) == 500
-
-    def test_override_wins_over_settings(self, tmp_path: Path) -> None:
-        settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 500}})
-        assert FileLengthScanner.resolve_max_lines(settings, override=120) == 120
 
     def test_smallest_limit_wins_across_languages(self, tmp_path: Path) -> None:
         settings = _write_settings(
@@ -141,15 +129,6 @@ class TestResolveMaxLines:
             php={"code_style": {"max_file_length": 500}},
         )
         assert FileLengthScanner.resolve_max_lines(settings) == 500
-
-    def test_language_override_scopes_the_limit(self, tmp_path: Path) -> None:
-        settings = _write_settings(
-            tmp_path,
-            language="python",
-            python={"code_style": {"max_file_length": 800}},
-            php={"code_style": {"max_file_length": 500}},
-        )
-        assert FileLengthScanner.resolve_max_lines(settings, languages=["php"]) == 500
 
     def test_no_configured_limit_falls_back_to_default(self, tmp_path: Path) -> None:
         settings = _write_settings(tmp_path)  # code_style is empty
@@ -358,15 +337,11 @@ class TestMain:
     def test_main_violation_report_only(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        settings = _write_settings(tmp_path)
+        settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "long.py", 20)
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", str(root), "--settings", str(settings), "--max-lines", "10"],
-        )
+        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--settings", str(settings)])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -377,22 +352,12 @@ class TestMain:
     def test_main_violation_strict(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        settings = _write_settings(tmp_path)
+        settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "long.py", 20)
         monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "prog",
-                str(root),
-                "--settings",
-                str(settings),
-                "--max-lines",
-                "10",
-                "--strict",
-            ],
+            sys, "argv", ["prog", str(root), "--settings", str(settings), "--strict"]
         )
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
@@ -402,16 +367,14 @@ class TestMain:
     def test_main_only_scans_configured_language(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        settings = _write_settings(tmp_path, language="python")
+        settings = _write_settings(
+            tmp_path, language="python", python={"code_style": {"max_file_length": 10}}
+        )
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "long.php", 20)
         _write_lines(root / "short.py", 5)
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", str(root), "--settings", str(settings), "--max-lines", "10"],
-        )
+        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--settings", str(settings)])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -421,45 +384,17 @@ class TestMain:
     def test_main_php_project(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        settings = _write_settings(tmp_path, language="php", python=None, php={"code_style": {}})
+        settings = _write_settings(
+            tmp_path,
+            language="php",
+            python=None,
+            php={"code_style": {"max_file_length": 10}},
+        )
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "long.php", 20)
         _write_lines(root / "long.py", 20)
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", str(root), "--settings", str(settings), "--max-lines", "10"],
-        )
-        rc = FileLengthScanner.main()
-        out = capsys.readouterr().out
-        assert rc == 0
-        assert "long.php" in out
-        assert "long.py" not in out
-
-    def test_main_language_flag_overrides_settings(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """--language pins the scan regardless of settings.json language."""
-        settings = _write_settings(tmp_path, language="python")
-        root = tmp_path / "src"
-        root.mkdir()
-        _write_lines(root / "long.php", 20)
-        _write_lines(root / "long.py", 20)
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "prog",
-                str(root),
-                "--settings",
-                str(settings),
-                "--language",
-                "php",
-                "--max-lines",
-                "10",
-            ],
-        )
+        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--settings", str(settings)])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -469,7 +404,7 @@ class TestMain:
     def test_main_max_lines_from_settings(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Without --max-lines, the limit comes from settings.json."""
+        """The limit comes from settings.json max_file_length."""
         settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
         root = tmp_path / "src"
         root.mkdir()
@@ -484,7 +419,7 @@ class TestMain:
     def test_main_exclude_pattern(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        settings = _write_settings(tmp_path)
+        settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "big_pb2.py", 20)
@@ -496,8 +431,6 @@ class TestMain:
                 str(root),
                 "--settings",
                 str(settings),
-                "--max-lines",
-                "10",
                 "--exclude",
                 "*_pb2.py",
             ],
@@ -512,18 +445,14 @@ class TestMain:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _git_init(tmp_path)
-        settings = _write_settings(tmp_path)
+        settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
         (tmp_path / ".gitignore").write_text("vendor/\n")
         root = tmp_path / "src"
         vendor = root / "vendor"
         vendor.mkdir(parents=True)
         _write_lines(vendor / "dep.py", 20)
         _write_lines(root / "real.py", 5)
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", str(root), "--settings", str(settings), "--max-lines", "10"],
-        )
+        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--settings", str(settings)])
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -545,7 +474,7 @@ class TestMain:
     def test_main_json_output(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        settings = _write_settings(tmp_path)
+        settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "long.py", 20)
@@ -553,15 +482,7 @@ class TestMain:
         monkeypatch.setattr(
             sys,
             "argv",
-            [
-                "prog",
-                str(root),
-                "--settings",
-                str(settings),
-                "--max-lines",
-                "10",
-                "--json",
-            ],
+            ["prog", str(root), "--settings", str(settings), "--json"],
         )
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
@@ -575,7 +496,7 @@ class TestMain:
     def test_main_json_violations_sorted_by_lines_desc(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        settings = _write_settings(tmp_path)
+        settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
         root = tmp_path / "src"
         root.mkdir()
         _write_lines(root / "medium.py", 20)
@@ -584,15 +505,7 @@ class TestMain:
         monkeypatch.setattr(
             sys,
             "argv",
-            [
-                "prog",
-                str(root),
-                "--settings",
-                str(settings),
-                "--max-lines",
-                "10",
-                "--json",
-            ],
+            ["prog", str(root), "--settings", str(settings), "--json"],
         )
         rc = FileLengthScanner.main()
         report = json.loads(capsys.readouterr().out)

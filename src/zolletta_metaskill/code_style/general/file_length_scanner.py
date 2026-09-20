@@ -6,38 +6,29 @@ Language-agnostic sensor for the "file length" rule from Martin Fowler's
 shortcomings"). Line count is trivial to compute for any language, so the
 scanner does not parse code — it counts lines.
 
-Which files are scanned and with what limit is driven by
+Which files are scanned and with what limit is driven entirely by
 ``.zolletta-metaskill/settings.json`` (created by the setup guard):
 
 - The project's language(s) are read from settings.json — the top-level
   ``language`` field plus each populated ``<language>`` section — and
   mapped to file extensions via the engine registry (``python`` → ``.py``,
-  ``php`` → ``.php``). Polyglot projects scan every configured language;
-  ``--language`` pins the scan to specific languages.
+  ``php`` → ``.php``). Polyglot projects scan every configured language.
 - The limit is read from each configured language's
   ``code_style.max_file_length`` (the smallest wins when several are
-  configured); ``--max-lines`` overrides it, and 800 is the final default.
+  configured); 800 is the default when none is configured.
 - Files ignored by git (``.gitignore``, ``.git/info/exclude``,
   ``core.excludesFile``) are skipped — this is what keeps ``vendor/``,
   ``node_modules/``, build output, etc. out of the report. Outside a git
   repository every file matching the extensions is scanned.
 
 Usage:
-    python3 file_length_scanner.py [directory] [--max-lines N]
-        [--language python,php] [--settings PATH] [--exclude pat1,pat2]
-        [--strict] [--json] [--skip]
+    python3 file_length_scanner.py [directory] [--settings PATH]
+        [--exclude pat1,pat2] [--strict] [--json] [--skip]
 
 Arguments:
     directory       Root directory to scan (default: src)
 
 Options:
-    --max-lines N   Maximum allowed lines per file. Overrides settings.json;
-                    otherwise the smallest configured
-                    ``<language>.code_style.max_file_length`` is used
-                    (default: 800 when none is configured).
-    --language      Comma-separated languages to scan (e.g. ``python,php``).
-                    Overrides language detection from settings.json — used
-                    by the per-language review skills.
     --settings      Path to settings.json
                     (default: .zolletta-metaskill/settings.json).
     --exclude       Comma-separated filename glob patterns to skip
@@ -119,18 +110,15 @@ class FileLengthScanner:
         return extensions
 
     @staticmethod
-    def resolve_extensions(settings_path: Path, languages: Sequence[str] | None = None) -> set[str]:
+    def resolve_extensions(settings_path: Path) -> set[str]:
         """Return the file extensions to scan for the project.
 
-        *languages* (from ``--language``) wins. Otherwise languages come
-        from settings.json — the top-level ``language`` field plus each
-        populated ``<language>`` section (so polyglot projects scan every
-        configured language). If no usable language is found, fall back to
-        every registered engine's extensions.
+        Languages come from settings.json — the top-level ``language``
+        field plus each populated ``<language>`` section (so polyglot
+        projects scan every configured language). If no usable language is
+        found, fall back to every registered engine's extensions.
         """
         FileLengthScanner._ensure_engines()
-        if languages:
-            return FileLengthScanner._extensions_for(set(languages))
         settings = FileLengthScanner._load_settings(settings_path)
         extensions = FileLengthScanner._extensions_for(
             FileLengthScanner._configured_languages(settings)
@@ -142,22 +130,15 @@ class FileLengthScanner:
         return extensions
 
     @staticmethod
-    def resolve_max_lines(
-        settings_path: Path,
-        override: int | None = None,
-        languages: Sequence[str] | None = None,
-    ) -> int:
+    def resolve_max_lines(settings_path: Path) -> int:
         """Return the maximum allowed lines per file.
 
-        *override* (``--max-lines``) wins. Otherwise the smallest
-        ``<language>.code_style.max_file_length`` across the effective
-        languages (from *languages* or settings.json); falls back to
+        The smallest ``<language>.code_style.max_file_length`` across the
+        languages configured in settings.json; falls back to
         ``DEFAULT_MAX_LINES`` when nothing is configured.
         """
-        if override is not None:
-            return override
         settings = FileLengthScanner._load_settings(settings_path)
-        langs = set(languages) if languages else FileLengthScanner._configured_languages(settings)
+        langs = FileLengthScanner._configured_languages(settings)
         limits = []
         for lang in sorted(langs):
             section = settings.get(lang)
@@ -262,21 +243,22 @@ class FileLengthScanner:
     @staticmethod
     def scan_directory(
         root: Path,
-        max_lines: int = DEFAULT_MAX_LINES,
+        max_lines: int | None = None,
         exclude: Sequence[str] = (),
         extensions: set[str] | None = None,
         settings_path: Path | None = None,
     ) -> list[Finding]:
         """Scan matching files under *root* for file-length violations.
 
-        When *extensions* is omitted it is resolved from *settings_path*
-        (default ``.zolletta-metaskill/settings.json``). Files that cannot be
-        read are skipped with a warning on stderr.
+        When *extensions* or *max_lines* is omitted it is resolved from
+        *settings_path* (default ``.zolletta-metaskill/settings.json``).
+        Files that cannot be read are skipped with a warning on stderr.
         """
+        path = settings_path or FileLengthScanner.DEFAULT_SETTINGS_PATH
         if extensions is None:
-            extensions = FileLengthScanner.resolve_extensions(
-                settings_path or FileLengthScanner.DEFAULT_SETTINGS_PATH
-            )
+            extensions = FileLengthScanner.resolve_extensions(path)
+        if max_lines is None:
+            max_lines = FileLengthScanner.resolve_max_lines(path)
         findings: list[Finding] = []
         for path in FileLengthScanner._iter_files(root, extensions, exclude):
             try:
@@ -297,20 +279,6 @@ class FileLengthScanner:
             nargs="?",
             default="src",
             help="Root directory to scan (default: src)",
-        )
-        parser.add_argument(
-            "--max-lines",
-            type=int,
-            default=None,
-            help="Maximum allowed lines per file (overrides settings.json; "
-            "otherwise the smallest configured max_file_length is used, "
-            "default 800)",
-        )
-        parser.add_argument(
-            "--language",
-            default="",
-            help="Comma-separated languages to scan (e.g. 'python,php'); "
-            "overrides language detection from settings.json",
         )
         parser.add_argument(
             "--settings",
@@ -355,9 +323,8 @@ class FileLengthScanner:
         settings_path = (
             Path(args.settings) if args.settings else FileLengthScanner.DEFAULT_SETTINGS_PATH
         )
-        languages = [lang.strip() for lang in args.language.split(",") if lang.strip()] or None
-        extensions = FileLengthScanner.resolve_extensions(settings_path, languages)
-        max_lines = FileLengthScanner.resolve_max_lines(settings_path, args.max_lines, languages)
+        extensions = FileLengthScanner.resolve_extensions(settings_path)
+        max_lines = FileLengthScanner.resolve_max_lines(settings_path)
         exclude = [p.strip() for p in args.exclude.split(",") if p.strip()]
 
         files = FileLengthScanner._iter_files(root, extensions, exclude)
