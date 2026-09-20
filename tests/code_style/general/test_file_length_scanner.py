@@ -113,6 +113,52 @@ class TestResolveExtensions:
         bad.write_text("{ not json")
         assert FileLengthScanner.resolve_extensions(bad) == {".py", ".php"}
 
+    def test_language_override_wins_over_settings(self, tmp_path: Path) -> None:
+        settings = _write_settings(tmp_path, language="python")
+        assert FileLengthScanner.resolve_extensions(settings, ["php"]) == {".php"}
+
+    def test_language_override_multiple(self, tmp_path: Path) -> None:
+        settings = _write_settings(tmp_path, language="python")
+        assert FileLengthScanner.resolve_extensions(settings, ["python", "php"]) == {".py", ".php"}
+
+
+class TestResolveMaxLines:
+    """Tests for FileLengthScanner.resolve_max_lines()."""
+
+    def test_reads_max_file_length_from_settings(self, tmp_path: Path) -> None:
+        settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 500}})
+        assert FileLengthScanner.resolve_max_lines(settings) == 500
+
+    def test_override_wins_over_settings(self, tmp_path: Path) -> None:
+        settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 500}})
+        assert FileLengthScanner.resolve_max_lines(settings, override=120) == 120
+
+    def test_smallest_limit_wins_across_languages(self, tmp_path: Path) -> None:
+        settings = _write_settings(
+            tmp_path,
+            language="python",
+            python={"code_style": {"max_file_length": 800}},
+            php={"code_style": {"max_file_length": 500}},
+        )
+        assert FileLengthScanner.resolve_max_lines(settings) == 500
+
+    def test_language_override_scopes_the_limit(self, tmp_path: Path) -> None:
+        settings = _write_settings(
+            tmp_path,
+            language="python",
+            python={"code_style": {"max_file_length": 800}},
+            php={"code_style": {"max_file_length": 500}},
+        )
+        assert FileLengthScanner.resolve_max_lines(settings, languages=["php"]) == 500
+
+    def test_no_configured_limit_falls_back_to_default(self, tmp_path: Path) -> None:
+        settings = _write_settings(tmp_path)  # code_style is empty
+        assert FileLengthScanner.resolve_max_lines(settings) == 800
+
+    def test_missing_settings_falls_back_to_default(self, tmp_path: Path) -> None:
+        missing = tmp_path / ".zolletta-metaskill" / "settings.json"
+        assert FileLengthScanner.resolve_max_lines(missing) == 800
+
 
 class TestScanFile:
     """Tests for FileLengthScanner.scan_file()."""
@@ -390,6 +436,50 @@ class TestMain:
         assert rc == 0
         assert "long.php" in out
         assert "long.py" not in out
+
+    def test_main_language_flag_overrides_settings(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """--language pins the scan regardless of settings.json language."""
+        settings = _write_settings(tmp_path, language="python")
+        root = tmp_path / "src"
+        root.mkdir()
+        _write_lines(root / "long.php", 20)
+        _write_lines(root / "long.py", 20)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "prog",
+                str(root),
+                "--settings",
+                str(settings),
+                "--language",
+                "php",
+                "--max-lines",
+                "10",
+            ],
+        )
+        rc = FileLengthScanner.main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "long.php" in out
+        assert "long.py" not in out
+
+    def test_main_max_lines_from_settings(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Without --max-lines, the limit comes from settings.json."""
+        settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
+        root = tmp_path / "src"
+        root.mkdir()
+        _write_lines(root / "long.py", 20)
+        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--settings", str(settings)])
+        rc = FileLengthScanner.main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "long.py" in out
+        assert "max 10" in out
 
     def test_main_exclude_pattern(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
