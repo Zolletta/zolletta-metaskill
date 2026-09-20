@@ -20,9 +20,8 @@ def _write_lines(path: Path, n: int) -> None:
 
 def _write_settings(dirpath: Path, **overrides: object) -> Path:
     """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
-    settings = {"language": "python", "python": {"code_style": {}}}
+    settings = {"language": "python", "python": {"code_style": {}}, "php": None}
     settings.update(overrides)
-    settings = {k: v for k, v in settings.items() if v is not None}
     meta = dirpath / ".zolletta-metaskill"
     meta.mkdir(parents=True, exist_ok=True)
     path = meta / "settings.json"

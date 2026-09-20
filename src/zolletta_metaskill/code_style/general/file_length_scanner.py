@@ -99,7 +99,7 @@ class FileLengthScanner:
         language = settings.get("language")
         if isinstance(language, str) and language:
             languages.add(language)
-        languages.update(lang for lang in registered if lang in settings)
+        languages.update(lang for lang in registered if isinstance(settings.get(lang), dict))
 
         extensions: set[str] = set()
         for lang in sorted(languages & registered):
