@@ -57,6 +57,13 @@ markdown_extensions:
       custom_checkbox: true
   - pymdownx.tilde
 
+validation:
+  links:
+    # Repo-root-relative links (e.g. ../../README.md, ../../skills/...) are
+    # intentional — they resolve on GitHub and are audited by link_checker.py.
+    not_found: info
+    unrecognized_links: info
+
 plugins:
   - search
   - git-revision-date-localized:
@@ -69,10 +76,8 @@ plugins:
 nav:
   - "Home": index.md
   - "Tutorials":
-      - tutorials/index.md
       - "Getting started": tutorials/getting-started.md
   - "How-to guides":
-      - how-to/index.md
       - "Getting things done":
           - "Install": how-to/install.md
           - "Set up a project": how-to/setup-project.md
@@ -118,7 +123,6 @@ nav:
           - "Augmented coding patterns": reference/augmented-coding-patterns.md
           - "Reference index": reference/index.md
   - "Explanation":
-      - explanation/index.md
       - "Code review principles":
           - "General principles": explanation/code/general-principles.md
           - "Determinism boundary": explanation/code/determinism.md

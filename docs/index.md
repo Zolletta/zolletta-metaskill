@@ -59,11 +59,11 @@ New to Zolletta-metaskill? Read the [getting started tutorial](https://metaskill
 
 ## Contributing
 
-See [CONTRIBUTING.md](https://github.com/Zolletta/zolletta-metaskill/blob/main/CONTRIBUTING.md) for development setup, testing, and the quality gate.
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for development setup, testing, and the quality gate.
 
 ## License
 
-MIT + Commons Clause. See [LICENSE](https://github.com/Zolletta/zolletta-metaskill/blob/main/LICENSE) and the `license` field in each subcommand's `SKILL.md` frontmatter.
+MIT + Commons Clause. See [LICENSE](../LICENSE) and the `license` field in each subcommand's `SKILL.md` frontmatter.
 
 ## Attributions
 

@@ -6,11 +6,11 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
 
 # settings.json schema
 
-[← Back to README](https://github.com/Zolletta/zolletta-metaskill#readme)
+[← Back to README](../../README.md)
 
 `.zolletta-metaskill/settings.json` is created by `/zolletta-metaskill setup` and read by every other subcommand. This page documents every field.
 
-> **JSON Schema**: the machine-readable source of truth for the shape of `settings.json` lives at [`skills/setup/assets/settings.schema.json`](https://github.com/Zolletta/zolletta-metaskill/blob/main/skills/setup/assets/settings.schema.json) (JSON Schema draft 2020-12). This prose doc is the human-readable counterpart and must stay in sync — when a field is added, removed, or renamed, update both files in the same change.
+> **JSON Schema**: the machine-readable source of truth for the shape of `settings.json` lives at [`skills/setup/assets/settings.schema.json`](../../skills/setup/assets/settings.schema.json) (JSON Schema draft 2020-12). This prose doc is the human-readable counterpart and must stay in sync — when a field is added, removed, or renamed, update both files in the same change.
 
 ## Example (Python project)
 
@@ -466,4 +466,4 @@ Python skills (`python-code-style`, `python-testing-style`) and PHP skills (`php
 
 ---
 
-[← Back to README](https://github.com/Zolletta/zolletta-metaskill#readme)
+[← Back to README](../../README.md)
