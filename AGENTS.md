@@ -11,6 +11,7 @@ Conventions for the zolletta-metaskill repository. Follow them in all code under
 - No artificial line break
 - Should pass markdownlint
 - Mermeid graph should have no-fill in the boxes and no background
+- **Relative links only.** Never hardcode `https://github.com/Zolletta/zolletta-metaskill/...` URLs in `docs/` or `skills/` — always use repo-root-relative links (`../../README.md`, `../../skills/help/SKILL.md`). They resolve correctly on GitHub and in local clones. mkdocs cannot see outside `docs/`, so such links are downgraded to `info` via `validation.links.not_found` in `mkdocs.yml`; the real link audit is `link_checker.py`, which resolves them against the repo root.
 
 
 ## Commits 
