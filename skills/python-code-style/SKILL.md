@@ -37,18 +37,18 @@ Consistent code style and clear documentation make codebases maintainable and co
 
 ## Table 2 — Configurable settings (stored in `settings.json` under `python.code_style`)
 
-| #  | Area       | Name                                                      | Key                              | Default |
-|----|------------|-----------------------------------------------------------|----------------------------------|---------|
-| 3  | Naming     | Acronyms stay uppercase in class names                    | `check_acronym_casing`           | `true`  |
-| 7  | Imports    | Absolute imports only, no relative imports                | `check_no_relative_imports`      | `true`  |
-| 8  | Structure  | One class per file                                        | `check_one_class_per_file`       | `true`  |
-| 9  | Structure  | Filename matches class name                               | `check_filename_matches_class`   | `true`  |
-| 12 | Docstrings | Docstrings required on public classes, methods, functions | `check_public_docstrings`        | `true`  |
-| 14 | Docstrings | No type repetition in docstring Args/Returns              | `check_docstring_no_type_repeat` | `true`  |
-| 18 | Docstrings | Skip docstrings for obvious one-line functions            | `check_skip_obvious_docstrings`  | `true`  |
-| 20 | Formatting | Line length from project config                           | `check_line_length`              | `true`  |
+| #  | Area       | Name                                                      | Key                                    | Default       |
+|----|------------|-----------------------------------------------------------|----------------------------------------|---------------|
+| 3  | Naming     | Acronyms stay uppercase in class names                    | `check_acronym_casing`                 | `true`        |
+| 7  | Imports    | Absolute imports only, no relative imports                | `check_no_relative_imports`            | `true`        |
+| 8  | Structure  | One class per file                                        | `check_one_class_per_file`             | `true`        |
+| 9  | Structure  | Filename matches class name                               | `check_filename_matches_class`         | `true`        |
+| 12 | Docstrings | Docstrings required on public classes, methods, functions | `check_public_docstrings`              | `true`        |
+| 14 | Docstrings | No type repetition in docstring Args/Returns              | `check_docstring_no_type_repeat`       | `true`        |
+| 18 | Docstrings | Skip docstrings for obvious one-line functions            | `check_skip_obvious_docstrings`        | `true`        |
+| 20 | Formatting | Line length from project config                           | `check_line_length`                    | `true`        |
 | 21 | Structure  | File length limit                                         | `check_file_length`, `max_file_length` | `true`, `800` |
-| 22 | Dead code  | Vulture minimum confidence + unused `__all__` exports     | `vulture_min_confidence`         | `80`    |
+| 22 | Dead code  | Vulture minimum confidence + unused `__all__` exports     | `vulture_min_confidence`               | `80`          |
 
 ## Detailed rule explanations
 

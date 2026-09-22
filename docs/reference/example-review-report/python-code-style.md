@@ -17,35 +17,35 @@
 
 ### Ruff
 
-| Check                 | Status | Details |
-| --------------------- | ------ | ------- |
+| Check                 | Status | Details                                           |
+|-----------------------|--------|---------------------------------------------------|
 | `ruff check`          | PASS   | All checks passed! (0 violations across 70 files) |
-| `ruff format --check` | PASS   | 70 files already formatted |
+| `ruff format --check` | PASS   | 70 files already formatted                        |
 
 Config: `line_length=100`, `target=py312`, `select=[E,W,F,I,B,C4,D,UP,T20,SIM]`, `ignore=[B008,T201,D104,D107,D203,D213]`.
 
 ### Type Checker (ty + mypy)
 
-| Check         | Status | Details |
-| ------------- | ------ | ------- |
-| `ty check`    | PASS   | All checks passed! |
-| `mypy --strict` | PASS | Success: no issues found in 70 source files |
+| Check           | Status | Details                                     |
+|-----------------|--------|---------------------------------------------|
+| `ty check`      | PASS   | All checks passed!                          |
+| `mypy --strict` | PASS   | Success: no issues found in 70 source files |
 
 Both type checkers are configured (`ty` python 3.12, `mypy` strict python 3.12) and both run per the skill's "when both are available, both run" directive. No type errors and no missing type annotations on public APIs (rule #19).
 
 ### Vulture (dead code)
 
-| Check     | Status | Details |
-| --------- | ------ | ------- |
+| Check     | Status | Details                             |
+|-----------|--------|-------------------------------------|
 | Dead code | PASS   | 0 findings at `--min-confidence 80` |
 
 ### Scanners
 
-| Scanner | Status | Details |
-| ------- | ------ | ------- |
-| `acronym_casing_scanner.py` | FAIL | 1 violation: `ADRCli` — word `Cli` should be `CLI` |
-| `one_class_per_file_scanner.py` | PASS | No files with 2+ classes in `src/` or `tests/` (test roots are scanned too — one test class per test file, named after its stem). Filename-vs-class matching is case-insensitive, so acronym-cased classes (`ADRCache`, `PHPEngine`) match their lowercase filenames instead of being reported as false positives. |
-| `unused_all_exports_scanner.py` | PASS | 6 files with `__all__`, 13 entries, 0 unused |
+| Scanner                         | Status             | Details                                                                                                                                                                                                                                                                                                                                 |
+|---------------------------------|--------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `acronym_casing_scanner.py`     | FAIL               | 1 violation: `ADRCli` — word `Cli` should be `CLI`                                                                                                                                                                                                                                                                                      |
+| `one_class_per_file_scanner.py` | PASS               | No files with 2+ classes in `src/` or `tests/` (test roots are scanned too — one test class per test file, named after its stem). Filename-vs-class matching is case-insensitive, so acronym-cased classes (`ADRCache`, `PHPEngine`) match their lowercase filenames instead of being reported as false positives.                      |
+| `unused_all_exports_scanner.py` | PASS               | 6 files with `__all__`, 13 entries, 0 unused                                                                                                                                                                                                                                                                                            |
 | `naming_conventions_scanner.py` | PASS (source side) | Source file/class-name matching overlaps with `one_class_per_file_scanner`; this scanner still uses exact matching and reports the `ADR*`/`API*`/`PHP*` classes as acronym false positives. Test-mirror check could not run cleanly (test layout is flat under `tests/`, not nested under a package dir) — out of scope for this skill. |
 
 ## Auto-Fixable (Informational)
@@ -66,9 +66,9 @@ No high findings.
 
 ### Medium
 
-| #   | File                   | Symbol  | Rule ID | Issue                                                                       | Suggested Fix |
-| --- | ---------------------- | ------- | ------- | --------------------------------------------------------------------------- | ------------- |
-| 1   | `src/zolletta_metaskill/adr/adr_cli.py:21` | `ADRCli` | #3 (acronym casing) | Class name `ADRCli` keeps the `CLI` acronym in mixed case (`Cli`). The configured acronym list includes `CLI`; the convention requires acronyms to stay fully uppercase in PascalCase class names. | Rename the class to `ADRCLI`. The filename `adr_cli.py` already follows the "acronym lowercase in filename" convention and will then match the renamed class. Update the two internal references in `adr_cli.py` (`ADRCli.build_parser`, `ADRCli.run`, `ADRCli.missing_docs_error`, `ADRCli.format_report`). |
+| # | File                                       | Symbol   | Rule ID             | Issue                                                                                                                                                                                              | Suggested Fix                                                                                                                                                                                                                                                                                                |
+|---|--------------------------------------------|----------|---------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1 | `src/zolletta_metaskill/adr/adr_cli.py:21` | `ADRCli` | #3 (acronym casing) | Class name `ADRCli` keeps the `CLI` acronym in mixed case (`Cli`). The configured acronym list includes `CLI`; the convention requires acronyms to stay fully uppercase in PascalCase class names. | Rename the class to `ADRCLI`. The filename `adr_cli.py` already follows the "acronym lowercase in filename" convention and will then match the renamed class. Update the two internal references in `adr_cli.py` (`ADRCli.build_parser`, `ADRCli.run`, `ADRCli.missing_docs_error`, `ADRCli.format_report`). |
 
 ### Low
 
@@ -76,33 +76,33 @@ No low findings. Vulture reported no dead code and the `__all__` scanner reporte
 
 ## Manual Review Checks
 
-| Rule | Area | Status | Notes |
-| ---- | ---- | ------ | ----- |
-| #1  | Naming — descriptive snake_case filenames | PASS | All 44 non-`__init__` filenames are descriptive snake_case; no abbreviations (`adr`, `api`, `php` are domain acronyms, not lazy abbreviations). |
-| #2  | Naming — PascalCase class names | PASS | All 49 classes use PascalCase. |
-| #3  | Naming — acronyms uppercase | FAIL | `ADRCli` flagged by scanner (see finding #1). All other `ADR*`/`API*`/`PHP*` classes correctly keep acronyms uppercase. |
-| #4  | Naming — snake_case functions/variables | PASS | No violations detected by manual scan or ruff. |
-| #5  | Naming — SCREAMING_SNAKE_CASE constants | PASS | No module-level PascalCase value constants found; enum/class aliases use the documented exception correctly. |
-| #6  | Imports — grouped order | PASS | Enforced by ruff `I` rule; 0 violations. |
-| #7  | Imports — absolute only | PASS | No relative imports found (`grep` for `from \.\.` returned nothing). |
-| #8  | Structure — one class per file | PASS | Scanner confirms no file has 2+ classes. |
-| #9  | Structure — filename matches class | PASS | All matches follow the "acronym uppercase in class, lowercase in filename" convention; scanner false positives suppressed per rule #9 documentation. |
-| #12 | Docstrings — public APIs | PASS | ruff `D100`–`D106` enabled; 0 violations. Public classes/methods/functions all have docstrings. |
-| #13 | Docstrings — private exempt | PASS | Private (`_`-prefixed) functions correctly lack docstrings where implementation details. |
-| #14 | Docstrings — no type repetition | PASS | `Args`/`Returns` sections reviewed provide semantic context beyond type annotations (e.g. "Path to a `.py` source file", "e.g. `\"python\"`"). No bare type restatements found. |
-| #17 | Docstrings — test functions exempt | N/A | Tests out of scope (src/ only). |
-| #18 | Docstrings — skip obvious one-liners | PASS | No noise docstrings on self-documenting one-liners found. |
-| #19 | Types — public API hints | PASS | `mypy --strict` and `ty check` both pass with 0 issues. |
-| #20 | Formatting — line length | PASS | `ruff format --check` passes; line length 100 enforced. |
-| #22 | Dead code — vulture + `__all__` | PASS | Vulture 0 findings at confidence 80; `__all__` scanner 0 unused exports. |
+| Rule | Area                                      | Status | Notes                                                                                                                                                                           |
+|------|-------------------------------------------|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| #1   | Naming — descriptive snake_case filenames | PASS   | All 44 non-`__init__` filenames are descriptive snake_case; no abbreviations (`adr`, `api`, `php` are domain acronyms, not lazy abbreviations).                                 |
+| #2   | Naming — PascalCase class names           | PASS   | All 49 classes use PascalCase.                                                                                                                                                  |
+| #3   | Naming — acronyms uppercase               | FAIL   | `ADRCli` flagged by scanner (see finding #1). All other `ADR*`/`API*`/`PHP*` classes correctly keep acronyms uppercase.                                                         |
+| #4   | Naming — snake_case functions/variables   | PASS   | No violations detected by manual scan or ruff.                                                                                                                                  |
+| #5   | Naming — SCREAMING_SNAKE_CASE constants   | PASS   | No module-level PascalCase value constants found; enum/class aliases use the documented exception correctly.                                                                    |
+| #6   | Imports — grouped order                   | PASS   | Enforced by ruff `I` rule; 0 violations.                                                                                                                                        |
+| #7   | Imports — absolute only                   | PASS   | No relative imports found (`grep` for `from \.\.` returned nothing).                                                                                                            |
+| #8   | Structure — one class per file            | PASS   | Scanner confirms no file has 2+ classes.                                                                                                                                        |
+| #9   | Structure — filename matches class        | PASS   | All matches follow the "acronym uppercase in class, lowercase in filename" convention; scanner false positives suppressed per rule #9 documentation.                            |
+| #12  | Docstrings — public APIs                  | PASS   | ruff `D100`–`D106` enabled; 0 violations. Public classes/methods/functions all have docstrings.                                                                                 |
+| #13  | Docstrings — private exempt               | PASS   | Private (`_`-prefixed) functions correctly lack docstrings where implementation details.                                                                                        |
+| #14  | Docstrings — no type repetition           | PASS   | `Args`/`Returns` sections reviewed provide semantic context beyond type annotations (e.g. "Path to a `.py` source file", "e.g. `\"python\"`"). No bare type restatements found. |
+| #17  | Docstrings — test functions exempt        | N/A    | Tests out of scope (src/ only).                                                                                                                                                 |
+| #18  | Docstrings — skip obvious one-liners      | PASS   | No noise docstrings on self-documenting one-liners found.                                                                                                                       |
+| #19  | Types — public API hints                  | PASS   | `mypy --strict` and `ty check` both pass with 0 issues.                                                                                                                         |
+| #20  | Formatting — line length                  | PASS   | `ruff format --check` passes; line length 100 enforced.                                                                                                                         |
+| #22  | Dead code — vulture + `__all__`           | PASS   | Vulture 0 findings at confidence 80; `__all__` scanner 0 unused exports.                                                                                                        |
 
 ## Architectural Directive Alignment
 
-| Directive | Alignment | Notes |
-| --------- | --------- | ----- |
-| ADR-0004 — Python stdlib only for scanners | Aligned | Scanners use only stdlib (`ast`, `argparse`, `pathlib`, `json`); no third-party imports in scanner modules. |
-| ADR-0007 — Language-neutral engine protocol | Aligned | `LanguageEngine` protocol + `ModuleInfo` data model present; `PythonEngine`/`PHPEngine` implementations follow the protocol. (`PHPEngine` class name correctly keeps `PHP` uppercase.) |
-| ADR-0009 — Inline shell replaced with Python scripts | Aligned | Setup detectors are standalone Python scripts under `src/zolletta_metaskill/setup/`, all typed and documented. |
+| Directive                                            | Alignment | Notes                                                                                                                                                                                  |
+|------------------------------------------------------|-----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ADR-0004 — Python stdlib only for scanners           | Aligned   | Scanners use only stdlib (`ast`, `argparse`, `pathlib`, `json`); no third-party imports in scanner modules.                                                                            |
+| ADR-0007 — Language-neutral engine protocol          | Aligned   | `LanguageEngine` protocol + `ModuleInfo` data model present; `PythonEngine`/`PHPEngine` implementations follow the protocol. (`PHPEngine` class name correctly keeps `PHP` uppercase.) |
+| ADR-0009 — Inline shell replaced with Python scripts | Aligned   | Setup detectors are standalone Python scripts under `src/zolletta_metaskill/setup/`, all typed and documented.                                                                         |
 
 No architectural directive violations observed.
 

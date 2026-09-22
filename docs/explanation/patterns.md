@@ -113,11 +113,11 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 **Evidence we already do this:**
 
-| Where                                    | What                                                        | How it follows the pattern                                      |
-|------------------------------------------|-------------------------------------------------------------|-----------------------------------------------------------------|
-| `skills/review/SKILL.md` Step 6          | Previous review comparison: ✅ Done / ⚠️ Partial / ❌ Not done | A clear success signal for each carried-forward finding         |
-| `skills/review/SKILL.md` Step 7          | "Trend vs previous review" subsection in SUMMARY.md         | The signal is measured across runs                              |
-| `skills/review/SKILL.md` Step 5 line 240 | "If a subagent fails or times out, note it and continue"    | Iteration is bounded — failure is recorded, not retried blindly |
+| Where                                    | What                                                         | How it follows the pattern                                      |
+|------------------------------------------|--------------------------------------------------------------|-----------------------------------------------------------------|
+| `skills/review/SKILL.md` Step 6          | Previous review comparison: ✅ Done / ⚠️ Partial / ❌ Not done | A clear success signal for each carried-forward finding       |
+| `skills/review/SKILL.md` Step 7          | "Trend vs previous review" subsection in SUMMARY.md          | The signal is measured across runs                              |
+| `skills/review/SKILL.md` Step 5 line 240 | "If a subagent fails or times out, note it and continue"     | Iteration is bounded — failure is recorded, not retried blindly |
 
 
 ## 8. Focused Agent

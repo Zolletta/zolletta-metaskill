@@ -11,11 +11,11 @@ The `documentor` skill includes four drift detection tools. All are Python 3.8+ 
 ## Tools
 
 | Tool                      | Purpose                                       | Command                                                                     |
-| ------------------------- | --------------------------------------------- | --------------------------------------------------------------------------- |
-| `drift_analyzer.py`       | Full drift analysis between code and docs     | `python src/zolletta_metaskill/documentor/drift_analyzer.py [--json]`        |
-| `doc_staleness_scorer.py` | Score documentation freshness 0-100           | `python src/zolletta_metaskill/documentor/doc_staleness_scorer.py [--json]`  |
-| `api_doc_validator.py`    | Validate API docs against Python source (AST) | `python src/zolletta_metaskill/documentor/api_doc_validator.py [--json]`     |
-| `link_checker.py`         | Audit all markdown links and anchors          | `python src/zolletta_metaskill/documentor/link_checker.py [--broken-only]`   |
+|---------------------------|-----------------------------------------------|-----------------------------------------------------------------------------|
+| `drift_analyzer.py`       | Full drift analysis between code and docs     | `python src/zolletta_metaskill/documentor/drift_analyzer.py [--json]`       |
+| `doc_staleness_scorer.py` | Score documentation freshness 0-100           | `python src/zolletta_metaskill/documentor/doc_staleness_scorer.py [--json]` |
+| `api_doc_validator.py`    | Validate API docs against Python source (AST) | `python src/zolletta_metaskill/documentor/api_doc_validator.py [--json]`    |
+| `link_checker.py`         | Audit all markdown links and anchors          | `python src/zolletta_metaskill/documentor/link_checker.py [--broken-only]`  |
 
 All tools: Python 3.8+ stdlib only, `[--json]`, run from the repository root, any OS. All configuration — docs directory, source roots, thresholds — comes from `.zolletta-metaskill/settings.json` under `documentation.*`.
 
@@ -45,14 +45,14 @@ Scores documentation freshness on a 0-100 scale across five dimensions. Respects
 python src/zolletta_metaskill/documentor/doc_staleness_scorer.py [--json] [--quiet]
 ```
 
-| Option / Setting                    | Default    | Description                            |
-| ----------------------------------- | ---------- | -------------------------------------- |
-| `--quiet`                           | off        | Output only the score number           |
-| `documentation.staleness_threshold` | (none)     | Fail if score drops below this value   |
-| `documentation.readme_focus`        | false      | Focus on README-style docs             |
-| `documentation.readme_sections`     | (auto)     | Comma-separated required section names |
-| `documentation.staleness_weights`   | (defaults) | Scoring weights for the five dimensions |
-| `documentation.diataxis_translations` | (none)   | Translated README section names        |
+| Option / Setting                      | Default    | Description                             |
+|---------------------------------------|------------|-----------------------------------------|
+| `--quiet`                             | off        | Output only the score number            |
+| `documentation.staleness_threshold`   | (none)     | Fail if score drops below this value    |
+| `documentation.readme_focus`          | false      | Focus on README-style docs              |
+| `documentation.readme_sections`       | (auto)     | Comma-separated required section names  |
+| `documentation.staleness_weights`     | (defaults) | Scoring weights for the five dimensions |
+| `documentation.diataxis_translations` | (none)     | Translated README section names         |
 
 `staleness_weights` is a mapping over `updated`, `alignment`, `links`, `completeness`, `accuracy`.
 

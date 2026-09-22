@@ -74,17 +74,17 @@ Command: `uv run pytest --cov=zolletta_metaskill --cov-report=term-missing -q`. 
 
 ## Manual Review Checks
 
-| # | Area      | Rule | Status | Notes |
-|---|-----------|------|--------|-------|
-| 1 | Structure | AAA pattern (always-on #1) | PASS | Tests are short and single-act; arrange (tmp_path setup), act (one call), assert (clear predicates). Grouped into descriptive `Test*` classes. |
-| 2 | Isolation | Test independence (always-on #2) | PASS | All fixtures function-scoped (no module/session/class scope). `tmp_path` used pervasively. `monkeypatch` auto-undoes `sys.argv`/`chdir`. No `os.chdir` without monkeypatch, no `sys.path` mutation, no global mutable state found. |
-| 3 | Coverage  | Mandatory `pytest --cov` (always-on #3) | PASS | Run completed; 99% total; 0 modules below 50%. |
-| 4 | Scope     | No duplication of `patterns` structural check (always-on #4) | PASS | Only coverage analysis performed; structural "missing test file" check owned by `test_structure_scanner.py` (patterns skill) was not duplicated. |
-| 5 | Coverage  | Gap threshold 50% (#5) | PASS | No module below 50%. |
-| 6 | Coverage  | Well-covered threshold 80% (#6) | PASS | All modules ≥ 89%; none flagged. |
-| 7 | Naming    | Convention `test_<unit>_<scenario>_<expected>` (#7) | PASS | Scanner: 0 violations / 1493 functions. |
-| 8 | Mocking   | Mock external boundaries only | PASS | `urllib.request.urlopen`, `os.listdir` mocked (network/fs edges). Code under test runs as real instances against temp filesystem. `MagicMock` used minimally (8 occurrences) and only for external response objects. |
-| 9 | Fixtures  | Lean, function-scoped design | PASS | 3 fixtures total (`tmp_src`, `tmp_tests`, `write_adr` helper). No over-engineering, appropriate scopes. |
+| # | Area      | Rule                                                         | Status | Notes                                                                                                                                                                                                                              |
+|---|-----------|--------------------------------------------------------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1 | Structure | AAA pattern (always-on #1)                                   | PASS   | Tests are short and single-act; arrange (tmp_path setup), act (one call), assert (clear predicates). Grouped into descriptive `Test*` classes.                                                                                     |
+| 2 | Isolation | Test independence (always-on #2)                             | PASS   | All fixtures function-scoped (no module/session/class scope). `tmp_path` used pervasively. `monkeypatch` auto-undoes `sys.argv`/`chdir`. No `os.chdir` without monkeypatch, no `sys.path` mutation, no global mutable state found. |
+| 3 | Coverage  | Mandatory `pytest --cov` (always-on #3)                      | PASS   | Run completed; 99% total; 0 modules below 50%.                                                                                                                                                                                     |
+| 4 | Scope     | No duplication of `patterns` structural check (always-on #4) | PASS   | Only coverage analysis performed; structural "missing test file" check owned by `test_structure_scanner.py` (patterns skill) was not duplicated.                                                                                   |
+| 5 | Coverage  | Gap threshold 50% (#5)                                       | PASS   | No module below 50%.                                                                                                                                                                                                               |
+| 6 | Coverage  | Well-covered threshold 80% (#6)                              | PASS   | All modules ≥ 89%; none flagged.                                                                                                                                                                                                   |
+| 7 | Naming    | Convention `test_<unit>_<scenario>_<expected>` (#7)          | PASS   | Scanner: 0 violations / 1493 functions.                                                                                                                                                                                            |
+| 8 | Mocking   | Mock external boundaries only                                | PASS   | `urllib.request.urlopen`, `os.listdir` mocked (network/fs edges). Code under test runs as real instances against temp filesystem. `MagicMock` used minimally (8 occurrences) and only for external response objects.               |
+| 9 | Fixtures  | Lean, function-scoped design                                 | PASS   | 3 fixtures total (`tmp_src`, `tmp_tests`, `write_adr` helper). No over-engineering, appropriate scopes.                                                                                                                            |
 
 ## Findings
 
@@ -118,12 +118,12 @@ None. This skill runs no auto-fixing tools (ruff/ty/mypy/vulture are owned by th
 
 ## Architectural Directive Alignment
 
-| Directive | Type | Status | Notes |
-|-----------|------|--------|-------|
-| [ADR-0004] Python stdlib only for scanners | Binary | PASS | Scanners under test are stdlib-only; tests do not introduce non-stdlib runtime deps. |
-| [ADR-0009] Inline shell replaced with testable Python scripts | Binary | PASS | Setup/scanner scripts (`test_naming_scanner.py`, `test_structure_scanner.py`, detectors) are unit-tested with real invocations. |
-| [ADR-0005] Review orchestrator with parallel subagents | Nuanced | N/A | Process directive; not observable in test code. |
-| [ADR-0007] LanguageEngine protocol with ModuleInfo | Nuanced | PASS | `core/engine/` and `core/structs/` are directly unit-tested (`test_engine_registry.py`, `test_python_engine.py`, `test_php_engine.py`, struct tests). |
+| Directive                                                     | Type    | Status | Notes                                                                                                                                                 |
+|---------------------------------------------------------------|---------|--------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [ADR-0004] Python stdlib only for scanners                    | Binary  | PASS   | Scanners under test are stdlib-only; tests do not introduce non-stdlib runtime deps.                                                                  |
+| [ADR-0009] Inline shell replaced with testable Python scripts | Binary  | PASS   | Setup/scanner scripts (`test_naming_scanner.py`, `test_structure_scanner.py`, detectors) are unit-tested with real invocations.                       |
+| [ADR-0005] Review orchestrator with parallel subagents        | Nuanced | N/A    | Process directive; not observable in test code.                                                                                                       |
+| [ADR-0007] LanguageEngine protocol with ModuleInfo            | Nuanced | PASS   | `core/engine/` and `core/structs/` are directly unit-tested (`test_engine_registry.py`, `test_python_engine.py`, `test_php_engine.py`, struct tests). |
 
 No binary directive violations found.
 

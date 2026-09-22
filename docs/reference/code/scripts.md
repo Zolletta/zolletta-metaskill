@@ -22,11 +22,11 @@ Scans source roots and reports every class sorted by line count, with method cou
 python3 src/zolletta_metaskill/patterns/general/class_metrics_scanner.py [--json]
 ```
 
-| Setting                        | Default | Description                       |
-|--------------------------------|---------|-----------------------------------|
-| `python.paths.source`          | `[src]` | Source roots to scan              |
-| `python.patterns.class_metrics_top`  | 30      | Show only the top N classes       |
-| `python.patterns.class_metrics_min_lines` | 50 | Skip classes shorter than N lines |
+| Setting                                   | Default | Description                       |
+|-------------------------------------------|---------|-----------------------------------|
+| `python.paths.source`                     | `[src]` | Source roots to scan              |
+| `python.patterns.class_metrics_top`       | 30      | Show only the top N classes       |
+| `python.patterns.class_metrics_min_lines` | 50      | Skip classes shorter than N lines |
 
 **Output**: a table with columns `LINES`, `ALL` (methods), `PUB` (public methods), `ATTRS` (`self.*` attributes), `CLASS`, and `file:start-end`.
 
@@ -40,12 +40,12 @@ Scans test roots and reports test classes sorted by size, with method count and 
 python3 src/zolletta_metaskill/patterns/general/test_god_classes_scanner.py [--json] [--show-methods]
 ```
 
-| Option / Setting               | Default  | Description                                             |
-|--------------------------------|----------|---------------------------------------------------------|
-| `--show-methods`               | off      | List all method names per class (helps spot mixed SUTs) |
-| `python.paths.tests`           | `[tests]`| Test roots to scan                                      |
-| `python.patterns.test_god_classes_top` | 30   | Show only the top N classes                             |
-| `python.patterns.check_test_god_classes` | true | Check toggle                                       |
+| Option / Setting                         | Default   | Description                                             |
+|------------------------------------------|-----------|---------------------------------------------------------|
+| `--show-methods`                         | off       | List all method names per class (helps spot mixed SUTs) |
+| `python.paths.tests`                     | `[tests]` | Test roots to scan                                      |
+| `python.patterns.test_god_classes_top`   | 30        | Show only the top N classes                             |
+| `python.patterns.check_test_god_classes` | true      | Check toggle                                            |
 
 ## Structural Convention Scripts
 
@@ -59,11 +59,11 @@ Test roots are scanned too: a test file must hold exactly one test class named a
 python3 src/zolletta_metaskill/code_style/general/one_class_per_file_scanner.py [--json]
 ```
 
-| Setting                                          | Default | Description                                             |
-|--------------------------------------------------|---------|---------------------------------------------------------|
-| `<lang>.code_style.check_one_class_per_file`     | true    | Per-language toggle                                     |
-| `<lang>.code_style.check_one_class_per_test_file`| true    | Also scan test roots (one test class per test file)     |
-| `python.code_style.check_zero_class_files`       | false   | Hide 0-class (utility module) findings                 |
+| Setting                                           | Default | Description                                         |
+|---------------------------------------------------|---------|-----------------------------------------------------|
+| `<lang>.code_style.check_one_class_per_file`      | true    | Per-language toggle                                 |
+| `<lang>.code_style.check_one_class_per_test_file` | true    | Also scan test roots (one test class per test file) |
+| `python.code_style.check_zero_class_files`        | false   | Hide 0-class (utility module) findings              |
 
 **Exceptions**: `__init__.py` and `conftest.py` are always skipped. Files with 0 classes are reported as low severity.
 
@@ -99,11 +99,11 @@ Checks that the test directory structure mirrors the source directory structure.
 python3 src/zolletta_metaskill/testing_style/general/test_structure_scanner.py [--json]
 ```
 
-| Setting                             | Default      | Description                          |
-|-------------------------------------|--------------|--------------------------------------|
-| `python.paths.source`/`tests`     | `src`/`tests`| Roots to compare                     |
-| `python.paths.package`              | auto-detect  | Package path within the source root  |
-| `python.patterns.check_test_structure`     | true         | Check toggle                         |
+| Setting                                | Default       | Description                         |
+|----------------------------------------|---------------|-------------------------------------|
+| `python.paths.source`/`tests`          | `src`/`tests` | Roots to compare                    |
+| `python.paths.package`                 | auto-detect   | Package path within the source root |
+| `python.patterns.check_test_structure` | true          | Check toggle                        |
 
 **File matching convention**: Test files match source files by stem prefix: `test_cache_*` matches `cache.py`.
 
@@ -118,11 +118,11 @@ Checks two naming conventions in a single pass:
 python3 src/zolletta_metaskill/code_style/general/naming_conventions_scanner.py [--json]
 ```
 
-| Setting                             | Default      | Description                          |
-|-------------------------------------|--------------|--------------------------------------|
-| `python.paths.source`/`tests`     | `src`/`tests`| Roots to compare                     |
-| `python.paths.package`              | auto-detect  | Package path within the source root  |
-| `python.code_style.check_filename_matches_class` | true       | Check toggle                         |
+| Setting                                          | Default       | Description                         |
+|--------------------------------------------------|---------------|-------------------------------------|
+| `python.paths.source`/`tests`                    | `src`/`tests` | Roots to compare                    |
+| `python.paths.package`                           | auto-detect   | Package path within the source root |
+| `python.code_style.check_filename_matches_class` | true          | Check toggle                        |
 
 **Matching logic**: Longest stem-prefix match wins; class-name prefixes also checked.
 
@@ -136,10 +136,10 @@ Detects classes that instantiate their dependencies internally (`self.x = SomeCl
 python3 src/zolletta_metaskill/patterns/python/dependency_inversion_scanner.py [--json]
 ```
 
-| Setting                        | Default                                                     | Description                            |
-|--------------------------------|-------------------------------------------------------------|----------------------------------------|
-| `python.patterns.check_dip`    | true                                                        | Check toggle                           |
-| `python.patterns.dip_entry_points` | `main,cli,app,__main__,myproject,manage,wsgi,asgi,conftest` | Filename patterns to exclude       |
+| Setting                            | Default                                                     | Description                  |
+|------------------------------------|-------------------------------------------------------------|------------------------------|
+| `python.patterns.check_dip`        | true                                                        | Check toggle                 |
+| `python.patterns.dip_entry_points` | `main,cli,app,__main__,myproject,manage,wsgi,asgi,conftest` | Filename patterns to exclude |
 
 **Exclusions**: Excludes entry points, DI containers, dataclasses, factories, and stdlib types.
 
@@ -179,9 +179,9 @@ Detects subclass methods that break substitutability: incompatible signatures, n
 python3 src/zolletta_metaskill/patterns/general/liskov_substitution_scanner.py [--json]
 ```
 
-| Setting                | Default | Description  |
-|------------------------|---------|--------------|
-| `python.patterns.check_lsp`   | true    | Check toggle |
+| Setting                     | Default | Description  |
+|-----------------------------|---------|--------------|
+| `python.patterns.check_lsp` | true    | Check toggle |
 
 **Checks**: overridden methods with extra required params, fewer params than parent, new exception types, stub overrides (pass/return None when parent has a real body).
 
@@ -292,9 +292,9 @@ Finds names listed in `__all__` that are never imported by any other module in t
 python3 src/zolletta_metaskill/code_style/python/unused_all_exports_scanner.py [--json]
 ```
 
-| Setting                                  | Default | Description              |
-|------------------------------------------|---------|--------------------------|
-| `python.code_style.check_unused_all_exports` | true    | Check toggle             |
+| Setting                                      | Default | Description  |
+|----------------------------------------------|---------|--------------|
+| `python.code_style.check_unused_all_exports` | true    | Check toggle |
 
 ### test_naming_scanner.py
 
@@ -304,11 +304,11 @@ Checks test function names against the `test_<unit>_<scenario>_<expected>` conve
 python3 src/zolletta_metaskill/testing_style/python/test_naming_scanner.py [--json]
 ```
 
-| Setting                            | Default  | Description                           |
-|------------------------------------|----------|---------------------------------------|
-| `python.paths.tests`               | `[tests]`| Test roots to scan                    |
-| `python.testing.check_test_naming`        | true     | Check toggle                          |
-| `python.testing.test_naming_min_segments` | 3        | Minimum segments after `test_` prefix |
+| Setting                                   | Default   | Description                           |
+|-------------------------------------------|-----------|---------------------------------------|
+| `python.paths.tests`                      | `[tests]` | Test roots to scan                    |
+| `python.testing.check_test_naming`        | true      | Check toggle                          |
+| `python.testing.test_naming_min_segments` | 3         | Minimum segments after `test_` prefix |
 
 ### acronym_casing_scanner.py
 

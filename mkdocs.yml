@@ -59,8 +59,6 @@ markdown_extensions:
 
 validation:
   links:
-    # Repo-root-relative links (e.g. ../../README.md, ../../skills/...) are
-    # intentional — they resolve on GitHub and are audited by link_checker.py.
     not_found: info
     unrecognized_links: info
 
