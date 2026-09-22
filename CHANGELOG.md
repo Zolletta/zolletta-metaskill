@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v2.0.0 (2026-09-22)
+
+### Code Style
+
+- Apply ruff format; cover settings-merge else branches in tests
+  ([#54](https://github.com/Zolletta/zolletta-metaskill/pull/54),
+  [`5135cba`](https://github.com/Zolletta/zolletta-metaskill/commit/5135cbaadef94fc631b59add685d6285b9a58e3a))
+
+### Refactoring
+
+- **scripts**: Standardize script CLI on settings.json-driven config
+  ([#54](https://github.com/Zolletta/zolletta-metaskill/pull/54),
+  [`5135cba`](https://github.com/Zolletta/zolletta-metaskill/commit/5135cbaadef94fc631b59add685d6285b9a58e3a))
+
+- **scripts**: Standardize script CLI on settings.json-driven co…
+  ([#54](https://github.com/Zolletta/zolletta-metaskill/pull/54),
+  [`5135cba`](https://github.com/Zolletta/zolletta-metaskill/commit/5135cbaadef94fc631b59add685d6285b9a58e3a))
+
+
 ## v1.3.0 (2026-09-20)
 
 ### Bug Fixes
