@@ -13,12 +13,10 @@ from zolletta_metaskill.code_style.python.acronym_casing_scanner import (
     AcronymCasingScanner,
 )
 
-# ---------------------------------------------------------------------------
-# AcronymCasingScanner._load_default_acronyms
-# ---------------------------------------------------------------------------
 
+class TestAcronymCasingScanner:
+    # --- AcronymCasingScanner._load_default_acronyms ---
 
-class TestLoadDefaultAcronyms:
     def test_returns_non_empty_list(self) -> None:
         acronyms = AcronymCasingScanner._load_default_acronyms()
         assert isinstance(acronyms, list)
@@ -77,7 +75,7 @@ class TestLoadDefaultAcronyms:
         # lowercase entries are uppercased
         assert "ABC" in acronyms
 
-    def test_filters_non_string_entries(
+    def test_load_default_acronyms_filters_non_string_entries(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         import zolletta_metaskill.code_style.python.acronym_casing_scanner as mod
@@ -93,13 +91,8 @@ class TestLoadDefaultAcronyms:
         assert cast(Any, 123) not in acronyms
         assert None not in acronyms
 
+    # --- AcronymCasingScanner._split_pascal_case ---
 
-# ---------------------------------------------------------------------------
-# AcronymCasingScanner._split_pascal_case
-# ---------------------------------------------------------------------------
-
-
-class TestSplitPascalCase:
     @pytest.mark.parametrize(
         ("name", "expected"),
         [
@@ -138,13 +131,8 @@ class TestSplitPascalCase:
         # HTTPSClient -> HTTPS | Client
         assert AcronymCasingScanner._split_pascal_case("HTTPSClient") == ["HTTPS", "Client"]
 
+    # --- AcronymCasingScanner._get_class_names ---
 
-# ---------------------------------------------------------------------------
-# AcronymCasingScanner._get_class_names
-# ---------------------------------------------------------------------------
-
-
-class TestGetClassNames:
     def test_returns_class_names_with_line_numbers(self, tmp_path: Path) -> None:
         f = tmp_path / "mod.py"
         f.write_text(
@@ -188,13 +176,8 @@ class TestGetClassNames:
         result = AcronymCasingScanner._get_class_names(f)
         assert result == [("Foo", 2)]
 
+    # --- AcronymCasingScanner._load_acronyms_from_settings ---
 
-# ---------------------------------------------------------------------------
-# AcronymCasingScanner._load_acronyms_from_settings
-# ---------------------------------------------------------------------------
-
-
-class TestProjectAcronyms:
     def test_empty_settings_returns_empty(self) -> None:
         assert AcronymCasingScanner._project_acronyms({}) == []
 
@@ -212,17 +195,12 @@ class TestProjectAcronyms:
     def test_not_a_list_returns_empty(self) -> None:
         assert AcronymCasingScanner._project_acronyms({"acronyms": "not a list"}) == []
 
-    def test_filters_non_string_entries(self) -> None:
+    def test_project_acronyms_filters_non_string_entries(self) -> None:
         result = AcronymCasingScanner._project_acronyms({"acronyms": ["API", 123]})
         assert result == ["API"]
 
+    # --- AcronymCasingScanner.main ---
 
-# ---------------------------------------------------------------------------
-# AcronymCasingScanner.main
-# ---------------------------------------------------------------------------
-
-
-class TestMain:
     def _write_settings(self, tmp_path: Path, **overrides: object) -> Path:
         """Write a minimal settings.json under ``tmp_path/.zolletta-metaskill``."""
         settings: dict[str, object] = {

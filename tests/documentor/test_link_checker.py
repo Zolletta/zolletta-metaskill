@@ -13,12 +13,10 @@ import pytest
 from zolletta_metaskill.documentor.link_checker import LinkChecker
 from zolletta_metaskill.documentor.structs.link_info import LinkInfo
 
-# ---------------------------------------------------------------------------
-# LinkInfo
-# ---------------------------------------------------------------------------
 
+class TestLinkChecker:
+    # --- LinkInfo ---
 
-class TestLinkInfo:
     def test_linkinfo_init_returns_none(self) -> None:
         link = LinkInfo("README.md", 5, "text", "target.md", "local_file")
         assert link.source_file == "README.md"
@@ -41,13 +39,8 @@ class TestLinkInfo:
         assert d["valid"] is True
         assert d["error"] is None
 
+    # --- classify_link ---
 
-# ---------------------------------------------------------------------------
-# classify_link
-# ---------------------------------------------------------------------------
-
-
-class TestClassifyLink:
     def test_classify_link_http_returns_external(self) -> None:
         assert LinkChecker.classify_link("http://example.com") == "external"
 
@@ -75,13 +68,8 @@ class TestClassifyLink:
     def test_image_with_anchor(self) -> None:
         assert LinkChecker.classify_link("image.png#fragment") == "image"
 
+    # --- extract_links ---
 
-# ---------------------------------------------------------------------------
-# extract_links
-# ---------------------------------------------------------------------------
-
-
-class TestExtractLinks:
     def test_extract_links_markdown_link_returns_local_file(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("See [guide](guide.md) for more.", encoding="utf-8")
@@ -179,13 +167,8 @@ class TestExtractLinks:
         assert links[0].line_number == 2
         assert links[1].line_number == 4
 
+    # --- slugify_heading ---
 
-# ---------------------------------------------------------------------------
-# slugify_heading
-# ---------------------------------------------------------------------------
-
-
-class TestSlugifyHeading:
     def test_slugify_heading_simple_input_returns_hello_world(self) -> None:
         assert LinkChecker.slugify_heading("Hello World") == "hello-world"
 
@@ -204,13 +187,8 @@ class TestSlugifyHeading:
     def test_slugify_heading_empty_input_returns_empty(self) -> None:
         assert LinkChecker.slugify_heading("") == ""
 
+    # --- extract_headings ---
 
-# ---------------------------------------------------------------------------
-# extract_headings
-# ---------------------------------------------------------------------------
-
-
-class TestExtractHeadings:
     def test_extract_headings_simple_headings_contains_sub(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("# Title\n## Section\n### Sub", encoding="utf-8")
@@ -236,13 +214,8 @@ class TestExtractHeadings:
         # 7 hashes is not a valid heading (only up to 6)
         assert "too-deep" not in headings
 
+    # --- find_duplicate_anchors ---
 
-# ---------------------------------------------------------------------------
-# find_duplicate_anchors
-# ---------------------------------------------------------------------------
-
-
-class TestFindDuplicateAnchors:
     def test_find_duplicate_anchors_no_duplicates_returns_empty_list(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("# Title\n## Section", encoding="utf-8")
@@ -291,13 +264,8 @@ class TestFindDuplicateAnchors:
         assert dups[0][0] == "title"
         assert dups[0][1] == 5
 
+    # --- validate_link ---
 
-# ---------------------------------------------------------------------------
-# validate_link
-# ---------------------------------------------------------------------------
-
-
-class TestValidateLink:
     def test_template_placeholder_target_skipped(self) -> None:
         link = LinkInfo("t.md", 1, "text", "{{lang_skill}}.md", "local_file")
         LinkChecker.validate_link(link, "/repo", {})
@@ -468,13 +436,8 @@ class TestValidateLink:
         LinkChecker.validate_link(link, str(tmp_path), cache)
         assert link.is_valid is True
 
+    # --- _get_headings ---
 
-# ---------------------------------------------------------------------------
-# _get_headings
-# ---------------------------------------------------------------------------
-
-
-class TestGetHeadings:
     def test_get_headings_caches_result_returns_result1(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("# Title\n", encoding="utf-8")
@@ -485,13 +448,8 @@ class TestGetHeadings:
         result2 = LinkChecker._get_headings(str(f), cache)
         assert result2 is result1
 
+    # --- _check_case_insensitive ---
 
-# ---------------------------------------------------------------------------
-# _check_case_insensitive
-# ---------------------------------------------------------------------------
-
-
-class TestCheckCaseInsensitive:
     def test_check_case_insensitive_finds_match_contains_guide_md(self, tmp_path: Path) -> None:
         (tmp_path / "Guide.md").write_text("guide", encoding="utf-8")
         result = LinkChecker._check_case_insensitive(str(tmp_path / "guide.md"))
@@ -512,13 +470,8 @@ class TestCheckCaseInsensitive:
         with patch("os.listdir", side_effect=PermissionError("denied")):
             assert LinkChecker._check_case_insensitive(str(tmp_path / "guide.md")) is None
 
+    # --- validate_external_url ---
 
-# ---------------------------------------------------------------------------
-# validate_external_url
-# ---------------------------------------------------------------------------
-
-
-class TestValidateExternalUrl:
     def test_magicmock_success_returns_none(self) -> None:
         from unittest.mock import MagicMock
 
@@ -609,13 +562,8 @@ class TestValidateExternalUrl:
             valid, error = LinkChecker.validate_external_url("https://example.com")
         assert valid is False
 
+    # --- find_markdown_files ---
 
-# ---------------------------------------------------------------------------
-# find_markdown_files
-# ---------------------------------------------------------------------------
-
-
-class TestFindMarkdownFiles:
     def test_find_markdown_files_directory_is_valid(self, tmp_path: Path) -> None:
         (tmp_path / "a.md").write_text("a", encoding="utf-8")
         (tmp_path / "b.markdown").write_text("b", encoding="utf-8")
@@ -652,13 +600,8 @@ class TestFindMarkdownFiles:
         result = LinkChecker.find_markdown_files(str(tmp_path))
         assert result == sorted(result)
 
+    # --- generate_report ---
 
-# ---------------------------------------------------------------------------
-# generate_report
-# ---------------------------------------------------------------------------
-
-
-class TestGenerateReport:
     def test_empty_report_json(self) -> None:
         report = LinkChecker.generate_report([], {}, as_json=True)
         import json
@@ -737,13 +680,8 @@ class TestGenerateReport:
         data = json.loads(report)
         assert data["summary"]["skipped"] == 1
 
+    # --- main ---
 
-# ---------------------------------------------------------------------------
-# main
-# ---------------------------------------------------------------------------
-
-
-class TestMain:
     def _write_settings(self, tmp_path: Path, **overrides: object) -> Path:
         """Write a minimal settings.json under ``tmp_path/.zolletta-metaskill``."""
         settings: dict[str, object] = {

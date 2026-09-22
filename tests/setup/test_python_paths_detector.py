@@ -21,7 +21,9 @@ def _make_package(root: Path, name: str) -> None:
     (pkg / "__init__.py").write_text("")
 
 
-class TestLoadPyproject:
+class TestPythonPathsDetector:
+    # --- LoadPyproject ---
+
     def test_missing_returns_empty(self, tmp_path: Path) -> None:
         assert PythonPathsDetector._load_pyproject(tmp_path) == {}
 
@@ -37,8 +39,8 @@ class TestLoadPyproject:
         data = PythonPathsDetector._load_pyproject(tmp_path)
         assert data["project"]["name"] == "x"
 
+    # --- DetectSource ---
 
-class TestDetectSource:
     def test_hatch_packages(self, tmp_path: Path) -> None:
         _write_pyproject(
             tmp_path,
@@ -138,8 +140,8 @@ class TestDetectSource:
         assert result["source"] == ["src"]
         assert result["package"] is None
 
+    # --- DetectTests ---
 
-class TestDetectTests:
     def test_pytest_testpaths(self, tmp_path: Path) -> None:
         _write_pyproject(
             tmp_path,
@@ -157,8 +159,8 @@ class TestDetectTests:
         result = PythonPathsDetector.detect_python_paths(tmp_path)
         assert result["tests"] == ["tests"]
 
+    # --- Package ---
 
-class TestPackage:
     def test_package_from_first_source_root(self, tmp_path: Path) -> None:
         _write_pyproject(
             tmp_path,
@@ -173,8 +175,8 @@ class TestPackage:
         result = PythonPathsDetector.detect_python_paths(tmp_path)
         assert result["package"] is None
 
+    # --- Main ---
 
-class TestMain:
     def test_main_prints_json(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:

@@ -12,7 +12,52 @@ from zolletta_metaskill.core.structs import Finding
 from zolletta_metaskill.patterns.general.class_metrics_scanner import ClassMetricsScanner
 
 
-class TestScanFile:
+def _write_settings(dirpath: Path, **overrides: object) -> Path:
+    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
+    settings: dict[str, object] = {
+        "language": "python",
+        "python": {
+            "patterns": {},
+            "paths": {"source": ["src"], "tests": ["tests"], "package": "mypkg"},
+        },
+        "php": None,
+    }
+    python_overrides = overrides.pop("python", None)
+    if isinstance(python_overrides, dict):
+        base_python = settings["python"]
+        assert isinstance(base_python, dict)
+        for key, value in python_overrides.items():
+            if isinstance(value, dict) and isinstance(base_python.get(key), dict):
+                base_python[key].update(value)
+            else:
+                base_python[key] = value
+    settings.update(overrides)
+    meta = dirpath / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    path = meta / "settings.json"
+    path.write_text(json.dumps(settings))
+    return path
+
+
+def test_write_settings_replaces_non_dict_python_value(tmp_path: Path) -> None:
+    """A non-dict ``python`` override value replaces the base value."""
+    path = _write_settings(tmp_path, python={"tools": "none"})
+    written = json.loads(path.read_text())
+    python = written["python"]
+    assert isinstance(python, dict)
+    assert python["tools"] == "none"
+
+
+def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
+    """Chdir into tmp_path and run main() with *argv*."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", argv)
+    return ClassMetricsScanner.main()
+
+
+class TestClassMetricsScanner:
+    # --- ScanFile ---
+
     def test_file_with_class(self, tmp_path: Path) -> None:
         f = tmp_path / "mod.py"
         f.write_text("class Foo:\n    def bar(self):\n        self.x = 1\n")
@@ -95,8 +140,8 @@ class TestScanFile:
         results = ClassMetricsScanner.scan_file(f)
         assert results == []
 
+    # --- ScanModule ---
 
-class TestScanModule:
     def test_moduleinfo_returns_findings_returns_class_metrics(self, tmp_path: Path) -> None:
         from zolletta_metaskill.core.structs import ClassInfo, MethodInfo, ModuleInfo
 
@@ -118,51 +163,8 @@ class TestScanModule:
         assert isinstance(results[0], Finding)
         assert results[0].category == "class_metrics"
 
+    # --- Main ---
 
-def _write_settings(dirpath: Path, **overrides: object) -> Path:
-    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
-    settings: dict[str, object] = {
-        "language": "python",
-        "python": {
-            "patterns": {},
-            "paths": {"source": ["src"], "tests": ["tests"], "package": "mypkg"},
-        },
-        "php": None,
-    }
-    python_overrides = overrides.pop("python", None)
-    if isinstance(python_overrides, dict):
-        base_python = settings["python"]
-        assert isinstance(base_python, dict)
-        for key, value in python_overrides.items():
-            if isinstance(value, dict) and isinstance(base_python.get(key), dict):
-                base_python[key].update(value)
-            else:
-                base_python[key] = value
-    settings.update(overrides)
-    meta = dirpath / ".zolletta-metaskill"
-    meta.mkdir(parents=True, exist_ok=True)
-    path = meta / "settings.json"
-    path.write_text(json.dumps(settings))
-    return path
-
-
-def test_write_settings_replaces_non_dict_python_value(tmp_path: Path) -> None:
-    """A non-dict ``python`` override value replaces the base value."""
-    path = _write_settings(tmp_path, python={"tools": "none"})
-    written = json.loads(path.read_text())
-    python = written["python"]
-    assert isinstance(python, dict)
-    assert python["tools"] == "none"
-
-
-def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
-    """Chdir into tmp_path and run main() with *argv*."""
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(sys, "argv", argv)
-    return ClassMetricsScanner.main()
-
-
-class TestMain:
     def test_main_success_contains_bigclass(
         self,
         tmp_path: Path,

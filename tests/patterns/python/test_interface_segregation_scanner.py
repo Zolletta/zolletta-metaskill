@@ -34,141 +34,6 @@ def _parse_func(source: str) -> ast.FunctionDef:
     raise AssertionError("No FunctionDef found in source")  # pragma: no cover
 
 
-class TestGetClassInfo:
-    def test_parse_class_simple_class_returns_bar(self) -> None:
-        node = _parse_class("class Foo:\n    def bar(self):\n        pass\n")
-        info = InterfaceSegregationScanner._get_class_info(node)
-        assert info["name"] == "Foo"
-        assert info["line"] == 1
-        assert info["bases"] == []
-        assert len(info["methods"]) == 1
-        assert info["methods"][0]["name"] == "bar"
-
-    def test_class_with_bases(self) -> None:
-        node = _parse_class("class Foo(Bar, Baz):\n    pass\n")
-        info = InterfaceSegregationScanner._get_class_info(node)
-        assert info["bases"] == ["Bar", "Baz"]
-
-    def test_class_with_attribute_base(self) -> None:
-        node = _parse_class("class Foo(abc.ABC):\n    pass\n")
-        info = InterfaceSegregationScanner._get_class_info(node)
-        assert info["bases"] == ["ABC"]
-
-    def test_class_with_async_method(self) -> None:
-        node = _parse_class("class Foo:\n    async def bar(self):\n        pass\n")
-        info = InterfaceSegregationScanner._get_class_info(node)
-        assert len(info["methods"]) == 1
-        assert info["methods"][0]["name"] == "bar"
-
-    def test_class_with_multiple_methods(self) -> None:
-        node = _parse_class(
-            "class Foo:\n    def a(self):\n        pass\n    def b(self):\n        pass\n"
-        )
-        info = InterfaceSegregationScanner._get_class_info(node)
-        assert len(info["methods"]) == 2
-        names = {m["name"] for m in info["methods"]}
-        assert names == {"a", "b"}
-
-    def test_class_with_non_method_body(self) -> None:
-        node = _parse_class("class Foo:\n    x = 1\n    y = 2\n")
-        info = InterfaceSegregationScanner._get_class_info(node)
-        assert info["methods"] == []
-
-    def test_method_info_fields(self) -> None:
-        node = _parse_class("class Foo:\n    def bar(self):\n        pass\n")
-        info = InterfaceSegregationScanner._get_class_info(node)
-        m = info["methods"][0]
-        assert "line" in m
-        assert "raises_not_implemented" in m
-        assert "returns_none" in m
-
-
-class TestRaisesNotImplemented:
-    def test_parse_func_raises_call_returns_true(self) -> None:
-        func = _parse_func("def foo(self):\n    raise NotImplementedError()\n")
-        assert InterfaceSegregationScanner._raises_not_implemented(func) is True
-
-    def test_parse_func_raises_name_returns_true(self) -> None:
-        func = _parse_func("def foo(self):\n    raise NotImplementedError\n")
-        assert InterfaceSegregationScanner._raises_not_implemented(func) is True
-
-    def test_parse_func_no_raise_returns_false(self) -> None:
-        func = _parse_func("def foo(self):\n    return 1\n")
-        assert InterfaceSegregationScanner._raises_not_implemented(func) is False
-
-    def test_raises_other_exception(self) -> None:
-        func = _parse_func("def foo(self):\n    raise ValueError()\n")
-        assert InterfaceSegregationScanner._raises_not_implemented(func) is False
-
-    def test_raises_in_nested(self) -> None:
-        func = _parse_func("def foo(self):\n    if True:\n        raise NotImplementedError()\n")
-        assert InterfaceSegregationScanner._raises_not_implemented(func) is True
-
-    def test_raise_without_exc(self) -> None:
-        func = _parse_func("def foo(self):\n    raise\n")
-        assert InterfaceSegregationScanner._raises_not_implemented(func) is False
-
-
-class TestReturnsNoneOnly:
-    def test_parse_func_pass_only_returns_true(self) -> None:
-        func = _parse_func("def foo(self):\n    pass\n")
-        assert InterfaceSegregationScanner._returns_none_only(func) is True
-
-    def test_parse_func_return_none_returns_true(self) -> None:
-        func = _parse_func("def foo(self):\n    return None\n")
-        assert InterfaceSegregationScanner._returns_none_only(func) is True
-
-    def test_parse_func_return_bare_returns_true(self) -> None:
-        func = _parse_func("def foo(self):\n    return\n")
-        assert InterfaceSegregationScanner._returns_none_only(func) is True
-
-    def test_parse_func_return_value_returns_false(self) -> None:
-        func = _parse_func("def foo(self):\n    return 1\n")
-        assert InterfaceSegregationScanner._returns_none_only(func) is False
-
-    def test_docstring_then_pass(self) -> None:
-        func = _parse_func('def foo(self):\n    """Doc."""\n    pass\n')
-        assert InterfaceSegregationScanner._returns_none_only(func) is True
-
-    def test_docstring_then_return_none(self) -> None:
-        func = _parse_func('def foo(self):\n    """Doc."""\n    return None\n')
-        assert InterfaceSegregationScanner._returns_none_only(func) is True
-
-    def test_parse_func_multiple_statements_returns_false(self) -> None:
-        func = _parse_func("def foo(self):\n    x = 1\n    return None\n")
-        assert InterfaceSegregationScanner._returns_none_only(func) is False
-
-    def test_parse_func_real_body_returns_false(self) -> None:
-        func = _parse_func("def foo(self):\n    x = 1\n    y = 2\n    return x + y\n")
-        assert InterfaceSegregationScanner._returns_none_only(func) is False
-
-    def test_empty_body_not_stub(self) -> None:
-        func = _parse_func("def foo(self):\n    x = 1\n")
-        assert InterfaceSegregationScanner._returns_none_only(func) is False
-
-
-class TestIsProtocolOrAbc:
-    def test_is_protocol_or_abc_protocol_returns_true(self) -> None:
-        info = {"bases": ["Protocol"]}
-        assert InterfaceSegregationScanner._is_protocol_or_abc(info) is True
-
-    def test_is_protocol_or_abc_abc_returns_true(self) -> None:
-        info = {"bases": ["ABC"]}
-        assert InterfaceSegregationScanner._is_protocol_or_abc(info) is True
-
-    def test_not_protocol_or_abc(self) -> None:
-        info = {"bases": ["Foo"]}
-        assert InterfaceSegregationScanner._is_protocol_or_abc(info) is False
-
-    def test_is_protocol_or_abc_empty_bases_returns_false(self) -> None:
-        info: dict[str, Any] = {"bases": []}
-        assert InterfaceSegregationScanner._is_protocol_or_abc(info) is False
-
-    def test_multiple_bases_with_protocol(self) -> None:
-        info = {"bases": ["Foo", "Protocol"]}
-        assert InterfaceSegregationScanner._is_protocol_or_abc(info) is True
-
-
 def _write_settings(dirpath: Path, **overrides: object) -> Path:
     """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
     settings: dict[str, object] = {
@@ -217,7 +82,144 @@ def _fat_protocol_src(count: int = 6, name: str = "BigProtocol") -> str:
     return f"class {name}(Protocol):\n{methods}\n"
 
 
-class TestMain:
+class TestInterfaceSegregationScanner:
+    # --- GetClassInfo ---
+
+    def test_parse_class_simple_class_returns_bar(self) -> None:
+        node = _parse_class("class Foo:\n    def bar(self):\n        pass\n")
+        info = InterfaceSegregationScanner._get_class_info(node)
+        assert info["name"] == "Foo"
+        assert info["line"] == 1
+        assert info["bases"] == []
+        assert len(info["methods"]) == 1
+        assert info["methods"][0]["name"] == "bar"
+
+    def test_class_with_bases(self) -> None:
+        node = _parse_class("class Foo(Bar, Baz):\n    pass\n")
+        info = InterfaceSegregationScanner._get_class_info(node)
+        assert info["bases"] == ["Bar", "Baz"]
+
+    def test_class_with_attribute_base(self) -> None:
+        node = _parse_class("class Foo(abc.ABC):\n    pass\n")
+        info = InterfaceSegregationScanner._get_class_info(node)
+        assert info["bases"] == ["ABC"]
+
+    def test_class_with_async_method(self) -> None:
+        node = _parse_class("class Foo:\n    async def bar(self):\n        pass\n")
+        info = InterfaceSegregationScanner._get_class_info(node)
+        assert len(info["methods"]) == 1
+        assert info["methods"][0]["name"] == "bar"
+
+    def test_class_with_multiple_methods(self) -> None:
+        node = _parse_class(
+            "class Foo:\n    def a(self):\n        pass\n    def b(self):\n        pass\n"
+        )
+        info = InterfaceSegregationScanner._get_class_info(node)
+        assert len(info["methods"]) == 2
+        names = {m["name"] for m in info["methods"]}
+        assert names == {"a", "b"}
+
+    def test_class_with_non_method_body(self) -> None:
+        node = _parse_class("class Foo:\n    x = 1\n    y = 2\n")
+        info = InterfaceSegregationScanner._get_class_info(node)
+        assert info["methods"] == []
+
+    def test_method_info_fields(self) -> None:
+        node = _parse_class("class Foo:\n    def bar(self):\n        pass\n")
+        info = InterfaceSegregationScanner._get_class_info(node)
+        m = info["methods"][0]
+        assert "line" in m
+        assert "raises_not_implemented" in m
+        assert "returns_none" in m
+
+    # --- RaisesNotImplemented ---
+
+    def test_parse_func_raises_call_returns_true(self) -> None:
+        func = _parse_func("def foo(self):\n    raise NotImplementedError()\n")
+        assert InterfaceSegregationScanner._raises_not_implemented(func) is True
+
+    def test_parse_func_raises_name_returns_true(self) -> None:
+        func = _parse_func("def foo(self):\n    raise NotImplementedError\n")
+        assert InterfaceSegregationScanner._raises_not_implemented(func) is True
+
+    def test_parse_func_no_raise_returns_false(self) -> None:
+        func = _parse_func("def foo(self):\n    return 1\n")
+        assert InterfaceSegregationScanner._raises_not_implemented(func) is False
+
+    def test_raises_other_exception(self) -> None:
+        func = _parse_func("def foo(self):\n    raise ValueError()\n")
+        assert InterfaceSegregationScanner._raises_not_implemented(func) is False
+
+    def test_raises_in_nested(self) -> None:
+        func = _parse_func("def foo(self):\n    if True:\n        raise NotImplementedError()\n")
+        assert InterfaceSegregationScanner._raises_not_implemented(func) is True
+
+    def test_raise_without_exc(self) -> None:
+        func = _parse_func("def foo(self):\n    raise\n")
+        assert InterfaceSegregationScanner._raises_not_implemented(func) is False
+
+    # --- ReturnsNoneOnly ---
+
+    def test_parse_func_pass_only_returns_true(self) -> None:
+        func = _parse_func("def foo(self):\n    pass\n")
+        assert InterfaceSegregationScanner._returns_none_only(func) is True
+
+    def test_parse_func_return_none_returns_true(self) -> None:
+        func = _parse_func("def foo(self):\n    return None\n")
+        assert InterfaceSegregationScanner._returns_none_only(func) is True
+
+    def test_parse_func_return_bare_returns_true(self) -> None:
+        func = _parse_func("def foo(self):\n    return\n")
+        assert InterfaceSegregationScanner._returns_none_only(func) is True
+
+    def test_parse_func_return_value_returns_false(self) -> None:
+        func = _parse_func("def foo(self):\n    return 1\n")
+        assert InterfaceSegregationScanner._returns_none_only(func) is False
+
+    def test_docstring_then_pass(self) -> None:
+        func = _parse_func('def foo(self):\n    """Doc."""\n    pass\n')
+        assert InterfaceSegregationScanner._returns_none_only(func) is True
+
+    def test_docstring_then_return_none(self) -> None:
+        func = _parse_func('def foo(self):\n    """Doc."""\n    return None\n')
+        assert InterfaceSegregationScanner._returns_none_only(func) is True
+
+    def test_parse_func_multiple_statements_returns_false(self) -> None:
+        func = _parse_func("def foo(self):\n    x = 1\n    return None\n")
+        assert InterfaceSegregationScanner._returns_none_only(func) is False
+
+    def test_parse_func_real_body_returns_false(self) -> None:
+        func = _parse_func("def foo(self):\n    x = 1\n    y = 2\n    return x + y\n")
+        assert InterfaceSegregationScanner._returns_none_only(func) is False
+
+    def test_empty_body_not_stub(self) -> None:
+        func = _parse_func("def foo(self):\n    x = 1\n")
+        assert InterfaceSegregationScanner._returns_none_only(func) is False
+
+    # --- IsProtocolOrAbc ---
+
+    def test_is_protocol_or_abc_protocol_returns_true(self) -> None:
+        info = {"bases": ["Protocol"]}
+        assert InterfaceSegregationScanner._is_protocol_or_abc(info) is True
+
+    def test_is_protocol_or_abc_abc_returns_true(self) -> None:
+        info = {"bases": ["ABC"]}
+        assert InterfaceSegregationScanner._is_protocol_or_abc(info) is True
+
+    def test_not_protocol_or_abc(self) -> None:
+        info = {"bases": ["Foo"]}
+        assert InterfaceSegregationScanner._is_protocol_or_abc(info) is False
+
+    def test_is_protocol_or_abc_empty_bases_returns_false(self) -> None:
+        info: dict[str, Any] = {"bases": []}
+        assert InterfaceSegregationScanner._is_protocol_or_abc(info) is False
+
+    def test_multiple_bases_with_protocol(self) -> None:
+        info = {"bases": ["Foo", "Protocol"]}
+        assert InterfaceSegregationScanner._is_protocol_or_abc(info) is True
+
+    # --- Main ---
+
     def test_main_no_violations(
         self,
         tmp_path: Path,

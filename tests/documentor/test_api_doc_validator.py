@@ -12,12 +12,10 @@ import pytest
 from zolletta_metaskill.documentor.api_doc_validator import APIDocValidator
 from zolletta_metaskill.documentor.structs.source_signature import SourceSignature
 
-# ---------------------------------------------------------------------------
-# SourceSignature
-# ---------------------------------------------------------------------------
 
+class TestAPIDocValidator:
+    # --- SourceSignature ---
 
-class TestSourceSignature:
     def test_sourcesignature_basic_construction_returns_false(self) -> None:
         sig = SourceSignature(
             name="foo",
@@ -100,13 +98,8 @@ class TestSourceSignature:
         assert d["is_private"] is True
         assert d["is_deprecated"] is False
 
+    # --- _annotation_to_str ---
 
-# ---------------------------------------------------------------------------
-# _annotation_to_str
-# ---------------------------------------------------------------------------
-
-
-class TestAnnotationToStr:
     def test_annotation_to_str_none_input_returns_none(self) -> None:
         assert APIDocValidator._annotation_to_str(None) is None
 
@@ -143,13 +136,8 @@ class TestAnnotationToStr:
             == "typing.Optional[int]"
         )
 
+    # --- _extract_decorator_names ---
 
-# ---------------------------------------------------------------------------
-# _extract_decorator_names
-# ---------------------------------------------------------------------------
-
-
-class TestExtractDecoratorNames:
     def test_extract_decorator_names_name_decorator_returns_single_item(self) -> None:
         import ast
 
@@ -204,13 +192,8 @@ class TestExtractDecoratorNames:
         assert isinstance(func, ast.FunctionDef)
         assert APIDocValidator._extract_decorator_names(func.decorator_list) == []
 
+    # --- _extract_parameters ---
 
-# ---------------------------------------------------------------------------
-# _extract_parameters
-# ---------------------------------------------------------------------------
-
-
-class TestExtractParameters:
     def test_extract_parameters_simple_params_returns_b(self) -> None:
         import ast
 
@@ -306,13 +289,8 @@ class TestExtractParameters:
         params = APIDocValidator._extract_parameters(func)
         assert params[0]["annotation"] == "int"
 
+    # --- extract_signatures ---
 
-# ---------------------------------------------------------------------------
-# extract_signatures
-# ---------------------------------------------------------------------------
-
-
-class TestExtractSignatures:
     def test_extract_signatures_extract_function_returns_doc(self, tmp_path: Path) -> None:
         p = tmp_path / "mod.py"
         p.write_text('"""Module."""\ndef foo(a, b=1):\n    """Doc."""\n    return a\n')
@@ -400,13 +378,8 @@ class TestExtractSignatures:
         names = [s.name for s in sigs]
         assert "_Private" in names
 
+    # --- extract_all_signatures ---
 
-# ---------------------------------------------------------------------------
-# extract_all_signatures
-# ---------------------------------------------------------------------------
-
-
-class TestExtractAllSignatures:
     def test_extract_all_signatures_walks_directory_is_valid(self, tmp_path: Path) -> None:
         src = tmp_path / "src"
         src.mkdir()
@@ -446,13 +419,8 @@ class TestExtractAllSignatures:
         sig = all_sigs["mod.py"][0]
         assert sig.file_path == "mod.py"
 
+    # --- extract_documented_items ---
 
-# ---------------------------------------------------------------------------
-# extract_documented_items
-# ---------------------------------------------------------------------------
-
-
-class TestExtractDocumentedItems:
     def test_extract_documented_items_heading_function_returns_function(
         self, tmp_path: Path
     ) -> None:
@@ -517,13 +485,8 @@ class TestExtractDocumentedItems:
         items = APIDocValidator.extract_documented_items(str(p))
         assert items == {}
 
+    # --- extract_all_documented_items ---
 
-# ---------------------------------------------------------------------------
-# extract_all_documented_items
-# ---------------------------------------------------------------------------
-
-
-class TestExtractAllDocumentedItems:
     def test_extract_all_documented_items_single_file_contains_foo(self, tmp_path: Path) -> None:
         p = tmp_path / "api.md"
         p.write_text("### `foo()`\n")
@@ -560,13 +523,8 @@ class TestExtractAllDocumentedItems:
         items = APIDocValidator.extract_all_documented_items(str(tmp_path / "nope"))
         assert items == {}
 
+    # --- validate_api_docs ---
 
-# ---------------------------------------------------------------------------
-# validate_api_docs
-# ---------------------------------------------------------------------------
-
-
-class TestValidateApiDocs:
     def test_documented_not_in_source(self) -> None:
         sig = SourceSignature("foo", "function", "mod.py", 1, [])
         source_sigs = {"mod.py": [sig]}
@@ -693,13 +651,8 @@ class TestValidateApiDocs:
         undoc = [s for s in suggestions if s["type"] == "undocumented"]
         assert len(undoc) == 0
 
+    # --- _classify_undocumented ---
 
-# ---------------------------------------------------------------------------
-# _classify_undocumented
-# ---------------------------------------------------------------------------
-
-
-class TestClassifyUndocumented:
     def test_init_py_skip(self) -> None:
         sig = SourceSignature("foo", "function", "__init__.py", 1, [])
         priority, reason = APIDocValidator._classify_undocumented(sig)
@@ -760,13 +713,8 @@ class TestClassifyUndocumented:
         priority, reason = APIDocValidator._classify_undocumented(sig)
         assert priority == "low"
 
+    # --- generate_report ---
 
-# ---------------------------------------------------------------------------
-# generate_report
-# ---------------------------------------------------------------------------
-
-
-class TestGenerateReport:
     def test_generate_report_json_output_returns_3(self) -> None:
         issues = [{"type": "documented_not_in_source", "severity": "high", "description": "test"}]
         report = APIDocValidator.generate_report(issues, [], 5, 3, as_json=True)
@@ -829,13 +777,8 @@ class TestGenerateReport:
         report = APIDocValidator.generate_report(issues, [], 5, 3, as_json=False)
         assert "ISSUES BY TYPE" in report
 
+    # --- APIDocValidator.main() ---
 
-# ---------------------------------------------------------------------------
-# APIDocValidator.main()
-# ---------------------------------------------------------------------------
-
-
-class TestMain:
     def _write_settings(self, tmp_path: Path, **overrides: object) -> Path:
         """Write a minimal settings.json under ``tmp_path/.zolletta-metaskill``."""
         settings: dict[str, object] = {

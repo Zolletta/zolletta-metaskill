@@ -11,8 +11,8 @@ import pytest
 from zolletta_metaskill.setup.php_tools_detector import PHPToolsDetector
 
 
-class TestDetectPhpToolsFromComposer:
-    """Tests for PHPToolsDetector.detect_php_tools_from_composer()."""
+class TestPHPToolsDetector:
+    # --- Tests for PHPToolsDetector.detect_php_tools_from_composer(). ---
 
     def test_all_packages_present(self, tmp_path: Path) -> None:
         composer = tmp_path / "composer.json"
@@ -43,9 +43,7 @@ class TestDetectPhpToolsFromComposer:
         result = PHPToolsDetector.detect_php_tools_from_composer(tmp_path / "nonexistent.json")
         assert all(v is False for v in result.values())
 
-
-class TestDetectPhpToolsFromConfigFiles:
-    """Tests for PHPToolsDetector.detect_php_tools_from_config_files()."""
+    # --- Tests for PHPToolsDetector.detect_php_tools_from_config_files(). ---
 
     def test_detect_php_tools_from_config_files_phpunit_xml_returns_false(
         self, tmp_path: Path
@@ -71,9 +69,7 @@ class TestDetectPhpToolsFromConfigFiles:
         result = PHPToolsDetector.detect_php_tools_from_config_files(tmp_path)
         assert all(v is False for v in result.values())
 
-
-class TestDetectPhpTools:
-    """Tests for PHPToolsDetector.detect_php_tools() — combined detection."""
+    # --- Tests for PHPToolsDetector.detect_php_tools() — combined detection. ---
 
     def test_detect_php_tools_composer_only_returns_false(self, tmp_path: Path) -> None:
         (tmp_path / "composer.json").write_text(
@@ -102,9 +98,7 @@ class TestDetectPhpTools:
         result = PHPToolsDetector.detect_php_tools(tmp_path)
         assert all(not v["available"] for v in result.values())
 
-
-class TestMain:
-    """Tests for PHPToolsDetector.main()."""
+    # --- Tests for PHPToolsDetector.main(). ---
 
     def test_main_prints_json(
         self,

@@ -44,9 +44,9 @@ Both type checkers are configured (`ty` python 3.12, `mypy` strict python 3.12) 
 | Scanner | Status | Details |
 | ------- | ------ | ------- |
 | `acronym_casing_scanner.py` | FAIL | 1 violation: `ADRCli` — word `Cli` should be `CLI` |
-| `one_class_per_file_scanner.py` | PASS (1-class) / FALSE POSITIVES (filename) | No files with 2+ classes. 10 filename-vs-class "mismatches" are false positives: the scanner does not handle the documented convention that acronyms stay uppercase in the class name but lowercase in the filename (rule #9). All 10 are `ADR*`/`API*`/`PHP*` classes whose filenames correctly lowercase the acronym. |
+| `one_class_per_file_scanner.py` | PASS | No files with 2+ classes in `src/` or `tests/` (test roots are scanned too — one test class per test file, named after its stem). Filename-vs-class matching is case-insensitive, so acronym-cased classes (`ADRCache`, `PHPEngine`) match their lowercase filenames instead of being reported as false positives. |
 | `unused_all_exports_scanner.py` | PASS | 6 files with `__all__`, 13 entries, 0 unused |
-| `naming_conventions_scanner.py` | PASS (source side) | Source file/class-name matching overlaps with `one_class_per_file_scanner`; same acronym false positives. Test-mirror check could not run cleanly (test layout is flat under `tests/`, not nested under a package dir) — out of scope for this skill. |
+| `naming_conventions_scanner.py` | PASS (source side) | Source file/class-name matching overlaps with `one_class_per_file_scanner`; this scanner still uses exact matching and reports the `ADR*`/`API*`/`PHP*` classes as acronym false positives. Test-mirror check could not run cleanly (test layout is flat under `tests/`, not nested under a package dir) — out of scope for this skill. |
 
 ## Auto-Fixable (Informational)
 

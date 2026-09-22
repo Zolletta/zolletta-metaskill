@@ -31,12 +31,9 @@ def _write_settings(dirpath: Path, **overrides: object) -> Path:
     return path
 
 
-# ---------------------------------------------------------------------------
-# _is_section_header
-# ---------------------------------------------------------------------------
+class TestDocstringStreamliner:
+    # --- _is_section_header ---
 
-
-class TestIsSectionHeader:
     def test_is_section_header_args_header_returns_true(self) -> None:
         assert DocstringStreamliner._is_section_header("Args:") is True
 
@@ -61,13 +58,8 @@ class TestIsSectionHeader:
     def test_is_section_header_tab_indented_returns_false(self) -> None:
         assert DocstringStreamliner._is_section_header("\tArgs:") is False
 
+    # --- parse_docstring ---
 
-# ---------------------------------------------------------------------------
-# parse_docstring
-# ---------------------------------------------------------------------------
-
-
-class TestParseDocstring:
     def test_parse_docstring_summary_only_returns_empty_list(self) -> None:
         summary, sections = DocstringStreamliner.parse_docstring("A short summary.")
         assert summary == ["A short summary."]
@@ -104,13 +96,8 @@ class TestParseDocstring:
         assert "Summary." in summary
         assert len(sections) == 1
 
+    # --- rebuild_docstring ---
 
-# ---------------------------------------------------------------------------
-# rebuild_docstring
-# ---------------------------------------------------------------------------
-
-
-class TestRebuildDocstring:
     def test_rebuild_docstring_summary_only_returns_summary(self) -> None:
         result = DocstringStreamliner.rebuild_docstring(["Summary."], [])
         assert result == "Summary."
@@ -146,13 +133,8 @@ class TestRebuildDocstring:
         # The trailing blank from the body is removed, then D413 blank is appended
         assert result == "Summary.\n\nArgs:\n    x: the x\n"
 
+    # --- _arg_name_from_entry ---
 
-# ---------------------------------------------------------------------------
-# _arg_name_from_entry
-# ---------------------------------------------------------------------------
-
-
-class TestArgNameFromEntry:
     def test_arg_name_from_entry_plain_name_returns_x(self) -> None:
         assert DocstringStreamliner._arg_name_from_entry("x") == "x"
 
@@ -165,20 +147,15 @@ class TestArgNameFromEntry:
     def test_star_star_kwargs(self) -> None:
         assert DocstringStreamliner._arg_name_from_entry("**kwargs") == "kwargs"
 
+    # --- is_trivial_arg_desc ---
 
-# ---------------------------------------------------------------------------
-# is_trivial_arg_desc
-# ---------------------------------------------------------------------------
-
-
-class TestIsTrivialArgDesc:
-    def test_empty_desc_with_annotation(self) -> None:
+    def test_arg_empty_desc_with_annotation(self) -> None:
         assert DocstringStreamliner.is_trivial_arg_desc("x", "", "int") is True
 
-    def test_empty_desc_without_annotation(self) -> None:
+    def test_arg_empty_desc_without_annotation(self) -> None:
         assert DocstringStreamliner.is_trivial_arg_desc("x", "", None) is False
 
-    def test_desc_equals_annotation(self) -> None:
+    def test_arg_desc_equals_annotation(self) -> None:
         assert DocstringStreamliner.is_trivial_arg_desc("x", "int", "int") is True
 
     def test_desc_equals_arg_name(self) -> None:
@@ -193,7 +170,7 @@ class TestIsTrivialArgDesc:
     def test_desc_an_arg_name(self) -> None:
         assert DocstringStreamliner.is_trivial_arg_desc("x", "an x", "int") is True
 
-    def test_desc_with_trailing_period(self) -> None:
+    def test_arg_desc_with_trailing_period(self) -> None:
         assert DocstringStreamliner.is_trivial_arg_desc("x", "the x.", "int") is True
 
     def test_is_trivial_arg_desc_meaningful_desc_returns_false(self) -> None:
@@ -202,35 +179,25 @@ class TestIsTrivialArgDesc:
     def test_no_annotation_keeps_section(self) -> None:
         assert DocstringStreamliner.is_trivial_arg_desc("x", "some desc", None) is False
 
+    # --- is_trivial_returns_desc ---
 
-# ---------------------------------------------------------------------------
-# is_trivial_returns_desc
-# ---------------------------------------------------------------------------
-
-
-class TestIsTrivialReturnsDesc:
-    def test_empty_desc_with_annotation(self) -> None:
+    def test_returns_empty_desc_with_annotation(self) -> None:
         assert DocstringStreamliner.is_trivial_returns_desc("", "int") is True
 
-    def test_empty_desc_without_annotation(self) -> None:
+    def test_returns_empty_desc_without_annotation(self) -> None:
         assert DocstringStreamliner.is_trivial_returns_desc("", None) is False
 
-    def test_desc_equals_annotation(self) -> None:
+    def test_returns_desc_equals_annotation(self) -> None:
         assert DocstringStreamliner.is_trivial_returns_desc("int", "int") is True
 
     def test_is_trivial_returns_desc_meaningful_desc_returns_false(self) -> None:
         assert DocstringStreamliner.is_trivial_returns_desc("the count", "int") is False
 
-    def test_desc_with_trailing_period(self) -> None:
+    def test_returns_desc_with_trailing_period(self) -> None:
         assert DocstringStreamliner.is_trivial_returns_desc("int.", "int") is True
 
+    # --- _annotation_str ---
 
-# ---------------------------------------------------------------------------
-# _annotation_str
-# ---------------------------------------------------------------------------
-
-
-class TestAnnotationStr:
     def test_annotation_str_none_annotation_returns_none(self) -> None:
         assert DocstringStreamliner._annotation_str(None) is None
 
@@ -248,13 +215,8 @@ class TestAnnotationStr:
         ann = stmt.annotation
         assert DocstringStreamliner._annotation_str(ann) == "list[int]"
 
+    # --- get_arg_annotations / get_return_annotation ---
 
-# ---------------------------------------------------------------------------
-# get_arg_annotations / get_return_annotation
-# ---------------------------------------------------------------------------
-
-
-class TestArgAnnotations:
     def test_get_arg_annotations_simple_function_returns_dict(self) -> None:
         tree = ast.parse("def f(x: int, y: str) -> bool: ...")
         node = tree.body[0]
@@ -296,13 +258,8 @@ class TestArgAnnotations:
         assert isinstance(node, ast.FunctionDef)
         assert DocstringStreamliner.get_return_annotation(node) is None
 
+    # --- _is_private / _is_test_function / _is_test_file / _is_nested ---
 
-# ---------------------------------------------------------------------------
-# _is_private / _is_test_function / _is_test_file / _is_nested
-# ---------------------------------------------------------------------------
-
-
-class TestPredicates:
     def test_is_private_private_name_returns_true(self) -> None:
         assert DocstringStreamliner._is_private("_helper") is True
 
@@ -346,13 +303,8 @@ class TestPredicates:
         assert isinstance(node, ast.FunctionDef)
         assert DocstringStreamliner._is_nested(node) is False
 
+    # --- _detect_prefix_quote ---
 
-# ---------------------------------------------------------------------------
-# _detect_prefix_quote
-# ---------------------------------------------------------------------------
-
-
-class TestDetectPrefixQuote:
     def test_simple_triple_quote(self) -> None:
         result = DocstringStreamliner._detect_prefix_quote('    """doc"""')
         assert result is not None
@@ -380,13 +332,8 @@ class TestDetectPrefixQuote:
         assert prefix == ""
         assert quote == '"""'
 
+    # --- render_docstring ---
 
-# ---------------------------------------------------------------------------
-# render_docstring
-# ---------------------------------------------------------------------------
-
-
-class TestRenderDocstring:
     def test_render_docstring_single_line_returns_a_summary(self) -> None:
         result = DocstringStreamliner.render_docstring("    ", "", '"""', "A summary.")
         assert result == '    """A summary."""'
@@ -407,13 +354,8 @@ class TestRenderDocstring:
         result = DocstringStreamliner.render_docstring("    ", "r", '"""', "raw doc")
         assert result == '    r"""raw doc"""'
 
+    # --- _parse_args_entries ---
 
-# ---------------------------------------------------------------------------
-# _parse_args_entries
-# ---------------------------------------------------------------------------
-
-
-class TestParseArgsEntries:
     def test_parse_args_entries_single_entry_returns_single_item(self) -> None:
         entries = DocstringStreamliner._parse_args_entries(["    x: the x value"])
         assert entries == [("x", "the x value")]
@@ -443,13 +385,8 @@ class TestParseArgsEntries:
         entries = DocstringStreamliner._parse_args_entries(body)
         assert len(entries) == 2
 
+    # --- _args_section_is_redundant / _returns_section_is_redundant ---
 
-# ---------------------------------------------------------------------------
-# _args_section_is_redundant / _returns_section_is_redundant
-# ---------------------------------------------------------------------------
-
-
-class TestArgsSectionRedundant:
     def test_args_section_is_redundant_all_trivial_returns_true(self) -> None:
         body = ["    x: int", "    y: str"]
         anns: dict[str, str | None] = {"x": "int", "y": "str"}
@@ -473,8 +410,8 @@ class TestArgsSectionRedundant:
     def test_empty_args_section(self) -> None:
         assert DocstringStreamliner._args_section_is_redundant([], {}) is True
 
+    # --- ReturnsSectionRedundant ---
 
-class TestReturnsSectionRedundant:
     def test_returns_section_is_redundant_trivial_empty_returns_true(self) -> None:
         assert DocstringStreamliner._returns_section_is_redundant([], "int") is True
 
@@ -487,13 +424,8 @@ class TestReturnsSectionRedundant:
     def test_returns_section_is_redundant_no_annotation_returns_false(self) -> None:
         assert DocstringStreamliner._returns_section_is_redundant(["some desc"], None) is False
 
+    # --- _init_is_obvious ---
 
-# ---------------------------------------------------------------------------
-# _init_is_obvious
-# ---------------------------------------------------------------------------
-
-
-class TestInitIsObvious:
     def test_init_is_obvious_all_annotated_returns_true(self) -> None:
         assert DocstringStreamliner._init_is_obvious({"self": None, "x": "int", "y": "str"}) is True
 
@@ -506,13 +438,8 @@ class TestInitIsObvious:
     def test_init_is_obvious_cls_skipped_returns_true(self) -> None:
         assert DocstringStreamliner._init_is_obvious({"cls": None, "x": "int"}) is True
 
+    # --- _analyze_function ---
 
-# ---------------------------------------------------------------------------
-# _analyze_function
-# ---------------------------------------------------------------------------
-
-
-class TestAnalyzeFunction:
     def _parse(self, source: str) -> ast.FunctionDef:
         tree = ast.parse(source)
         DocstringStreamliner._annotate_parents(tree)
@@ -657,13 +584,8 @@ class TestAnalyzeFunction:
         # Raises is kept
         assert "Raises" not in finding.detail
 
+    # --- process_file ---
 
-# ---------------------------------------------------------------------------
-# process_file
-# ---------------------------------------------------------------------------
-
-
-class TestProcessFile:
     def test_file_with_findings(self, tmp_path: Path) -> None:
         src = tmp_path / "mod.py"
         src.write_text(
@@ -705,13 +627,8 @@ class TestProcessFile:
         assert len(report.findings) == 1
         assert report.findings[0].kind == "private"
 
+    # --- apply_edits ---
 
-# ---------------------------------------------------------------------------
-# apply_edits
-# ---------------------------------------------------------------------------
-
-
-class TestApplyEdits:
     def test_remove_redundant_args(self, tmp_path: Path) -> None:
         src = tmp_path / "mod.py"
         original = 'def f(x: int) -> None:\n    """Summary.\n\nArgs:\n    x: int"""\n    pass\n'
@@ -780,13 +697,8 @@ class TestApplyEdits:
         # The result should not end with a newline (preserving original)
         assert not result.endswith("\n")
 
+    # --- _rel ---
 
-# ---------------------------------------------------------------------------
-# _rel
-# ---------------------------------------------------------------------------
-
-
-class TestRel:
     def test_rel_relative_path_returns_foo_py(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -799,13 +711,8 @@ class TestRel:
         monkeypatch.chdir(tmp_path)
         assert DocstringStreamliner._rel(Path("/other/foo.py")) == "/other/foo.py"
 
+    # --- print_report ---
 
-# ---------------------------------------------------------------------------
-# print_report
-# ---------------------------------------------------------------------------
-
-
-class TestPrintReport:
     def test_print_report_no_findings_contains_all_clear(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -852,14 +759,7 @@ class TestPrintReport:
         assert total == 1
         assert "apply mode" in captured.out
 
-
-# ---------------------------------------------------------------------------
-# main
-# ---------------------------------------------------------------------------
-
-
-class TestMain:
-    """Tests for DocstringStreamliner.main()."""
+    # --- Tests for DocstringStreamliner.main(). ---
 
     def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
         """Chdir into tmp_path and run main() with *argv*."""

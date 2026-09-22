@@ -22,6 +22,8 @@ from zolletta_metaskill.code_style.php.acronym_casing_scanner import (
 from zolletta_metaskill.core.engine.php_engine import PHPEngine
 
 TS_PHP_AVAILABLE = PHPEngine._have_tree_sitter_php()
+
+
 _skip_no_ts = pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
 
 
@@ -31,12 +33,9 @@ def _write_php(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-# ---------------------------------------------------------------------------
-# AcronymCasingScanner._load_default_acronyms
-# ---------------------------------------------------------------------------
+class TestAcronymCasingScanner:
+    # --- AcronymCasingScanner._load_default_acronyms ---
 
-
-class TestLoadDefaultAcronyms:
     def test_returns_non_empty_list(self) -> None:
         acronyms = AcronymCasingScanner._load_default_acronyms()
         assert isinstance(acronyms, list)
@@ -57,13 +56,8 @@ class TestLoadDefaultAcronyms:
         assert "CI" in acronyms
         assert "HTTP" in acronyms
 
+    # --- AcronymCasingScanner._split_pascal_case ---
 
-# ---------------------------------------------------------------------------
-# AcronymCasingScanner._split_pascal_case
-# ---------------------------------------------------------------------------
-
-
-class TestSplitPascalCase:
     @pytest.mark.parametrize(
         ("name", "expected"),
         [
@@ -104,14 +98,9 @@ class TestSplitPascalCase:
         # HTTPSClient -> HTTPS | Client
         assert AcronymCasingScanner._split_pascal_case("HTTPSClient") == ["HTTPS", "Client"]
 
+    # --- GetClassNames ---
 
-# ---------------------------------------------------------------------------
-# AcronymCasingScanner._get_class_names (requires tree-sitter-php)
-# ---------------------------------------------------------------------------
-
-
-@_skip_no_ts
-class TestGetClassNames:
+    @_skip_no_ts
     def test_returns_class_names_with_line_numbers(self, tmp_path: Path) -> None:
         f = tmp_path / "Mod.php"
         _write_php(
@@ -122,6 +111,7 @@ class TestGetClassNames:
         assert ("Foo", 2) in result
         assert ("Bar", 5) in result
 
+    @_skip_no_ts
     def test_includes_interfaces_and_traits(self, tmp_path: Path) -> None:
         f = tmp_path / "Mod.php"
         _write_php(
@@ -133,28 +123,26 @@ class TestGetClassNames:
         assert "Foo" in names
         assert "Bar" in names
 
+    @_skip_no_ts
     def test_get_class_names_with_no_classes_returns_empty_list(self, tmp_path: Path) -> None:
         f = tmp_path / "Mod.php"
         _write_php(f, "<?php\n$x = 1;\n")
         assert AcronymCasingScanner._get_class_names(f) == []
 
+    @_skip_no_ts
     def test_get_class_names_with_empty_file_returns_empty_list(self, tmp_path: Path) -> None:
         f = tmp_path / "empty.php"
         _write_php(f, "")
         assert AcronymCasingScanner._get_class_names(f) == []
 
+    @_skip_no_ts
     def test_syntax_error_returns_empty(self, tmp_path: Path) -> None:
         f = tmp_path / "bad.php"
         _write_php(f, "<?php\nclass {\n")
         assert AcronymCasingScanner._get_class_names(f) == []
 
+    # --- AcronymCasingScanner._load_acronyms_from_settings ---
 
-# ---------------------------------------------------------------------------
-# AcronymCasingScanner._load_acronyms_from_settings
-# ---------------------------------------------------------------------------
-
-
-class TestProjectAcronyms:
     def test_empty_settings_returns_empty(self) -> None:
         assert AcronymCasingScanner._project_acronyms({}) == []
 
@@ -176,13 +164,8 @@ class TestProjectAcronyms:
         result = AcronymCasingScanner._project_acronyms({"acronyms": ["API", 123]})
         assert result == ["API"]
 
+    # --- AcronymCasingScanner.main ---
 
-# ---------------------------------------------------------------------------
-# AcronymCasingScanner.main
-# ---------------------------------------------------------------------------
-
-
-class TestMain:
     def _write_settings(self, tmp_path: Path, **overrides: object) -> Path:
         """Write a minimal PHP settings.json under ``tmp_path/.zolletta-metaskill``."""
         settings: dict[str, object] = {
@@ -373,13 +356,8 @@ class TestMain:
         assert data["violation_count"] == 1
         assert data["violations"][0]["class"] == "ApiRepository"
 
+    # --- Coverage: _load_default_acronyms error handling (lines 112-118) ---
 
-# ---------------------------------------------------------------------------
-# Coverage: _load_default_acronyms error handling (lines 112-118)
-# ---------------------------------------------------------------------------
-
-
-class TestLoadDefaultAcronymsErrorHandling:
     @staticmethod
     def _patch_acronyms_file(
         monkeypatch: pytest.MonkeyPatch,
@@ -440,13 +418,8 @@ class TestLoadDefaultAcronymsErrorHandling:
         assert "HTTP" in acronyms
         assert all(isinstance(a, str) for a in acronyms)
 
+    # --- Coverage: _get_class_names when tree-sitter-php not installed (line 188) ---
 
-# ---------------------------------------------------------------------------
-# Coverage: _get_class_names when tree-sitter-php not installed (line 188)
-# ---------------------------------------------------------------------------
-
-
-class TestGetClassNamesNoTreeSitter:
     def test_returns_empty_when_tree_sitter_not_installed(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -459,13 +432,8 @@ class TestGetClassNamesNoTreeSitter:
         )
         assert AcronymCasingScanner._get_class_names(f) == []
 
+    # --- Coverage: main() when tree-sitter-php not installed (lines 249-270) ---
 
-# ---------------------------------------------------------------------------
-# Coverage: main() when tree-sitter-php not installed (lines 249-270)
-# ---------------------------------------------------------------------------
-
-
-class TestMainNoTreeSitter:
     def test_no_tree_sitter_text_output(
         self,
         tmp_path: Path,

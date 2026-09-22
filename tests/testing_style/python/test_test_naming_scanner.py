@@ -18,12 +18,86 @@ from zolletta_metaskill.core.structs import Finding
 from zolletta_metaskill.testing_style.python.test_naming_scanner import TestNamingScanner
 
 # ---------------------------------------------------------------------------
-# _count_segments
+# Settings helper + settings-driven runner
 # ---------------------------------------------------------------------------
 
 
-class TestCountSegments:
-    """``_count_segments`` strips ``test_`` and counts non-empty segments."""
+def _write_settings(dirpath: Path, **overrides: object) -> Path:
+    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
+    settings: dict[str, object] = {
+        "language": "python",
+        "python": {
+            "testing": {},
+            "paths": {"source": ["src"], "tests": ["tests"], "package": "mypkg"},
+        },
+        "php": None,
+    }
+    python_overrides = overrides.pop("python", None)
+    if isinstance(python_overrides, dict):
+        base_python = settings["python"]
+        assert isinstance(base_python, dict)
+        for key, value in python_overrides.items():
+            if isinstance(value, dict) and isinstance(base_python.get(key), dict):
+                base_python[key].update(value)
+            else:
+                base_python[key] = value
+    settings.update(overrides)
+    meta = dirpath / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    path = meta / "settings.json"
+    path.write_text(json.dumps(settings))
+    return path
+
+
+def test_write_settings_replaces_non_dict_python_value(tmp_path: Path) -> None:
+    """A non-dict ``python`` override value replaces the base value."""
+    path = _write_settings(tmp_path, python={"tools": "none"})
+    written = json.loads(path.read_text())
+    python = written["python"]
+    assert isinstance(python, dict)
+    assert python["tools"] == "none"
+
+
+def run_scan(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
+    """Chdir into *tmp_path* and run ``main()`` with *argv*."""
+    monkeypatch.chdir(tmp_path)
+    return main_with_argv(["scan", *argv])
+
+
+def write_test_module(tmp_path: Path, name: str, content: str) -> Path:
+    """Write a test file under ``tmp_path/tests``."""
+    path = tmp_path / "tests" / name
+    write_test_file(path, content)
+    return path
+
+
+# ---------------------------------------------------------------------------
+# helpers
+# ---------------------------------------------------------------------------
+
+
+def main_with_argv(argv: list[str]) -> int:
+    """Run ``TestNamingScanner.main()`` with a mocked ``sys.argv``.
+
+    The first element is treated as the program name by argparse, so the
+    caller passes the full argv list (program name included).
+    """
+    saved = sys.argv
+    sys.argv = argv
+    try:
+        return TestNamingScanner.main()
+    finally:
+        sys.argv = saved
+
+
+def write_test_file(path: Path, content: str) -> None:
+    """Write *content* to *path*, creating parent directories as needed."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
+class TestTestNamingScanner:
+    # --- ``_count_segments`` strips ``test_`` and counts non-empty segments. ---
 
     @pytest.mark.parametrize(
         ("name", "expected"),
@@ -66,14 +140,7 @@ class TestCountSegments:
         # "test__a__b" -> rest = "_a__b" -> split = ['', 'a', '', 'b'] -> 2
         assert TestNamingScanner._count_segments("test__a__b") == 2
 
-
-# ---------------------------------------------------------------------------
-# _find_test_functions
-# ---------------------------------------------------------------------------
-
-
-class TestFindTestFunctions:
-    """``_find_test_functions`` parses a file and returns ``(name, line)`` tuples."""
+    # --- ``_find_test_functions`` parses a file and returns ``(name, line)`` tuples. ---
 
     def test_finds_sync_test_functions(self, tmp_path: Path) -> None:
         """Synchronous ``test_`` functions are returned with their line numbers."""
@@ -194,68 +261,7 @@ class TestFindTestFunctions:
         result = TestNamingScanner._find_test_functions(f)
         assert result == [("test_first_works_fine", 3), ("test_second_also_works", 6)]
 
-
-# ---------------------------------------------------------------------------
-# Settings helper + settings-driven runner
-# ---------------------------------------------------------------------------
-
-
-def _write_settings(dirpath: Path, **overrides: object) -> Path:
-    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
-    settings: dict[str, object] = {
-        "language": "python",
-        "python": {
-            "testing": {},
-            "paths": {"source": ["src"], "tests": ["tests"], "package": "mypkg"},
-        },
-        "php": None,
-    }
-    python_overrides = overrides.pop("python", None)
-    if isinstance(python_overrides, dict):
-        base_python = settings["python"]
-        assert isinstance(base_python, dict)
-        for key, value in python_overrides.items():
-            if isinstance(value, dict) and isinstance(base_python.get(key), dict):
-                base_python[key].update(value)
-            else:
-                base_python[key] = value
-    settings.update(overrides)
-    meta = dirpath / ".zolletta-metaskill"
-    meta.mkdir(parents=True, exist_ok=True)
-    path = meta / "settings.json"
-    path.write_text(json.dumps(settings))
-    return path
-
-
-def test_write_settings_replaces_non_dict_python_value(tmp_path: Path) -> None:
-    """A non-dict ``python`` override value replaces the base value."""
-    path = _write_settings(tmp_path, python={"tools": "none"})
-    written = json.loads(path.read_text())
-    python = written["python"]
-    assert isinstance(python, dict)
-    assert python["tools"] == "none"
-
-
-def run_scan(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
-    """Chdir into *tmp_path* and run ``main()`` with *argv*."""
-    monkeypatch.chdir(tmp_path)
-    return main_with_argv(["scan", *argv])
-
-
-def write_test_module(tmp_path: Path, name: str, content: str) -> Path:
-    """Write a test file under ``tmp_path/tests``."""
-    path = tmp_path / "tests" / name
-    write_test_file(path, content)
-    return path
-
-
-# ---------------------------------------------------------------------------
-# TestNamingScanner.main() — disabled check
-# ---------------------------------------------------------------------------
-
-
-class TestMainDisabled:
-    """``testing.check_test_naming: false`` emits a SKIPPED report."""
+    # --- ``testing.check_test_naming: false`` emits a SKIPPED report. ---
 
     def test_disabled_prints_skipped_message(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -275,14 +281,7 @@ class TestMainDisabled:
         assert rc == 0
         assert json.loads(capsys.readouterr().out)["skipped"] is True
 
-
-# ---------------------------------------------------------------------------
-# TestNamingScanner.main() — directory errors
-# ---------------------------------------------------------------------------
-
-
-class TestMainDirectoryErrors:
-    """Missing configured test directories produce an error and exit 1."""
+    # --- Missing configured test directories produce an error and exit 1. ---
 
     def test_missing_test_dir_returns_one(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -294,14 +293,7 @@ class TestMainDirectoryErrors:
         assert "no configured test directories" in err
         assert "tests" in err
 
-
-# ---------------------------------------------------------------------------
-# TestNamingScanner.main() — no test files
-# ---------------------------------------------------------------------------
-
-
-class TestMainNoTestFiles:
-    """An empty or test-file-free directory reports zero functions."""
+    # --- An empty or test-file-free directory reports zero functions. ---
 
     def test_empty_directory(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -327,14 +319,7 @@ class TestMainNoTestFiles:
         assert rc == 0
         assert "Total test functions scanned: 0" in capsys.readouterr().out
 
-
-# ---------------------------------------------------------------------------
-# TestNamingScanner.main() — violations and markdown output
-# ---------------------------------------------------------------------------
-
-
-class TestMainViolationsMarkdown:
-    """Markdown report lists violations; findings are report-only."""
+    # --- Markdown report lists violations; findings are report-only. ---
 
     def test_violations_listed_returns_zero(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -401,14 +386,7 @@ class TestMainViolationsMarkdown:
         assert "TEST FUNCTION NAMING" in out
         assert "VALIDATION REPORT" in out
 
-
-# ---------------------------------------------------------------------------
-# TestNamingScanner.main() — JSON output
-# ---------------------------------------------------------------------------
-
-
-class TestMainJsonOutput:
-    """``--json`` emits a machine-readable report."""
+    # --- ``--json`` emits a machine-readable report. ---
 
     def test_json_with_violations(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -457,14 +435,7 @@ class TestMainJsonOutput:
         assert data["total_test_functions"] == 0
         assert data["violation_count"] == 0
 
-
-# ---------------------------------------------------------------------------
-# TestNamingScanner.main() — test_naming_min_segments setting
-# ---------------------------------------------------------------------------
-
-
-class TestMainMinSegments:
-    """``testing.test_naming_min_segments`` changes the violation threshold."""
+    # --- ``testing.test_naming_min_segments`` changes the violation threshold. ---
 
     def test_min_segments_higher(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -491,14 +462,7 @@ class TestMainMinSegments:
         data = json.loads(capsys.readouterr().out)
         assert data["violation_count"] == 0
 
-
-# ---------------------------------------------------------------------------
-# TestNamingScanner.main() — file filtering and gitignore
-# ---------------------------------------------------------------------------
-
-
-class TestMainFileFiltering:
-    """Non-test files are skipped; git-ignored files are not scanned."""
+    # --- Non-test files are skipped; git-ignored files are not scanned. ---
 
     def test_gitignored_directory_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -554,14 +518,7 @@ class TestMainFileFiltering:
         v = data["violations"][0]
         assert v["file"] == str(Path("subdir") / "deep" / "test_bad.py")
 
-
-# ---------------------------------------------------------------------------
-# TestNamingScanner.main() — multiple test roots
-# ---------------------------------------------------------------------------
-
-
-class TestMainMultipleRoots:
-    """All configured test roots are scanned."""
+    # --- All configured test roots are scanned. ---
 
     def test_multiple_test_dirs(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -579,14 +536,7 @@ class TestMainMultipleRoots:
         assert data["violation_count"] == 2
         assert data["directories"] == ["tests", "spec"]
 
-
-# ---------------------------------------------------------------------------
-# TestNamingScanner.main() — mixed scenarios
-# ---------------------------------------------------------------------------
-
-
-class TestMainMixedScenarios:
-    """Combined real-world scenarios across multiple files."""
+    # --- Combined real-world scenarios across multiple files. ---
 
     def test_multiple_files_some_good_some_bad(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -641,14 +591,7 @@ class TestMainMixedScenarios:
         data = json.loads(capsys.readouterr().out)
         assert data["violations"][0]["file"] == str(Path("pkg") / "test_bad.py")
 
-
-# ---------------------------------------------------------------------------
-# scan_module / scan_file
-# ---------------------------------------------------------------------------
-
-
-class TestScanModule:
-    """``scan_module`` consumes ``ModuleInfo`` and returns ``list[Finding]``."""
+    # --- ``scan_module`` consumes ``ModuleInfo`` and returns ``list[Finding]``. ---
 
     def test_returns_finding_objects(self, tmp_path: Path) -> None:
         """Violations are returned as ``Finding`` dataclass instances."""
@@ -728,28 +671,3 @@ class TestScanModule:
         )
         findings = TestNamingScanner.scan_file(f)
         assert findings == []
-
-
-# ---------------------------------------------------------------------------
-# helpers
-# ---------------------------------------------------------------------------
-
-
-def main_with_argv(argv: list[str]) -> int:
-    """Run ``TestNamingScanner.main()`` with a mocked ``sys.argv``.
-
-    The first element is treated as the program name by argparse, so the
-    caller passes the full argv list (program name included).
-    """
-    saved = sys.argv
-    sys.argv = argv
-    try:
-        return TestNamingScanner.main()
-    finally:
-        sys.argv = saved
-
-
-def write_test_file(path: Path, content: str) -> None:
-    """Write *content* to *path*, creating parent directories as needed."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")

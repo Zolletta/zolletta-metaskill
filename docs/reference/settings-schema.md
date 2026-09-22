@@ -51,6 +51,7 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
       "check_acronym_casing": true,
       "check_no_relative_imports": true,
       "check_one_class_per_file": true,
+      "check_one_class_per_test_file": true,
       "check_zero_class_files": true,
       "check_filename_matches_class": true,
       "check_public_docstrings": true,
@@ -309,6 +310,7 @@ These control which checks the `python-code-style` skill enforces. All default t
 | `check_acronym_casing`           | boolean | `true`  | Naming     | Acronyms stay uppercase in class names (`HTTPClientFactory`) |
 | `check_no_relative_imports`      | boolean | `true`  | Imports    | Absolute imports only, no relative imports                   |
 | `check_one_class_per_file`       | boolean | `true`  | Structure  | One class per file (all classes, not just public)            |
+| `check_one_class_per_test_file`  | boolean | `true`  | Structure  | `one_class_per_file_scanner` also scans test roots: one test class per test file, named after its stem (`test_user.py` → `TestUser`) |
 | `check_zero_class_files`         | boolean | `true`  | Structure  | Report files with 0 classes (utility/helper modules). Set `false` to hide them — replaces the removed `--ignore-zero` flag |
 | `check_filename_matches_class`   | boolean | `true`  | Structure  | Filename matches class name (`snake_case.py` → `PascalCase`) |
 | `check_public_docstrings`        | boolean | `true`  | Docstrings | Docstrings required on public classes, methods, functions    |

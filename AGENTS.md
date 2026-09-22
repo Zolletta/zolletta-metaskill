@@ -29,7 +29,7 @@ Use english and conventional commits
 ### Tests
 
 - **Mirrored structure.** Every `src/zolletta_metaskill/<path>/<name>.py` has exactly one corresponding `tests/<path>/test_<name>.py` — the test file path mirrors the source file path exactly.
-- **Test classes group coverage.** A test file contains multiple `Test*` classes, one per method or behavior area of the class under test (e.g. `TestMain`, `TestResolveExtensions`).
+- **One test class per source class.** A test file contains exactly one `Test*` class named after the source class (`ProjectConfig` → `TestProjectConfig`), holding all its tests grouped under `# --- section ---` comments. Exceptionally a source class may gain additional test classes, but each lives in its own file (`test_<name>_<aspect>.py`) — never two classes in a single test file. Enforced on test roots by `one_class_per_file_scanner.py` (toggle: `check_one_class_per_test_file`).
 
 ### Scripts
 

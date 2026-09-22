@@ -14,8 +14,8 @@ from zolletta_metaskill.testing_style.general.test_structure_scanner import (
 )
 
 
-class TestPascalToSnake:
-    """Tests for TestStructureScanner._pascal_to_snake()."""
+class TestTestStructureScanner:
+    # --- Tests for TestStructureScanner._pascal_to_snake(). ---
 
     def test_pascal_to_snake_simple_input_returns_my_class(self) -> None:
         assert TestStructureScanner._pascal_to_snake("MyClass") == "my_class"
@@ -35,9 +35,7 @@ class TestPascalToSnake:
     def test_pascal_to_snake_all_upper_returns_a_b_c(self) -> None:
         assert TestStructureScanner._pascal_to_snake("ABC") == "a_b_c"
 
-
-class TestGetClassNames:
-    """Tests for TestStructureScanner._get_class_names()."""
+    # --- Tests for TestStructureScanner._get_class_names(). ---
 
     def test_get_class_names_single_class_returns_single_item(self, tmp_path: Path) -> None:
         f = tmp_path / "user.py"
@@ -68,9 +66,7 @@ class TestGetClassNames:
         # Inner is nested inside Outer — the engine only extracts top-level classes
         assert "Inner" not in names
 
-
-class TestAutoDetectPackage:
-    """Tests for TestStructureScanner._auto_detect_package()."""
+    # --- Tests for TestStructureScanner._auto_detect_package(). ---
 
     def test_auto_detect_package_with_init_returns_mypkg(self, tmp_path: Path) -> None:
         src = tmp_path / "src"
@@ -96,9 +92,7 @@ class TestAutoDetectPackage:
         (src / "file.py").write_text("")
         assert TestStructureScanner._auto_detect_package(src) is None
 
-
-class TestBuildSourceIndex:
-    """Tests for TestStructureScanner._build_source_index()."""
+    # --- Tests for TestStructureScanner._build_source_index(). ---
 
     def test_build_source_index_basic_input_contains_test_cache(self, tmp_path: Path) -> None:
         pkg = tmp_path / "mypkg"
@@ -170,9 +164,7 @@ class TestBuildSourceIndex:
         index = TestStructureScanner._build_source_index(pkg)
         assert index["cache.py"]["abs_path"] == pkg / "cache.py"
 
-
-class TestMatchTestToSource:
-    """Tests for TestStructureScanner._match_test_to_source()."""
+    # --- Tests for TestStructureScanner._match_test_to_source(). ---
 
     def test_match_test_to_source_exact_match_returns_cache_py(self) -> None:
         index = {"cache.py": {"prefixes": {"test_cache"}, "dir": "."}}
@@ -218,9 +210,7 @@ class TestMatchTestToSource:
             == "user_service.py"
         )
 
-
-class TestMain:
-    """Tests for TestStructureScanner.main()."""
+    # --- Tests for TestStructureScanner.main(). ---
 
     def _write_settings(self, dirpath: Path, **overrides: object) -> Path:
         """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""

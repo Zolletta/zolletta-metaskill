@@ -10,8 +10,8 @@ import pytest
 from zolletta_metaskill.setup.global_gitignore_ensurer import GlobalGitignoreEnsurer
 
 
-class TestEnsureGlobalGitignore:
-    """Tests for GlobalGitignoreEnsurer.ensure_global_gitignore()."""
+class TestGlobalGitignoreEnsurer:
+    # --- Tests for GlobalGitignoreEnsurer.ensure_global_gitignore(). ---
 
     def test_creates_new_file(self, tmp_path: Path) -> None:
         gitignore = tmp_path / ".gitignore"
@@ -63,9 +63,7 @@ class TestEnsureGlobalGitignore:
         assert added is True
         assert ".zolletta-metaskill/" in (tmp_path / ".gitignore").read_text()
 
-
-class TestMain:
-    """Tests for GlobalGitignoreEnsurer.main()."""
+    # --- Tests for GlobalGitignoreEnsurer.main(). ---
 
     def test_main_adds_entry(
         self,

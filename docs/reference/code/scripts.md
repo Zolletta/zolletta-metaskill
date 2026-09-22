@@ -51,18 +51,21 @@ python3 src/zolletta_metaskill/patterns/general/test_god_classes_scanner.py [--j
 
 ### one_class_per_file_scanner.py
 
-Checks the "1 class 1 file, 1 file 1 class" convention. Reports files with 2+ classes, files with 0 classes (non-`__init__.py`), and class names that don't match the filename.
+Checks the "1 class 1 file, 1 file 1 class" convention. Reports files with 2+ classes, files with 0 classes (non-`__init__.py`, source roots only), and class names that don't match the filename. Name matching is case-insensitive, so acronym-cased classes (`ADRCache`, `PHPEngine`) match their lowercase filenames — letter casing is the acronym-casing check's domain.
+
+Test roots are scanned too: a test file must hold exactly one test class named after its stem (`test_user.py` → `class TestUser`), so one source class maps to one merged test class per file. `conftest.py` is skipped, and function-style test files (no classes) are not flagged — zero-class findings are suppressed for test roots.
 
 ```bash
 python3 src/zolletta_metaskill/code_style/general/one_class_per_file_scanner.py [--json]
 ```
 
-| Setting                                    | Default | Description                                    |
-|--------------------------------------------|---------|------------------------------------------------|
-| `<lang>.code_style.check_one_class_per_file` | true  | Per-language toggle                            |
-| `python.code_style.check_zero_class_files`  | false | Hide 0-class (utility module) findings         |
+| Setting                                          | Default | Description                                             |
+|--------------------------------------------------|---------|---------------------------------------------------------|
+| `<lang>.code_style.check_one_class_per_file`     | true    | Per-language toggle                                     |
+| `<lang>.code_style.check_one_class_per_test_file`| true    | Also scan test roots (one test class per test file)     |
+| `python.code_style.check_zero_class_files`       | false   | Hide 0-class (utility module) findings                 |
 
-**Exceptions**: `__init__.py` is always skipped. Files with 0 classes are reported as low severity.
+**Exceptions**: `__init__.py` and `conftest.py` are always skipped. Files with 0 classes are reported as low severity.
 
 ### file_length_scanner.py
 

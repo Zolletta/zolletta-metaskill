@@ -16,7 +16,62 @@ from zolletta_metaskill.patterns.general.liskov_substitution_scanner import (
 )
 
 
-class TestBuildClassInfo:
+def _write_settings(dirpath: Path, **overrides: object) -> Path:
+    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
+    settings: dict[str, object] = {
+        "language": "python",
+        "python": {
+            "patterns": {},
+            "paths": {"source": ["src"], "tests": ["tests"], "package": "mypkg"},
+        },
+        "php": None,
+    }
+    python_overrides = overrides.pop("python", None)
+    if isinstance(python_overrides, dict):
+        base_python = settings["python"]
+        assert isinstance(base_python, dict)
+        for key, value in python_overrides.items():
+            if isinstance(value, dict) and isinstance(base_python.get(key), dict):
+                base_python[key].update(value)
+            else:
+                base_python[key] = value
+    settings.update(overrides)
+    meta = dirpath / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    path = meta / "settings.json"
+    path.write_text(json.dumps(settings))
+    return path
+
+
+def test_write_settings_replaces_non_dict_python_value(tmp_path: Path) -> None:
+    """A non-dict ``python`` override value replaces the base value."""
+    path = _write_settings(tmp_path, python={"tools": "none"})
+    written = json.loads(path.read_text())
+    python = written["python"]
+    assert isinstance(python, dict)
+    assert python["tools"] == "none"
+
+
+def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
+    """Chdir into tmp_path and run main() with *argv*."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", argv)
+    return LiskovSubstitutionScanner.main()
+
+
+_LSP_VIOLATION_SRC = (
+    "class Animal:\n"
+    "    def speak(self):\n"
+    "        return 'sound'\n"
+    "class Dog(Animal):\n"
+    "    def speak(self, extra):\n"
+    "        return 'woof'\n"
+)
+
+
+class TestLiskovSubstitutionScanner:
+    # --- BuildClassInfo ---
+
     def test_build_class_info_simple_class_returns_1(self) -> None:
         cls = ClassInfo(
             name="Foo",
@@ -96,8 +151,8 @@ class TestBuildClassInfo:
         info = LiskovSubstitutionScanner._build_class_info(cls)
         assert info["methods"]["bar"]["sig"]["has_vararg"] is False
 
+    # --- CheckLspViolations ---
 
-class TestCheckLspViolations:
     def test_no_override_no_violation(self) -> None:
         parent: dict[str, Any] = {
             "name": "P",
@@ -359,8 +414,8 @@ class TestCheckLspViolations:
         assert v["line"] == 10
         assert "detail" in v
 
+    # --- ScanModule ---
 
-class TestScanModule:
     def test_moduleinfo_no_violations_returns_empty_list(self, tmp_path: Path) -> None:
         module = ModuleInfo(
             path=tmp_path / "mod.py",
@@ -457,8 +512,8 @@ class TestScanModule:
         results = LiskovSubstitutionScanner.scan_module(module)
         assert results == []
 
+    # --- ScanFile ---
 
-class TestScanFile:
     def test_file_with_violation(self, tmp_path: Path) -> None:
         f = tmp_path / "mod.py"
         f.write_text(
@@ -493,61 +548,8 @@ class TestScanFile:
         results = LiskovSubstitutionScanner.scan_file(f)
         assert results == []
 
+    # --- Main ---
 
-def _write_settings(dirpath: Path, **overrides: object) -> Path:
-    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
-    settings: dict[str, object] = {
-        "language": "python",
-        "python": {
-            "patterns": {},
-            "paths": {"source": ["src"], "tests": ["tests"], "package": "mypkg"},
-        },
-        "php": None,
-    }
-    python_overrides = overrides.pop("python", None)
-    if isinstance(python_overrides, dict):
-        base_python = settings["python"]
-        assert isinstance(base_python, dict)
-        for key, value in python_overrides.items():
-            if isinstance(value, dict) and isinstance(base_python.get(key), dict):
-                base_python[key].update(value)
-            else:
-                base_python[key] = value
-    settings.update(overrides)
-    meta = dirpath / ".zolletta-metaskill"
-    meta.mkdir(parents=True, exist_ok=True)
-    path = meta / "settings.json"
-    path.write_text(json.dumps(settings))
-    return path
-
-
-def test_write_settings_replaces_non_dict_python_value(tmp_path: Path) -> None:
-    """A non-dict ``python`` override value replaces the base value."""
-    path = _write_settings(tmp_path, python={"tools": "none"})
-    written = json.loads(path.read_text())
-    python = written["python"]
-    assert isinstance(python, dict)
-    assert python["tools"] == "none"
-
-
-def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
-    """Chdir into tmp_path and run main() with *argv*."""
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(sys, "argv", argv)
-    return LiskovSubstitutionScanner.main()
-
-
-_LSP_VIOLATION_SRC = (
-    "class Animal:\n"
-    "    def speak(self):\n"
-    "        return 'sound'\n"
-    "class Dog(Animal):\n"
-    "    def speak(self, extra):\n"
-    "        return 'woof'\n"
-)
-
-
-class TestMain:
     def test_main_success_no_violations(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:

@@ -13,12 +13,10 @@ import pytest
 
 from zolletta_metaskill.documentor.doc_staleness_scorer import DocStalenessScorer
 
-# ---------------------------------------------------------------------------
-# _load_gitignore_patterns
-# ---------------------------------------------------------------------------
 
+class TestDocStalenessScorer:
+    # --- _load_gitignore_patterns ---
 
-class TestLoadGitignorePatterns:
     def test_load_gitignore_patterns_no_gitignore_succeeds(self, tmp_path: Path) -> None:
         assert DocStalenessScorer._load_gitignore_patterns(str(tmp_path)) == set()
 
@@ -47,13 +45,8 @@ class TestLoadGitignorePatterns:
         patterns = DocStalenessScorer._load_gitignore_patterns(str(tmp_path))
         assert patterns == set()
 
+    # --- get_label ---
 
-# ---------------------------------------------------------------------------
-# get_label
-# ---------------------------------------------------------------------------
-
-
-class TestGetLabel:
     def test_get_label_excellent_returns_excellent(self) -> None:
         assert DocStalenessScorer.get_label(95) == "excellent"
 
@@ -78,13 +71,8 @@ class TestGetLabel:
     def test_get_label_boundary_0_returns_abandoned(self) -> None:
         assert DocStalenessScorer.get_label(0) == "abandoned"
 
+    # --- run_git / git helpers ---
 
-# ---------------------------------------------------------------------------
-# run_git / git helpers
-# ---------------------------------------------------------------------------
-
-
-class TestRunGit:
     def test_run_git_success_returns_output(self, tmp_path: Path) -> None:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = type("R", (), {"returncode": 0, "stdout": "output\n"})()
@@ -109,8 +97,8 @@ class TestRunGit:
             result = DocStalenessScorer.run_git(str(tmp_path), ["status"])
             assert result == ""
 
+    # --- GetFileLastCommitDate ---
 
-class TestGetFileLastCommitDate:
     def test_object_valid_date_returns_2024(self, tmp_path: Path) -> None:
         with patch.object(DocStalenessScorer, "run_git", return_value="2024-01-15T10:00:00+00:00"):
             dt = DocStalenessScorer.get_file_last_commit_date(str(tmp_path), "doc.md")
@@ -125,8 +113,8 @@ class TestGetFileLastCommitDate:
         with patch.object(DocStalenessScorer, "run_git", return_value="not-a-date"):
             assert DocStalenessScorer.get_file_last_commit_date(str(tmp_path), "doc.md") is None
 
+    # --- GetCodeChangesSince ---
 
-class TestGetCodeChangesSince:
     def test_object_with_changes_returns_2(self, tmp_path: Path) -> None:
         with patch.object(DocStalenessScorer, "run_git", return_value="abc123\n def456\n"):
             assert DocStalenessScorer.get_code_changes_since(str(tmp_path), "2024-01-01") == 2
@@ -135,8 +123,8 @@ class TestGetCodeChangesSince:
         with patch.object(DocStalenessScorer, "run_git", return_value=""):
             assert DocStalenessScorer.get_code_changes_since(str(tmp_path), "2024-01-01") == 0
 
+    # --- GetLatestTag ---
 
-class TestGetLatestTag:
     def test_object_with_tag_returns_1_2_3(self, tmp_path: Path) -> None:
         with patch.object(DocStalenessScorer, "run_git", return_value="v1.2.3"):
             assert DocStalenessScorer.get_latest_tag(str(tmp_path)) == "1.2.3"
@@ -145,13 +133,8 @@ class TestGetLatestTag:
         with patch.object(DocStalenessScorer, "run_git", return_value=""):
             assert DocStalenessScorer.get_latest_tag(str(tmp_path)) is None
 
+    # --- find_doc_files ---
 
-# ---------------------------------------------------------------------------
-# find_doc_files
-# ---------------------------------------------------------------------------
-
-
-class TestFindDocFiles:
     def test_find_doc_files_finds_markdown_contains_guide_rst(self, tmp_path: Path) -> None:
         (tmp_path / "README.md").write_text("# Test")
         (tmp_path / "guide.rst").write_text("Test")
@@ -199,13 +182,8 @@ class TestFindDocFiles:
         assert "README.md" in files
         assert all(".zolletta-metaskill" not in f for f in files)
 
+    # --- score_last_updated ---
 
-# ---------------------------------------------------------------------------
-# score_last_updated
-# ---------------------------------------------------------------------------
-
-
-class TestScoreLastUpdated:
     def test_no_git_history(self, tmp_path: Path) -> None:
         with patch.object(DocStalenessScorer, "get_file_last_commit_date", return_value=None):
             score, details = DocStalenessScorer.score_last_updated(str(tmp_path), "doc.md")
@@ -254,13 +232,8 @@ class TestScoreLastUpdated:
             score, details = DocStalenessScorer.score_last_updated(str(tmp_path), "doc.md")
             assert score == 100.0
 
+    # --- score_code_doc_alignment ---
 
-# ---------------------------------------------------------------------------
-# score_code_doc_alignment
-# ---------------------------------------------------------------------------
-
-
-class TestScoreCodeDocAlignment:
     def test_score_code_doc_alignment_no_file_returns_50_0(self, tmp_path: Path) -> None:
         score, details = DocStalenessScorer.score_code_doc_alignment(
             str(tmp_path), "nonexistent.md"
@@ -342,13 +315,8 @@ class TestScoreCodeDocAlignment:
         assert score == 100.0
         assert details["existing_files"] == 1
 
+    # --- score_link_health ---
 
-# ---------------------------------------------------------------------------
-# score_link_health
-# ---------------------------------------------------------------------------
-
-
-class TestScoreLinkHealth:
     def test_score_link_health_no_file_returns_100_0(self, tmp_path: Path) -> None:
         score, details = DocStalenessScorer.score_link_health(str(tmp_path), "nonexistent.md")
         assert score == 100.0
@@ -405,13 +373,8 @@ class TestScoreLinkHealth:
         assert score == 100.0
         assert details["valid_links"] == 1
 
+    # --- _detect_diataxis_quadrant ---
 
-# ---------------------------------------------------------------------------
-# _detect_diataxis_quadrant
-# ---------------------------------------------------------------------------
-
-
-class TestDetectDiataxisQuadrant:
     def test_detect_diataxis_quadrant_tutorials_contains_what_we_will_learn(self) -> None:
         quad = DocStalenessScorer._detect_diataxis_quadrant("docs/tutorials/quickstart.md")
         assert quad is not None
@@ -438,13 +401,8 @@ class TestDetectDiataxisQuadrant:
         )
         assert quad is not None
 
+    # --- score_completeness ---
 
-# ---------------------------------------------------------------------------
-# score_completeness
-# ---------------------------------------------------------------------------
-
-
-class TestScoreCompleteness:
     def test_all_sections_present(self, tmp_path: Path) -> None:
         (tmp_path / "doc.md").write_text(
             "# Installation\n\n# Usage\n\n# API\n\n# Contributing\n\n# License\n"
@@ -531,13 +489,8 @@ class TestScoreCompleteness:
         # 16 non-empty lines → penalty 15
         assert score == 85.0
 
+    # --- score_accuracy ---
 
-# ---------------------------------------------------------------------------
-# score_accuracy
-# ---------------------------------------------------------------------------
-
-
-class TestScoreAccuracy:
     def test_score_accuracy_no_file_returns_50_0(self, tmp_path: Path) -> None:
         score, details = DocStalenessScorer.score_accuracy(str(tmp_path), "nonexistent.md")
         assert score == 50.0
@@ -614,13 +567,8 @@ class TestScoreAccuracy:
             score, details = DocStalenessScorer.score_accuracy(str(tmp_path), "doc.md")
             assert score == 100.0
 
+    # --- _extract_headings / _slugify ---
 
-# ---------------------------------------------------------------------------
-# _extract_headings / _slugify
-# ---------------------------------------------------------------------------
-
-
-class TestExtractHeadings:
     def test_extract_headings_basic_input_contains_section_two(self) -> None:
         content = "# Title\n\n## Section Two\n"
         headings = DocStalenessScorer._extract_headings(content)
@@ -630,8 +578,8 @@ class TestExtractHeadings:
     def test_extract_headings_no_headings_succeeds(self) -> None:
         assert DocStalenessScorer._extract_headings("just text\n") == set()
 
+    # --- Slugify ---
 
-class TestSlugify:
     def test_slugify_basic_input_returns_hello_world(self) -> None:
         assert DocStalenessScorer._slugify("Hello World") == "hello-world"
 
@@ -644,13 +592,8 @@ class TestSlugify:
     def test_leading_trailing_hyphens(self) -> None:
         assert DocStalenessScorer._slugify("--Hello--") == "hello"
 
+    # --- _extract_version_from_manifest ---
 
-# ---------------------------------------------------------------------------
-# _extract_version_from_manifest
-# ---------------------------------------------------------------------------
-
-
-class TestExtractVersionFromManifest:
     def test_extract_version_from_manifest_package_json_returns_1_2_3(self, tmp_path: Path) -> None:
         p = tmp_path / "package.json"
         p.write_text('{"name": "test", "version": "1.2.3"}')
@@ -695,13 +638,8 @@ class TestExtractVersionFromManifest:
             is None
         )
 
+    # --- _load_diataxis_translations / _merge_translations ---
 
-# ---------------------------------------------------------------------------
-# _load_diataxis_translations / _merge_translations
-# ---------------------------------------------------------------------------
-
-
-class TestLoadDiataxisTranslations:
     def test_load_diataxis_translations_valid_file_contains_guide(self, tmp_path: Path) -> None:
         p = tmp_path / "trans.json"
         p.write_text(
@@ -730,8 +668,8 @@ class TestLoadDiataxisTranslations:
         result = DocStalenessScorer._load_diataxis_translations(str(p))
         assert result == {"readme_sections": None, "quadrants": {}}
 
+    # --- MergeTranslations ---
 
-class TestMergeTranslations:
     def test_merge_dir_names(self) -> None:
         # Save original to restore after test
         original = {k: dict(v) for k, v in DocStalenessScorer.DIATAXIS_QUADRANTS.items()}
@@ -779,13 +717,8 @@ class TestMergeTranslations:
                 DocStalenessScorer.DIATAXIS_QUADRANTS[k].clear()
                 DocStalenessScorer.DIATAXIS_QUADRANTS[k].update(v)
 
+    # --- score_document ---
 
-# ---------------------------------------------------------------------------
-# score_document
-# ---------------------------------------------------------------------------
-
-
-class TestScoreDocument:
     def test_object_basic_input_returns_set(self, tmp_path: Path) -> None:
         (tmp_path / "doc.md").write_text(
             "# Installation\n\n# Usage\n\n# API\n\n" + "content\n" * 15
@@ -811,13 +744,8 @@ class TestScoreDocument:
                 "accuracy",
             }
 
+    # --- generate_report ---
 
-# ---------------------------------------------------------------------------
-# generate_report
-# ---------------------------------------------------------------------------
-
-
-class TestGenerateReport:
     def test_generate_report_empty_json_returns_0(self) -> None:
         report = DocStalenessScorer.generate_report([], as_json=True)
         data = json.loads(report)
@@ -858,8 +786,8 @@ class TestGenerateReport:
         assert "a.md" in report
         assert "DIMENSION BREAKDOWN" in report
 
+    # --- ScoreBar ---
 
-class TestScoreBar:
     def test_score_bar_full_returns_bar(self) -> None:
         bar = DocStalenessScorer._score_bar(100)
         assert bar == "[" + "#" * 20 + "]"
@@ -872,13 +800,8 @@ class TestScoreBar:
         bar = DocStalenessScorer._score_bar(50)
         assert bar == "[" + "#" * 10 + "." * 10 + "]"
 
+    # --- DocStalenessScorer.main() ---
 
-# ---------------------------------------------------------------------------
-# DocStalenessScorer.main()
-# ---------------------------------------------------------------------------
-
-
-class TestMain:
     def _write_settings(self, tmp_path: Path, **overrides: object) -> Path:
         """Write a minimal settings.json under ``tmp_path/.zolletta-metaskill``."""
         settings: dict[str, object] = {

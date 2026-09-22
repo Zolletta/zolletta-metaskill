@@ -37,8 +37,8 @@ def _git_init(root: Path) -> None:
     subprocess.run(["git", "init", "-q"], cwd=root, check=True)
 
 
-class TestSnakeToPascal:
-    """Tests for NamingConventionsScanner._snake_to_pascal()."""
+class TestNamingConventionsScanner:
+    # --- Tests for NamingConventionsScanner._snake_to_pascal(). ---
 
     def test_snake_to_pascal_simple_input_returns_myclass(self) -> None:
         assert NamingConventionsScanner._snake_to_pascal("my_class") == "MyClass"
@@ -52,9 +52,7 @@ class TestSnakeToPascal:
     def test_snake_to_pascal_multiple_words_returns_myawesomeclass(self) -> None:
         assert NamingConventionsScanner._snake_to_pascal("my_awesome_class") == "MyAwesomeClass"
 
-
-class TestPascalToSnake:
-    """Tests for NamingConventionsScanner._pascal_to_snake()."""
+    # --- Tests for NamingConventionsScanner._pascal_to_snake(). ---
 
     def test_pascal_to_snake_simple_input_returns_my_class(self) -> None:
         assert NamingConventionsScanner._pascal_to_snake("MyClass") == "my_class"
@@ -74,9 +72,7 @@ class TestPascalToSnake:
     def test_pascal_to_snake_all_upper_returns_a_b_c(self) -> None:
         assert NamingConventionsScanner._pascal_to_snake("ABC") == "a_b_c"
 
-
-class TestGetClassNames:
-    """Tests for NamingConventionsScanner._get_class_names()."""
+    # --- Tests for NamingConventionsScanner._get_class_names(). ---
 
     def test_get_class_names_single_class_returns_single_item(self, tmp_path: Path) -> None:
         f = tmp_path / "user.py"
@@ -107,9 +103,7 @@ class TestGetClassNames:
         # Inner is nested inside Outer — the engine only extracts top-level classes
         assert "Inner" not in names
 
-
-class TestAutoDetectPackage:
-    """Tests for NamingConventionsScanner._auto_detect_package()."""
+    # --- Tests for NamingConventionsScanner._auto_detect_package(). ---
 
     def test_auto_detect_package_with_init_returns_mypkg(self, tmp_path: Path) -> None:
         src = tmp_path / "src"
@@ -142,9 +136,7 @@ class TestAutoDetectPackage:
         (src / "file.py").write_text("")
         assert NamingConventionsScanner._auto_detect_package(src) is None
 
-
-class TestBuildSourceIndex:
-    """Tests for NamingConventionsScanner._build_source_index()."""
+    # --- Tests for NamingConventionsScanner._build_source_index(). ---
 
     def test_build_source_index_basic_input_contains_test_cache(self, tmp_path: Path) -> None:
         pkg = tmp_path / "mypkg"
@@ -199,9 +191,7 @@ class TestBuildSourceIndex:
         assert Path("models") in index
         assert "test_item" in index[Path("models")]
 
-
-class TestMatchesPrefix:
-    """Tests for NamingConventionsScanner._matches_prefix()."""
+    # --- Tests for NamingConventionsScanner._matches_prefix(). ---
 
     def test_matches_prefix_exact_match_returns_test_cache(self) -> None:
         result = NamingConventionsScanner._matches_prefix("cache", {"test_cache"})
@@ -231,9 +221,7 @@ class TestMatchesPrefix:
         )
         assert result == "test_cache_init"
 
-
-class TestMain:
-    """Tests for NamingConventionsScanner.main()."""
+    # --- Tests for NamingConventionsScanner.main(). ---
 
     def _make_project(self, tmp_path: Path) -> tuple[Path, Path]:
         """Create a realistic src/ and tests/ structure."""

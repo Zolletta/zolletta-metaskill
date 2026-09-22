@@ -42,7 +42,9 @@ def _parse_func(source: str) -> ast.FunctionDef:
     raise AssertionError("No function found in source")  # pragma: no cover
 
 
-class TestPascalToSnake:
+class TestTestSplitter:
+    # --- PascalToSnake ---
+
     def test_pascal_to_snake_simple_input_returns_cache(self) -> None:
         assert TestSplitter._pascal_to_snake("Cache") == "cache"
 
@@ -58,8 +60,8 @@ class TestPascalToSnake:
     def test_pascal_to_snake_all_upper_returns_a_b_c(self) -> None:
         assert TestSplitter._pascal_to_snake("ABC") == "a_b_c"
 
+    # --- SnakeToPascal ---
 
-class TestSnakeToPascal:
     def test_snake_to_pascal_simple_input_returns_cache(self) -> None:
         assert TestSplitter._snake_to_pascal("cache") == "Cache"
 
@@ -72,8 +74,8 @@ class TestSnakeToPascal:
     def test_snake_to_pascal_empty_input_returns_empty(self) -> None:
         assert TestSplitter._snake_to_pascal("") == ""
 
+    # --- LoadMapping ---
 
-class TestLoadMapping:
     def test_none_returns_empty(self) -> None:
         assert TestSplitter._load_mapping(None) == {}
 
@@ -94,8 +96,8 @@ class TestLoadMapping:
         with pytest.raises(json.JSONDecodeError):
             TestSplitter._load_mapping("not json")
 
+    # --- GetTestMethods ---
 
-class TestGetTestMethods:
     def test_returns_test_methods(self) -> None:
         cls = _parse_class(
             "class TestFoo:\n"
@@ -121,8 +123,8 @@ class TestGetTestMethods:
         cls = _parse_class("class TestFoo:\n    pass\n")
         assert TestSplitter._get_test_methods(cls) == []
 
+    # --- GetSharedMethods ---
 
-class TestGetSharedMethods:
     def test_returns_non_test_methods(self) -> None:
         cls = _parse_class(
             "class TestFoo:\n"
@@ -143,8 +145,8 @@ class TestGetSharedMethods:
         methods = TestSplitter._get_shared_methods(cls)
         assert len(methods) == 1
 
+    # --- AutoDerivePrefixes ---
 
-class TestAutoDerivePrefixes:
     def test_auto_derive_prefixes_simple_prefixes_returns_dict(self) -> None:
         methods: list[ast.FunctionDef | ast.AsyncFunctionDef] = [
             _make_method("test_cache_get"),
@@ -177,8 +179,8 @@ class TestAutoDerivePrefixes:
         assert "test_cache_get" in groups["cache"]
         assert "test_cache_set" in groups["cache"]
 
+    # --- GroupMethods ---
 
-class TestGroupMethods:
     def test_groups_by_prefix(self) -> None:
         methods: list[ast.FunctionDef | ast.AsyncFunctionDef] = [
             _make_method("test_cache_get"),
@@ -229,8 +231,8 @@ class TestGroupMethods:
         groups = TestSplitter._group_methods([], {"cache": "Cache"})
         assert groups == {}
 
+    # --- UnparseNode ---
 
-class TestUnparseNode:
     def test_parse_func_simple_function_contains_return_1(self) -> None:
         func = _parse_func("def foo():\n    return 1\n")
         result = TestSplitter._unparse_node(func)
@@ -242,8 +244,8 @@ class TestUnparseNode:
         result = TestSplitter._unparse_node(cls)
         assert "class Foo:" in result
 
+    # --- IndentBlock ---
 
-class TestIndentBlock:
     def test_indent_block_single_line_returns_x_1(self) -> None:
         assert TestSplitter._indent_block("x = 1") == "    x = 1"
 
@@ -258,8 +260,8 @@ class TestIndentBlock:
     def test_indent_block_custom_indent_returns_x_1(self) -> None:
         assert TestSplitter._indent_block("x = 1", indent="  ") == "  x = 1"
 
+    # --- BuildSplitFile ---
 
-class TestBuildSplitFile:
     def test_with_module_docstring(self) -> None:
         module = _parse_module(
             '"""Original docstring."""\n'
@@ -352,8 +354,8 @@ class TestBuildSplitFile:
         result = TestSplitter._build_split_file(module, cls, "Cache", [], [], "TestOriginal")
         assert "Tests for Cache, split from TestOriginal" in result
 
+    # --- Main ---
 
-class TestMain:
     def _write_test_file(self, path: Path) -> None:
         """Write a sample test file with multiple SUT prefixes."""
         path.write_text(

@@ -8,8 +8,8 @@ from pathlib import Path
 from zolletta_metaskill.adr.structs.adr_record import ADRRecord
 
 
-class TestADRRecordCreation:
-    """Tests for ADRRecord dataclass creation and field access."""
+class TestADRRecord:
+    # --- Tests for ADRRecord dataclass creation and field access. ---
 
     def test_adr_record_creation_with_all_fields_returns_record(self) -> None:
         """ADRRecord stores all fields correctly."""

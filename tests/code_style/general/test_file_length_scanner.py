@@ -38,8 +38,8 @@ def _git_init(root: Path) -> None:
     subprocess.run(["git", "init", "-q"], cwd=root, check=True)
 
 
-class TestCountLines:
-    """Tests for FileLengthScanner.count_lines()."""
+class TestFileLengthScanner:
+    # --- Tests for FileLengthScanner.count_lines(). ---
 
     def test_empty_file_returns_zero(self, tmp_path: Path) -> None:
         f = tmp_path / "empty.py"
@@ -81,9 +81,7 @@ class TestCountLines:
         f.write_bytes(b"\xff\xfe\n\x00\x01\n")
         assert FileLengthScanner.count_lines(f) == 2
 
-
-class TestResolveExtensions:
-    """Tests for FileLengthScanner.resolve_extensions()."""
+    # --- Tests for FileLengthScanner.resolve_extensions(). ---
 
     def test_python_language_returns_py(self, tmp_path: Path) -> None:
         settings = _write_settings(tmp_path, language="python")
@@ -134,9 +132,7 @@ class TestResolveExtensions:
         )
         assert FileLengthScanner.resolve_extensions(settings) == set()
 
-
-class TestResolveMaxLines:
-    """Tests for FileLengthScanner.resolve_max_lines()."""
+    # --- Tests for FileLengthScanner.resolve_max_lines(). ---
 
     def test_reads_max_file_length_from_settings(self, tmp_path: Path) -> None:
         settings = _write_settings(tmp_path, python={"code_style": {"max_file_length": 500}})
@@ -167,9 +163,7 @@ class TestResolveMaxLines:
         settings = _write_settings(tmp_path, python={"tools": {}})
         assert FileLengthScanner.resolve_max_lines(settings) == 800
 
-
-class TestScanFile:
-    """Tests for FileLengthScanner.scan_file()."""
+    # --- Tests for FileLengthScanner.scan_file(). ---
 
     def test_file_under_limit_returns_empty(self, tmp_path: Path) -> None:
         f = tmp_path / "short.py"
@@ -211,9 +205,7 @@ class TestScanFile:
         assert FileLengthScanner.scan_file(f, max_lines=100) == []
         assert len(FileLengthScanner.scan_file(f, max_lines=49)) == 1
 
-
-class TestScanDirectory:
-    """Tests for FileLengthScanner.scan_directory()."""
+    # --- Tests for FileLengthScanner.scan_directory(). ---
 
     def test_scans_only_matching_extension(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
@@ -344,9 +336,7 @@ class TestScanDirectory:
         assert FileLengthScanner.scan_directory(root, max_lines=5, extensions={".py"}) == []
         assert "Warning: could not read" in capsys.readouterr().err
 
-
-class TestMain:
-    """Tests for FileLengthScanner.main()."""
+    # --- Tests for FileLengthScanner.main(). ---
 
     def test_main_check_disabled_reports_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch

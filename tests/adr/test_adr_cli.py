@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -10,9 +11,20 @@ import pytest
 from zolletta_metaskill.adr.adr_cli import ADRCLI
 from zolletta_metaskill.adr.structs.distill_report import DistillReport
 
+from .conftest import write_adr
 
-class TestADRCLIBuildParser:
-    """Tests for ADRCLI.build_parser."""
+
+def write_settings(tmp_path: Path, adrs: str | None = "adr") -> None:
+    """Write a minimal settings.json into ``tmp_path/.zolletta-metaskill``."""
+    meta = tmp_path / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    (meta / "settings.json").write_text(
+        json.dumps({"documentation": {"dir": "docs", "adrs": adrs}})
+    )
+
+
+class TestADRCLI:
+    # --- Tests for ADRCLI.build_parser. ---
 
     def test_build_parser_returns_parser_with_defaults(self) -> None:
         """build_parser returns a parser with default values."""
@@ -26,9 +38,7 @@ class TestADRCLIBuildParser:
         args = parser.parse_args(["--json"])
         assert args.json is True
 
-
-class TestADRCLIFormatReport:
-    """Tests for ADRCLI.format_report."""
+    # --- Tests for ADRCLI.format_report. ---
 
     def test_format_report_json_returns_json_string(self) -> None:
         """format_report returns JSON when as_json=True."""
@@ -52,9 +62,7 @@ class TestADRCLIFormatReport:
         result = ADRCLI.format_report(report, as_json=False)
         assert "no ADRs found" in result
 
-
-class TestADRCLIMissingDocsError:
-    """Tests for ADRCLI.missing_docs_error."""
+    # --- Tests for ADRCLI.missing_docs_error. ---
 
     def test_missing_docs_error_plain_returns_error_message(self) -> None:
         """missing_docs_error returns plain text error."""
@@ -69,9 +77,7 @@ class TestADRCLIMissingDocsError:
         assert data["new"] == []
         assert data["has_adrs"] is False
 
-
-class TestADRCLIRun:
-    """Tests for ADRCLI.run."""
+    # --- Tests for ADRCLI.run. ---
 
     def test_run_with_nonexistent_docs_dir_returns_1(
         self,
@@ -97,5 +103,114 @@ class TestADRCLIRun:
         rc = ADRCLI.run(["--json"])
         assert rc == 1
         out = capsys.readouterr().out
+        data = json.loads(out)
+        assert data["has_adrs"] is False
+
+    # --- Tests for the CLI main() function. ---
+
+    def _run(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        argv: list[str],
+    ) -> int:
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", argv)
+        return ADRCLI.main()
+
+    def test_main_with_adrs(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        write_settings(tmp_path)
+        docs = tmp_path / "docs"
+        write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted", "We do X.")
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "1 new" in out
+
+    def test_main_json_output(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        write_settings(tmp_path)
+        docs = tmp_path / "docs"
+        write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted", "We do X.")
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        data = json.loads(out)
+        assert data["has_adrs"] is True
+        assert "ADR-001" in data["new"]
+
+    def test_main_no_adrs(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        write_settings(tmp_path)
+        (tmp_path / "docs").mkdir()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "no ADRs" in out
+
+    def test_main_no_adrs_plain(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        write_settings(tmp_path)
+        (tmp_path / "docs").mkdir()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "no ADRs" in out
+
+    def test_main_empty_adrs_path(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Empty string adrs means ADRs are scattered in docs root."""
+        write_settings(tmp_path, adrs="")
+        docs = tmp_path / "docs"
+        write_adr(docs / "0001-test.md", "001", "Test", "Accepted", "We do X.")
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        data = json.loads(out)
+        assert data["has_adrs"] is True
+
+    def test_main_nonexistent_docs_dir(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        write_settings(tmp_path)
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        err = capsys.readouterr().err
+        assert rc == 1
+        assert "not a directory" in err
+
+    def test_main_nonexistent_docs_dir_json(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        write_settings(tmp_path)
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        out = capsys.readouterr().out
+        assert rc == 1
         data = json.loads(out)
         assert data["has_adrs"] is False

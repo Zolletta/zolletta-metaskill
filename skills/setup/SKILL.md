@@ -35,22 +35,28 @@ Initialize the `.zolletta-metaskill/` directory and write `settings.json` so tha
 
 If `.zolletta-metaskill/settings.json` already exists, read it and check `setup_version`:
 
-- **`"3.0.0"` or later** — no migration needed; proceed to the requested subcommand (or re-run setup if invoked explicitly).
-- **`"2.x"`** — additively backfill the keys introduced in v3.0.0, then proceed:
+- **`"3.1.0"` or later** — no migration needed; proceed to the requested subcommand (or re-run setup if invoked explicitly).
+- **`"3.0.0"`** — additively backfill the key introduced in v3.1.0, then proceed:
+  1. `python.code_style.check_one_class_per_test_file` — copy the default (`true`) from the schema doc.
+  2. **Merge only**: preserve every user-customized value; only add keys that are absent.
+  3. Set `setup_version` to `"3.1.0"`, write the file, and proceed.
+- **`"2.x"`** — additively backfill the keys introduced in v3.0.0 and v3.1.0, then proceed:
   1. `python.paths` — run Step 8's `python_paths_detector.py` and store its output (Python projects only).
   2. `python.patterns`, `php.patterns` — copy the defaults from the schema doc.
-  3. New `python.code_style` keys (`check_zero_class_files`, `check_unused_all_exports`, `docstring_strip_*`), `python.testing.test_naming_min_segments`, `php.code_style.check_acronym_casing`, and the new `documentation.*` keys — copy the defaults from the schema doc.
+  3. New `python.code_style` keys (`check_zero_class_files`, `check_unused_all_exports`, `docstring_strip_*`, `check_one_class_per_test_file`), `python.testing.test_naming_min_segments`, `php.code_style.check_acronym_casing`, and the new `documentation.*` keys — copy the defaults from the schema doc.
   4. **Merge only**: preserve every user-customized value; only add keys that are absent.
-  5. Set `setup_version` to `"3.0.0"`, write the file, and proceed.
+  5. Set `setup_version` to `"3.1.0"`, write the file, and proceed.
 - **`"1.x"` or absent** — migrate before writing the new file:
   1. If the old `subagent_profile` field exists and is non-null, it applied to all review subagents — set `subcommands.patterns.model`, `subcommands.documentor.model`, `subcommands.python-code-style.model`, `subcommands.python-testing-style.model`, `subcommands.php-code-style.model`, and `subcommands.php-testing-style.model` to its value. If it is `null` or absent, leave all review subcommand models at `null`.
   2. Remove `external_review_model` and `subagent_profile` from the file. (`external_review_model` was for the removed `external-review` subcommand — it is not migrated.)
   3. Add the full `subcommands` object with all six keys, preserving migrated values and defaulting unmigrated ones to `null`.
-  4. Apply the v3.0.0 backfill described above (`paths`, `patterns`, new `code_style`/`testing`/`documentation` keys).
-  5. Set `setup_version` to `"3.0.0"`.
+  4. Apply the v3.0.0 + v3.1.0 backfill described above (`paths`, `patterns`, new `code_style`/`testing`/`documentation` keys).
+  5. Set `setup_version` to `"3.1.0"`.
   6. Write the migrated file and proceed.
 
 > **What changed in v3.0.0**: every review script now resolves scan roots and rule knobs from `settings.json` instead of CLI flags (see ADR-0015). New keys: `python.paths` (source/test roots + package — the PHP-autoload equivalent Python lacked), `python.patterns` and `php.patterns` (SOLID-check toggles and thresholds), new `python.code_style`/`python.testing`/`php.code_style` toggles, and the `documentation.*` options that drive the documentor tools. Backfill is additive: user-customized values are preserved, only absent keys are added.
+>
+> **What changed in v3.1.0**: `one_class_per_file_scanner.py` also scans test roots (one test class per test file, named after its stem) — gated by the new `python.code_style.check_one_class_per_test_file` toggle (default `true`, set `false` to skip test files). Its name check is now case-insensitive, so acronym-cased classes (`ADRCache`, `TestADRCLI`) match their lowercase filenames instead of being reported as false positives.
 
 > **What changed in v2.0.0**: the `external_review_model` scalar (for the removed `external-review` subcommand) and the `subagent_profile` scalar (all review subagents) are replaced by `subcommands` — a per-subcommand map where each entry has a `model` field. The `external-review` subcommand is removed; `external_review_model` is not migrated. This lets the user configure a different model per subcommand (e.g. a strong model for `patterns`/`documentor`, a cheap one for `*-code-style`). See [`../../docs/reference/settings-schema.md`](../../docs/reference/settings-schema.md#subcommands-per-subcommand-model-configuration) for the full schema.
 

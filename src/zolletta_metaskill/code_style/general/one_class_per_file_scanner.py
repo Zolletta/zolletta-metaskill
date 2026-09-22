@@ -4,15 +4,30 @@
 Reports three categories of violations:
   - Files with 2+ classes (should be split into separate files)
   - Files with 0 classes that are not __init__.py (utility/constant files —
-    reported as low severity, not errors)
+    reported as low severity, not errors; source roots only)
   - Class names that don't match the filename (snake_case -> PascalCase)
+
+Name matching is case-insensitive so acronym-cased classes (``ADRCache``,
+``PHPEngine``) match their lowercase filenames — letter casing itself is
+the acronym-casing check's domain, not this one's.
+
+Test roots are scanned too (unless ``check_one_class_per_test_file`` is
+false): a test file must hold exactly one test class named after its stem
+(``test_user.py`` -> ``class TestUser``), so a source class maps to one
+merged test class per file. ``conftest.py`` is skipped and zero-class
+findings are suppressed for test roots — function-style test files are a
+valid layout this check does not police.
 
 Configuration comes from ``.zolletta-metaskill/settings.json``:
 
 - Scan roots: ``python.paths.source`` / ``php.autoload.psr-4`` (``src``
-  when unconfigured), enumerated with git-ignore awareness.
+  when unconfigured) and, for the test-side check, ``python.paths.tests`` /
+  ``php.autoload.psr-4-dev`` (``tests`` when unconfigured), enumerated
+  with git-ignore awareness.
 - ``<language>.code_style.check_one_class_per_file`` — when false for
   every configured language the run reports SKIPPED.
+- ``<language>.code_style.check_one_class_per_test_file`` — when false
+  for every configured language, test roots are not scanned.
 - ``<language>.code_style.check_zero_class_files`` — when false for
   every scanned language, zero-class findings are filtered out
   (utility modules are allowed).
@@ -49,16 +64,31 @@ class OneClassPerFileScanner:
         return "".join(word.capitalize() for word in name.split("_"))
 
     @staticmethod
-    def scan_module(module: ModuleInfo) -> list[Finding]:
+    def _names_match(class_name: str, stem: str) -> bool:
+        """Return True when *class_name* corresponds to *stem*.
+
+        The comparison is case-insensitive: acronym-cased classes such as
+        ``ADRCache`` or ``TestADRCLI`` match ``adr_cache.py`` /
+        ``test_adr_cli.py``, while structurally different names
+        (``WrongName`` vs ``user.py``) still mismatch.
+        """
+        expected = OneClassPerFileScanner._snake_to_pascal(stem)
+        return class_name.lower() in {expected.lower(), stem.lower()}
+
+    @staticmethod
+    def scan_module(module: ModuleInfo, report_zero_class: bool = True) -> list[Finding]:
         """Scan a parsed module and return findings for class-structure violations.
 
         Args:
             module: The :class:`ModuleInfo` produced by an engine.
+            report_zero_class: When False, files with no classes produce no
+                finding (used for test roots, where function-style test
+                files are a valid layout).
 
         Returns:
             A list of :class:`Finding` objects.  Categories:
             ``"multi_class"`` (2+ classes), ``"zero_class"`` (no classes),
-            ``"name_mismatch"`` (class name != filename).
+            ``"name_mismatch"`` (class name doesn't correspond to filename).
 
         """
         if module.has_syntax_error:
@@ -81,6 +111,8 @@ class OneClassPerFileScanner:
             ]
 
         if len(classes) == 0:
+            if not report_zero_class:
+                return []
             return [
                 Finding(
                     file=file_path,
@@ -94,8 +126,8 @@ class OneClassPerFileScanner:
 
         # Exactly 1 class — check name match
         cls = classes[0]
-        expected_pascal = OneClassPerFileScanner._snake_to_pascal(module.path.stem)
-        if cls.name != expected_pascal and cls.name != module.path.stem:
+        if not OneClassPerFileScanner._names_match(cls.name, module.path.stem):
+            expected_pascal = OneClassPerFileScanner._snake_to_pascal(module.path.stem)
             return [
                 Finding(
                     file=file_path,
@@ -113,11 +145,13 @@ class OneClassPerFileScanner:
         return []
 
     @staticmethod
-    def scan_file(path: Path) -> list[Finding]:
+    def scan_file(path: Path, report_zero_class: bool = True) -> list[Finding]:
         """Backward-compatible wrapper that uses the registry to get an engine.
 
         Args:
             path: Path to a source file.
+            report_zero_class: When False, files with no classes produce no
+                finding (used for test roots).
 
         Returns:
             A list of :class:`Finding` objects (empty if no engine matches or
@@ -129,7 +163,7 @@ class OneClassPerFileScanner:
         if engine is None:  # pragma: no cover
             return []
         module = engine.parse_module(path)
-        return OneClassPerFileScanner.scan_module(module)
+        return OneClassPerFileScanner.scan_module(module, report_zero_class)
 
     @staticmethod
     def main() -> int:
@@ -180,9 +214,29 @@ class OneClassPerFileScanner:
                 if path.name == "__init__.py":
                     continue
                 files.append(path)
+
+        # --- Test roots (one test class per test file) ---
+        test_roots: list[Path] = []
+        if ProjectConfig.any_enabled(
+            settings, languages, "code_style.check_one_class_per_test_file"
+        ):
+            test_roots = ProjectConfig.existing_roots(ProjectConfig.test_roots(settings, languages))
+
+        seen = {str(path) for path in files}
+        test_files: list[Path] = []
+        for root in test_roots:
+            for path in ProjectConfig.iter_files(root, extensions):
+                if path.name in ("__init__.py", "conftest.py"):
+                    continue
+                if str(path) in seen:
+                    continue
+                test_files.append(path)
+
         all_findings: list[Finding] = []
         for path in files:
             all_findings.extend(OneClassPerFileScanner.scan_file(path))
+        for path in test_files:
+            all_findings.extend(OneClassPerFileScanner.scan_file(path, report_zero_class=False))
 
         if not report_zero:
             all_findings = [f for f in all_findings if f.category != "zero_class"]
@@ -192,13 +246,14 @@ class OneClassPerFileScanner:
         name_mismatch = [f for f in all_findings if f.category == "name_mismatch"]
 
         has_violations = bool(all_findings)
+        scanned_dirs = [str(root) for root in roots] + [str(root) for root in test_roots]
 
         if args.json:
             print(
                 json.dumps(
                     {
-                        "directories": [str(root) for root in roots],
-                        "scanned": len(files),
+                        "directories": scanned_dirs,
+                        "scanned": len(files) + len(test_files),
                         "violation_count": len(all_findings),
                         "violations": [
                             {

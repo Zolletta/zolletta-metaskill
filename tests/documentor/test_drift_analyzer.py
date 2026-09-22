@@ -15,12 +15,10 @@ import pytest
 
 from zolletta_metaskill.documentor.drift_analyzer import DriftAnalyzer
 
-# ---------------------------------------------------------------------------
-# _load_gitignore_patterns
-# ---------------------------------------------------------------------------
 
+class TestDriftAnalyzer:
+    # --- _load_gitignore_patterns ---
 
-class TestLoadGitignorePatterns:
     def test_load_gitignore_patterns_no_gitignore_succeeds(self, tmp_path: Path) -> None:
         assert DriftAnalyzer._load_gitignore_patterns(str(tmp_path)) == set()
 
@@ -51,13 +49,8 @@ class TestLoadGitignorePatterns:
         with patch("builtins.open", side_effect=OSError("boom")):
             assert DriftAnalyzer._load_gitignore_patterns(str(tmp_path)) == set()
 
+    # --- run_git ---
 
-# ---------------------------------------------------------------------------
-# run_git
-# ---------------------------------------------------------------------------
-
-
-class TestRunGit:
     def test_run_git_success_returns_fail(self, tmp_path: Path) -> None:
         result = DriftAnalyzer.run_git(str(tmp_path), ["status"], default="FAIL")
         # Not a git repo, so returns default
@@ -83,13 +76,8 @@ class TestRunGit:
         with patch("subprocess.run", return_value=mock_result):
             assert DriftAnalyzer.run_git(str(tmp_path), ["log"]) == "output"
 
+    # --- get_file_last_modified ---
 
-# ---------------------------------------------------------------------------
-# get_file_last_modified
-# ---------------------------------------------------------------------------
-
-
-class TestGetFileLastModified:
     def test_get_file_last_modified_valid_date_returns_2024(self, tmp_path: Path) -> None:
         with patch(
             "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.run_git",
@@ -112,13 +100,8 @@ class TestGetFileLastModified:
         ):
             assert DriftAnalyzer.get_file_last_modified(str(tmp_path), "README.md") is None
 
+    # --- get_files_changed_since ---
 
-# ---------------------------------------------------------------------------
-# get_files_changed_since
-# ---------------------------------------------------------------------------
-
-
-class TestGetFilesChangedSince:
     def test_get_files_changed_since_parse_changes_returns_dict(self, tmp_path: Path) -> None:
         output = "M\tsrc/foo.py\nA\tsrc/bar.py\nR100\told.py\tnew.py\n"
         with patch(
@@ -154,13 +137,8 @@ class TestGetFilesChangedSince:
         ):
             assert DriftAnalyzer.get_files_changed_since(str(tmp_path), "2024-01-01") == []
 
+    # --- get_renamed_files ---
 
-# ---------------------------------------------------------------------------
-# get_renamed_files
-# ---------------------------------------------------------------------------
-
-
-class TestGetRenamedFiles:
     def test_get_renamed_files_parse_renames_returns_multiple_items(self, tmp_path: Path) -> None:
         output = "R100\told.py\tnew.py\nR90\ta.py\tb.py\n"
         with patch(
@@ -193,13 +171,8 @@ class TestGetRenamedFiles:
             renames = DriftAnalyzer.get_renamed_files(str(tmp_path), "90 days ago")
         assert renames == [("old.py", "new.py"), ("a.py", "b.py")]
 
+    # --- get_current_version_from_git ---
 
-# ---------------------------------------------------------------------------
-# get_current_version_from_git
-# ---------------------------------------------------------------------------
-
-
-class TestGetCurrentVersion:
     def test_with_v_prefix(self, tmp_path: Path) -> None:
         with patch(
             "zolletta_metaskill.documentor.drift_analyzer.DriftAnalyzer.run_git",
@@ -220,13 +193,8 @@ class TestGetCurrentVersion:
         ):
             assert DriftAnalyzer.get_current_version_from_git(str(tmp_path)) is None
 
+    # --- find_doc_files ---
 
-# ---------------------------------------------------------------------------
-# find_doc_files
-# ---------------------------------------------------------------------------
-
-
-class TestFindDocFiles:
     def test_find_doc_files_finds_markdown_contains_value(self, tmp_path: Path) -> None:
         (tmp_path / "README.md").write_text("# Test", encoding="utf-8")
         (tmp_path / "docs").mkdir()
@@ -269,7 +237,9 @@ class TestFindDocFiles:
         assert "README.md" in result
         assert all("docs" not in f for f in result)
 
-    def test_zolletta_metaskill_skipped_without_gitignore(self, tmp_path: Path) -> None:
+    def test_find_doc_files_zolletta_metaskill_skipped_without_gitignore(
+        self, tmp_path: Path
+    ) -> None:
         """`.zolletta-metaskill/` is skipped even when not in local .gitignore."""
         zm = tmp_path / ".zolletta-metaskill"
         zm.mkdir()
@@ -286,13 +256,8 @@ class TestFindDocFiles:
         result = DriftAnalyzer.find_doc_files(str(tmp_path))
         assert result == sorted(result)
 
+    # --- find_code_files ---
 
-# ---------------------------------------------------------------------------
-# find_code_files
-# ---------------------------------------------------------------------------
-
-
-class TestFindCodeFiles:
     def test_find_code_files_finds_python_contains_main_py(self, tmp_path: Path) -> None:
         (tmp_path / "main.py").write_text("print('hi')", encoding="utf-8")
         result = DriftAnalyzer.find_code_files(str(tmp_path))
@@ -317,7 +282,9 @@ class TestFindCodeFiles:
         assert "mod.py" in result
         assert all("__pycache__" not in f for f in result)
 
-    def test_zolletta_metaskill_skipped_without_gitignore(self, tmp_path: Path) -> None:
+    def test_find_code_files_zolletta_metaskill_skipped_without_gitignore(
+        self, tmp_path: Path
+    ) -> None:
         """`.zolletta-metaskill/` is skipped even when not in local .gitignore."""
         zm = tmp_path / ".zolletta-metaskill"
         zm.mkdir()
@@ -327,13 +294,8 @@ class TestFindCodeFiles:
         assert "mod.py" in result
         assert all(".zolletta-metaskill" not in f for f in result)
 
+    # --- map_docs_to_code ---
 
-# ---------------------------------------------------------------------------
-# map_docs_to_code
-# ---------------------------------------------------------------------------
-
-
-class TestMapDocsToCode:
     def test_map_docs_to_code_directory_proximity_contains_value(self, tmp_path: Path) -> None:
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "auth.py").write_text("x = 1", encoding="utf-8")
@@ -382,13 +344,8 @@ class TestMapDocsToCode:
         # Should not crash; mapping may be empty or have default
         assert isinstance(mapping, dict)
 
+    # --- extract_references_from_doc ---
 
-# ---------------------------------------------------------------------------
-# extract_references_from_doc
-# ---------------------------------------------------------------------------
-
-
-class TestExtractReferences:
     def test_extract_references_from_doc_markdown_links_contains_guide_md(
         self, tmp_path: Path
     ) -> None:
@@ -441,13 +398,8 @@ class TestExtractReferences:
         assert "#section" in refs["links"]
         assert "#section" not in refs["files"]
 
+    # --- detect_drift_for_doc ---
 
-# ---------------------------------------------------------------------------
-# detect_drift_for_doc
-# ---------------------------------------------------------------------------
-
-
-class TestDetectDriftForDoc:
     def test_no_git_history(self, tmp_path: Path) -> None:
         (tmp_path / "README.md").write_text("# Test", encoding="utf-8")
         with patch(
@@ -734,13 +686,8 @@ class TestDetectDriftForDoc:
         ]
         assert len(temporal) == 1
 
+    # --- check_readme_structure ---
 
-# ---------------------------------------------------------------------------
-# check_readme_structure
-# ---------------------------------------------------------------------------
-
-
-class TestCheckReadmeStructure:
     def test_check_readme_structure_missing_sections_contains_license(self, tmp_path: Path) -> None:
         (tmp_path / "README.md").write_text("# Project\n\nSome text.", encoding="utf-8")
         issues = DriftAnalyzer.check_readme_structure(str(tmp_path), "README.md")
@@ -770,13 +717,8 @@ class TestCheckReadmeStructure:
             issues = DriftAnalyzer.check_readme_structure(str(tmp_path), "README.md")
         assert issues == []
 
+    # --- _parse_version_part / _version_is_older ---
 
-# ---------------------------------------------------------------------------
-# _parse_version_part / _version_is_older
-# ---------------------------------------------------------------------------
-
-
-class TestVersionComparison:
     def test_parse_version_part_parse_numeric_returns_10(self) -> None:
         assert DriftAnalyzer._parse_version_part("10") == 10
 
@@ -811,13 +753,8 @@ class TestVersionComparison:
         # Empty string parses to [0] which is older than [1, 0, 0]
         assert DriftAnalyzer._version_is_older("", "1.0.0") is True
 
+    # --- generate_report ---
 
-# ---------------------------------------------------------------------------
-# generate_report
-# ---------------------------------------------------------------------------
-
-
-class TestGenerateReport:
     def test_empty_issues_json(self, tmp_path: Path) -> None:
         import json
 
@@ -918,13 +855,8 @@ class TestGenerateReport:
         assert "FIX TYPE SUMMARY" in report
         assert "Auto-fixable" in report
 
+    # --- main ---
 
-# ---------------------------------------------------------------------------
-# main
-# ---------------------------------------------------------------------------
-
-
-class TestMain:
     def _write_settings(self, tmp_path: Path, **overrides: object) -> Path:
         """Write a minimal settings.json under ``tmp_path/.zolletta-metaskill``."""
         settings: dict[str, object] = {

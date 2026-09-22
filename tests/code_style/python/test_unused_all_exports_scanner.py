@@ -12,12 +12,10 @@ from zolletta_metaskill.code_style.python.unused_all_exports_scanner import (
     UnusedAllExportsScanner,
 )
 
-# ---------------------------------------------------------------------------
-# UnusedAllExportsScanner._extract_all_entries
-# ---------------------------------------------------------------------------
 
+class TestUnusedAllExportsScanner:
+    # --- UnusedAllExportsScanner._extract_all_entries ---
 
-class TestExtractAllEntries:
     def test_simple_all_assignment(self, tmp_path: Path) -> None:
         f = tmp_path / "mod.py"
         f.write_text('__all__ = ["foo", "bar"]\n', encoding="utf-8")
@@ -78,13 +76,8 @@ class TestExtractAllEntries:
         f.write_text('__all__ = ["only"]\n', encoding="utf-8")
         assert UnusedAllExportsScanner._extract_all_entries(f) == ["only"]
 
+    # --- UnusedAllExportsScanner._extract_imported_names ---
 
-# ---------------------------------------------------------------------------
-# UnusedAllExportsScanner._extract_imported_names
-# ---------------------------------------------------------------------------
-
-
-class TestExtractImportedNames:
     def test_extract_imported_names_from_import_contains_value(self, tmp_path: Path) -> None:
         f = tmp_path / "a.py"
         f.write_text("from pkg import foo\n", encoding="utf-8")
@@ -130,13 +123,8 @@ class TestExtractImportedNames:
     def test_extract_imported_names_empty_src_returns_empty_dict(self) -> None:
         assert UnusedAllExportsScanner._extract_imported_names([]) == {}
 
+    # --- UnusedAllExportsScanner._find_all_files_with_all ---
 
-# ---------------------------------------------------------------------------
-# UnusedAllExportsScanner._find_all_files_with_all
-# ---------------------------------------------------------------------------
-
-
-class TestFindAllFilesWithAll:
     def test_finds_files_with_all(self, tmp_path: Path) -> None:
         a = tmp_path / "a.py"
         a.write_text('__all__ = ["foo"]\n', encoding="utf-8")
@@ -163,13 +151,8 @@ class TestFindAllFilesWithAll:
         result = UnusedAllExportsScanner._find_all_files_with_all([a, b])
         assert len(result) == 2
 
+    # --- UnusedAllExportsScanner.main ---
 
-# ---------------------------------------------------------------------------
-# UnusedAllExportsScanner.main
-# ---------------------------------------------------------------------------
-
-
-class TestMain:
     def _write_settings(self, tmp_path: Path, **overrides: object) -> Path:
         """Write a minimal settings.json under ``tmp_path/.zolletta-metaskill``."""
         settings: dict[str, object] = {

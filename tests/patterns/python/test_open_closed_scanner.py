@@ -44,7 +44,60 @@ def _parse_match(source: str) -> ast.Match:
     raise AssertionError("No Match found")  # pragma: no cover
 
 
-class TestIsTypeCheck:
+def _write_settings(dirpath: Path, **overrides: object) -> Path:
+    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
+    settings: dict[str, object] = {
+        "language": "python",
+        "python": {
+            "patterns": {},
+            "paths": {"source": ["src"], "tests": ["tests"], "package": "mypkg"},
+        },
+        "php": None,
+    }
+    python_overrides = overrides.pop("python", None)
+    if isinstance(python_overrides, dict):
+        base_python = settings["python"]
+        assert isinstance(base_python, dict)
+        for key, value in python_overrides.items():
+            if isinstance(value, dict) and isinstance(base_python.get(key), dict):
+                base_python[key].update(value)
+            else:
+                base_python[key] = value
+    settings.update(overrides)
+    meta = dirpath / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    path = meta / "settings.json"
+    path.write_text(json.dumps(settings))
+    return path
+
+
+def test_write_settings_replaces_non_dict_python_value(tmp_path: Path) -> None:
+    """A non-dict ``python`` override value replaces the base value."""
+    path = _write_settings(tmp_path, python={"tools": "none"})
+    written = json.loads(path.read_text())
+    python = written["python"]
+    assert isinstance(python, dict)
+    assert python["tools"] == "none"
+
+
+def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
+    """Chdir into tmp_path and run main() with *argv*."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", argv)
+    return OpenClosedScanner.main()
+
+
+_LADDER_SRC = (
+    "def f(x):\n"
+    "    if isinstance(x, int):\n        pass\n"
+    "    elif isinstance(x, str):\n        pass\n"
+    "    elif isinstance(x, float):\n        pass\n"
+)
+
+
+class TestOpenClosedScanner:
+    # --- IsTypeCheck ---
+
     def test_parse_call_isinstance_call_returns_true(self) -> None:
         node = _parse_call("isinstance(x, int)")
         assert OpenClosedScanner._is_type_check(node) is True
@@ -113,8 +166,8 @@ class TestIsTypeCheck:
                 return
         raise AssertionError("No Assign found")  # pragma: no cover
 
+    # --- ContainsTypeCheck ---
 
-class TestContainsTypeCheck:
     def test_bool_op_with_type_check(self) -> None:
         tree = _parse("isinstance(x, int) and x > 0")
         for node in ast.walk(tree):
@@ -143,8 +196,8 @@ class TestContainsTypeCheck:
                 return
         raise AssertionError("No BoolOp found")  # pragma: no cover
 
+    # --- CountTypeBranches ---
 
-class TestCountTypeBranches:
     def test_three_isinstance_branches(self) -> None:
         source = (
             "if isinstance(x, int):\n    pass\n"
@@ -179,8 +232,8 @@ class TestCountTypeBranches:
         node = _parse_if(source)
         assert OpenClosedScanner._count_type_branches(node) == 0
 
+    # --- IsStringTypeDispatch ---
 
-class TestIsStringTypeDispatch:
     def test_getattr_with_concat(self) -> None:
         node = _parse_call('builtins.getattr(obj, "method_" + type_name)')
         assert OpenClosedScanner._is_string_type_dispatch(node) is True
@@ -214,8 +267,8 @@ class TestIsStringTypeDispatch:
                 return
         raise AssertionError("No Assign found")  # pragma: no cover
 
+    # --- FindMatchOnType ---
 
-class TestFindMatchOnType:
     def test_match_on_class(self) -> None:
         source = "match x:\n    case int():\n        pass\n    case str():\n        pass\n"
         node = _parse_match(source)
@@ -231,8 +284,8 @@ class TestFindMatchOnType:
         node = _parse_match(source)
         assert OpenClosedScanner._find_match_on_type(node) is True
 
+    # --- ScanFile ---
 
-class TestScanFile:
     def test_type_ladder_violation(self, tmp_path: Path) -> None:
         f = tmp_path / "mod.py"
         f.write_text(
@@ -296,59 +349,8 @@ class TestScanFile:
         ladders = [v for v in violations if v["type"] == "type_ladder"]
         assert len(ladders) == 0
 
+    # --- Main ---
 
-def _write_settings(dirpath: Path, **overrides: object) -> Path:
-    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
-    settings: dict[str, object] = {
-        "language": "python",
-        "python": {
-            "patterns": {},
-            "paths": {"source": ["src"], "tests": ["tests"], "package": "mypkg"},
-        },
-        "php": None,
-    }
-    python_overrides = overrides.pop("python", None)
-    if isinstance(python_overrides, dict):
-        base_python = settings["python"]
-        assert isinstance(base_python, dict)
-        for key, value in python_overrides.items():
-            if isinstance(value, dict) and isinstance(base_python.get(key), dict):
-                base_python[key].update(value)
-            else:
-                base_python[key] = value
-    settings.update(overrides)
-    meta = dirpath / ".zolletta-metaskill"
-    meta.mkdir(parents=True, exist_ok=True)
-    path = meta / "settings.json"
-    path.write_text(json.dumps(settings))
-    return path
-
-
-def test_write_settings_replaces_non_dict_python_value(tmp_path: Path) -> None:
-    """A non-dict ``python`` override value replaces the base value."""
-    path = _write_settings(tmp_path, python={"tools": "none"})
-    written = json.loads(path.read_text())
-    python = written["python"]
-    assert isinstance(python, dict)
-    assert python["tools"] == "none"
-
-
-def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
-    """Chdir into tmp_path and run main() with *argv*."""
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(sys, "argv", argv)
-    return OpenClosedScanner.main()
-
-
-_LADDER_SRC = (
-    "def f(x):\n"
-    "    if isinstance(x, int):\n        pass\n"
-    "    elif isinstance(x, str):\n        pass\n"
-    "    elif isinstance(x, float):\n        pass\n"
-)
-
-
-class TestMain:
     def test_main_no_violations(
         self,
         tmp_path: Path,

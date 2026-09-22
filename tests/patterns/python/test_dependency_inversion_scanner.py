@@ -32,7 +32,51 @@ def _parse_call(source: str) -> ast.Call:
     raise AssertionError("No Call found in source")  # pragma: no cover
 
 
-class TestIsDataClass:
+def _write_settings(dirpath: Path, **overrides: object) -> Path:
+    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
+    settings: dict[str, object] = {
+        "language": "python",
+        "python": {
+            "patterns": {},
+            "paths": {"source": ["src"], "tests": ["tests"], "package": "mypkg"},
+        },
+        "php": None,
+    }
+    python_overrides = overrides.pop("python", None)
+    if isinstance(python_overrides, dict):
+        base_python = settings["python"]
+        assert isinstance(base_python, dict)
+        for key, value in python_overrides.items():
+            if isinstance(value, dict) and isinstance(base_python.get(key), dict):
+                base_python[key].update(value)
+            else:
+                base_python[key] = value
+    settings.update(overrides)
+    meta = dirpath / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    path = meta / "settings.json"
+    path.write_text(json.dumps(settings))
+    return path
+
+
+def test_write_settings_replaces_non_dict_python_value(tmp_path: Path) -> None:
+    """A non-dict ``python`` override value replaces the base value."""
+    path = _write_settings(tmp_path, python={"tools": "none"})
+    written = json.loads(path.read_text())
+    python = written["python"]
+    assert isinstance(python, dict)
+    assert python["tools"] == "none"
+
+
+def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", argv)
+    return DependencyInversionScanner.main()
+
+
+class TestDependencyInversionScanner:
+    # --- IsDataClass ---
+
     def test_parse_class_dataclass_decorator_returns_true(self) -> None:
         node = _parse_class(
             "from dataclasses import dataclass\n@dataclass\nclass Foo:\n    x: int\n"
@@ -75,8 +119,8 @@ class TestIsDataClass:
         node = _parse_class("@property\nclass Foo:\n    pass\n")
         assert DependencyInversionScanner._is_data_class(node) is False
 
+    # --- IsFactory ---
 
-class TestIsFactory:
     def test_factory_in_name(self) -> None:
         assert DependencyInversionScanner._is_factory("ServiceFactory") is True
 
@@ -89,8 +133,8 @@ class TestIsFactory:
     def test_is_factory_empty_name_returns_false(self) -> None:
         assert DependencyInversionScanner._is_factory("") is False
 
+    # --- IsEntryPoint ---
 
-class TestIsEntryPoint:
     def test_is_entry_point_main_file_returns_true(self) -> None:
         assert DependencyInversionScanner._is_entry_point("main.py", {"main", "cli"}) is True
 
@@ -112,8 +156,8 @@ class TestIsEntryPoint:
     def test_is_entry_point_empty_patterns_returns_false(self) -> None:
         assert DependencyInversionScanner._is_entry_point("main.py", set()) is False
 
+    # --- IsCompositionRoot ---
 
-class TestIsCompositionRoot:
     def test_make_container_call(self) -> None:
         node = _parse_class("class App:\n    def setup(self):\n        self.c = make_container()\n")
         assert DependencyInversionScanner._is_composition_root(node) is True
@@ -136,8 +180,8 @@ class TestIsCompositionRoot:
         node = _parse_class("class App:\n    def setup(self):\n        c = create_container()\n")
         assert DependencyInversionScanner._is_composition_root(node) is True
 
+    # --- ExtractCreatedDependencies ---
 
-class TestExtractCreatedDependencies:
     def test_self_assignment_with_call(self) -> None:
         source = "class Service:\n    def __init__(self):\n        self.client = GitLabClient()\n"
         node = _parse_class(source)
@@ -196,7 +240,7 @@ class TestExtractCreatedDependencies:
         deps = DependencyInversionScanner._extract_created_dependencies(node)
         assert len(deps) == 0
 
-    def test_attribute_call_capitalized(self) -> None:
+    def test_extract_created_dependencies_attribute_call_capitalized(self) -> None:
         source = (
             "class Service:\n    def __init__(self):\n        self.client = module.GitLabClient()\n"
         )
@@ -218,13 +262,13 @@ class TestExtractCreatedDependencies:
         assert len(deps) == 1
         assert deps[0]["method"] == "setup"
 
+    # --- GetClassNameFromCall ---
 
-class TestGetClassNameFromCall:
     def test_parse_call_name_call_returns_gitlabclient(self) -> None:
         call = _parse_call("GitLabClient()")
         assert DependencyInversionScanner._get_class_name_from_call(call) == "GitLabClient"
 
-    def test_attribute_call_capitalized(self) -> None:
+    def test_get_class_name_from_call_attribute_call_capitalized(self) -> None:
         call = _parse_call("module.GitLabClient()")
         assert DependencyInversionScanner._get_class_name_from_call(call) == "GitLabClient"
 
@@ -237,8 +281,8 @@ class TestGetClassNameFromCall:
         call = _parse_call("d['key']()")
         assert DependencyInversionScanner._get_class_name_from_call(call) is None
 
+    # --- IsRealDependency ---
 
-class TestIsRealDependency:
     def test_is_real_dependency_real_dependency_returns_true(self) -> None:
         assert DependencyInversionScanner._is_real_dependency("GitLabClient") is True
 
@@ -269,8 +313,8 @@ class TestIsRealDependency:
     def test_is_real_dependency_tuple_type_returns_false(self) -> None:
         assert DependencyInversionScanner._is_real_dependency("tuple") is False
 
+    # --- GetConstructorParams ---
 
-class TestGetConstructorParams:
     def test_parse_class_with_init_returns_set(self) -> None:
         node = _parse_class("class Foo:\n    def __init__(self, a, b):\n        pass\n")
         params = DependencyInversionScanner._get_constructor_params(node)
@@ -291,50 +335,8 @@ class TestGetConstructorParams:
         params = DependencyInversionScanner._get_constructor_params(node)
         assert params == set()
 
+    # --- Main ---
 
-def _write_settings(dirpath: Path, **overrides: object) -> Path:
-    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
-    settings: dict[str, object] = {
-        "language": "python",
-        "python": {
-            "patterns": {},
-            "paths": {"source": ["src"], "tests": ["tests"], "package": "mypkg"},
-        },
-        "php": None,
-    }
-    python_overrides = overrides.pop("python", None)
-    if isinstance(python_overrides, dict):
-        base_python = settings["python"]
-        assert isinstance(base_python, dict)
-        for key, value in python_overrides.items():
-            if isinstance(value, dict) and isinstance(base_python.get(key), dict):
-                base_python[key].update(value)
-            else:
-                base_python[key] = value
-    settings.update(overrides)
-    meta = dirpath / ".zolletta-metaskill"
-    meta.mkdir(parents=True, exist_ok=True)
-    path = meta / "settings.json"
-    path.write_text(json.dumps(settings))
-    return path
-
-
-def test_write_settings_replaces_non_dict_python_value(tmp_path: Path) -> None:
-    """A non-dict ``python`` override value replaces the base value."""
-    path = _write_settings(tmp_path, python={"tools": "none"})
-    written = json.loads(path.read_text())
-    python = written["python"]
-    assert isinstance(python, dict)
-    assert python["tools"] == "none"
-
-
-def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(sys, "argv", argv)
-    return DependencyInversionScanner.main()
-
-
-class TestMain:
     def test_main_no_violations(
         self,
         tmp_path: Path,
