@@ -13,12 +13,10 @@ from zolletta_metaskill.code_style.python.acronym_casing_scanner import (
     AcronymCasingScanner,
 )
 
-# ---------------------------------------------------------------------------
-# AcronymCasingScanner._load_default_acronyms
-# ---------------------------------------------------------------------------
 
+class TestAcronymCasingScanner:
+    # --- AcronymCasingScanner._load_default_acronyms ---
 
-class TestLoadDefaultAcronyms:
     def test_returns_non_empty_list(self) -> None:
         acronyms = AcronymCasingScanner._load_default_acronyms()
         assert isinstance(acronyms, list)
@@ -77,7 +75,7 @@ class TestLoadDefaultAcronyms:
         # lowercase entries are uppercased
         assert "ABC" in acronyms
 
-    def test_filters_non_string_entries(
+    def test_load_default_acronyms_filters_non_string_entries(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         import zolletta_metaskill.code_style.python.acronym_casing_scanner as mod
@@ -93,13 +91,8 @@ class TestLoadDefaultAcronyms:
         assert cast(Any, 123) not in acronyms
         assert None not in acronyms
 
+    # --- AcronymCasingScanner._split_pascal_case ---
 
-# ---------------------------------------------------------------------------
-# AcronymCasingScanner._split_pascal_case
-# ---------------------------------------------------------------------------
-
-
-class TestSplitPascalCase:
     @pytest.mark.parametrize(
         ("name", "expected"),
         [
@@ -138,13 +131,8 @@ class TestSplitPascalCase:
         # HTTPSClient -> HTTPS | Client
         assert AcronymCasingScanner._split_pascal_case("HTTPSClient") == ["HTTPS", "Client"]
 
+    # --- AcronymCasingScanner._get_class_names ---
 
-# ---------------------------------------------------------------------------
-# AcronymCasingScanner._get_class_names
-# ---------------------------------------------------------------------------
-
-
-class TestGetClassNames:
     def test_returns_class_names_with_line_numbers(self, tmp_path: Path) -> None:
         f = tmp_path / "mod.py"
         f.write_text(
@@ -188,224 +176,222 @@ class TestGetClassNames:
         result = AcronymCasingScanner._get_class_names(f)
         assert result == [("Foo", 2)]
 
+    # --- AcronymCasingScanner._load_acronyms_from_settings ---
 
-# ---------------------------------------------------------------------------
-# AcronymCasingScanner._load_acronyms_from_settings
-# ---------------------------------------------------------------------------
+    def test_empty_settings_returns_empty(self) -> None:
+        assert AcronymCasingScanner._project_acronyms({}) == []
 
+    def test_no_acronyms_key_returns_empty(self) -> None:
+        assert AcronymCasingScanner._project_acronyms({"other": 1}) == []
 
-class TestLoadAcronymsFromSettings:
-    def test_returns_none_when_file_missing(self, tmp_path: Path) -> None:
-        assert AcronymCasingScanner._load_acronyms_from_settings(tmp_path / "missing.json") is None
+    def test_empty_list_returns_empty(self) -> None:
+        assert AcronymCasingScanner._project_acronyms({"acronyms": []}) == []
 
-    def test_returns_none_when_no_acronyms_key(self, tmp_path: Path) -> None:
-        f = tmp_path / "settings.json"
-        f.write_text(json.dumps({"other": 1}), encoding="utf-8")
-        assert AcronymCasingScanner._load_acronyms_from_settings(f) is None
-
-    def test_returns_none_when_empty_list(self, tmp_path: Path) -> None:
-        f = tmp_path / "settings.json"
-        f.write_text(json.dumps({"acronyms": []}), encoding="utf-8")
-        assert AcronymCasingScanner._load_acronyms_from_settings(f) is None
-
-    def test_returns_uppercased_acronyms(self, tmp_path: Path) -> None:
-        f = tmp_path / "settings.json"
-        f.write_text(json.dumps({"acronyms": ["abc", "XYZ"]}), encoding="utf-8")
-        result = AcronymCasingScanner._load_acronyms_from_settings(f)
-        assert result is not None
+    def test_returns_uppercased_acronyms(self) -> None:
+        result = AcronymCasingScanner._project_acronyms({"acronyms": ["abc", "XYZ"]})
         assert "ABC" in result
         assert "XYZ" in result
 
-    def test_returns_none_on_invalid_json(self, tmp_path: Path) -> None:
-        f = tmp_path / "settings.json"
-        f.write_text("{invalid", encoding="utf-8")
-        assert AcronymCasingScanner._load_acronyms_from_settings(f) is None
+    def test_not_a_list_returns_empty(self) -> None:
+        assert AcronymCasingScanner._project_acronyms({"acronyms": "not a list"}) == []
 
-    def test_returns_none_when_acronyms_not_list(self, tmp_path: Path) -> None:
-        f = tmp_path / "settings.json"
-        f.write_text(json.dumps({"acronyms": "not a list"}), encoding="utf-8")
-        assert AcronymCasingScanner._load_acronyms_from_settings(f) is None
+    def test_project_acronyms_filters_non_string_entries(self) -> None:
+        result = AcronymCasingScanner._project_acronyms({"acronyms": ["API", 123]})
+        assert result == ["API"]
 
+    # --- AcronymCasingScanner.main ---
 
-# ---------------------------------------------------------------------------
-# AcronymCasingScanner.main
-# ---------------------------------------------------------------------------
+    def _write_settings(self, tmp_path: Path, **overrides: object) -> Path:
+        """Write a minimal settings.json under ``tmp_path/.zolletta-metaskill``."""
+        settings: dict[str, object] = {
+            "language": "python",
+            "python": {"code_style": {}, "paths": {"source": ["src"], "tests": ["tests"]}},
+            "php": None,
+        }
+        settings.update(overrides)
+        meta = tmp_path / ".zolletta-metaskill"
+        meta.mkdir(parents=True, exist_ok=True)
+        path = meta / "settings.json"
+        path.write_text(json.dumps(settings))
+        return path
 
+    def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
+        """Chdir into tmp_path and run main() with *argv*."""
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", argv)
+        return AcronymCasingScanner.main()
 
-class TestMain:
-    def test_skip_flag_returns_zero(
-        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    def test_check_disabled_reports_skipped(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["scan", "--skip"])
-        assert AcronymCasingScanner.main() == 0
+        self._write_settings(tmp_path, python={"code_style": {"check_acronym_casing": False}})
+        (tmp_path / "src").mkdir()
+        rc = self._run(tmp_path, monkeypatch, ["scan"])
         out = capsys.readouterr().out
+        assert rc == 0
         assert "SKIPPED" in out
 
-    def test_skip_flag_with_json_no_output(
-        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    def test_check_disabled_json(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["scan", "--skip", "--json"])
-        assert AcronymCasingScanner.main() == 0
+        self._write_settings(tmp_path, python={"code_style": {"check_acronym_casing": False}})
+        (tmp_path / "src").mkdir()
+        rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["skipped"] is True
+
+    def test_no_python_language_reports_skipped(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """PHP-only project: the Python scanner has nothing to scan."""
+        self._write_settings(
+            tmp_path,
+            language="php",
+            python=None,
+            php={"autoload": {"psr-4": {"App\\": "src/"}}},
+        )
+        (tmp_path / "src").mkdir()
+        rc = self._run(tmp_path, monkeypatch, ["scan"])
         out = capsys.readouterr().out
-        assert out == ""
+        assert rc == 0
+        assert "SKIPPED" in out
 
-    def test_readouterr_nonexistent_directory_contains_does_not_exist(
-        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    def test_missing_source_dir_returns_one(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["scan", "/nonexistent/path/xyz"])
-        assert AcronymCasingScanner.main() == 1
+        self._write_settings(tmp_path)
+        rc = self._run(tmp_path, monkeypatch, ["scan"])
         err = capsys.readouterr().err
-        assert "does not exist" in err
+        assert rc == 1
+        assert "no configured source directories" in err
 
-    def test_readouterr_no_violations_contains_violations_0(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+    def test_no_violations(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("class Foo:\n    pass\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["scan", str(src), "--acronyms", "API"])
-        assert AcronymCasingScanner.main() == 0
+        rc = self._run(tmp_path, monkeypatch, ["scan"])
         out = capsys.readouterr().out
+        assert rc == 0
         assert "Violations: 0" in out
 
-    def test_readouterr_detects_violation_contains_api(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+    def test_detects_violation(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("class ApiGateway:\n    pass\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["scan", str(src), "--acronyms", "API"])
-        assert AcronymCasingScanner.main() == 0  # no --strict
+        rc = self._run(tmp_path, monkeypatch, ["scan"])
         out = capsys.readouterr().out
+        assert rc == 0  # report-only
         assert "ApiGateway" in out
         assert "API" in out
 
-    def test_strict_returns_one_on_violation(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    def test_json_output(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("class ApiGateway:\n    pass\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["scan", str(src), "--acronyms", "API", "--strict"])
-        assert AcronymCasingScanner.main() == 1
-
-    def test_strict_returns_zero_when_no_violations(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> None:
-        src = tmp_path / "src"
-        src.mkdir()
-        (src / "mod.py").write_text("class APIGateway:\n    pass\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["scan", str(src), "--acronyms", "API", "--strict"])
-        assert AcronymCasingScanner.main() == 0
-
-    def test_loads_json_output_returns_api(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        src = tmp_path / "src"
-        src.mkdir()
-        (src / "mod.py").write_text("class ApiGateway:\n    pass\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["scan", str(src), "--acronyms", "API", "--json"])
-        assert AcronymCasingScanner.main() == 0
-        out = capsys.readouterr().out
-        data = json.loads(out)
+        rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
+        data = json.loads(capsys.readouterr().out)
+        assert rc == 0
         assert data["violation_count"] == 1
         assert data["violations"][0]["class"] == "ApiGateway"
         assert data["violations"][0]["expected"] == "API"
+        assert "API" in data["acronyms_checked"]
 
     def test_json_output_no_violations(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("class APIGateway:\n    pass\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["scan", str(src), "--acronyms", "API", "--json"])
-        assert AcronymCasingScanner.main() == 0
-        out = capsys.readouterr().out
-        data = json.loads(out)
+        rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
+        data = json.loads(capsys.readouterr().out)
+        assert rc == 0
         assert data["violation_count"] == 0
 
-    def test_skips_init_files(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_skips_init_files(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        self._write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "__init__.py").write_text("class ApiGateway:\n    pass\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["scan", str(src), "--acronyms", "API", "--strict"])
-        assert AcronymCasingScanner.main() == 0  # __init__.py is skipped
+        rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
+        data = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert data["violation_count"] == 0
 
-    def test_skips_ignored_dirs(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        src = tmp_path / "src"
-        venv = src / ".venv"
-        venv.mkdir(parents=True)
-        (venv / "mod.py").write_text("class ApiGateway:\n    pass\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["scan", str(src), "--acronyms", "API", "--strict"])
-        assert AcronymCasingScanner.main() == 0  # .venv is ignored
-
-    def test_settings_merge_returns_1(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    def test_gitignored_dirs_skipped(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        import subprocess
+
+        subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+        (tmp_path / ".gitignore").write_text("assets/\n")
+        self._write_settings(tmp_path)
+        src = tmp_path / "src"
+        assets = src / "assets"
+        assets.mkdir(parents=True)
+        (assets / "mod.py").write_text("class ApiGateway:\n    pass\n", encoding="utf-8")
+        rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
+        data = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert data["violation_count"] == 0
+
+    def test_settings_acronyms_merged(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        self._write_settings(tmp_path, acronyms=["XYZ"])
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("class XyzHelper:\n    pass\n", encoding="utf-8")
-        settings = tmp_path / "settings.json"
-        settings.write_text(json.dumps({"acronyms": ["XYZ"]}), encoding="utf-8")
-        monkeypatch.setattr(
-            sys, "argv", ["scan", str(src), "--settings", str(settings), "--strict"]
-        )
-        assert AcronymCasingScanner.main() == 1  # XYZ is merged, Xyz is a violation
+        rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
+        data = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert data["violation_count"] == 1
+        assert "XYZ" in data["acronyms_checked"]
 
-    def test_acronyms_flag_overrides_settings(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    def test_no_settings_uses_default_src(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        """Without settings.json, falls back to src/ for all registered languages."""
         src = tmp_path / "src"
         src.mkdir()
-        # ApiGateway violates API, but we only check XYZ
         (src / "mod.py").write_text("class ApiGateway:\n    pass\n", encoding="utf-8")
-        settings = tmp_path / "settings.json"
-        settings.write_text(json.dumps({"acronyms": ["XYZ"]}), encoding="utf-8")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["scan", str(src), "--acronyms", "XYZ", "--settings", str(settings), "--strict"],
-        )
-        assert AcronymCasingScanner.main() == 0  # --acronyms overrides, API not checked
-
-    def test_default_directory_src(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        monkeypatch.chdir(tmp_path)
-        src = tmp_path / "src"
-        src.mkdir()
-        (src / "mod.py").write_text("class Foo:\n    pass\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["scan", "--acronyms", "API"])
-        assert AcronymCasingScanner.main() == 0
+        rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
+        data = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert data["violation_count"] == 1
 
     def test_multiple_violations_in_one_class(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
-        # ApiHttpGateway has both Api and Http in wrong case
         (src / "mod.py").write_text("class ApiHttpGateway:\n    pass\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["scan", str(src), "--acronyms", "API,HTTP", "--json"])
-        assert AcronymCasingScanner.main() == 0
-        out = capsys.readouterr().out
-        data = json.loads(out)
+        rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
+        data = json.loads(capsys.readouterr().out)
+        assert rc == 0
         assert data["violation_count"] == 2
 
     def test_correct_casing_not_flagged(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("class APIGateway:\n    pass\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["scan", str(src), "--acronyms", "API", "--json"])
-        assert AcronymCasingScanner.main() == 0
-        out = capsys.readouterr().out
-        data = json.loads(out)
+        rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
+        data = json.loads(capsys.readouterr().out)
+        assert rc == 0
         assert data["violation_count"] == 0

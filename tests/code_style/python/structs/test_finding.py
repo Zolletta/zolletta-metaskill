@@ -8,8 +8,8 @@ from pathlib import Path
 from zolletta_metaskill.code_style.python.structs.finding import Finding
 
 
-class TestFindingCreation:
-    """Tests for Finding dataclass creation and field access."""
+class TestFinding:
+    # --- Tests for Finding dataclass creation and field access. ---
 
     def test_finding_with_required_fields_returns_finding(self) -> None:
         """Finding stores all required fields correctly."""

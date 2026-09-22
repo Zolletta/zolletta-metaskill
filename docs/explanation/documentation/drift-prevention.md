@@ -76,31 +76,31 @@ Team processes that ensure docs are updated alongside code changes.
 
 ```yaml
 - name: Check documentation links
-  run: python link_checker.py . --broken-only
-  # Fails PR if any internal links are broken
+  run: python link_checker.py --broken-only
+  # Report-only: surfaces broken internal links
 ```
 
 ### Gate 2: Staleness Check (Every PR touching code)
 
 ```yaml
 - name: Check doc freshness
-  run: python doc_staleness_scorer.py . --threshold 50
-  # Fails if documentation score drops below 50
+  run: python doc_staleness_scorer.py
+  # Fails if documentation score drops below documentation.staleness_threshold
 ```
 
 ### Gate 3: API Validation (PRs touching src/)
 
 ```yaml
 - name: Validate API docs
-  run: python api_doc_validator.py src/ docs/api.md
-  # Fails if documented API diverges from source
+  run: python api_doc_validator.py
+  # Report-only: surfaces divergence between docs and source
 ```
 
 ### Gate 4: Full Drift Report (Release branches)
 
 ```yaml
 - name: Full drift analysis
-  run: python drift_analyzer.py . --json > drift-report.json
+  run: python drift_analyzer.py --json > drift-report.json
   # Generates report as release artifact
 ```
 

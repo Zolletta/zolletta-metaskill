@@ -12,12 +12,10 @@ import pytest
 from zolletta_metaskill.documentor.api_doc_validator import APIDocValidator
 from zolletta_metaskill.documentor.structs.source_signature import SourceSignature
 
-# ---------------------------------------------------------------------------
-# SourceSignature
-# ---------------------------------------------------------------------------
 
+class TestAPIDocValidator:
+    # --- SourceSignature ---
 
-class TestSourceSignature:
     def test_sourcesignature_basic_construction_returns_false(self) -> None:
         sig = SourceSignature(
             name="foo",
@@ -100,13 +98,8 @@ class TestSourceSignature:
         assert d["is_private"] is True
         assert d["is_deprecated"] is False
 
+    # --- _annotation_to_str ---
 
-# ---------------------------------------------------------------------------
-# _annotation_to_str
-# ---------------------------------------------------------------------------
-
-
-class TestAnnotationToStr:
     def test_annotation_to_str_none_input_returns_none(self) -> None:
         assert APIDocValidator._annotation_to_str(None) is None
 
@@ -143,13 +136,8 @@ class TestAnnotationToStr:
             == "typing.Optional[int]"
         )
 
+    # --- _extract_decorator_names ---
 
-# ---------------------------------------------------------------------------
-# _extract_decorator_names
-# ---------------------------------------------------------------------------
-
-
-class TestExtractDecoratorNames:
     def test_extract_decorator_names_name_decorator_returns_single_item(self) -> None:
         import ast
 
@@ -204,13 +192,8 @@ class TestExtractDecoratorNames:
         assert isinstance(func, ast.FunctionDef)
         assert APIDocValidator._extract_decorator_names(func.decorator_list) == []
 
+    # --- _extract_parameters ---
 
-# ---------------------------------------------------------------------------
-# _extract_parameters
-# ---------------------------------------------------------------------------
-
-
-class TestExtractParameters:
     def test_extract_parameters_simple_params_returns_b(self) -> None:
         import ast
 
@@ -306,13 +289,8 @@ class TestExtractParameters:
         params = APIDocValidator._extract_parameters(func)
         assert params[0]["annotation"] == "int"
 
+    # --- extract_signatures ---
 
-# ---------------------------------------------------------------------------
-# extract_signatures
-# ---------------------------------------------------------------------------
-
-
-class TestExtractSignatures:
     def test_extract_signatures_extract_function_returns_doc(self, tmp_path: Path) -> None:
         p = tmp_path / "mod.py"
         p.write_text('"""Module."""\ndef foo(a, b=1):\n    """Doc."""\n    return a\n')
@@ -400,13 +378,8 @@ class TestExtractSignatures:
         names = [s.name for s in sigs]
         assert "_Private" in names
 
+    # --- extract_all_signatures ---
 
-# ---------------------------------------------------------------------------
-# extract_all_signatures
-# ---------------------------------------------------------------------------
-
-
-class TestExtractAllSignatures:
     def test_extract_all_signatures_walks_directory_is_valid(self, tmp_path: Path) -> None:
         src = tmp_path / "src"
         src.mkdir()
@@ -446,13 +419,8 @@ class TestExtractAllSignatures:
         sig = all_sigs["mod.py"][0]
         assert sig.file_path == "mod.py"
 
+    # --- extract_documented_items ---
 
-# ---------------------------------------------------------------------------
-# extract_documented_items
-# ---------------------------------------------------------------------------
-
-
-class TestExtractDocumentedItems:
     def test_extract_documented_items_heading_function_returns_function(
         self, tmp_path: Path
     ) -> None:
@@ -517,13 +485,8 @@ class TestExtractDocumentedItems:
         items = APIDocValidator.extract_documented_items(str(p))
         assert items == {}
 
+    # --- extract_all_documented_items ---
 
-# ---------------------------------------------------------------------------
-# extract_all_documented_items
-# ---------------------------------------------------------------------------
-
-
-class TestExtractAllDocumentedItems:
     def test_extract_all_documented_items_single_file_contains_foo(self, tmp_path: Path) -> None:
         p = tmp_path / "api.md"
         p.write_text("### `foo()`\n")
@@ -560,13 +523,8 @@ class TestExtractAllDocumentedItems:
         items = APIDocValidator.extract_all_documented_items(str(tmp_path / "nope"))
         assert items == {}
 
+    # --- validate_api_docs ---
 
-# ---------------------------------------------------------------------------
-# validate_api_docs
-# ---------------------------------------------------------------------------
-
-
-class TestValidateApiDocs:
     def test_documented_not_in_source(self) -> None:
         sig = SourceSignature("foo", "function", "mod.py", 1, [])
         source_sigs = {"mod.py": [sig]}
@@ -693,13 +651,8 @@ class TestValidateApiDocs:
         undoc = [s for s in suggestions if s["type"] == "undocumented"]
         assert len(undoc) == 0
 
+    # --- _classify_undocumented ---
 
-# ---------------------------------------------------------------------------
-# _classify_undocumented
-# ---------------------------------------------------------------------------
-
-
-class TestClassifyUndocumented:
     def test_init_py_skip(self) -> None:
         sig = SourceSignature("foo", "function", "__init__.py", 1, [])
         priority, reason = APIDocValidator._classify_undocumented(sig)
@@ -760,13 +713,8 @@ class TestClassifyUndocumented:
         priority, reason = APIDocValidator._classify_undocumented(sig)
         assert priority == "low"
 
+    # --- generate_report ---
 
-# ---------------------------------------------------------------------------
-# generate_report
-# ---------------------------------------------------------------------------
-
-
-class TestGenerateReport:
     def test_generate_report_json_output_returns_3(self) -> None:
         issues = [{"type": "documented_not_in_source", "severity": "high", "description": "test"}]
         report = APIDocValidator.generate_report(issues, [], 5, 3, as_json=True)
@@ -829,181 +777,154 @@ class TestGenerateReport:
         report = APIDocValidator.generate_report(issues, [], 5, 3, as_json=False)
         assert "ISSUES BY TYPE" in report
 
+    # --- APIDocValidator.main() ---
 
-# ---------------------------------------------------------------------------
-# APIDocValidator.main()
-# ---------------------------------------------------------------------------
+    def _write_settings(self, tmp_path: Path, **overrides: object) -> Path:
+        """Write a minimal settings.json under ``tmp_path/.zolletta-metaskill``."""
+        settings: dict[str, object] = {
+            "language": "python",
+            "python": {"paths": {"source": ["src"], "tests": ["tests"]}},
+            "documentation": {"dir": "docs"},
+        }
+        doc_overrides = overrides.pop("documentation", None)
+        if isinstance(doc_overrides, dict):
+            base_doc = settings["documentation"]
+            assert isinstance(base_doc, dict)
+            base_doc.update(doc_overrides)
+        settings.update(overrides)
+        meta = tmp_path / ".zolletta-metaskill"
+        meta.mkdir(parents=True, exist_ok=True)
+        path = meta / "settings.json"
+        path.write_text(json.dumps(settings))
+        return path
 
+    def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
+        """Chdir into tmp_path and run main() with *argv*."""
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", argv)
+        return APIDocValidator.main()
 
-class TestMain:
     def test_main_source_not_found(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["api_doc_validator.py", str(tmp_path / "nope"), str(tmp_path)],
-        )
-        with pytest.raises(SystemExit) as exc:
-            APIDocValidator.main()
-        assert exc.value.code == 2
+        self._write_settings(tmp_path)
+        (tmp_path / "docs").mkdir()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        err = capsys.readouterr().err
+        assert rc == 1
+        assert "source" in err
 
     def test_main_doc_not_found(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("def foo(): pass\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["api_doc_validator.py", str(src), str(tmp_path / "nope.md")],
-        )
-        with pytest.raises(SystemExit) as exc:
-            APIDocValidator.main()
-        assert exc.value.code == 2
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        err = capsys.readouterr().err
+        assert rc == 1
+        assert "documentation" in err
 
     def test_main_directory_source(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("def foo(): pass\n")
         docs = tmp_path / "docs"
         docs.mkdir()
         (docs / "api.md").write_text("### `foo()`\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["api_doc_validator.py", str(src), str(docs)],
-        )
-        with pytest.raises(SystemExit) as exc:
-            APIDocValidator.main()
-        assert exc.value.code == 0
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
+        assert rc == 0
         assert "API Documentation Validation Report" in out
 
-    def test_main_single_file_source(
+    def test_main_custom_docs_dir(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        src = tmp_path / "mod.py"
-        src.write_text("def foo(): pass\n")
-        docs = tmp_path / "api.md"
-        docs.write_text("### `foo()`\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["api_doc_validator.py", str(src), str(docs)],
-        )
-        with pytest.raises(SystemExit) as exc:
-            APIDocValidator.main()
-        assert exc.value.code == 0
+        self._write_settings(tmp_path, documentation={"dir": "api.md"})
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "mod.py").write_text("def foo(): pass\n")
+        (tmp_path / "api.md").write_text("### `foo()`\n")
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
 
     def test_main_json_output(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        src = tmp_path / "src"
-        src.mkdir()
-        (src / "mod.py").write_text("def foo(): pass\n")
-        docs = tmp_path / "api.md"
-        docs.write_text("### `foo()`\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["api_doc_validator.py", str(src), str(docs), "--json"],
-        )
-        with pytest.raises(SystemExit) as exc:
-            APIDocValidator.main()
-        assert exc.value.code == 0
-        out = capsys.readouterr().out
-        data = json.loads(out)
-        assert "summary" in data
-
-    def test_module_main_recursive_raises_systemexit(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+        self._write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("def foo(): pass\n")
         docs = tmp_path / "docs"
         docs.mkdir()
-        sub = docs / "sub"
-        sub.mkdir()
-        (sub / "api.md").write_text("### `foo()`\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["api_doc_validator.py", str(src), str(docs), "--recursive"],
-        )
-        with pytest.raises(SystemExit) as exc:
-            APIDocValidator.main()
-        assert exc.value.code == 0
+        (docs / "api.md").write_text("### `foo()`\n")
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        assert rc == 0
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert "summary" in data
 
-    def test_main_include_private(
+    def test_main_recursive_setting(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path, documentation={"api_docs_recursive": True})
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "mod.py").write_text("def foo(): pass\n")
+        docs = tmp_path / "docs"
+        sub = docs / "sub"
+        sub.mkdir(parents=True)
+        (sub / "api.md").write_text("### `foo()`\n")
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "Documented items found:  1" in out
+
+    def test_main_include_private_setting(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        self._write_settings(tmp_path, documentation={"include_private": True})
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("def _private(): pass\ndef foo(): pass\n")
-        docs = tmp_path / "api.md"
-        docs.write_text("### `foo()`\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["api_doc_validator.py", str(src), str(docs), "--include-private"],
-        )
-        with pytest.raises(SystemExit) as exc:
-            APIDocValidator.main()
-        assert exc.value.code == 0
+        docs = tmp_path / "docs"
+        docs.mkdir()
+        (docs / "api.md").write_text("### `foo()`\n")
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        assert rc == 0
+        data = json.loads(capsys.readouterr().out)
+        assert data["summary"]["source_signatures"] == 2
 
-    def test_main_suggest_coverage(
+    def test_main_suggest_coverage_setting(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path, documentation={"suggest_coverage": True})
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("def foo(): pass\n")
-        docs = tmp_path / "api.md"
-        docs.write_text("Nothing here.\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["api_doc_validator.py", str(src), str(docs), "--suggest-coverage"],
-        )
-        with pytest.raises(SystemExit) as exc:
-            APIDocValidator.main()
-        assert exc.value.code == 0
+        docs = tmp_path / "docs"
+        docs.mkdir()
+        (docs / "api.md").write_text("Nothing here.\n")
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
+        assert rc == 0
         assert "DOCUMENTATION SUGGESTIONS" in out
 
-    def test_main_high_severity_exit_1(
+    def test_main_high_severity_report_only(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("def foo(): pass\n")
-        docs = tmp_path / "api.md"
-        docs.write_text("### `phantom()`\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["api_doc_validator.py", str(src), str(docs)],
-        )
-        with pytest.raises(SystemExit) as exc:
-            APIDocValidator.main()
-        assert exc.value.code == 1
-
-    def test_main_non_python_source(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        src = tmp_path / "data.txt"
-        src.write_text("not python")
-        docs = tmp_path / "api.md"
-        docs.write_text("### `foo()`\n")
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["api_doc_validator.py", str(src), str(docs)],
-        )
-        with pytest.raises(SystemExit) as exc:
-            APIDocValidator.main()
-        assert exc.value.code == 2
+        docs = tmp_path / "docs"
+        docs.mkdir()
+        (docs / "api.md").write_text("### `phantom()`\n")
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "phantom" in out

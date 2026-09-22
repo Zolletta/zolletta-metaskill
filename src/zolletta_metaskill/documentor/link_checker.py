@@ -10,12 +10,12 @@ Scans markdown files for links and validates them:
 - Image references
 - Duplicate anchors
 
+Scans the repository root (current directory). External URL validation is
+controlled by ``documentation.check_external`` in ``settings.json``
+(default: off). File enumeration is git-ignore aware.
+
 Usage:
-    python link_checker.py /path/to/repo
-    python link_checker.py /path/to/repo/README.md
-    python link_checker.py /path/to/repo --json
-    python link_checker.py /path/to/repo --broken-only
-    python link_checker.py /path/to/repo --check-external
+    python link_checker.py [--json] [--broken-only]
 """
 
 import argparse
@@ -27,6 +27,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.documentor.structs.link_info import LinkInfo
 
 
@@ -222,6 +223,15 @@ class LinkChecker:
         check_external: bool = False,
     ) -> None:
         """Validate a single link and set is_valid and error."""
+        # Report templates (*_template.md) contain links that only resolve in
+        # the instantiated output folder, and {{var}} placeholder targets —
+        # skip both rather than report false positives.
+        if link.link_type != "external" and (
+            "{{" in link.link_target or link.source_file.endswith("_template.md")
+        ):
+            link.is_valid = None
+            return
+
         if link.link_type == "external":
             if check_external:
                 link.is_valid, link.error = LinkChecker.validate_external_url(link.link_target)
@@ -362,21 +372,17 @@ class LinkChecker:
 
     @staticmethod
     def find_markdown_files(path: str) -> list[str]:
-        """Find all markdown files under a path."""
-        files = []
-
-        if os.path.isfile(path):
-            if Path(path).suffix.lower() in LinkChecker.MARKDOWN_EXTENSIONS:
+        """Find all markdown files under a path (git-ignore aware)."""
+        p = Path(path)
+        if p.is_file():
+            if p.suffix.lower() in LinkChecker.MARKDOWN_EXTENSIONS:
                 return [path]
             return []
-
-        for root, dirs, filenames in os.walk(path):
-            dirs[:] = [d for d in dirs if d not in LinkChecker.SKIP_DIRS]
-            for f in filenames:
-                if Path(f).suffix.lower() in LinkChecker.MARKDOWN_EXTENSIONS:
-                    files.append(os.path.join(root, f))
-
-        return sorted(files)
+        return [
+            str(f)
+            for f in ProjectConfig.iter_files(p, LinkChecker.MARKDOWN_EXTENSIONS)
+            if not any(part in LinkChecker.SKIP_DIRS for part in f.parts)
+        ]
 
     # --- Report ---
 
@@ -474,49 +480,32 @@ class LinkChecker:
     # --- Main ---
 
     @staticmethod
-    def main() -> None:
+    def main() -> int:
         """Entry point for the markdown link checker CLI."""
         parser = argparse.ArgumentParser(
-            description="Check markdown links for validity",
+            description="Check markdown links for validity. Scans the repository "
+            "root (current directory).",
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
-        parser.add_argument("path", help="File or directory to check")
         parser.add_argument("--json", action="store_true", help="Output as JSON")
         parser.add_argument("--broken-only", action="store_true", help="Only show broken links")
-        parser.add_argument(
-            "--check-external",
-            action="store_true",
-            help="Also validate external URLs (slower)",
-        )
 
         args = parser.parse_args()
 
-        target_path = os.path.abspath(args.path)
-        if not os.path.exists(target_path):
-            print(f"Error: '{target_path}' does not exist", file=sys.stderr)
-            sys.exit(2)
-
-        # Determine repo root (for resolving paths)
-        if os.path.isfile(target_path):
-            repo_path = os.path.dirname(target_path)
-            # Try to find git root
-            current = repo_path
-            while current != os.path.dirname(current):
-                if os.path.isdir(os.path.join(current, ".git")):
-                    repo_path = current
-                    break
-                current = os.path.dirname(current)
-        else:
-            repo_path = target_path
+        settings = ProjectConfig.load_settings()
+        check_external = bool(
+            ProjectConfig.setting(settings, "documentation.check_external", False)
+        )
+        repo_path = os.path.abspath(".")
 
         # Find markdown files
-        md_files = LinkChecker.find_markdown_files(target_path)
+        md_files = LinkChecker.find_markdown_files(repo_path)
         if not md_files:
             if args.json:
                 print(json.dumps({"error": "No markdown files found"}, indent=2))
             else:
                 print("No markdown files found.")
-            sys.exit(0)
+            return 0
 
         # Extract and validate links
         all_links: list[LinkInfo] = []
@@ -535,9 +524,7 @@ class LinkChecker:
 
         # Validate all links
         for link in all_links:
-            LinkChecker.validate_link(
-                link, repo_path, heading_cache, check_external=args.check_external
-            )
+            LinkChecker.validate_link(link, repo_path, heading_cache, check_external=check_external)
 
         # Report
         report = LinkChecker.generate_report(
@@ -547,12 +534,8 @@ class LinkChecker:
             as_json=args.json,
         )
         print(report)
-
-        # Exit code
-        broken_count = sum(1 for lnk in all_links if lnk.is_valid is False)
-        dup_count = sum(len(v) for v in duplicate_anchors.values())
-        sys.exit(1 if (broken_count > 0 or dup_count > 0) else 0)
+        return 0
 
 
 if __name__ == "__main__":  # pragma: no cover
-    LinkChecker.main()
+    sys.exit(LinkChecker.main())

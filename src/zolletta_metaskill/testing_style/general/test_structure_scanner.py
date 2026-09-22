@@ -31,36 +31,32 @@ references: the script reads all test files once and checks if any class name
 from the source file appears in the test code. Files with indirect references
 are excluded from the "missing" table.
 
+Source and test roots come from ``python.paths`` in ``settings.json``;
+the mirror-base package comes from ``python.paths.package`` (auto-detected
+when unset). The check runs when ``python.patterns.check_test_structure``
+is not ``false``. File enumeration is git-ignore aware.
+
 Usage:
-    python3 test_structure_scanner.py --src <src_root> --tests <test_root>
-        [--src-package <package_path>] [--tests-package <package_path>]
-        [--ignore-dirs <dir1,dir2,...>]
+    python3 test_structure_scanner.py [--json]
 
-Arguments:
-    --src            Source root directory (default: src)
-    --tests          Test root directory (default: tests)
-    --src-package    Package path within --src to use as mirror base
-                     (default: auto-detect first child of --src)
-    --tests-package  Package path within --tests to use as mirror base
-                     (default: same as --src-package)
-    --ignore-dirs    Comma-separated dir names to skip (e.g. assets,templates)
-    --skip           Skip this check entirely (exit 0 with 'skipped' message).
-                     Use for projects that intentionally don't mirror test
-                     structure.
+Options:
+    --json           Output as JSON instead of markdown.
 
-Exit code: 0 if no mismatches (or --skip), 1 if mismatches found.
+Exit code: 0 always (report-only).
 
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 from typing import Any
 
 from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
 from zolletta_metaskill.core.engine.python_engine import PythonEngine
+from zolletta_metaskill.core.project_config import ProjectConfig
 
 
 class TestStructureScanner:
@@ -105,12 +101,29 @@ class TestStructureScanner:
         return None
 
     @staticmethod
-    def _build_source_index(src_pkg: Path, ignore_dirs: set[str]) -> dict[str, dict[str, Any]]:
+    def _collect_dirs(root: Path) -> set[Path]:
+        """Return directory paths under *root*, relative to *root*.
+
+        Includes ancestors of every non-ignored ``.py`` file plus truly
+        empty directories (which carry no files for ``iter_files`` to find).
+        Directories whose files are all git-ignored are excluded.
+        """
+        dirs: set[Path] = set()
+        for f in ProjectConfig.iter_files(root, {".py"}):
+            rel = f.relative_to(root).parent
+            while str(rel) != ".":
+                dirs.add(rel)
+                rel = rel.parent
+        for d in (p for p in root.rglob("*") if p.is_dir()):
+            if not any(c.is_file() for c in d.rglob("*")):
+                dirs.add(d.relative_to(root))
+        return dirs
+
+    @staticmethod
+    def _build_source_index(src_pkg: Path) -> dict[str, dict[str, Any]]:
         """Index all source files with classes: rel_path -> {stem, classes, prefixes}."""
         index: dict[str, dict[str, Any]] = {}
-        for py in sorted(src_pkg.rglob("*.py")):
-            if any(part in ignore_dirs for part in py.parts):
-                continue
+        for py in ProjectConfig.iter_files(src_pkg, {".py"}):
             if py.name == "__init__.py":
                 continue
             classes = TestStructureScanner._get_class_names(py)
@@ -163,102 +176,86 @@ class TestStructureScanner:
     def main() -> int:
         """Entry point for the test structure mirror checker CLI."""
         parser = argparse.ArgumentParser(
-            description="Check that test directory structure mirrors source structure."
+            description="Check that test directory structure mirrors source structure. "
+            "Roots and package come from .zolletta-metaskill/settings.json."
         )
-        parser.add_argument("--src", default="src", help="Source root (default: src)")
-        parser.add_argument("--tests", default="tests", help="Test root (default: tests)")
-        parser.add_argument(
-            "--src-package",
-            default=None,
-            help="Package path within --src (default: auto-detect)",
-        )
-        parser.add_argument(
-            "--tests-package",
-            default=None,
-            help="Package path within --tests (default: same as --src-package)",
-        )
-        parser.add_argument(
-            "--ignore-dirs",
-            default="",
-            help="Comma-separated dir names to skip (e.g. assets,templates)",
-        )
-        parser.add_argument(
-            "--skip",
-            action="store_true",
-            help="Skip this check entirely (exit 0 with 'skipped' message). "
-            "Use for projects that intentionally don't mirror test structure.",
-        )
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
         args = parser.parse_args()
 
         TestStructureScanner._ensure_python_engine()
-        if args.skip:
-            print("# Test Structure Mirror — SKIPPED (--skip flag)\n")
+        settings = ProjectConfig.load_settings()
+        languages = ProjectConfig.scan_languages(settings, "patterns.check_test_structure")
+        py_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
+        if not py_langs:
+            ProjectConfig.emit_skipped(args.json, "check_test_structure disabled in settings.json")
             return 0
 
-        src_root = Path(args.src)
-        test_root = Path(args.tests)
-        if not src_root.exists():
-            print(f"Error: src directory '{src_root}' does not exist", file=sys.stderr)
+        src_roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, py_langs))
+        test_roots = ProjectConfig.existing_roots(ProjectConfig.test_roots(settings, py_langs))
+        if not src_roots:
+            print(
+                "Error: no configured source directories exist on disk",
+                file=sys.stderr,
+            )
             return 1
-        if not test_root.exists():
-            print(f"Error: tests directory '{test_root}' does not exist", file=sys.stderr)
+        if not test_roots:
+            print(
+                "Error: no configured test directories exist on disk",
+                file=sys.stderr,
+            )
             return 1
 
-        ignore_dirs = set(args.ignore_dirs.split(",")) if args.ignore_dirs else set()
-        ignore_dirs.update({"__pycache__"})
-
-        # Resolve package roots
-        src_pkg_name = args.src_package or TestStructureScanner._auto_detect_package(src_root)
-        if not src_pkg_name:
+        pkg_name = ProjectConfig.package_name(
+            settings, "python"
+        ) or TestStructureScanner._auto_detect_package(src_roots[0])
+        if not pkg_name:
             print("Error: could not auto-detect package under src/", file=sys.stderr)
             return 1
-        tests_pkg_name = args.tests_package if args.tests_package is not None else src_pkg_name
 
-        src_pkg = src_root / src_pkg_name
-        test_pkg = test_root / tests_pkg_name
-
-        if not src_pkg.exists():
-            print(f"Error: src package '{src_pkg}' does not exist", file=sys.stderr)
+        src_pkgs = [root / pkg_name for root in src_roots if (root / pkg_name).is_dir()]
+        test_pkgs = [root / pkg_name for root in test_roots if (root / pkg_name).is_dir()]
+        if not src_pkgs:
+            print(
+                f"Error: source package '{pkg_name}' does not exist under any "
+                "configured source root",
+                file=sys.stderr,
+            )
             return 1
-        if not test_pkg.exists():
-            print(f"Error: test package '{test_pkg}' does not exist", file=sys.stderr)
+        if not test_pkgs:
+            print(
+                f"Error: test package '{pkg_name}' does not exist under any configured test root",
+                file=sys.stderr,
+            )
             return 1
 
-        # --- Collect directory structures ---
-        def _collect_dirs(root: Path) -> set[Path]:
-            result = set()
-            for p in root.rglob("*"):
-                if not p.is_dir():
-                    continue
-                if any(part in ignore_dirs for part in p.parts):
-                    continue
-                result.add(p.relative_to(root))
-            return result
-
-        src_dirs = _collect_dirs(src_pkg)
-        test_dirs = _collect_dirs(test_pkg)
-        sorted(src_dirs - test_dirs)
+        # --- Collect directory structures (merged across package roots) ---
+        src_dirs: set[Path] = set()
+        for src_pkg in src_pkgs:
+            src_dirs.update(TestStructureScanner._collect_dirs(src_pkg))
+        test_dirs: set[Path] = set()
+        for test_pkg in test_pkgs:
+            test_dirs.update(TestStructureScanner._collect_dirs(test_pkg))
         test_only_dirs = sorted(test_dirs - src_dirs)
 
-        # --- Build source index ---
-        src_index = TestStructureScanner._build_source_index(src_pkg, ignore_dirs)
+        # --- Build source index (merged across package roots) ---
+        src_index: dict[str, dict[str, Any]] = {}
+        for src_pkg in src_pkgs:
+            src_index.update(TestStructureScanner._build_source_index(src_pkg))
 
         # --- Read all test files into memory for indirect reference checking ---
-        test_files: dict[str, str] = {}  # rel_path -> content
-        for tp in sorted(test_pkg.rglob("*.py")):
-            if any(part in ignore_dirs for part in tp.parts):
-                continue
-            if tp.name == "__init__.py":
-                continue
-            if not tp.name.startswith("test_"):
-                continue  # Skip conftest.py, fixtures.py, etc.
-            rel = str(tp.relative_to(test_pkg))
-            try:
-                test_files[rel] = tp.read_text(encoding="utf-8")
-            except (OSError, UnicodeDecodeError):
-                test_files[rel] = ""
-
-        "\n".join(test_files.values())
+        # test_rel -> (test_pkg, content)
+        test_files: dict[str, tuple[Path, str]] = {}
+        for test_pkg in test_pkgs:
+            for tp in ProjectConfig.iter_files(test_pkg, {".py"}):
+                if tp.name == "__init__.py":
+                    continue
+                if not tp.name.startswith("test_"):
+                    continue  # Skip conftest.py, fixtures.py, etc.
+                rel = str(tp.relative_to(test_pkg))
+                try:
+                    test_files[rel] = (test_pkg, tp.read_text(encoding="utf-8"))
+                except (OSError, UnicodeDecodeError):
+                    test_files[rel] = (test_pkg, "")
 
         # --- Classify each test file ---
         misnamed: list[dict[str, Any]] = []
@@ -277,7 +274,7 @@ class TestStructureScanner:
         # For each test file, store: test_rel -> (primary_source, content, referenced_classes)
         test_refs: list[dict[str, Any]] = []
 
-        for test_rel, content in sorted(test_files.items()):
+        for test_rel, (test_pkg, content) in sorted(test_files.items()):
             test_path = test_pkg / test_rel
             test_name = test_path.name
             test_dir_rel = str(test_path.relative_to(test_pkg).parent)
@@ -419,14 +416,33 @@ class TestStructureScanner:
         # --- Orphaned test directories ---
         orphaned_dirs = [{"test_dir": str(d) + "/"} for d in test_only_dirs]
 
-        # --- Print markdown report ---
+        # --- Report ---
         has_issues = bool(
             misnamed or misplaced or orphaned or orphaned_dirs or missing or indirect_refs
         )
 
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "source_packages": [str(p) for p in src_pkgs],
+                        "test_packages": [str(p) for p in test_pkgs],
+                        "misnamed": misnamed,
+                        "misplaced": misplaced,
+                        "orphaned": orphaned,
+                        "orphaned_dirs": orphaned_dirs,
+                        "missing": missing,
+                        "indirect_refs": indirect_refs,
+                        "has_issues": has_issues,
+                    },
+                    indent=2,
+                )
+            )
+            return 0
+
         print("# Test Structure — Validation Report\n")
-        print(f"**Source package:** `{src_pkg}`")
-        print(f"**Test package:** `{test_pkg}`\n")
+        print(f"**Source packages:** {', '.join(f'`{p}`' for p in src_pkgs)}")
+        print(f"**Test packages:** {', '.join(f'`{p}`' for p in test_pkgs)}\n")
 
         # 1. Misnamed tests
         print(f"## 1. Misnamed tests ({len(misnamed)})\n")
@@ -522,8 +538,8 @@ class TestStructureScanner:
 
         if has_issues:
             print("**Result:** STRUCTURAL MISMATCHES FOUND\n")
-            return 1
-        print("**Result:** all clear\n")
+        else:
+            print("**Result:** all clear\n")
         return 0
 
 

@@ -10,8 +10,8 @@ import pytest
 from zolletta_metaskill.setup.language_detector import LanguageDetector
 
 
-class TestDetectLanguage:
-    """Tests for LanguageDetector.detect_language()."""
+class TestLanguageDetector:
+    # --- Tests for LanguageDetector.detect_language(). ---
 
     def test_detect_language_python_pyproject_returns_python(self, tmp_path: Path) -> None:
         (tmp_path / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
@@ -80,9 +80,7 @@ class TestDetectLanguage:
         (tmp_path / "package.json").write_text("{}", encoding="utf-8")
         assert LanguageDetector.detect_language(tmp_path) == "python"
 
-
-class TestMain:
-    """Tests for LanguageDetector.main()."""
+    # --- Tests for LanguageDetector.main(). ---
 
     def test_main_detects_python(
         self,

@@ -10,13 +10,13 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
 
 `.zolletta-metaskill/settings.json` is created by `/zolletta-metaskill setup` and read by every other subcommand. This page documents every field.
 
-> **JSON Schema**: the machine-readable source of truth for the shape of `settings.json` lives at [`setup/assets/settings.schema.json`](../../skills/setup/assets/settings.schema.json) (JSON Schema draft 2020-12). This prose doc is the human-readable counterpart and must stay in sync — when a field is added, removed, or renamed, update both files in the same change.
+> **JSON Schema**: the machine-readable source of truth for the shape of `settings.json` lives at [`skills/setup/assets/settings.schema.json`](../../skills/setup/assets/settings.schema.json) (JSON Schema draft 2020-12). This prose doc is the human-readable counterpart and must stay in sync — when a field is added, removed, or renamed, update both files in the same change.
 
 ## Example (Python project)
 
 ```json
 {
-  "setup_version": "1.0.0",
+  "setup_version": "3.0.0",
   "setup_timestamp": "2026-07-16T14:30:00",
   "language": "python",
   "container_name": "myproject",
@@ -42,23 +42,49 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
       "vulture": { "available": true },
       "mypy": { "available": true, "strict": true, "python_version": "3.12" }
     },
+    "paths": {
+      "source": ["src"],
+      "tests": ["tests"],
+      "package": "myproject"
+    },
     "code_style": {
       "check_acronym_casing": true,
       "check_no_relative_imports": true,
       "check_one_class_per_file": true,
+      "check_one_class_per_test_file": true,
+      "check_zero_class_files": true,
       "check_filename_matches_class": true,
       "check_public_docstrings": true,
       "check_docstring_no_type_repeat": true,
       "check_skip_obvious_docstrings": true,
       "check_line_length": true,
       "check_file_length": true,
+      "check_unused_all_exports": true,
+      "docstring_strip_private": false,
+      "docstring_strip_tests": false,
+      "docstring_strip_nested": false,
+      "docstring_strip_obvious_init": false,
       "max_file_length": 800,
       "vulture_min_confidence": 80
     },
     "testing": {
       "coverage_gap_threshold": 50,
       "coverage_well_covered_threshold": 80,
-      "check_test_naming": true
+      "check_test_naming": true,
+      "test_naming_min_segments": 3
+    },
+    "patterns": {
+      "check_ocp": true,
+      "check_isp": true,
+      "check_dip": true,
+      "check_lsp": true,
+      "check_test_structure": true,
+      "ocp_min_branches": 3,
+      "isp_min_methods": 5,
+      "dip_entry_points": ["main", "cli", "app", "__main__", "myproject", "manage", "wsgi", "asgi", "conftest"],
+      "class_metrics_top": 30,
+      "class_metrics_min_lines": 50,
+      "test_god_classes_top": 30
     },
     "pyproject_mtime": 1784223225.47
   },
@@ -72,7 +98,20 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
   },
   "documentation": {
     "language": "en",
-    "dir": "docs"
+    "dir": "docs",
+    "adrs": null,
+    "min_severity": "high",
+    "staleness_threshold": null,
+    "readme_focus": false,
+    "readme_sections": ["installation", "usage", "api", "contributing", "license"],
+    "diataxis_translations": null,
+    "staleness_weights": null,
+    "doc_patterns": ["*.md", "*.rst", "*.txt", "*.adoc"],
+    "check_external": false,
+    "include_referential": false,
+    "api_doc_recursive": true,
+    "api_doc_include_private": false,
+    "api_doc_suggest_coverage": false
   },
   "runs_dir": ".zolletta-metaskill"
 }
@@ -82,7 +121,7 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
 
 ```json
 {
-  "setup_version": "1.0.0",
+  "setup_version": "3.0.0",
   "setup_timestamp": "2026-07-16T14:30:00",
   "language": "php",
   "container_name": "myproject",
@@ -108,6 +147,7 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
       "phpcs": { "available": false, "standard": "PSR12" }
     },
     "code_style": {
+      "check_acronym_casing": true,
       "check_union_types": true,
       "check_intersection_types": true,
       "check_enum_methods": true,
@@ -128,6 +168,13 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
       "coverage_well_covered_threshold": 80,
       "check_test_naming": true
     },
+    "patterns": {
+      "check_ocp": true,
+      "check_isp": true,
+      "check_dip": true,
+      "ocp_min_branches": 3,
+      "isp_min_methods": 7
+    },
     "autoload": {
       "psr-4": { "App\\": "src/" },
       "psr-4-dev": { "Tests\\": "tests/" }
@@ -145,7 +192,20 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
   },
   "documentation": {
     "language": "en",
-    "dir": "docs"
+    "dir": "docs",
+    "adrs": null,
+    "min_severity": "high",
+    "staleness_threshold": null,
+    "readme_focus": false,
+    "readme_sections": ["installation", "usage", "api", "contributing", "license"],
+    "diataxis_translations": null,
+    "staleness_weights": null,
+    "doc_patterns": ["*.md", "*.rst", "*.txt", "*.adoc"],
+    "check_external": false,
+    "include_referential": false,
+    "api_doc_recursive": true,
+    "api_doc_include_private": false,
+    "api_doc_suggest_coverage": false
   },
   "runs_dir": ".zolletta-metaskill"
 }
@@ -188,19 +248,43 @@ The six subcommand keys:
 | `php-code-style`       | `php-code-style`                 | `null`          | Mechanical — PSR-12, naming, types (PHP only)            |
 | `php-testing-style`    | `php-testing-style`              | `null`          | Mechanical — PHPUnit, coverage gaps (PHP only)           |
 
-> **v1.x migration**: the `external_review_model` scalar (for the removed `external-review` subcommand) and the `subagent_profile` scalar (applied to all review subagents) are replaced by `subcommands` — a per-subcommand map. `external_review_model` is simply removed (the subcommand no longer exists); `subagent_profile` migrates to the 6 review subcommand entries. Setup migrates automatically — see `skills/setup/SKILL.md` → "Migration from v1.x".
+> **v1.x migration**: the `external_review_model` scalar (for the removed `external-review` subcommand) and the `subagent_profile` scalar (applied to all review subagents) are replaced by `subcommands` — a per-subcommand map. `external_review_model` is simply removed (the subcommand no longer exists); `subagent_profile` migrates to the 6 review subcommand entries. Setup migrates automatically — see `skills/setup/SKILL.md` → "Step 0 — Migration and missing-keys backfill".
+>
+> **v3.0.0 backfill**: `python.paths`, `python.patterns`, `php.patterns`, and the new `code_style`/`testing`/`documentation` keys are added to existing settings.json files on the next setup run — additive only, user-customized values are preserved.
 
 ## `documentation` — documentation configuration
 
-| Field                    | Type           | Description                                                                                                                                                                                              |
-|--------------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `documentation.language` | string         | ISO 639-1 code for documentation language (default: `"en"`). When not `"en"`, the `documentor` skill translates Diátaxis signpost headings before running the staleness scorer                           |
-| `documentation.dir`      | string         | Directory where project documentation lives (default: `"docs"`). Used by the `documentor` skill to locate the Diátaxis docs tree for drift detection and staleness scoring                               |
-| `documentation.adrs`     | string \| null | Relative path within `documentation.dir` where ADRs live (e.g. `"adr"`), `""` if scattered in docs root, or `null` if no ADRs found. Auto-detected during setup. Used by the ADR distiller during review |
+| Field                                    | Type           | Default                                                       | Description                                                                                                                                                     |
+|------------------------------------------|----------------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `documentation.language`                 | string         | `"en"`                                                        | ISO 639-1 code for documentation language. When not `"en"`, the `documentor` skill translates Diátaxis signpost headings before running the staleness scorer    |
+| `documentation.dir`                      | string         | `"docs"`                                                      | Directory where project documentation lives. Used by the `documentor` skill to locate the Diátaxis docs tree for drift detection and staleness scoring          |
+| `documentation.adrs`                     | string \| null | `null`                                                        | Relative path within `documentation.dir` where ADRs live (e.g. `"adr"`), `""` if scattered in docs root, or `null` if no ADRs found. Auto-detected during setup |
+| `documentation.min_severity`             | string         | `"high"`                                                      | Minimum severity reported by `drift_analyzer.py` (`critical`, `high`, `medium`, `low`, `info`)                                                                  |
+| `documentation.staleness_threshold`      | number \| null | `null`                                                        | If set, `doc_staleness_scorer.py` exits 1 when the freshness score falls below this value (0–100). `null` = report-only                                         |
+| `documentation.readme_focus`             | boolean        | `false`                                                       | When `true`, `doc_staleness_scorer.py` only scores the README                                                                                                   |
+| `documentation.readme_sections`          | array          | `["installation", "usage", "api", "contributing", "license"]` | Section names a README is expected to contain (completeness dimension of `doc_staleness_scorer.py`)                                                             |
+| `documentation.diataxis_translations`    | string \| null | `null`                                                        | Path to a JSON file mapping Diátaxis signpost headings to translations. `null` = built-in translations                                                          |
+| `documentation.staleness_weights`        | object \| null | `null`                                                        | Custom dimension weights for `doc_staleness_scorer.py` (`last_updated`, `code_doc_alignment`, `link_health`, `completeness`, `accuracy`; normalized to sum 1.0) |
+| `documentation.doc_patterns`             | array          | `["*.md", "*.rst", "*.txt", "*.adoc"]`                        | Glob patterns for documentation files scanned by `drift_analyzer.py`                                                                                            |
+| `documentation.check_external`           | boolean        | `false`                                                       | When `true`, `link_checker.py` verifies external http(s) links too                                                                                              |
+| `documentation.include_referential`      | boolean        | `false`                                                       | When `true`, `drift_analyzer.py` also reports referential drift, not just broken links                                                                          |
+| `documentation.api_doc_recursive`        | boolean        | `true`                                                        | When `true`, `api_doc_validator.py` scans source roots recursively                                                                                              |
+| `documentation.api_doc_include_private`  | boolean        | `false`                                                       | When `true`, `api_doc_validator.py` also checks private/underscore modules                                                                                      |
+| `documentation.api_doc_suggest_coverage` | boolean        | `false`                                                       | When `true`, `api_doc_validator.py` suggests a documentation coverage target                                                                                    |
 
 ## `python` — tooling, rules, and configuration
 
-The `python` object merges three concerns into one place: tool availability and configuration (`tools`), configurable rule toggles (`code_style`, `testing`), and `pyproject_mtime` for staleness detection. It is `null` for non-Python projects.
+The `python` object merges four concerns into one place: tool availability and configuration (`tools`), the project layout (`paths`), configurable rule toggles (`code_style`, `testing`, `patterns`), and `pyproject_mtime` for staleness detection. It is `null` for non-Python projects.
+
+### `python.paths` — source/test layout
+
+The source and test roots every review script scans — the equivalent of what PHP projects get via `composer.json` `autoload` mappings. Detected by `python_paths_detector.py` during setup (Step 8) from `pyproject.toml` build config (`[tool.hatch.build.targets.wheel] packages`, `[tool.setuptools] package-dir`/`packages.find where`, `[tool.poetry] packages`), pytest `testpaths`, and the directory layout.
+
+| Field                  | Type           | Default     | Description                                                                                        |
+|------------------------|----------------|-------------|----------------------------------------------------------------------------------------------------|
+| `python.paths.source`  | array          | `["src"]`   | Source roots scanned by every source scanner                                                       |
+| `python.paths.tests`   | array          | `["tests"]` | Test roots scanned by test scanners (test_naming, test_structure, test_god_classes, test_splitter) |
+| `python.paths.package` | string \| null | `null`      | Top-level package name used by mirror-structure checks (`naming_conventions`, `test_structure`)    |
 
 ### `python.tools` — tool availability and configuration
 
@@ -221,19 +305,26 @@ Each tool is an object with an `available` boolean. Tools that have configuratio
 
 These control which checks the `python-code-style` skill enforces. All default to `true` (or `80` for the confidence threshold). Set to `false` to disable a check for the project.
 
-| Key                              | Type    | Default | Area       | Rule                                                         |
-|----------------------------------|---------|---------|------------|--------------------------------------------------------------|
-| `check_acronym_casing`           | boolean | `true`  | Naming     | Acronyms stay uppercase in class names (`HTTPClientFactory`) |
-| `check_no_relative_imports`      | boolean | `true`  | Imports    | Absolute imports only, no relative imports                   |
-| `check_one_class_per_file`       | boolean | `true`  | Structure  | One class per file (all classes, not just public)            |
-| `check_filename_matches_class`   | boolean | `true`  | Structure  | Filename matches class name (`snake_case.py` → `PascalCase`) |
-| `check_public_docstrings`        | boolean | `true`  | Docstrings | Docstrings required on public classes, methods, functions    |
-| `check_docstring_no_type_repeat` | boolean | `true`  | Docstrings | No type repetition in docstring Args/Returns                 |
-| `check_skip_obvious_docstrings`  | boolean | `true`  | Docstrings | Skip docstrings for obvious one-line functions               |
-| `check_line_length`              | boolean | `true`  | Formatting | Line length from `python.tools.ruff.line_length`             |
-| `check_file_length`              | boolean | `true`  | Structure  | Files must not exceed `max_file_length` lines                |
-| `max_file_length`                | integer | `800`   | Structure  | Maximum allowed lines per file (enforced by `file_length_scanner.py`) |
-| `vulture_min_confidence`         | integer | `80`    | Dead code  | Minimum confidence for vulture findings (0–100)              |
+| Key                              | Type    | Default | Area       | Rule                                                                                                                                 |
+|----------------------------------|---------|---------|------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| `check_acronym_casing`           | boolean | `true`  | Naming     | Acronyms stay uppercase in class names (`HTTPClientFactory`)                                                                         |
+| `check_no_relative_imports`      | boolean | `true`  | Imports    | Absolute imports only, no relative imports                                                                                           |
+| `check_one_class_per_file`       | boolean | `true`  | Structure  | One class per file (all classes, not just public)                                                                                    |
+| `check_one_class_per_test_file`  | boolean | `true`  | Structure  | `one_class_per_file_scanner` also scans test roots: one test class per test file, named after its stem (`test_user.py` → `TestUser`) |
+| `check_zero_class_files`         | boolean | `true`  | Structure  | Report files with 0 classes (utility/helper modules). Set `false` to hide them — replaces the removed `--ignore-zero` flag           |
+| `check_filename_matches_class`   | boolean | `true`  | Structure  | Filename matches class name (`snake_case.py` → `PascalCase`)                                                                         |
+| `check_public_docstrings`        | boolean | `true`  | Docstrings | Docstrings required on public classes, methods, functions                                                                            |
+| `check_docstring_no_type_repeat` | boolean | `true`  | Docstrings | No type repetition in docstring Args/Returns                                                                                         |
+| `check_skip_obvious_docstrings`  | boolean | `true`  | Docstrings | Skip docstrings for obvious one-line functions                                                                                       |
+| `check_line_length`              | boolean | `true`  | Formatting | Line length from `python.tools.ruff.line_length`                                                                                     |
+| `check_file_length`              | boolean | `true`  | Structure  | Files must not exceed `max_file_length` lines                                                                                        |
+| `check_unused_all_exports`       | boolean | `true`  | Dead code  | `__all__` entries must be used outside their module (`unused_all_exports_scanner.py`)                                                |
+| `docstring_strip_private`        | boolean | `false` | Docstrings | `docstring_streamliner.py` removes private-function docstrings when applying fixes                                                   |
+| `docstring_strip_tests`          | boolean | `false` | Docstrings | `docstring_streamliner.py` removes test-function docstrings when applying fixes                                                      |
+| `docstring_strip_nested`         | boolean | `false` | Docstrings | `docstring_streamliner.py` removes nested-function docstrings when applying fixes                                                    |
+| `docstring_strip_obvious_init`   | boolean | `false` | Docstrings | `docstring_streamliner.py` removes obvious `__init__` docstrings when applying fixes                                                 |
+| `max_file_length`                | integer | `800`   | Structure  | Maximum allowed lines per file (enforced by `file_length_scanner.py`)                                                                |
+| `vulture_min_confidence`         | integer | `80`    | Dead code  | Minimum confidence for vulture findings (0–100)                                                                                      |
 
 > Rules not listed here (naming conventions, import order, private/test function docstring exemptions, type hints for public APIs) are **always-on** and cannot be disabled. See `skills/python-code-style/SKILL.md` → Table 1 for the full list.
 
@@ -241,13 +332,32 @@ These control which checks the `python-code-style` skill enforces. All default t
 
 These control which checks the `python-testing-style` skill enforces and the coverage thresholds it uses.
 
-| Key                               | Type    | Default | Area     | Rule                                                         |
-|-----------------------------------|---------|---------|----------|--------------------------------------------------------------|
-| `coverage_gap_threshold`          | integer | `50`    | Coverage | Coverage below this % is a gap (0–100)                       |
-| `coverage_well_covered_threshold` | integer | `80`    | Coverage | Coverage above this % is well-covered — do not flag (0–100)  |
-| `check_test_naming`               | boolean | `true`  | Naming   | Test naming convention (`test_<unit>_<scenario>_<expected>`) |
+| Key                               | Type    | Default | Area     | Rule                                                                                            |
+|-----------------------------------|---------|---------|----------|-------------------------------------------------------------------------------------------------|
+| `coverage_gap_threshold`          | integer | `50`    | Coverage | Coverage below this % is a gap (0–100)                                                          |
+| `coverage_well_covered_threshold` | integer | `80`    | Coverage | Coverage above this % is well-covered — do not flag (0–100)                                     |
+| `check_test_naming`               | boolean | `true`  | Naming   | Test naming convention (`test_<unit>_<scenario>_<expected>`)                                    |
+| `test_naming_min_segments`        | integer | `3`     | Naming   | Minimum underscore-separated segments a test function name must have (`test_naming_scanner.py`) |
 
 > Rules not listed here (AAA structure, test isolation, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `skills/python-testing-style/SKILL.md` → "Always-on rules" for the full list.
+
+### `python.patterns` — SOLID/pattern scanner configuration
+
+These control which checks the `patterns` skill's deterministic scanners run for Python, and their thresholds. All `check_*` toggles default to `true`.
+
+| Key                       | Type    | Default                                                                                 | Rule                                                                                               |
+|---------------------------|---------|-----------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
+| `check_ocp`               | boolean | `true`                                                                                  | Open/closed: flag if/elif chains that should be polymorphic (`open_closed_scanner.py`)             |
+| `check_isp`               | boolean | `true`                                                                                  | Interface segregation: flag fat interfaces (`interface_segregation_scanner.py`)                    |
+| `check_dip`               | boolean | `true`                                                                                  | Dependency inversion: flag high-level modules importing low-level concretions                      |
+| `check_lsp`               | boolean | `true`                                                                                  | Liskov substitution: flag subclasses that break the parent contract                                |
+| `check_test_structure`    | boolean | `true`                                                                                  | Test tree mirrors the source tree (`test_structure_scanner.py`)                                    |
+| `ocp_min_branches`        | integer | `3`                                                                                     | Minimum branches in an if/elif chain before `open_closed_scanner.py` flags it                      |
+| `isp_min_methods`         | integer | `5`                                                                                     | Minimum methods on an interface/class before `interface_segregation_scanner.py` flags it           |
+| `dip_entry_points`        | array   | `["main", "cli", "app", "__main__", "myproject", "manage", "wsgi", "asgi", "conftest"]` | Module names treated as composition roots — exempt from `dependency_inversion_scanner.py` findings |
+| `class_metrics_top`       | integer | `30`                                                                                    | How many largest classes `class_metrics_scanner.py` reports                                        |
+| `class_metrics_min_lines` | integer | `50`                                                                                    | Minimum class size (lines) `class_metrics_scanner.py` reports                                      |
+| `test_god_classes_top`    | integer | `30`                                                                                    | How many largest test classes `test_god_classes_scanner.py` reports                                |
 
 ### `python.pyproject_mtime` — staleness detection
 
@@ -255,7 +365,7 @@ Modification time of `pyproject.toml` at last extraction (Unix timestamp). The s
 
 ## `php` — tooling, rules, and configuration
 
-The `php` object mirrors the `python` object and merges the same concerns: tool availability and configuration (`tools`), configurable rule toggles (`code_style`, `testing`), autoload mapping (`autoload`), the minimum PHP version (`php_version`), and `composer_mtime` for staleness detection. It is `null` for non-PHP projects.
+The `php` object mirrors the `python` object and merges the same concerns: tool availability and configuration (`tools`), configurable rule toggles (`code_style`, `testing`, `patterns`), autoload mapping (`autoload` — the source/test roots, so no `php.paths` exists), the minimum PHP version (`php_version`), and `composer_mtime` for staleness detection. It is `null` for non-PHP projects.
 
 ### `php.tools` — tool availability and configuration
 
@@ -275,21 +385,22 @@ Each tool is an object with an `available` boolean. Tools that have configuratio
 
 These control which checks the `php-code-style` skill enforces. All default to `true`. Set to `false` to disable a check for the project. Rules whose minimum PHP version is higher than the detected `php_version` are silently skipped (not flagged) — the skill prints a note listing which rules were skipped.
 
-| Key                           | Type    | Default | Area        | Rule                                                          | Min PHP |
-|-------------------------------|---------|---------|-------------|---------------------------------------------------------------|---------|
-| `check_union_types`           | boolean | `true`  | Types       | Union types declared where multiple types are possible        | 8.0+    |
-| `check_intersection_types`    | boolean | `true`  | Types       | Intersection types for interface composition                  | 8.1+    |
-| `check_enum_methods`          | boolean | `true`  | Modern      | Enums with methods instead of class constants for finite sets | 8.1+    |
-| `check_first_class_callables` | boolean | `true`  | Modern      | First-class callable syntax (`$obj->method(...)`)             | 8.1+    |
-| `check_readonly_classes`      | boolean | `true`  | Modern      | Readonly classes for immutable data                           | 8.2+    |
-| `check_typed_constants`       | boolean | `true`  | Modern      | Typed class constants                                         | 8.3+    |
-| `check_override_attribute`    | boolean | `true`  | Modern      | `#[\Override]` attribute on overriding methods                | 8.3+    |
-| `check_property_hooks`        | boolean | `true`  | Modern      | Property hooks for computed properties                        | 8.4+    |
-| `check_asymmetric_visibility` | boolean | `true`  | Modern      | Asymmetric visibility (`public-read protected-set`)           | 8.4+    |
-| `check_pipe_operator`         | boolean | `true`  | Modern      | Pipe operator (`\|>`) for function composition                | 8.5+    |
-| `check_array_functions`       | boolean | `true`  | Performance | Use native array functions over manual loops                  | all     |
-| `check_string_functions`      | boolean | `true`  | Performance | Use native string functions over regex                        | all     |
-| `check_file_length`           | boolean | `true`  | Structure   | Files must not exceed `max_file_length` lines                 | all     |
+| Key                           | Type    | Default | Area        | Rule                                                                  | Min PHP |
+|-------------------------------|---------|---------|-------------|-----------------------------------------------------------------------|---------|
+| `check_acronym_casing`        | boolean | `true`  | Naming      | Acronyms stay uppercase in class names (`HTTPClientFactory`)          | all     |
+| `check_union_types`           | boolean | `true`  | Types       | Union types declared where multiple types are possible                | 8.0+    |
+| `check_intersection_types`    | boolean | `true`  | Types       | Intersection types for interface composition                          | 8.1+    |
+| `check_enum_methods`          | boolean | `true`  | Modern      | Enums with methods instead of class constants for finite sets         | 8.1+    |
+| `check_first_class_callables` | boolean | `true`  | Modern      | First-class callable syntax (`$obj->method(...)`)                     | 8.1+    |
+| `check_readonly_classes`      | boolean | `true`  | Modern      | Readonly classes for immutable data                                   | 8.2+    |
+| `check_typed_constants`       | boolean | `true`  | Modern      | Typed class constants                                                 | 8.3+    |
+| `check_override_attribute`    | boolean | `true`  | Modern      | `#[\Override]` attribute on overriding methods                        | 8.3+    |
+| `check_property_hooks`        | boolean | `true`  | Modern      | Property hooks for computed properties                                | 8.4+    |
+| `check_asymmetric_visibility` | boolean | `true`  | Modern      | Asymmetric visibility (`public-read protected-set`)                   | 8.4+    |
+| `check_pipe_operator`         | boolean | `true`  | Modern      | Pipe operator (`\|>`) for function composition                        | 8.5+    |
+| `check_array_functions`       | boolean | `true`  | Performance | Use native array functions over manual loops                          | all     |
+| `check_string_functions`      | boolean | `true`  | Performance | Use native string functions over regex                                | all     |
+| `check_file_length`           | boolean | `true`  | Structure   | Files must not exceed `max_file_length` lines                         | all     |
 | `max_file_length`             | integer | `800`   | Structure   | Maximum allowed lines per file (enforced by `file_length_scanner.py`) | all     |
 
 > Rules not listed here (`declare(strict_types=1)`, return/parameter/property type declarations, nullable types, `void`/`never`, avoid `mixed`, constructor promotion, match expression, nullsafe operator, named arguments, attributes, enums, readonly properties, arrow functions, PSR-4 autoloading, PSR-12 coding style, camelCase methods, namespace usage, no `@` suppression, file upload validation) are **always-on** and cannot be disabled. See `skills/php-code-style/SKILL.md` → "Always-on rules" for the full list.
@@ -305,6 +416,18 @@ These control which checks the `php-testing-style` skill enforces and the covera
 | `check_test_naming`               | boolean | `true`  | Naming   | PHPUnit test naming convention (`*Test.php`, methods start with `test_`) |
 
 > Rules not listed here (one test class per SUT, test directory mirroring per PSR-4, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `skills/php-testing-style/SKILL.md` → "Always-on rules" for the full list.
+
+### `php.patterns` — SOLID scanner configuration
+
+Same role as `python.patterns` for the PHP SOLID scanners. PHP has no `check_lsp`/`check_test_structure` (no PHP LSP or mirror-structure scanner) and the ISP threshold defaults to 7.
+
+| Key                | Type    | Default | Rule                                                                                     |
+|--------------------|---------|---------|------------------------------------------------------------------------------------------|
+| `check_ocp`        | boolean | `true`  | Open/closed: flag if/elseif chains that should be polymorphic                            |
+| `check_isp`        | boolean | `true`  | Interface segregation: flag fat interfaces                                               |
+| `check_dip`        | boolean | `true`  | Dependency inversion: flag high-level modules depending on low-level concretions         |
+| `ocp_min_branches` | integer | `3`     | Minimum branches in an if/elseif chain before `open_closed_scanner.py` flags it          |
+| `isp_min_methods`  | integer | `7`     | Minimum methods on an interface/class before `interface_segregation_scanner.py` flags it |
 
 ### `php.autoload` — PSR-4 namespace mapping
 
@@ -327,11 +450,11 @@ Modification time of `composer.json` at last extraction (Unix timestamp). The se
 
 ### Python branch
 
-When `settings.json` exists and the project is Python, the setup guard compares `pyproject.toml`'s current modification time against `python.pyproject_mtime`. If they differ, the guard re-runs **only** the pyproject extraction step (Step 6.5 of setup) and patches the `python.tools.*` configuration fields + `python.pyproject_mtime` in `settings.json`. Full setup (language detection, Docker probe, tokensave probe) is not re-run.
+When `settings.json` exists and the project is Python, the setup guard compares `pyproject.toml`'s current modification time against `python.pyproject_mtime`. If they differ, the guard re-runs **only** the pyproject extraction + source layout steps (Steps 7–8 of setup) and patches the `python.tools.*` configuration fields + `python.paths` + `python.pyproject_mtime` in `settings.json`. Full setup (language detection, Docker probe, tokensave probe) is not re-run.
 
 ### PHP branch
 
-When `settings.json` exists and `php` is not `null`, the setup guard compares `composer.json`'s current modification time against `php.composer_mtime`. If they differ, the guard re-runs **only** the composer.json + tool config extraction step (Step 7.5 of setup) and patches the `php.tools.*` configuration fields + `php.autoload` + `php.php_version` + `php.composer_mtime` in `settings.json`. Full setup (language detection, Docker probe, tokensave probe) is not re-run. If `composer.json` does not exist or `php` is `null`, this check is skipped.
+When `settings.json` exists and `php` is not `null`, the setup guard compares `composer.json`'s current modification time against `php.composer_mtime`. If they differ, the guard re-runs **only** the composer.json + tool config extraction step (Step 12 of setup) and patches the `php.tools.*` configuration fields + `php.autoload` + `php.php_version` + `php.composer_mtime` in `settings.json`. Full setup (language detection, Docker probe, tokensave probe) is not re-run. If `composer.json` does not exist or `php` is `null`, this check is skipped.
 
 ## Tool-failure handler
 

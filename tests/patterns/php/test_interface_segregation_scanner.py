@@ -10,12 +10,13 @@ dependency is not installed.
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
 import pytest
 
-from zolletta_metaskill.core.engine.php_engine import _have_tree_sitter_php
+from zolletta_metaskill.core.engine.php_engine import PHPEngine
 from zolletta_metaskill.core.structs import (
     ClassInfo,
     Finding,
@@ -26,7 +27,9 @@ from zolletta_metaskill.patterns.php.interface_segregation_scanner import (
     InterfaceSegregationScanner,
 )
 
-TS_PHP_AVAILABLE = _have_tree_sitter_php()
+TS_PHP_AVAILABLE = PHPEngine._have_tree_sitter_php()
+
+
 _skip_no_ts = pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
 
 
@@ -42,12 +45,64 @@ def _make_method(name: str, lineno: int = 1) -> MethodInfo:
 
 
 # ---------------------------------------------------------------------------
-# Pure helper tests (no tree-sitter required)
+# main() tests
 # ---------------------------------------------------------------------------
 
 
-class TestIsInterface:
-    """``_is_interface`` detects PHP interfaces from :class:`ClassInfo`."""
+def _write_settings(dirpath: Path, **overrides: object) -> Path:
+    """Write a minimal PHP settings.json under ``dirpath/.zolletta-metaskill``."""
+    settings: dict[str, object] = {
+        "language": "php",
+        "python": None,
+        "php": {
+            "autoload": {"psr-4": {"App\\": "src/"}},
+            "patterns": {},
+        },
+    }
+    php_overrides = overrides.pop("php", None)
+    if isinstance(php_overrides, dict):
+        base_php = settings["php"]
+        assert isinstance(base_php, dict)
+        for key, value in php_overrides.items():
+            if isinstance(value, dict) and isinstance(base_php.get(key), dict):
+                base_php[key].update(value)
+            else:
+                base_php[key] = value
+    settings.update(overrides)
+    meta = dirpath / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    path = meta / "settings.json"
+    path.write_text(json.dumps(settings))
+    return path
+
+
+def test_write_settings_replaces_non_dict_php_value(tmp_path: Path) -> None:
+    """A non-dict ``php`` override value replaces the base value."""
+    path = _write_settings(tmp_path, php={"tools": "none"})
+    written = json.loads(path.read_text())
+    php = written["php"]
+    assert isinstance(php, dict)
+    assert php["tools"] == "none"
+
+
+def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
+    """Chdir into tmp_path and run main() with *argv*."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", argv)
+    return InterfaceSegregationScanner.main()
+
+
+def _fat_interface(n: int) -> str:
+    """Return PHP source for an interface with *n* methods."""
+    return (
+        "<?php\ninterface Fat {\n"
+        + "".join(f"    public function m{i}();\n" for i in range(n))
+        + "}\n"
+    )
+
+
+class TestInterfaceSegregationScanner:
+    # --- ``_is_interface`` detects PHP interfaces from :class:`ClassInfo`. ---
 
     def test_abstract_no_attributes_is_interface(self) -> None:
         cls = ClassInfo(name="Foo", lineno=1, end_lineno=10, is_abstract=True)
@@ -77,9 +132,7 @@ class TestIsInterface:
         )
         assert InterfaceSegregationScanner._is_interface(cls) is False
 
-
-class TestFindImplementers:
-    """``_find_implementers`` returns classes whose bases include the name."""
+    # --- ``_find_implementers`` returns classes whose bases include the name. ---
 
     def test_find_implementers_finds_implementer_returns_single_item(self) -> None:
         interface = ClassInfo(name="IRepo", lineno=1, end_lineno=5)
@@ -111,14 +164,7 @@ class TestFindImplementers:
     def test_empty_class_list(self) -> None:
         assert InterfaceSegregationScanner._find_implementers("IRepo", []) == []
 
-
-# ---------------------------------------------------------------------------
-# scan_module tests (use ModuleInfo directly — no tree-sitter required)
-# ---------------------------------------------------------------------------
-
-
-class TestScanModule:
-    """``scan_module`` consumes ``ModuleInfo`` and returns ``list[Finding]``."""
+    # --- ``scan_module`` consumes ``ModuleInfo`` and returns ``list[Finding]``. ---
 
     def test_fat_interface_flagged(self, tmp_path: Path) -> None:
         """An interface with more than ``min_methods`` methods is flagged."""
@@ -181,7 +227,7 @@ class TestScanModule:
         findings = InterfaceSegregationScanner.scan_module(module, min_methods=7)
         assert findings == []
 
-    def test_concrete_class_not_flagged(self, tmp_path: Path) -> None:
+    def test_scan_module_concrete_class_not_flagged(self, tmp_path: Path) -> None:
         """A concrete class with many methods is not flagged."""
         methods = [_make_method(f"method_{i}", lineno=i + 1) for i in range(10)]
         cls = ClassInfo(
@@ -313,7 +359,7 @@ class TestScanModule:
         # With min_methods=4, 4 methods is not > 4 → not flagged
         assert InterfaceSegregationScanner.scan_module(module, min_methods=4) == []
 
-    def test_multiple_fat_interfaces(self, tmp_path: Path) -> None:
+    def test_scan_module_multiple_fat_interfaces(self, tmp_path: Path) -> None:
         """Multiple fat interfaces produce multiple findings."""
         methods_a = [_make_method(f"a_{i}", lineno=i + 1) for i in range(8)]
         methods_b = [_make_method(f"b_{i}", lineno=i + 1) for i in range(9)]
@@ -331,7 +377,7 @@ class TestScanModule:
         names = {f.description.split("'")[1] for f in findings}
         assert names == {"FatA", "FatB"}
 
-    def test_syntax_error_returns_empty(self, tmp_path: Path) -> None:
+    def test_scan_module_syntax_error_returns_empty(self, tmp_path: Path) -> None:
         """A module with ``has_syntax_error`` returns no findings."""
         module = ModuleInfo(
             path=tmp_path / "bad.php",
@@ -383,16 +429,9 @@ class TestScanModule:
         assert len(findings) == 1
         assert findings[0].line == 5
 
+    # --- ``scan_file`` parses a .php file and returns ``list[Finding]``. ---
 
-# ---------------------------------------------------------------------------
-# scan_file tests (require tree-sitter-php)
-# ---------------------------------------------------------------------------
-
-
-@_skip_no_ts
-class TestScanFile:
-    """``scan_file`` parses a .php file and returns ``list[Finding]``."""
-
+    @_skip_no_ts
     def test_fat_interface_detected(self, tmp_path: Path) -> None:
         """A PHP interface with 8 methods is flagged."""
         f = tmp_path / "FatInterface.php"
@@ -410,6 +449,7 @@ class TestScanFile:
         assert "FatInterface" in findings[0].description
         assert "8 methods" in findings[0].description
 
+    @_skip_no_ts
     def test_small_interface_not_flagged(self, tmp_path: Path) -> None:
         """A PHP interface with 3 methods is not flagged."""
         f = tmp_path / "SmallInterface.php"
@@ -425,6 +465,7 @@ class TestScanFile:
         findings = InterfaceSegregationScanner.scan_file(f)
         assert findings == []
 
+    @_skip_no_ts
     def test_write_php_custom_threshold_contains_3_methods(self, tmp_path: Path) -> None:
         """``min_methods=2`` flags an interface with 3 methods."""
         f = tmp_path / "ThreeMethods.php"
@@ -441,6 +482,7 @@ class TestScanFile:
         assert len(findings) == 1
         assert "3 methods" in findings[0].description
 
+    @_skip_no_ts
     def test_write_php_implementer_detected_contains_userrepo(self, tmp_path: Path) -> None:
         """The finding description includes implementer names."""
         f = tmp_path / "WithImpl.php"
@@ -458,7 +500,8 @@ class TestScanFile:
         assert len(findings) == 1
         assert "UserRepo" in findings[0].description
 
-    def test_concrete_class_not_flagged(self, tmp_path: Path) -> None:
+    @_skip_no_ts
+    def test_scan_file_concrete_class_not_flagged(self, tmp_path: Path) -> None:
         """A concrete class with many methods is not flagged."""
         f = tmp_path / "BigClass.php"
         _write_php(
@@ -471,6 +514,7 @@ class TestScanFile:
         findings = InterfaceSegregationScanner.scan_file(f)
         assert findings == []
 
+    @_skip_no_ts
     def test_write_php_empty_file_returns_empty_list(self, tmp_path: Path) -> None:
         """An empty .php file produces no findings."""
         f = tmp_path / "empty.php"
@@ -478,13 +522,15 @@ class TestScanFile:
         findings = InterfaceSegregationScanner.scan_file(f)
         assert findings == []
 
-    def test_syntax_error_returns_empty(self, tmp_path: Path) -> None:
+    @_skip_no_ts
+    def test_scan_file_syntax_error_returns_empty(self, tmp_path: Path) -> None:
         """A file with a syntax error produces no findings."""
         f = tmp_path / "broken.php"
         _write_php(f, "<?php\ninterface {\n    \n")
         findings = InterfaceSegregationScanner.scan_file(f)
         assert findings == []
 
+    @_skip_no_ts
     def test_file_path_in_finding(self, tmp_path: Path) -> None:
         """The finding's file field matches the path."""
         f = tmp_path / "FatInterface.php"
@@ -499,6 +545,7 @@ class TestScanFile:
         assert len(findings) == 1
         assert findings[0].file == str(f)
 
+    @_skip_no_ts
     def test_write_php_no_classes_returns_empty_list(self, tmp_path: Path) -> None:
         """A file with only free functions produces no findings."""
         f = tmp_path / "functions.php"
@@ -509,6 +556,7 @@ class TestScanFile:
         findings = InterfaceSegregationScanner.scan_file(f)
         assert findings == []
 
+    @_skip_no_ts
     def test_non_php_file_returns_empty(self, tmp_path: Path) -> None:
         """A non-.php file returns no findings (no matching engine)."""
         f = tmp_path / "script.py"
@@ -516,7 +564,8 @@ class TestScanFile:
         findings = InterfaceSegregationScanner.scan_file(f)
         assert findings == []
 
-    def test_multiple_fat_interfaces(self, tmp_path: Path) -> None:
+    @_skip_no_ts
+    def test_scan_file_multiple_fat_interfaces(self, tmp_path: Path) -> None:
         """Multiple fat interfaces in one file produce multiple findings."""
         f = tmp_path / "Multi.php"
         _write_php(
@@ -532,26 +581,31 @@ class TestScanFile:
         findings = InterfaceSegregationScanner.scan_file(f)
         assert len(findings) == 2
 
+    # --- Tests for ``main()`` CLI entry point. ---
 
-# ---------------------------------------------------------------------------
-# main() tests
-# ---------------------------------------------------------------------------
-
-
-class TestMain:
-    """Tests for ``main()`` CLI entry point."""
-
-    def test_readouterr_main_skip_contains_skipped(
+    def test_check_disabled_reports_skipped(
         self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "--skip"])
-        rc = InterfaceSegregationScanner.main()
+        _write_settings(tmp_path, php={"patterns": {"check_isp": False}})
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "SKIPPED" in out
+
+    def test_check_disabled_json(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _write_settings(tmp_path, php={"patterns": {"check_isp": False}})
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert json.loads(out)["skipped"] is True
 
     def test_main_missing_dir(
         self,
@@ -559,12 +613,11 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        missing = tmp_path / "nonexistent"
-        monkeypatch.setattr(sys, "argv", ["prog", str(missing)])
-        rc = InterfaceSegregationScanner.main()
+        _write_settings(tmp_path)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "does not exist" in err
+        assert "source" in err
 
     @_skip_no_ts
     def test_main_all_clear(
@@ -573,18 +626,16 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        root = tmp_path / "src"
-        root.mkdir()
+        _write_settings(tmp_path)
         _write_php(
-            root / "Good.php",
+            tmp_path / "src" / "Good.php",
             "<?php\n"
             "interface Good {\n"
             "    public function save();\n"
             "    public function find();\n"
             "}\n",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
-        rc = InterfaceSegregationScanner.main()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
@@ -596,43 +647,31 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        root = tmp_path / "src"
-        root.mkdir()
-        _write_php(
-            root / "Fat.php",
-            "<?php\n"
-            "interface Fat {\n"
-            + "".join(f"    public function m{i}();\n" for i in range(8))
-            + "}\n",
-        )
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
-        rc = InterfaceSegregationScanner.main()
+        _write_settings(tmp_path)
+        _write_php(tmp_path / "src" / "Fat.php", _fat_interface(8))
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "ISP violations" in out
         assert "Fat" in out
+        assert "report-only" in out
 
     @_skip_no_ts
-    def test_main_strict_mode(
+    def test_main_json_output(
         self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        root = tmp_path / "src"
-        root.mkdir()
-        _write_php(
-            root / "Fat.php",
-            "<?php\n"
-            "interface Fat {\n"
-            + "".join(f"    public function m{i}();\n" for i in range(8))
-            + "}\n",
-        )
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--strict"])
-        rc = InterfaceSegregationScanner.main()
+        _write_settings(tmp_path)
+        _write_php(tmp_path / "src" / "Fat.php", _fat_interface(8))
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
         out = capsys.readouterr().out
-        assert rc == 1
-        assert "strict mode" in out
+        assert rc == 0
+        payload = json.loads(out)
+        assert payload["violation_count"] == 1
+        assert payload["min_methods"] == 7
+        assert payload["scanned_files"] == 1
 
     @_skip_no_ts
     def test_main_custom_min_methods(
@@ -641,10 +680,9 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        root = tmp_path / "src"
-        root.mkdir()
+        _write_settings(tmp_path, php={"patterns": {"isp_min_methods": 2}})
         _write_php(
-            root / "Small.php",
+            tmp_path / "src" / "Small.php",
             "<?php\n"
             "interface Small {\n"
             "    public function a();\n"
@@ -652,8 +690,7 @@ class TestMain:
             "    public function c();\n"
             "}\n",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--min-methods", "2"])
-        rc = InterfaceSegregationScanner.main()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "ISP violations" in out
@@ -666,14 +703,12 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        root = tmp_path / "src"
-        root.mkdir()
+        _write_settings(tmp_path)
         _write_php(
-            root / "Good.php",
+            tmp_path / "src" / "Good.php",
             "<?php\ninterface Good {\n    public function save();\n}\n",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
-        rc = InterfaceSegregationScanner.main()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "threshold: 7" in out

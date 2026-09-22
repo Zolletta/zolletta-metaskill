@@ -17,23 +17,23 @@
 
 ### Class Metrics (top 15 candidates)
 
-| Class | File | Lines | Methods | Pub | Attrs | Verdict |
-|-------|------|-------|---------|-----|-------|---------|
-| DocStalenessScorer | documentor/doc_staleness_scorer.py | 978 | 22 | 14 | 0 | Cohesive — static helpers, single domain (doc staleness scoring) |
-| DriftAnalyzer | documentor/drift_analyzer.py | 843 | 16 | 13 | 0 | Cohesive — static helpers, single domain (doc drift analysis) |
-| APIDocValidator | documentor/api_doc_validator.py | 737 | 11 | 7 | 0 | Cohesive — static helpers, single domain (API doc validation) |
-| DocstringStreamliner | code_style/python/docstring_streamliner.py | 725 | 26 | 11 | 0 | Cohesive — static helpers, single domain (docstring streamlining) |
-| PHPEngine | core/engine/php_engine.py | 513 | 26 | 11 | 2 | Cohesive — parser/adapter, single domain (PHP parsing) |
-| LinkChecker | documentor/link_checker.py | 508 | 12 | 10 | 0 | Cohesive — static helpers, single domain (link checking) |
-| TestStructureScanner | testing_style/general/test_structure_scanner.py | 462 | 7 | 1 | 0 | Cohesive — static helpers, single domain (test structure scanning) |
-| DependencyInversionScanner | patterns/php/dependency_inversion_scanner.py | 331 | 12 | 3 | 0 | Cohesive — scanner, single domain (PHP DIP detection) |
-| AcronymCasingScanner | code_style/php/acronym_casing_scanner.py | 313 | 6 | 1 | 0 | Cohesive — scanner, single domain (PHP acronym casing) |
-| DependencyInversionScanner | patterns/python/dependency_inversion_scanner.py | 308 | 9 | 1 | 0 | Cohesive — scanner, single domain (Python DIP detection) |
-| TestSplitter | patterns/python/test_splitter.py | 303 | 11 | 1 | 0 | Cohesive — utility, single domain (test class splitting) |
-| LiskovSubstitutionScanner | patterns/general/liskov_substitution_scanner.py | 295 | 6 | 3 | 0 | Cohesive — scanner, single domain (LSP detection) |
-| PythonEngine | core/engine/python_engine.py | 280 | 12 | 6 | 0 | Cohesive — parser/adapter, single domain (Python parsing) |
-| NamingConventionsScanner | code_style/general/naming_conventions_scanner.py | 264 | 8 | 1 | 0 | Cohesive — scanner, single domain (naming conventions) |
-| AcronymCasingScanner | code_style/python/acronym_casing_scanner.py | 247 | 5 | 1 | 0 | Cohesive — scanner, single domain (Python acronym casing) |
+| Class                      | File                                             | Lines | Methods | Pub | Attrs | Verdict                                                            |
+|----------------------------|--------------------------------------------------|-------|---------|-----|-------|--------------------------------------------------------------------|
+| DocStalenessScorer         | documentor/doc_staleness_scorer.py               | 978   | 22      | 14  | 0     | Cohesive — static helpers, single domain (doc staleness scoring)   |
+| DriftAnalyzer              | documentor/drift_analyzer.py                     | 843   | 16      | 13  | 0     | Cohesive — static helpers, single domain (doc drift analysis)      |
+| APIDocValidator            | documentor/api_doc_validator.py                  | 737   | 11      | 7   | 0     | Cohesive — static helpers, single domain (API doc validation)      |
+| DocstringStreamliner       | code_style/python/docstring_streamliner.py       | 725   | 26      | 11  | 0     | Cohesive — static helpers, single domain (docstring streamlining)  |
+| PHPEngine                  | core/engine/php_engine.py                        | 513   | 26      | 11  | 2     | Cohesive — parser/adapter, single domain (PHP parsing)             |
+| LinkChecker                | documentor/link_checker.py                       | 508   | 12      | 10  | 0     | Cohesive — static helpers, single domain (link checking)           |
+| TestStructureScanner       | testing_style/general/test_structure_scanner.py  | 462   | 7       | 1   | 0     | Cohesive — static helpers, single domain (test structure scanning) |
+| DependencyInversionScanner | patterns/php/dependency_inversion_scanner.py     | 331   | 12      | 3   | 0     | Cohesive — scanner, single domain (PHP DIP detection)              |
+| AcronymCasingScanner       | code_style/php/acronym_casing_scanner.py         | 313   | 6       | 1   | 0     | Cohesive — scanner, single domain (PHP acronym casing)             |
+| DependencyInversionScanner | patterns/python/dependency_inversion_scanner.py  | 308   | 9       | 1   | 0     | Cohesive — scanner, single domain (Python DIP detection)           |
+| TestSplitter               | patterns/python/test_splitter.py                 | 303   | 11      | 1   | 0     | Cohesive — utility, single domain (test class splitting)           |
+| LiskovSubstitutionScanner  | patterns/general/liskov_substitution_scanner.py  | 295   | 6       | 3   | 0     | Cohesive — scanner, single domain (LSP detection)                  |
+| PythonEngine               | core/engine/python_engine.py                     | 280   | 12      | 6   | 0     | Cohesive — parser/adapter, single domain (Python parsing)          |
+| NamingConventionsScanner   | code_style/general/naming_conventions_scanner.py | 264   | 8       | 1   | 0     | Cohesive — scanner, single domain (naming conventions)             |
+| AcronymCasingScanner       | code_style/python/acronym_casing_scanner.py      | 247   | 5       | 1   | 0     | Cohesive — scanner, single domain (Python acronym casing)          |
 
 **"Reason to change" test applied to all 15 candidates.** Every class has methods that serve a single domain:
 
@@ -72,7 +72,7 @@ All 15 classes are suppressed per "What is NOT a God class": static helper colle
 
 *None — all test files and directories match a source counterpart.*
 
-> Note: the scanner initially reported 3 orphaned directories (`.pytest_cache/`, `.pytest_cache/v/`, `.pytest_cache/v/cache/`). These are pytest cache artifacts, not test files. Suppressed with `--ignore-dirs .pytest_cache`.
+> Note: the scanner initially reported 3 orphaned directories (`.pytest_cache/`, `.pytest_cache/v/`, `.pytest_cache/v/cache/`). These are pytest cache artifacts, not test files — they are excluded once `.pytest_cache/` is gitignored (file enumeration is git-aware).
 
 #### 4. Missing tests (0)
 
@@ -93,12 +93,12 @@ All 15 classes are suppressed per "What is NOT a God class": static helper colle
 
 ### SOLID Scanner Results
 
-| Scanner | Findings | Verdict |
-|---------|----------|---------|
-| DIP (dependency_inversion_scanner.py) | 2 | Both suppressed — PHPEngine lazy-initializes a tree-sitter `Parser` (low-level parsing primitive, not a business collaborator). This is an internal implementation detail of the engine adapter, not a DIP violation. Injecting the Parser would be over-engineering (KISS). |
-| ISP (interface_segregation_scanner.py) | 1 | Suppressed — `LanguageEngine` protocol has 6 methods but zero implementers stub any method. Both `PythonEngine` and `PHPEngine` fully implement all 6 methods. The protocol is cohesive (all methods serve language parsing/identification). Not an ISP violation. |
-| OCP (open_closed_scanner.py) | 7 | All 7 suppressed — every hit is `isinstance` dispatch on `ast` node types (`ast.ClassDef`, `ast.FunctionDef`, `ast.Name`, etc.) or tree-sitter node types (`namespace_name`, `qualified_name`) inside parser code. This is the standard and correct way to traverse heterogeneous AST nodes, not type-based business logic dispatch. Not OCP violations. |
-| LSP (liskov_substitution_scanner.py) | 0 | All clear. |
+| Scanner                                | Findings | Verdict                                                                                                                                                                                                                                                                                                                                                  |
+|----------------------------------------|----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| DIP (dependency_inversion_scanner.py)  | 2        | Both suppressed — PHPEngine lazy-initializes a tree-sitter `Parser` (low-level parsing primitive, not a business collaborator). This is an internal implementation detail of the engine adapter, not a DIP violation. Injecting the Parser would be over-engineering (KISS).                                                                             |
+| ISP (interface_segregation_scanner.py) | 1        | Suppressed — `LanguageEngine` protocol has 6 methods but zero implementers stub any method. Both `PythonEngine` and `PHPEngine` fully implement all 6 methods. The protocol is cohesive (all methods serve language parsing/identification). Not an ISP violation.                                                                                       |
+| OCP (open_closed_scanner.py)           | 7        | All 7 suppressed — every hit is `isinstance` dispatch on `ast` node types (`ast.ClassDef`, `ast.FunctionDef`, `ast.Name`, etc.) or tree-sitter node types (`namespace_name`, `qualified_name`) inside parser code. This is the standard and correct way to traverse heterogeneous AST nodes, not type-based business logic dispatch. Not OCP violations. |
+| LSP (liskov_substitution_scanner.py)   | 0        | All clear.                                                                                                                                                                                                                                                                                                                                               |
 
 ### Test God Classes Scanner
 
@@ -106,19 +106,19 @@ All 15 classes are suppressed per "What is NOT a God class": static helper colle
 
 ### Coverage
 
-| Metric | Value |
-|--------|-------|
+| Metric           | Value |
+|------------------|-------|
 | Total statements | 14688 |
-| Missed | 20 |
-| Coverage | 99% |
-| Tests passed | 1532 |
+| Missed           | 20    |
+| Coverage         | 99%   |
+| Tests passed     | 1532  |
 
 ### ADR Directive Alignment
 
-| Directive | Status | Notes |
-|-----------|--------|-------|
-| ADR-0004: Python stdlib only for scanners | PASS | All scanner imports are stdlib (`argparse`, `ast`, `sys`, `pathlib`, `typing`, `json`, `re`) plus internal project imports. No external dependencies. |
-| ADR-0007: Language-neutral engine protocol | PASS | `LanguageEngine` Protocol implemented by `PythonEngine` and `PHPEngine`. Scanners depend only on the protocol and `ModuleInfo` data model, never importing `ast` or tree-sitter directly. |
+| Directive                                  | Status | Notes                                                                                                                                                                                     |
+|--------------------------------------------|--------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ADR-0004: Python stdlib only for scanners  | PASS   | All scanner imports are stdlib (`argparse`, `ast`, `sys`, `pathlib`, `typing`, `json`, `re`) plus internal project imports. No external dependencies.                                     |
+| ADR-0007: Language-neutral engine protocol | PASS   | `LanguageEngine` Protocol implemented by `PythonEngine` and `PHPEngine`. Scanners depend only on the protocol and `ModuleInfo` data model, never importing `ast` or tree-sitter directly. |
 
 ## Findings
 
@@ -136,17 +136,17 @@ All 15 classes are suppressed per "What is NOT a God class": static helper colle
 
 ### Low
 
-| # | File | Class/Symbol | Issue | Principle | Suggested Fix |
-|---|------|-------------|-------|-----------|---------------|
-| 1 | src/zolletta_metaskill/core/engine/language_engine.py:55 | LanguageEngine.test_glob_pattern_returns_glob | Method name is confusing: `test_` prefix implies a test method, `_returns_glob` leaks implementation detail into the name. Documentation (scripts.md) refers to this as `test_file_pattern()`. | KISS | Rename to `test_file_pattern` or `test_glob_pattern`. |
+| # | File                                                     | Class/Symbol                                  | Issue                                                                                                                                                                                          | Principle | Suggested Fix                                         |
+|---|----------------------------------------------------------|-----------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|-------------------------------------------------------|
+| 1 | src/zolletta_metaskill/core/engine/language_engine.py:55 | LanguageEngine.test_glob_pattern_returns_glob | Method name is confusing: `test_` prefix implies a test method, `_returns_glob` leaks implementation detail into the name. Documentation (scripts.md) refers to this as `test_file_pattern()`. | KISS      | Rename to `test_file_pattern` or `test_glob_pattern`. |
 
 ## Observations (not findings)
 
-| # | File | Observation |
-|---|------|-------------|
-| 1 | src/zolletta_metaskill/adr/adr_orchestrator.py:48-166 | `ADROrchestrator.refresh()` is ~120 lines with inline cache-classification and directive-merging logic. The method is cohesive (single domain: ADR refresh flow) and delegates to `ADRDiscovery`, `ADRCache`, `ADRDistiller`, but the inline classification/merge logic could be extracted to a private helper for readability. Not a God class method — it reads like a procedure. |
-| 2 | src/zolletta_metaskill/adr/adr_orchestrator.py:69 | `ADROrchestrator.refresh()` creates `ADRCache(self.cache_path)` internally. `ADRCache` is a simple file-based JSON cache (value object / data access helper), not an external service. Per DIP exceptions, value objects with no external service calls are not violations. Noted for completeness. |
-| 3 | src/zolletta_metaskill/core/engine/php_engine.py:212-228 | `PHPEngine._get_parser()` creates `Parser()` internally (lazy initialization). The DIP scanner flagged this, but `PHPEngine` is a leaf-level adapter that wraps tree-sitter. The `Parser` is a low-level parsing primitive, not a business collaborator. Injecting it would be over-engineering. Suppressed: internal implementation detail of an engine adapter. |
+| # | File                                                     | Observation                                                                                                                                                                                                                                                                                                                                                                         |
+|---|----------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1 | src/zolletta_metaskill/adr/adr_orchestrator.py:48-166    | `ADROrchestrator.refresh()` is ~120 lines with inline cache-classification and directive-merging logic. The method is cohesive (single domain: ADR refresh flow) and delegates to `ADRDiscovery`, `ADRCache`, `ADRDistiller`, but the inline classification/merge logic could be extracted to a private helper for readability. Not a God class method — it reads like a procedure. |
+| 2 | src/zolletta_metaskill/adr/adr_orchestrator.py:69        | `ADROrchestrator.refresh()` creates `ADRCache(self.cache_path)` internally. `ADRCache` is a simple file-based JSON cache (value object / data access helper), not an external service. Per DIP exceptions, value objects with no external service calls are not violations. Noted for completeness.                                                                                 |
+| 3 | src/zolletta_metaskill/core/engine/php_engine.py:212-228 | `PHPEngine._get_parser()` creates `Parser()` internally (lazy initialization). The DIP scanner flagged this, but `PHPEngine` is a leaf-level adapter that wraps tree-sitter. The `Parser` is a low-level parsing primitive, not a business collaborator. Injecting it would be over-engineering. Suppressed: internal implementation detail of an engine adapter.                   |
 
 ## Recommendations
 

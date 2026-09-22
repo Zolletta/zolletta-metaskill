@@ -37,8 +37,8 @@ def _write_adr(
     )
 
 
-class TestDetectAdrs:
-    """Tests for ADRDetector.detect_adrs()."""
+class TestADRDetector:
+    # --- Tests for ADRDetector.detect_adrs(). ---
 
     def test_adrs_in_subdir(self, tmp_path: Path) -> None:
         docs = tmp_path / "docs"
@@ -125,9 +125,7 @@ class TestDetectAdrs:
         ):
             assert ADRDetector.detect_adrs(docs) is None
 
-
-class TestGrepAdrFiles:
-    """Tests for ADRDetector._grep_adr_files()."""
+    # --- Tests for ADRDetector._grep_adr_files(). ---
 
     def test_grep_finds_adr_mention(self, tmp_path: Path) -> None:
         docs = tmp_path / "docs"
@@ -180,9 +178,7 @@ class TestGrepAdrFiles:
         assert result is not None
         assert result == []
 
-
-class TestScanAdrHeadings:
-    """Tests for ADRDetector._scan_adr_headings()."""
+    # --- Tests for ADRDetector._scan_adr_headings(). ---
 
     def test_finds_adr_heading(self, tmp_path: Path) -> None:
         f = tmp_path / "0001-test.md"
@@ -220,9 +216,7 @@ class TestScanAdrHeadings:
         result = ADRDetector._scan_adr_headings([f1, f2, f3])
         assert len(result) == 3
 
-
-class TestDetermineAdrsPath:
-    """Tests for ADRDetector._determine_adrs_path()."""
+    # --- Tests for ADRDetector._determine_adrs_path(). ---
 
     def test_determine_adrs_path_single_subdir_returns_adr(self, tmp_path: Path) -> None:
         docs = tmp_path / "docs"
@@ -262,9 +256,7 @@ class TestDetermineAdrsPath:
         f2.write_text("# ADR-002\n", encoding="utf-8")
         assert ADRDetector._determine_adrs_path([f1, f2], docs) == ""
 
-
-class TestMain:
-    """Tests for ADRDetector.main() CLI entry point."""
+    # --- Tests for ADRDetector.main() CLI entry point. ---
 
     def test_main_with_adrs(
         self,

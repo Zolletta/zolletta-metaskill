@@ -20,46 +20,40 @@ Reports two categories of violations:
    Test files whose name does not match any source file or class in the mirrored
    directory are reported as naming violations (orphan or misnamed tests).
 
+Configuration comes from ``.zolletta-metaskill/settings.json``:
+
+- Scan roots: ``python.paths.source`` / ``python.paths.tests`` (``src`` /
+  ``tests`` when unconfigured), enumerated with git-ignore awareness.
+- Mirror package: ``python.paths.package`` (auto-detected from the first
+  source root when ``null``).
+- ``python.code_style.check_filename_matches_class`` — when false for
+  every configured language the run reports SKIPPED.
+
 Usage:
-    python3 naming_conventions_scanner.py --src <src_root> --tests <test_root>
-        [--src-package <name>] [--tests-package <name>]
-        [--ignore-dirs <dir1,dir2,...>] [--strict] [--skip]
+    python3 naming_conventions_scanner.py [--json]
 
-Arguments:
-    --src            Source root directory (default: src)
-    --tests          Test root directory (default: tests)
-    --src-package    Package path within --src to use as mirror base
-                     (default: auto-detect first child of --src)
-    --tests-package  Package path within --tests to use as mirror base
-                     (default: same as --src-package)
-    --ignore-dirs    Comma-separated dir names to skip (e.g. assets,templates)
-    --strict         Exit with code 1 if violations are found
-    --skip           Skip this check entirely (exit 0 with 'skipped' message).
-                     Use for projects that intentionally don't follow these
-                     conventions.
+Options:
+    --json          Output as JSON instead of text.
 
-Exit code: 0 if no violations (or --skip), 1 if violations found with --strict.
+Exit code: 0 always (report-only); 1 on usage errors such as no
+           configured source/test directory existing on disk.
 
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 from typing import Any
 
 from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
-from zolletta_metaskill.core.engine.python_engine import PythonEngine
+from zolletta_metaskill.core.project_config import ProjectConfig
 
 
 class NamingConventionsScanner:
     """Check naming conventions for source files and test files."""
-
-    @staticmethod
-    def _ensure_python_engine() -> None:
-        """Ensure the PythonEngine is registered."""
-        EngineRegistry.ensure(PythonEngine())
 
     @staticmethod
     def _snake_to_pascal(name: str) -> str:
@@ -78,7 +72,7 @@ class NamingConventionsScanner:
         Uses the registered language engine to parse the file, so no ``ast``
         import is needed here.
         """
-        NamingConventionsScanner._ensure_python_engine()
+        ProjectConfig.ensure_engines()
         engine = EngineRegistry.get_for_file(path)
         if engine is None:  # pragma: no cover
             return []
@@ -99,7 +93,7 @@ class NamingConventionsScanner:
         return None
 
     @staticmethod
-    def _build_source_index(src_pkg: Path, ignore_dirs: set[str]) -> dict[Path, set[str]]:
+    def _build_source_index(src_pkg: Path) -> dict[Path, set[str]]:
         """Build an index: relative_dir -> set of valid test-name prefixes.
 
         For each source file in a directory, the valid prefixes are:
@@ -107,9 +101,7 @@ class NamingConventionsScanner:
           - ``test_<snake_case_class_name>`` for each class in the file (class-name based)
         """
         index: dict[Path, set[str]] = {}
-        for py in sorted(src_pkg.rglob("*.py")):
-            if any(part in ignore_dirs for part in py.parts):
-                continue
+        for py in ProjectConfig.iter_files(src_pkg, {".py"}):
             if py.name == "__init__.py":
                 continue
 
@@ -148,147 +140,168 @@ class NamingConventionsScanner:
         """Entry point for the naming conventions checker CLI."""
         parser = argparse.ArgumentParser(
             description="Check naming conventions: source file name == class name, "
-            "test files named test_<source_stem><suffix>.py."
+            "test files named test_<source_stem><suffix>.py. Roots and package "
+            "come from .zolletta-metaskill/settings.json."
         )
-        parser.add_argument("--src", default="src", help="Source root (default: src)")
-        parser.add_argument("--tests", default="tests", help="Test root (default: tests)")
-        parser.add_argument(
-            "--src-package",
-            default=None,
-            help="Package path within --src (default: auto-detect)",
-        )
-        parser.add_argument(
-            "--tests-package",
-            default=None,
-            help="Package path within --tests (default: same as --src-package)",
-        )
-        parser.add_argument(
-            "--ignore-dirs",
-            default="",
-            help="Comma-separated dir names to skip (e.g. assets,templates)",
-        )
-        parser.add_argument(
-            "--strict",
-            action="store_true",
-            help="Exit with code 1 if violations are found",
-        )
-        parser.add_argument(
-            "--skip",
-            action="store_true",
-            help="Skip this check entirely (exit 0 with 'skipped' message). "
-            "Use for projects that intentionally don't follow these conventions.",
-        )
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
         args = parser.parse_args()
 
-        NamingConventionsScanner._ensure_python_engine()
-        if args.skip:
-            print("=" * 70)
-            print("NAMING CONVENTIONS — VALIDATION REPORT")
-            print("=" * 70)
-            print("\nResult: SKIPPED (--skip flag)\n")
+        settings = ProjectConfig.load_settings()
+        languages = ProjectConfig.scan_languages(
+            settings, "code_style.check_filename_matches_class"
+        )
+        if not languages:
+            if args.json:
+                print(
+                    json.dumps(
+                        {
+                            "skipped": True,
+                            "reason": "check_filename_matches_class disabled in settings.json",
+                        }
+                    )
+                )
+            else:
+                print("=" * 70)
+                print("NAMING CONVENTIONS — VALIDATION REPORT")
+                print("=" * 70)
+                print(
+                    "\nResult: SKIPPED (check_filename_matches_class disabled in settings.json)\n"
+                )
             return 0
 
-        src_root = Path(args.src)
-        test_root = Path(args.tests)
-        if not src_root.exists():
-            print(f"Error: src directory '{src_root}' does not exist", file=sys.stderr)
+        python_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
+        src_roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, python_langs))
+        test_roots = ProjectConfig.existing_roots(ProjectConfig.test_roots(settings, python_langs))
+        if not src_roots:
+            print(
+                "Error: no configured source directories exist on disk",
+                file=sys.stderr,
+            )
             return 1
-        if not test_root.exists():
-            print(f"Error: tests directory '{test_root}' does not exist", file=sys.stderr)
+        if not test_roots:
+            print(
+                "Error: no configured test directories exist on disk",
+                file=sys.stderr,
+            )
             return 1
 
-        ignore_dirs = set(args.ignore_dirs.split(",")) if args.ignore_dirs else set()
-        ignore_dirs.update({"__pycache__"})
-
-        src_pkg_name = args.src_package or NamingConventionsScanner._auto_detect_package(src_root)
-        if not src_pkg_name:
+        pkg_name = ProjectConfig.package_name(
+            settings, "python"
+        ) or NamingConventionsScanner._auto_detect_package(src_roots[0])
+        if not pkg_name:
             print("Error: could not auto-detect package under src/", file=sys.stderr)
             return 1
-        tests_pkg_name = args.tests_package if args.tests_package is not None else src_pkg_name
 
-        src_pkg = src_root / src_pkg_name
-        test_pkg = test_root / tests_pkg_name
-
-        if not src_pkg.exists():
-            print(f"Error: src package '{src_pkg}' does not exist", file=sys.stderr)
+        src_pkgs = [root / pkg_name for root in src_roots if (root / pkg_name).is_dir()]
+        test_pkgs = [root / pkg_name for root in test_roots if (root / pkg_name).is_dir()]
+        if not src_pkgs:
+            print(
+                f"Error: source package '{pkg_name}' does not exist under any "
+                "configured source root",
+                file=sys.stderr,
+            )
             return 1
-        if not test_pkg.exists():
-            print(f"Error: test package '{test_pkg}' does not exist", file=sys.stderr)
+        if not test_pkgs:
+            print(
+                f"Error: test package '{pkg_name}' does not exist under any configured test root",
+                file=sys.stderr,
+            )
             return 1
 
         # --- Check 1: source file name == class name ---
         name_mismatch: list[dict[str, Any]] = []
-        for py in sorted(src_pkg.rglob("*.py")):
-            if any(part in ignore_dirs for part in py.parts):
-                continue
-            if py.name == "__init__.py":
-                continue
+        for src_pkg in src_pkgs:
+            for py in ProjectConfig.iter_files(src_pkg, {".py"}):
+                if py.name == "__init__.py":
+                    continue
 
-            classes = NamingConventionsScanner._get_class_names(py)
-            if len(classes) != 1:
-                continue
+                classes = NamingConventionsScanner._get_class_names(py)
+                if len(classes) != 1:
+                    continue
 
-            cls_name = classes[0]
-            expected_pascal = NamingConventionsScanner._snake_to_pascal(py.stem)
-            if cls_name != expected_pascal and cls_name != py.stem:
-                name_mismatch.append(
-                    {
-                        "file": str(py.relative_to(src_pkg)),
-                        "class": cls_name,
-                        "expected": expected_pascal,
-                    }
-                )
+                cls_name = classes[0]
+                expected_pascal = NamingConventionsScanner._snake_to_pascal(py.stem)
+                if cls_name != expected_pascal and cls_name != py.stem:
+                    name_mismatch.append(
+                        {
+                            "file": str(py.relative_to(src_pkg)),
+                            "class": cls_name,
+                            "expected": expected_pascal,
+                        }
+                    )
 
         # --- Check 2: test file naming convention ---
-        source_index = NamingConventionsScanner._build_source_index(src_pkg, ignore_dirs)
+        source_index: dict[Path, set[str]] = {}
+        for src_pkg in src_pkgs:
+            for rel_dir, prefixes in NamingConventionsScanner._build_source_index(src_pkg).items():
+                source_index.setdefault(rel_dir, set()).update(prefixes)
         orphan_tests: list[dict[str, Any]] = []
 
-        for test_py in sorted(test_pkg.rglob("test_*.py")):
-            if any(part in ignore_dirs for part in test_py.parts):
-                continue
-            if test_py.name == "conftest.py":  # pragma: no cover
-                continue
+        for test_pkg in test_pkgs:
+            for test_py in ProjectConfig.iter_files(test_pkg, {".py"}):
+                if not test_py.name.startswith("test_"):
+                    continue
+                if test_py.name == "conftest.py":  # pragma: no cover
+                    continue
 
-            rel_dir = test_py.relative_to(test_pkg).parent
-            stem = test_py.stem  # e.g. "test_cache_operations"
+                rel_dir = test_py.relative_to(test_pkg).parent
+                stem = test_py.stem  # e.g. "test_cache_operations"
 
-            # Skip test files that don't start with "test_" (shouldn't happen due to glob)
-            if not stem.startswith("test_"):  # pragma: no cover
-                continue
+                # Skip test files that don't start with "test_" (shouldn't happen)
+                if not stem.startswith("test_"):  # pragma: no cover
+                    continue
 
-            test_stem_rest = stem[5:]  # e.g. "cache_operations"
+                test_stem_rest = stem[5:]  # e.g. "cache_operations"
 
-            # Skip common non-SUT test files
-            if test_stem_rest in {"", "conftest"}:
-                continue
+                # Skip common non-SUT test files
+                if test_stem_rest in {"", "conftest"}:
+                    continue
 
-            prefixes = source_index.get(rel_dir, set())
-            if not prefixes:
-                orphan_tests.append(
-                    {
-                        "file": str(test_py.relative_to(test_pkg)),
-                        "reason": f"no source directory at {rel_dir}/",
-                    }
-                )
-                continue
+                prefixes = source_index.get(rel_dir, set())
+                if not prefixes:
+                    orphan_tests.append(
+                        {
+                            "file": str(test_py.relative_to(test_pkg)),
+                            "reason": f"no source directory at {rel_dir}/",
+                        }
+                    )
+                    continue
 
-            match = NamingConventionsScanner._matches_prefix(test_stem_rest, prefixes)
-            if match is None:
-                orphan_tests.append(
-                    {
-                        "file": str(test_py.relative_to(test_pkg)),
-                        "reason": f"no source file or class matching '{test_stem_rest}' "
-                        f"in {rel_dir}/",
-                    }
-                )
+                match = NamingConventionsScanner._matches_prefix(test_stem_rest, prefixes)
+                if match is None:
+                    orphan_tests.append(
+                        {
+                            "file": str(test_py.relative_to(test_pkg)),
+                            "reason": f"no source file or class matching '{test_stem_rest}' "
+                            f"in {rel_dir}/",
+                        }
+                    )
 
         has_violations = bool(name_mismatch or orphan_tests)
+
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "directories": {
+                            "source": [str(root) for root in src_roots],
+                            "tests": [str(root) for root in test_roots],
+                        },
+                        "package": pkg_name,
+                        "name_mismatch": name_mismatch,
+                        "orphan_tests": orphan_tests,
+                        "violation_count": len(name_mismatch) + len(orphan_tests),
+                    },
+                    indent=2,
+                )
+            )
+            return 0
 
         print("=" * 70)
         print("NAMING CONVENTIONS — VALIDATION REPORT")
         print("=" * 70)
-        print(f"\nSource package:  {src_pkg}")
-        print(f"Test package:    {test_pkg}")
+        print(f"\nSource packages: {', '.join(str(p) for p in src_pkgs)}")
+        print(f"Test packages:   {', '.join(str(p) for p in test_pkgs)}")
 
         if name_mismatch:
             print(f"\n## Source file name != class name ({len(name_mismatch)} files)\n")
@@ -309,10 +322,7 @@ class NamingConventionsScanner:
             print("\n## Test files not matching naming convention: none")
 
         print()
-        if has_violations and args.strict:
-            print("Result: VIOLATIONS FOUND (strict mode)")
-            return 1
-        elif has_violations:
+        if has_violations:
             print("Result: violations found (report-only mode)")
         else:
             print("Result: all clear")

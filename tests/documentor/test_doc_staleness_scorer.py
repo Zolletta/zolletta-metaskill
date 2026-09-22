@@ -6,18 +6,17 @@ import json
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
 
 from zolletta_metaskill.documentor.doc_staleness_scorer import DocStalenessScorer
 
-# ---------------------------------------------------------------------------
-# _load_gitignore_patterns
-# ---------------------------------------------------------------------------
 
+class TestDocStalenessScorer:
+    # --- _load_gitignore_patterns ---
 
-class TestLoadGitignorePatterns:
     def test_load_gitignore_patterns_no_gitignore_succeeds(self, tmp_path: Path) -> None:
         assert DocStalenessScorer._load_gitignore_patterns(str(tmp_path)) == set()
 
@@ -46,13 +45,8 @@ class TestLoadGitignorePatterns:
         patterns = DocStalenessScorer._load_gitignore_patterns(str(tmp_path))
         assert patterns == set()
 
+    # --- get_label ---
 
-# ---------------------------------------------------------------------------
-# get_label
-# ---------------------------------------------------------------------------
-
-
-class TestGetLabel:
     def test_get_label_excellent_returns_excellent(self) -> None:
         assert DocStalenessScorer.get_label(95) == "excellent"
 
@@ -77,13 +71,8 @@ class TestGetLabel:
     def test_get_label_boundary_0_returns_abandoned(self) -> None:
         assert DocStalenessScorer.get_label(0) == "abandoned"
 
+    # --- run_git / git helpers ---
 
-# ---------------------------------------------------------------------------
-# run_git / git helpers
-# ---------------------------------------------------------------------------
-
-
-class TestRunGit:
     def test_run_git_success_returns_output(self, tmp_path: Path) -> None:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = type("R", (), {"returncode": 0, "stdout": "output\n"})()
@@ -108,8 +97,8 @@ class TestRunGit:
             result = DocStalenessScorer.run_git(str(tmp_path), ["status"])
             assert result == ""
 
+    # --- GetFileLastCommitDate ---
 
-class TestGetFileLastCommitDate:
     def test_object_valid_date_returns_2024(self, tmp_path: Path) -> None:
         with patch.object(DocStalenessScorer, "run_git", return_value="2024-01-15T10:00:00+00:00"):
             dt = DocStalenessScorer.get_file_last_commit_date(str(tmp_path), "doc.md")
@@ -124,8 +113,8 @@ class TestGetFileLastCommitDate:
         with patch.object(DocStalenessScorer, "run_git", return_value="not-a-date"):
             assert DocStalenessScorer.get_file_last_commit_date(str(tmp_path), "doc.md") is None
 
+    # --- GetCodeChangesSince ---
 
-class TestGetCodeChangesSince:
     def test_object_with_changes_returns_2(self, tmp_path: Path) -> None:
         with patch.object(DocStalenessScorer, "run_git", return_value="abc123\n def456\n"):
             assert DocStalenessScorer.get_code_changes_since(str(tmp_path), "2024-01-01") == 2
@@ -134,8 +123,8 @@ class TestGetCodeChangesSince:
         with patch.object(DocStalenessScorer, "run_git", return_value=""):
             assert DocStalenessScorer.get_code_changes_since(str(tmp_path), "2024-01-01") == 0
 
+    # --- GetLatestTag ---
 
-class TestGetLatestTag:
     def test_object_with_tag_returns_1_2_3(self, tmp_path: Path) -> None:
         with patch.object(DocStalenessScorer, "run_git", return_value="v1.2.3"):
             assert DocStalenessScorer.get_latest_tag(str(tmp_path)) == "1.2.3"
@@ -144,13 +133,8 @@ class TestGetLatestTag:
         with patch.object(DocStalenessScorer, "run_git", return_value=""):
             assert DocStalenessScorer.get_latest_tag(str(tmp_path)) is None
 
+    # --- find_doc_files ---
 
-# ---------------------------------------------------------------------------
-# find_doc_files
-# ---------------------------------------------------------------------------
-
-
-class TestFindDocFiles:
     def test_find_doc_files_finds_markdown_contains_guide_rst(self, tmp_path: Path) -> None:
         (tmp_path / "README.md").write_text("# Test")
         (tmp_path / "guide.rst").write_text("Test")
@@ -198,13 +182,8 @@ class TestFindDocFiles:
         assert "README.md" in files
         assert all(".zolletta-metaskill" not in f for f in files)
 
+    # --- score_last_updated ---
 
-# ---------------------------------------------------------------------------
-# score_last_updated
-# ---------------------------------------------------------------------------
-
-
-class TestScoreLastUpdated:
     def test_no_git_history(self, tmp_path: Path) -> None:
         with patch.object(DocStalenessScorer, "get_file_last_commit_date", return_value=None):
             score, details = DocStalenessScorer.score_last_updated(str(tmp_path), "doc.md")
@@ -253,13 +232,8 @@ class TestScoreLastUpdated:
             score, details = DocStalenessScorer.score_last_updated(str(tmp_path), "doc.md")
             assert score == 100.0
 
+    # --- score_code_doc_alignment ---
 
-# ---------------------------------------------------------------------------
-# score_code_doc_alignment
-# ---------------------------------------------------------------------------
-
-
-class TestScoreCodeDocAlignment:
     def test_score_code_doc_alignment_no_file_returns_50_0(self, tmp_path: Path) -> None:
         score, details = DocStalenessScorer.score_code_doc_alignment(
             str(tmp_path), "nonexistent.md"
@@ -341,13 +315,8 @@ class TestScoreCodeDocAlignment:
         assert score == 100.0
         assert details["existing_files"] == 1
 
+    # --- score_link_health ---
 
-# ---------------------------------------------------------------------------
-# score_link_health
-# ---------------------------------------------------------------------------
-
-
-class TestScoreLinkHealth:
     def test_score_link_health_no_file_returns_100_0(self, tmp_path: Path) -> None:
         score, details = DocStalenessScorer.score_link_health(str(tmp_path), "nonexistent.md")
         assert score == 100.0
@@ -404,13 +373,8 @@ class TestScoreLinkHealth:
         assert score == 100.0
         assert details["valid_links"] == 1
 
+    # --- _detect_diataxis_quadrant ---
 
-# ---------------------------------------------------------------------------
-# _detect_diataxis_quadrant
-# ---------------------------------------------------------------------------
-
-
-class TestDetectDiataxisQuadrant:
     def test_detect_diataxis_quadrant_tutorials_contains_what_we_will_learn(self) -> None:
         quad = DocStalenessScorer._detect_diataxis_quadrant("docs/tutorials/quickstart.md")
         assert quad is not None
@@ -437,13 +401,8 @@ class TestDetectDiataxisQuadrant:
         )
         assert quad is not None
 
+    # --- score_completeness ---
 
-# ---------------------------------------------------------------------------
-# score_completeness
-# ---------------------------------------------------------------------------
-
-
-class TestScoreCompleteness:
     def test_all_sections_present(self, tmp_path: Path) -> None:
         (tmp_path / "doc.md").write_text(
             "# Installation\n\n# Usage\n\n# API\n\n# Contributing\n\n# License\n"
@@ -530,13 +489,8 @@ class TestScoreCompleteness:
         # 16 non-empty lines → penalty 15
         assert score == 85.0
 
+    # --- score_accuracy ---
 
-# ---------------------------------------------------------------------------
-# score_accuracy
-# ---------------------------------------------------------------------------
-
-
-class TestScoreAccuracy:
     def test_score_accuracy_no_file_returns_50_0(self, tmp_path: Path) -> None:
         score, details = DocStalenessScorer.score_accuracy(str(tmp_path), "nonexistent.md")
         assert score == 50.0
@@ -613,13 +567,8 @@ class TestScoreAccuracy:
             score, details = DocStalenessScorer.score_accuracy(str(tmp_path), "doc.md")
             assert score == 100.0
 
+    # --- _extract_headings / _slugify ---
 
-# ---------------------------------------------------------------------------
-# _extract_headings / _slugify
-# ---------------------------------------------------------------------------
-
-
-class TestExtractHeadings:
     def test_extract_headings_basic_input_contains_section_two(self) -> None:
         content = "# Title\n\n## Section Two\n"
         headings = DocStalenessScorer._extract_headings(content)
@@ -629,8 +578,8 @@ class TestExtractHeadings:
     def test_extract_headings_no_headings_succeeds(self) -> None:
         assert DocStalenessScorer._extract_headings("just text\n") == set()
 
+    # --- Slugify ---
 
-class TestSlugify:
     def test_slugify_basic_input_returns_hello_world(self) -> None:
         assert DocStalenessScorer._slugify("Hello World") == "hello-world"
 
@@ -643,13 +592,8 @@ class TestSlugify:
     def test_leading_trailing_hyphens(self) -> None:
         assert DocStalenessScorer._slugify("--Hello--") == "hello"
 
+    # --- _extract_version_from_manifest ---
 
-# ---------------------------------------------------------------------------
-# _extract_version_from_manifest
-# ---------------------------------------------------------------------------
-
-
-class TestExtractVersionFromManifest:
     def test_extract_version_from_manifest_package_json_returns_1_2_3(self, tmp_path: Path) -> None:
         p = tmp_path / "package.json"
         p.write_text('{"name": "test", "version": "1.2.3"}')
@@ -694,13 +638,8 @@ class TestExtractVersionFromManifest:
             is None
         )
 
+    # --- _load_diataxis_translations / _merge_translations ---
 
-# ---------------------------------------------------------------------------
-# _load_diataxis_translations / _merge_translations
-# ---------------------------------------------------------------------------
-
-
-class TestLoadDiataxisTranslations:
     def test_load_diataxis_translations_valid_file_contains_guide(self, tmp_path: Path) -> None:
         p = tmp_path / "trans.json"
         p.write_text(
@@ -729,8 +668,8 @@ class TestLoadDiataxisTranslations:
         result = DocStalenessScorer._load_diataxis_translations(str(p))
         assert result == {"readme_sections": None, "quadrants": {}}
 
+    # --- MergeTranslations ---
 
-class TestMergeTranslations:
     def test_merge_dir_names(self) -> None:
         # Save original to restore after test
         original = {k: dict(v) for k, v in DocStalenessScorer.DIATAXIS_QUADRANTS.items()}
@@ -778,13 +717,8 @@ class TestMergeTranslations:
                 DocStalenessScorer.DIATAXIS_QUADRANTS[k].clear()
                 DocStalenessScorer.DIATAXIS_QUADRANTS[k].update(v)
 
+    # --- score_document ---
 
-# ---------------------------------------------------------------------------
-# score_document
-# ---------------------------------------------------------------------------
-
-
-class TestScoreDocument:
     def test_object_basic_input_returns_set(self, tmp_path: Path) -> None:
         (tmp_path / "doc.md").write_text(
             "# Installation\n\n# Usage\n\n# API\n\n" + "content\n" * 15
@@ -810,13 +744,8 @@ class TestScoreDocument:
                 "accuracy",
             }
 
+    # --- generate_report ---
 
-# ---------------------------------------------------------------------------
-# generate_report
-# ---------------------------------------------------------------------------
-
-
-class TestGenerateReport:
     def test_generate_report_empty_json_returns_0(self) -> None:
         report = DocStalenessScorer.generate_report([], as_json=True)
         data = json.loads(report)
@@ -857,8 +786,8 @@ class TestGenerateReport:
         assert "a.md" in report
         assert "DIMENSION BREAKDOWN" in report
 
+    # --- ScoreBar ---
 
-class TestScoreBar:
     def test_score_bar_full_returns_bar(self) -> None:
         bar = DocStalenessScorer._score_bar(100)
         assert bar == "[" + "#" * 20 + "]"
@@ -871,22 +800,38 @@ class TestScoreBar:
         bar = DocStalenessScorer._score_bar(50)
         assert bar == "[" + "#" * 10 + "." * 10 + "]"
 
+    # --- DocStalenessScorer.main() ---
 
-# ---------------------------------------------------------------------------
-# DocStalenessScorer.main()
-# ---------------------------------------------------------------------------
+    def _write_settings(self, tmp_path: Path, **overrides: object) -> Path:
+        """Write a minimal settings.json under ``tmp_path/.zolletta-metaskill``."""
+        settings: dict[str, object] = {
+            "language": "python",
+            "documentation": {},
+        }
+        doc_overrides = overrides.pop("documentation", None)
+        if isinstance(doc_overrides, dict):
+            base_doc = settings["documentation"]
+            assert isinstance(base_doc, dict)
+            base_doc.update(doc_overrides)
+        settings.update(overrides)
+        meta = tmp_path / ".zolletta-metaskill"
+        meta.mkdir(parents=True, exist_ok=True)
+        path = meta / "settings.json"
+        path.write_text(json.dumps(settings))
+        return path
 
+    def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
+        """Chdir into tmp_path and run main() with *argv*."""
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", argv)
+        return DocStalenessScorer.main()
 
-class TestMain:
-    def test_not_a_directory(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        f = tmp_path / "file.txt"
-        f.write_text("not a dir")
-        monkeypatch.setattr(sys, "argv", ["doc_staleness_scorer.py", str(f)])
-        with pytest.raises(SystemExit) as exc:
-            DocStalenessScorer.main()
-        assert exc.value.code == 2
+    def _patch_git(self) -> tuple[Any, Any]:
+        """Patch the git-dependent helpers so no real git history is needed."""
+        return (
+            patch.object(DocStalenessScorer, "get_file_last_commit_date", return_value=None),
+            patch.object(DocStalenessScorer, "get_latest_tag", return_value=None),
+        )
 
     def test_no_docs_json(
         self,
@@ -894,11 +839,9 @@ class TestMain:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["doc_staleness_scorer.py", str(tmp_path), "--json"])
-        with pytest.raises(SystemExit) as exc:
-            DocStalenessScorer.main()
-        assert exc.value.code == 0
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
         out = capsys.readouterr().out
+        assert rc == 0
         assert json.loads(out)["error"] == "No documentation files found"
 
     def test_no_docs_text(
@@ -907,209 +850,164 @@ class TestMain:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["doc_staleness_scorer.py", str(tmp_path)])
-        with pytest.raises(SystemExit) as exc:
-            DocStalenessScorer.main()
-        assert exc.value.code == 0
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
+        assert rc == 0
         assert "No documentation files found" in out
 
     def test_no_docs_quiet(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["doc_staleness_scorer.py", str(tmp_path), "--quiet"],
-        )
-        with pytest.raises(SystemExit) as exc:
-            DocStalenessScorer.main()
-        assert exc.value.code == 0
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--quiet"])
         out = capsys.readouterr().out.strip()
+        assert rc == 0
         assert out == "0"
 
-    def test_object_with_docs_raises_systemexit(
+    def test_with_docs(
         self,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         (tmp_path / "README.md").write_text("# Installation\n\n# Usage\n\n" + "content\n" * 15)
-        monkeypatch.setattr(sys, "argv", ["doc_staleness_scorer.py", str(tmp_path)])
-        with (
-            patch.object(DocStalenessScorer, "get_file_last_commit_date", return_value=None),
-            patch.object(DocStalenessScorer, "get_latest_tag", return_value=None),
-        ):
-            with pytest.raises(SystemExit) as exc:
-                DocStalenessScorer.main()
-            assert exc.value.code == 0
-            out = capsys.readouterr().out
-            assert "Documentation Staleness Report" in out
+        p1, p2 = self._patch_git()
+        with p1, p2:
+            rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "Documentation Staleness Report" in out
 
-    def test_object_readme_focus_raises_systemexit(
+    def test_readme_focus_setting(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path, documentation={"readme_focus": True})
         (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
         (tmp_path / "guide.md").write_text("# Guide\n\n" + "content\n" * 15)
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["doc_staleness_scorer.py", str(tmp_path), "--readme-focus"],
-        )
+        p1, p2 = self._patch_git()
+        score = {
+            "file": "README.md",
+            "total_score": 50.0,
+            "label": "fair",
+            "dimensions": {},
+        }
         with (
-            patch.object(DocStalenessScorer, "get_file_last_commit_date", return_value=None),
-            patch.object(DocStalenessScorer, "get_latest_tag", return_value=None),
+            p1,
+            p2,
+            patch.object(DocStalenessScorer, "score_document", return_value=score) as mock_score,
         ):
-            with pytest.raises(SystemExit) as exc:
-                DocStalenessScorer.main()
-            assert exc.value.code == 0
+            rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
+        assert mock_score.call_count == 1
 
-    def test_object_threshold_fail_raises_systemexit(
+    def test_threshold_fail(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path, documentation={"staleness_threshold": 99})
         (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["doc_staleness_scorer.py", str(tmp_path), "--threshold", "99"],
-        )
-        with (
-            patch.object(DocStalenessScorer, "get_file_last_commit_date", return_value=None),
-            patch.object(DocStalenessScorer, "get_latest_tag", return_value=None),
-        ):
-            with pytest.raises(SystemExit) as exc:
-                DocStalenessScorer.main()
-            assert exc.value.code == 1
+        p1, p2 = self._patch_git()
+        with p1, p2:
+            rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert "FAILED" in err
 
-    def test_object_threshold_pass_raises_systemexit(
+    def test_threshold_fail_quiet_suppresses_message(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path, documentation={"staleness_threshold": 99})
+        (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
+        p1, p2 = self._patch_git()
+        with p1, p2:
+            rc = self._run(tmp_path, monkeypatch, ["prog", "--quiet"])
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert "FAILED" not in err
+
+    def test_threshold_pass(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        self._write_settings(tmp_path, documentation={"staleness_threshold": 10})
         (tmp_path / "README.md").write_text(
             "# Installation\n\n# Usage\n\n# API\n\n# Contributing\n\n# License\n" + "x\n" * 15
         )
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["doc_staleness_scorer.py", str(tmp_path), "--threshold", "10"],
-        )
-        with (
-            patch.object(DocStalenessScorer, "get_file_last_commit_date", return_value=None),
-            patch.object(DocStalenessScorer, "get_latest_tag", return_value=None),
-        ):
-            with pytest.raises(SystemExit) as exc:
-                DocStalenessScorer.main()
-            assert exc.value.code == 0
+        p1, p2 = self._patch_git()
+        with p1, p2:
+            rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
 
-    def test_object_custom_weights_raises_systemexit(
+    def test_custom_weights_setting(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(
+            tmp_path,
+            documentation={
+                "staleness_weights": {
+                    "last_updated": 0.5,
+                    "code_doc_alignment": 0.5,
+                    "link_health": 0.2,
+                    "completeness": 0.2,
+                    "accuracy": 0.2,
+                }
+            },
+        )
         (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "doc_staleness_scorer.py",
-                str(tmp_path),
-                "--weight-updated",
-                "0.5",
-                "--weight-alignment",
-                "0.5",
-            ],
-        )
-        with (
-            patch.object(DocStalenessScorer, "get_file_last_commit_date", return_value=None),
-            patch.object(DocStalenessScorer, "get_latest_tag", return_value=None),
-        ):
-            with pytest.raises(SystemExit) as exc:
-                DocStalenessScorer.main()
-            assert exc.value.code == 0
+        p1, p2 = self._patch_git()
+        with p1, p2:
+            rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
 
-    def test_all_weight_flags(
+    def test_weights_non_numeric_ignored(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(
+            tmp_path, documentation={"staleness_weights": {"last_updated": "high"}}
+        )
         (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "doc_staleness_scorer.py",
-                str(tmp_path),
-                "--weight-links",
-                "0.2",
-                "--weight-completeness",
-                "0.2",
-                "--weight-accuracy",
-                "0.2",
-            ],
-        )
-        with (
-            patch.object(DocStalenessScorer, "get_file_last_commit_date", return_value=None),
-            patch.object(DocStalenessScorer, "get_latest_tag", return_value=None),
-        ):
-            with pytest.raises(SystemExit) as exc:
-                DocStalenessScorer.main()
-            assert exc.value.code == 0
+        p1, p2 = self._patch_git()
+        with p1, p2:
+            rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
 
-    def test_required_sections_override(
+    def test_required_sections_setting(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        self._write_settings(tmp_path, documentation={"readme_sections": ["Foo", "Bar"]})
         (tmp_path / "README.md").write_text("# Foo\n\n# Bar\n" + "content\n" * 15)
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "doc_staleness_scorer.py",
-                str(tmp_path),
-                "--required-sections",
-                "Foo,Bar",
-            ],
-        )
-        with (
-            patch.object(DocStalenessScorer, "get_file_last_commit_date", return_value=None),
-            patch.object(DocStalenessScorer, "get_latest_tag", return_value=None),
-        ):
-            with pytest.raises(SystemExit) as exc:
-                DocStalenessScorer.main()
-            assert exc.value.code == 0
+        p1, p2 = self._patch_git()
+        with p1, p2:
+            rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
 
-    def test_object_json_output_raises_systemexit(
+    def test_json_output(
         self,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
-        monkeypatch.setattr(sys, "argv", ["doc_staleness_scorer.py", str(tmp_path), "--json"])
-        with (
-            patch.object(DocStalenessScorer, "get_file_last_commit_date", return_value=None),
-            patch.object(DocStalenessScorer, "get_latest_tag", return_value=None),
-        ):
-            with pytest.raises(SystemExit) as exc:
-                DocStalenessScorer.main()
-            assert exc.value.code == 0
-            out = capsys.readouterr().out
-            data = json.loads(out)
-            assert "aggregate_score" in data
+        p1, p2 = self._patch_git()
+        with p1, p2:
+            rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        assert rc == 0
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert "aggregate_score" in data
 
-    def test_object_quiet_output_raises_systemexit(
+    def test_quiet_output(
         self,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
-        monkeypatch.setattr(sys, "argv", ["doc_staleness_scorer.py", str(tmp_path), "--quiet"])
-        with (
-            patch.object(DocStalenessScorer, "get_file_last_commit_date", return_value=None),
-            patch.object(DocStalenessScorer, "get_latest_tag", return_value=None),
-        ):
-            with pytest.raises(SystemExit) as exc:
-                DocStalenessScorer.main()
-            assert exc.value.code == 0
-            out = capsys.readouterr().out.strip()
-            float(out)  # should be a number
+        p1, p2 = self._patch_git()
+        with p1, p2:
+            rc = self._run(tmp_path, monkeypatch, ["prog", "--quiet"])
+        assert rc == 0
+        out = capsys.readouterr().out.strip()
+        float(out)  # should be a number
 
-    def test_dumps_diataxis_translations_raises_systemexit(
+    def test_diataxis_translations_setting(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         trans = tmp_path / "trans.json"
@@ -1121,32 +1019,17 @@ class TestMain:
                 }
             )
         )
+        self._write_settings(tmp_path, documentation={"diataxis_translations": str(trans)})
         (tmp_path / "README.md").write_text("# Installazione\n\n# Utilizzo\n" + "content\n" * 15)
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "doc_staleness_scorer.py",
-                str(tmp_path),
-                "--diataxis-translations",
-                str(trans),
-            ],
-        )
-        with (
-            patch.object(DocStalenessScorer, "get_file_last_commit_date", return_value=None),
-            patch.object(DocStalenessScorer, "get_latest_tag", return_value=None),
-        ):
-            with pytest.raises(SystemExit) as exc:
-                DocStalenessScorer.main()
-            assert exc.value.code == 0
+        p1, p2 = self._patch_git()
+        with p1, p2:
+            rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
 
     def test_diataxis_translations_no_readme_sections(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """Translations without readme_sections fall back.
-
-        Uses DocStalenessScorer.DEFAULT_README_SECTIONS.
-        """
+        """Translations without readme_sections fall back to DEFAULT_README_SECTIONS."""
         trans = tmp_path / "trans.json"
         trans.write_text(
             json.dumps(
@@ -1155,21 +1038,39 @@ class TestMain:
                 }
             )
         )
+        self._write_settings(tmp_path, documentation={"diataxis_translations": str(trans)})
         (tmp_path / "README.md").write_text("# Installation\n\n# Usage\n" + "content\n" * 15)
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "doc_staleness_scorer.py",
-                str(tmp_path),
-                "--diataxis-translations",
-                str(trans),
-            ],
+        p1, p2 = self._patch_git()
+        with p1, p2:
+            rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
+
+    def test_readme_sections_override_translations(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Explicit readme_sections win over the translations file's."""
+        trans = tmp_path / "trans.json"
+        trans.write_text(json.dumps({"readme_sections": ["installazione", "utilizzo"]}))
+        self._write_settings(
+            tmp_path,
+            documentation={
+                "diataxis_translations": str(trans),
+                "readme_sections": ["Foo"],
+            },
         )
+        (tmp_path / "README.md").write_text("# Foo\n" + "content\n" * 15)
+        p1, p2 = self._patch_git()
+        score = {
+            "file": "README.md",
+            "total_score": 50.0,
+            "label": "fair",
+            "dimensions": {},
+        }
         with (
-            patch.object(DocStalenessScorer, "get_file_last_commit_date", return_value=None),
-            patch.object(DocStalenessScorer, "get_latest_tag", return_value=None),
+            p1,
+            p2,
+            patch.object(DocStalenessScorer, "score_document", return_value=score) as mock_score,
         ):
-            with pytest.raises(SystemExit) as exc:
-                DocStalenessScorer.main()
-            assert exc.value.code == 0
+            rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
+        assert mock_score.call_args.args[3] == ["Foo"]

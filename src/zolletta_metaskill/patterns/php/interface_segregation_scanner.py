@@ -10,33 +10,33 @@ This scanner uses :class:`~zolletta_metaskill.core.structs.ModuleInfo`
 directly (no raw tree-sitter AST needed):
 
 - Interfaces are classes with ``is_abstract=True`` and no attributes.
-- An interface with more than ``--min-methods`` methods (default: 7) is
-  flagged as a "fat interface".
+- An interface with more than ``php.patterns.isp_min_methods`` methods
+  (default: 7) is flagged as a "fat interface".
+
+Scan roots come from ``php.autoload.psr-4`` in ``settings.json``. The check
+runs when ``php.patterns.check_isp`` is not ``false``. File enumeration is
+git-ignore aware.
 
 Usage:
-    python3 interface_segregation_scanner.py <directory>
-        [--min-methods N] [--skip] [--strict]
-
-Arguments:
-    directory       Root directory to scan (default: src)
+    python3 interface_segregation_scanner.py [--json]
 
 Options:
-    --min-methods N   Minimum method count to flag as fat (default: 7)
-    --skip            Skip this check entirely
-    --strict          Exit with code 1 if violations are found
+    --json            Output as JSON instead of markdown.
 
-Exit code: 0 if no violations (or --skip), 1 if violations found with --strict.
+Exit code: 0 always (report-only).
 
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
 from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
 from zolletta_metaskill.core.engine.php_engine import PHPEngine
+from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.core.structs import ClassInfo, Finding, ModuleInfo
 
 
@@ -160,51 +160,64 @@ class InterfaceSegregationScanner:
                 "detect fat interfaces with too many methods."
             )
         )
-        parser.add_argument(
-            "directory",
-            nargs="?",
-            default="src",
-            help="Root directory to scan (default: src)",
-        )
-        parser.add_argument(
-            "--min-methods",
-            type=int,
-            default=InterfaceSegregationScanner._DEFAULT_MIN_METHODS,
-            help=(
-                f"Min method count to flag as fat (default: "
-                f"{InterfaceSegregationScanner._DEFAULT_MIN_METHODS})"
-            ),
-        )
-        parser.add_argument(
-            "--skip",
-            action="store_true",
-            help="Skip this check entirely (exit 0 with 'skipped' message)",
-        )
-        parser.add_argument(
-            "--strict",
-            action="store_true",
-            help="Exit with code 1 if violations are found",
-        )
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
         args = parser.parse_args()
 
         InterfaceSegregationScanner._ensure_php_engine()
-        if args.skip:
-            print("=" * 70)
-            print("PHP INTERFACE SEGREGATION (ISP) — VALIDATION REPORT")
-            print("=" * 70)
-            print("\nResult: SKIPPED (--skip flag)\n")
+
+        settings = ProjectConfig.load_settings()
+        languages = ProjectConfig.scan_languages(settings, "patterns.check_isp")
+        php_langs = ProjectConfig.languages_for_extensions(languages, {".php"})
+        if not php_langs:
+            ProjectConfig.emit_skipped(args.json, "check_isp disabled in settings.json")
             return 0
 
-        root = Path(args.directory)
-        if not root.exists():
-            print(f"Error: directory '{root}' does not exist", file=sys.stderr)
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, php_langs))
+        if not roots:
+            print(
+                "Error: no configured source directories exist on disk",
+                file=sys.stderr,
+            )
             return 1
 
+        raw_min = ProjectConfig.setting(settings, "php.patterns.isp_min_methods", None)
+        min_methods = (
+            raw_min
+            if isinstance(raw_min, int)
+            else InterfaceSegregationScanner._DEFAULT_MIN_METHODS
+        )
+
         all_findings: list[Finding] = []
-        for php_file in root.rglob("*.php"):
-            all_findings.extend(
-                InterfaceSegregationScanner.scan_file(php_file, min_methods=args.min_methods)
+        scanned_files = 0
+        for root in roots:
+            for php_file in ProjectConfig.iter_files(root, {".php"}):
+                scanned_files += 1
+                all_findings.extend(
+                    InterfaceSegregationScanner.scan_file(php_file, min_methods=min_methods)
+                )
+
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "directories": [str(r) for r in roots],
+                        "scanned_files": scanned_files,
+                        "min_methods": min_methods,
+                        "violation_count": len(all_findings),
+                        "violations": [
+                            {
+                                "file": f.file,
+                                "line": f.line,
+                                "severity": f.severity,
+                                "description": f.description,
+                            }
+                            for f in all_findings
+                        ],
+                    },
+                    indent=2,
+                )
             )
+            return 0
 
         print("=" * 70)
         print("PHP INTERFACE SEGREGATION (ISP) — VALIDATION REPORT")
@@ -213,21 +226,14 @@ class InterfaceSegregationScanner:
         if all_findings:
             print(f"\n## Fat interfaces ({len(all_findings)} found)\n")
             for f in all_findings:
-                try:
-                    rel = str(Path(f.file).relative_to(root))
-                except ValueError:  # pragma: no cover
-                    rel = f.file  # pragma: no cover
                 print(f"  {f.description}")
-                print(f"    -> {rel}:{f.line}")
+                print(f"    -> {f.file}:{f.line}")
                 print("    Fix: split into smaller, focused interfaces")
         else:
-            print(f"\n## Fat interfaces: none (threshold: {args.min_methods} methods)")
+            print(f"\n## Fat interfaces: none (threshold: {min_methods} methods)")
 
         print()
-        if all_findings and args.strict:
-            print("Result: ISP VIOLATIONS FOUND (strict mode)")
-            return 1
-        elif all_findings:
+        if all_findings:
             print("Result: ISP violations found (report-only mode)")
         else:
             print("Result: all clear")

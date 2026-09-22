@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import json
 import sys
 from pathlib import Path
 
@@ -11,12 +12,28 @@ import pytest
 from zolletta_metaskill.code_style.python.docstring_streamliner import DocstringStreamliner
 from zolletta_metaskill.code_style.python.structs import FileReport
 
-# ---------------------------------------------------------------------------
-# _is_section_header
-# ---------------------------------------------------------------------------
+
+def _write_settings(dirpath: Path, **overrides: object) -> Path:
+    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
+    settings: dict[str, object] = {
+        "language": "python",
+        "python": {
+            "code_style": {},
+            "paths": {"source": ["src"], "tests": ["tests"], "package": "mypkg"},
+        },
+        "php": None,
+    }
+    settings.update(overrides)
+    meta = dirpath / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    path = meta / "settings.json"
+    path.write_text(json.dumps(settings))
+    return path
 
 
-class TestIsSectionHeader:
+class TestDocstringStreamliner:
+    # --- _is_section_header ---
+
     def test_is_section_header_args_header_returns_true(self) -> None:
         assert DocstringStreamliner._is_section_header("Args:") is True
 
@@ -41,13 +58,8 @@ class TestIsSectionHeader:
     def test_is_section_header_tab_indented_returns_false(self) -> None:
         assert DocstringStreamliner._is_section_header("\tArgs:") is False
 
+    # --- parse_docstring ---
 
-# ---------------------------------------------------------------------------
-# parse_docstring
-# ---------------------------------------------------------------------------
-
-
-class TestParseDocstring:
     def test_parse_docstring_summary_only_returns_empty_list(self) -> None:
         summary, sections = DocstringStreamliner.parse_docstring("A short summary.")
         assert summary == ["A short summary."]
@@ -84,13 +96,8 @@ class TestParseDocstring:
         assert "Summary." in summary
         assert len(sections) == 1
 
+    # --- rebuild_docstring ---
 
-# ---------------------------------------------------------------------------
-# rebuild_docstring
-# ---------------------------------------------------------------------------
-
-
-class TestRebuildDocstring:
     def test_rebuild_docstring_summary_only_returns_summary(self) -> None:
         result = DocstringStreamliner.rebuild_docstring(["Summary."], [])
         assert result == "Summary."
@@ -126,13 +133,8 @@ class TestRebuildDocstring:
         # The trailing blank from the body is removed, then D413 blank is appended
         assert result == "Summary.\n\nArgs:\n    x: the x\n"
 
+    # --- _arg_name_from_entry ---
 
-# ---------------------------------------------------------------------------
-# _arg_name_from_entry
-# ---------------------------------------------------------------------------
-
-
-class TestArgNameFromEntry:
     def test_arg_name_from_entry_plain_name_returns_x(self) -> None:
         assert DocstringStreamliner._arg_name_from_entry("x") == "x"
 
@@ -145,20 +147,15 @@ class TestArgNameFromEntry:
     def test_star_star_kwargs(self) -> None:
         assert DocstringStreamliner._arg_name_from_entry("**kwargs") == "kwargs"
 
+    # --- is_trivial_arg_desc ---
 
-# ---------------------------------------------------------------------------
-# is_trivial_arg_desc
-# ---------------------------------------------------------------------------
-
-
-class TestIsTrivialArgDesc:
-    def test_empty_desc_with_annotation(self) -> None:
+    def test_arg_empty_desc_with_annotation(self) -> None:
         assert DocstringStreamliner.is_trivial_arg_desc("x", "", "int") is True
 
-    def test_empty_desc_without_annotation(self) -> None:
+    def test_arg_empty_desc_without_annotation(self) -> None:
         assert DocstringStreamliner.is_trivial_arg_desc("x", "", None) is False
 
-    def test_desc_equals_annotation(self) -> None:
+    def test_arg_desc_equals_annotation(self) -> None:
         assert DocstringStreamliner.is_trivial_arg_desc("x", "int", "int") is True
 
     def test_desc_equals_arg_name(self) -> None:
@@ -173,7 +170,7 @@ class TestIsTrivialArgDesc:
     def test_desc_an_arg_name(self) -> None:
         assert DocstringStreamliner.is_trivial_arg_desc("x", "an x", "int") is True
 
-    def test_desc_with_trailing_period(self) -> None:
+    def test_arg_desc_with_trailing_period(self) -> None:
         assert DocstringStreamliner.is_trivial_arg_desc("x", "the x.", "int") is True
 
     def test_is_trivial_arg_desc_meaningful_desc_returns_false(self) -> None:
@@ -182,35 +179,25 @@ class TestIsTrivialArgDesc:
     def test_no_annotation_keeps_section(self) -> None:
         assert DocstringStreamliner.is_trivial_arg_desc("x", "some desc", None) is False
 
+    # --- is_trivial_returns_desc ---
 
-# ---------------------------------------------------------------------------
-# is_trivial_returns_desc
-# ---------------------------------------------------------------------------
-
-
-class TestIsTrivialReturnsDesc:
-    def test_empty_desc_with_annotation(self) -> None:
+    def test_returns_empty_desc_with_annotation(self) -> None:
         assert DocstringStreamliner.is_trivial_returns_desc("", "int") is True
 
-    def test_empty_desc_without_annotation(self) -> None:
+    def test_returns_empty_desc_without_annotation(self) -> None:
         assert DocstringStreamliner.is_trivial_returns_desc("", None) is False
 
-    def test_desc_equals_annotation(self) -> None:
+    def test_returns_desc_equals_annotation(self) -> None:
         assert DocstringStreamliner.is_trivial_returns_desc("int", "int") is True
 
     def test_is_trivial_returns_desc_meaningful_desc_returns_false(self) -> None:
         assert DocstringStreamliner.is_trivial_returns_desc("the count", "int") is False
 
-    def test_desc_with_trailing_period(self) -> None:
+    def test_returns_desc_with_trailing_period(self) -> None:
         assert DocstringStreamliner.is_trivial_returns_desc("int.", "int") is True
 
+    # --- _annotation_str ---
 
-# ---------------------------------------------------------------------------
-# _annotation_str
-# ---------------------------------------------------------------------------
-
-
-class TestAnnotationStr:
     def test_annotation_str_none_annotation_returns_none(self) -> None:
         assert DocstringStreamliner._annotation_str(None) is None
 
@@ -228,13 +215,8 @@ class TestAnnotationStr:
         ann = stmt.annotation
         assert DocstringStreamliner._annotation_str(ann) == "list[int]"
 
+    # --- get_arg_annotations / get_return_annotation ---
 
-# ---------------------------------------------------------------------------
-# get_arg_annotations / get_return_annotation
-# ---------------------------------------------------------------------------
-
-
-class TestArgAnnotations:
     def test_get_arg_annotations_simple_function_returns_dict(self) -> None:
         tree = ast.parse("def f(x: int, y: str) -> bool: ...")
         node = tree.body[0]
@@ -276,13 +258,8 @@ class TestArgAnnotations:
         assert isinstance(node, ast.FunctionDef)
         assert DocstringStreamliner.get_return_annotation(node) is None
 
+    # --- _is_private / _is_test_function / _is_test_file / _is_nested ---
 
-# ---------------------------------------------------------------------------
-# _is_private / _is_test_function / _is_test_file / _is_nested
-# ---------------------------------------------------------------------------
-
-
-class TestPredicates:
     def test_is_private_private_name_returns_true(self) -> None:
         assert DocstringStreamliner._is_private("_helper") is True
 
@@ -326,13 +303,8 @@ class TestPredicates:
         assert isinstance(node, ast.FunctionDef)
         assert DocstringStreamliner._is_nested(node) is False
 
+    # --- _detect_prefix_quote ---
 
-# ---------------------------------------------------------------------------
-# _detect_prefix_quote
-# ---------------------------------------------------------------------------
-
-
-class TestDetectPrefixQuote:
     def test_simple_triple_quote(self) -> None:
         result = DocstringStreamliner._detect_prefix_quote('    """doc"""')
         assert result is not None
@@ -360,13 +332,8 @@ class TestDetectPrefixQuote:
         assert prefix == ""
         assert quote == '"""'
 
+    # --- render_docstring ---
 
-# ---------------------------------------------------------------------------
-# render_docstring
-# ---------------------------------------------------------------------------
-
-
-class TestRenderDocstring:
     def test_render_docstring_single_line_returns_a_summary(self) -> None:
         result = DocstringStreamliner.render_docstring("    ", "", '"""', "A summary.")
         assert result == '    """A summary."""'
@@ -387,13 +354,8 @@ class TestRenderDocstring:
         result = DocstringStreamliner.render_docstring("    ", "r", '"""', "raw doc")
         assert result == '    r"""raw doc"""'
 
+    # --- _parse_args_entries ---
 
-# ---------------------------------------------------------------------------
-# _parse_args_entries
-# ---------------------------------------------------------------------------
-
-
-class TestParseArgsEntries:
     def test_parse_args_entries_single_entry_returns_single_item(self) -> None:
         entries = DocstringStreamliner._parse_args_entries(["    x: the x value"])
         assert entries == [("x", "the x value")]
@@ -423,13 +385,8 @@ class TestParseArgsEntries:
         entries = DocstringStreamliner._parse_args_entries(body)
         assert len(entries) == 2
 
+    # --- _args_section_is_redundant / _returns_section_is_redundant ---
 
-# ---------------------------------------------------------------------------
-# _args_section_is_redundant / _returns_section_is_redundant
-# ---------------------------------------------------------------------------
-
-
-class TestArgsSectionRedundant:
     def test_args_section_is_redundant_all_trivial_returns_true(self) -> None:
         body = ["    x: int", "    y: str"]
         anns: dict[str, str | None] = {"x": "int", "y": "str"}
@@ -453,8 +410,8 @@ class TestArgsSectionRedundant:
     def test_empty_args_section(self) -> None:
         assert DocstringStreamliner._args_section_is_redundant([], {}) is True
 
+    # --- ReturnsSectionRedundant ---
 
-class TestReturnsSectionRedundant:
     def test_returns_section_is_redundant_trivial_empty_returns_true(self) -> None:
         assert DocstringStreamliner._returns_section_is_redundant([], "int") is True
 
@@ -467,13 +424,8 @@ class TestReturnsSectionRedundant:
     def test_returns_section_is_redundant_no_annotation_returns_false(self) -> None:
         assert DocstringStreamliner._returns_section_is_redundant(["some desc"], None) is False
 
+    # --- _init_is_obvious ---
 
-# ---------------------------------------------------------------------------
-# _init_is_obvious
-# ---------------------------------------------------------------------------
-
-
-class TestInitIsObvious:
     def test_init_is_obvious_all_annotated_returns_true(self) -> None:
         assert DocstringStreamliner._init_is_obvious({"self": None, "x": "int", "y": "str"}) is True
 
@@ -486,13 +438,8 @@ class TestInitIsObvious:
     def test_init_is_obvious_cls_skipped_returns_true(self) -> None:
         assert DocstringStreamliner._init_is_obvious({"cls": None, "x": "int"}) is True
 
+    # --- _analyze_function ---
 
-# ---------------------------------------------------------------------------
-# _analyze_function
-# ---------------------------------------------------------------------------
-
-
-class TestAnalyzeFunction:
     def _parse(self, source: str) -> ast.FunctionDef:
         tree = ast.parse(source)
         DocstringStreamliner._annotate_parents(tree)
@@ -637,13 +584,8 @@ class TestAnalyzeFunction:
         # Raises is kept
         assert "Raises" not in finding.detail
 
+    # --- process_file ---
 
-# ---------------------------------------------------------------------------
-# process_file
-# ---------------------------------------------------------------------------
-
-
-class TestProcessFile:
     def test_file_with_findings(self, tmp_path: Path) -> None:
         src = tmp_path / "mod.py"
         src.write_text(
@@ -685,13 +627,8 @@ class TestProcessFile:
         assert len(report.findings) == 1
         assert report.findings[0].kind == "private"
 
+    # --- apply_edits ---
 
-# ---------------------------------------------------------------------------
-# apply_edits
-# ---------------------------------------------------------------------------
-
-
-class TestApplyEdits:
     def test_remove_redundant_args(self, tmp_path: Path) -> None:
         src = tmp_path / "mod.py"
         original = 'def f(x: int) -> None:\n    """Summary.\n\nArgs:\n    x: int"""\n    pass\n'
@@ -760,30 +697,26 @@ class TestApplyEdits:
         # The result should not end with a newline (preserving original)
         assert not result.endswith("\n")
 
+    # --- _rel ---
 
-# ---------------------------------------------------------------------------
-# _rel
-# ---------------------------------------------------------------------------
+    def test_rel_relative_path_returns_foo_py(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        assert DocstringStreamliner._rel(Path("src/foo.py").resolve()) == "src/foo.py"
 
+    def test_rel_not_relative_returns_other_foo_py(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        assert DocstringStreamliner._rel(Path("/other/foo.py")) == "/other/foo.py"
 
-class TestRel:
-    def test_rel_relative_path_returns_foo_py(self) -> None:
-        assert DocstringStreamliner._rel(Path("src/foo.py"), Path("src")) == "foo.py"
+    # --- print_report ---
 
-    def test_rel_not_relative_returns_other_foo_py(self) -> None:
-        assert DocstringStreamliner._rel(Path("/other/foo.py"), Path("src")) == "/other/foo.py"
-
-
-# ---------------------------------------------------------------------------
-# print_report
-# ---------------------------------------------------------------------------
-
-
-class TestPrintReport:
     def test_print_report_no_findings_contains_all_clear(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        total = DocstringStreamliner.print_report([], Path("src"), apply_mode=False)
+        total = DocstringStreamliner.print_report([], apply_mode=False)
         captured = capsys.readouterr()
         assert total == 0
         assert "all clear" in captured.out
@@ -802,7 +735,7 @@ class TestPrintReport:
         )
         assert finding is not None
         report = FileReport(path=Path("src/mod.py"), findings=[finding])
-        total = DocstringStreamliner.print_report([report], Path("src"), apply_mode=False)
+        total = DocstringStreamliner.print_report([report], apply_mode=False)
         captured = capsys.readouterr()
         assert total == 1
         assert "Redundant" in captured.out
@@ -821,82 +754,120 @@ class TestPrintReport:
         )
         assert finding is not None
         report = FileReport(path=Path("src/mod.py"), findings=[finding])
-        total = DocstringStreamliner.print_report([report], Path("src"), apply_mode=True)
+        total = DocstringStreamliner.print_report([report], apply_mode=True)
         captured = capsys.readouterr()
         assert total == 1
         assert "apply mode" in captured.out
 
+    # --- Tests for DocstringStreamliner.main(). ---
 
-# ---------------------------------------------------------------------------
-# main
-# ---------------------------------------------------------------------------
+    def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
+        """Chdir into tmp_path and run main() with *argv*."""
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", argv)
+        return DocstringStreamliner.main()
 
-
-class TestMain:
-    def test_readouterr_skip_flag_contains_skipped(
-        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "src", "--skip"])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
-        assert rc == 0
-        assert "SKIPPED" in captured.out
-
-    def test_readouterr_nonexistent_directory_contains_does_not_exist(
-        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "/nonexistent/path/xyz"])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
-        assert rc == 1
-        assert "does not exist" in captured.err
-
-    def test_readouterr_no_findings_contains_all_clear(
+    def test_check_disabled_reports_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(
+            tmp_path,
+            python={"code_style": {"check_docstring_no_type_repeat": False}},
+        )
+        (tmp_path / "src").mkdir()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "SKIPPED" in out
+
+    def test_check_disabled_json(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(
+            tmp_path,
+            python={"code_style": {"check_docstring_no_type_repeat": False}},
+        )
+        (tmp_path / "src").mkdir()
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["skipped"] is True
+
+    def test_missing_src_reports_error(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        err = capsys.readouterr().err
+        assert rc == 1
+        assert "no configured Python source directories" in err
+
+    def test_no_findings_contains_all_clear(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text(
             'def f(x: int) -> None:\n    """Summary."""\n    pass\n',
             encoding="utf-8",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
         assert rc == 0
-        assert "all clear" in captured.out
+        assert "all clear" in out
 
     def test_findings_dry_run(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text(
             'def f(x: int) -> None:\n    """Summary.\n\nArgs:\n    x: int"""\n    pass\n',
             encoding="utf-8",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
         assert rc == 0
-        assert "dry-run" in captured.out
+        assert "dry-run" in out
 
-    def test_module_strict_flag_returns_1(
+    def test_findings_report_only(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        """Findings never produce a non-zero exit code."""
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text(
             'def f(x: int) -> None:\n    """Summary.\n\nArgs:\n    x: int"""\n    pass\n',
             encoding="utf-8",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--strict"])
-        rc = DocstringStreamliner.main()
-        assert rc == 1
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
 
-    def test_readouterr_apply_flag_excludes_value(
+    def test_json_output(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "mod.py").write_text(
+            'def f(x: int) -> None:\n    """Summary.\n\nArgs:\n    x: int"""\n    pass\n',
+            encoding="utf-8",
+        )
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["total"] == 1
+        assert report["apply_mode"] is False
+        assert report["findings"][0]["kind"] == "redundant"
+        assert "src" in report["directories"]
+
+    def test_apply_flag_writes_changes(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         mod = src / "mod.py"
@@ -904,33 +875,38 @@ class TestMain:
             'def f(x: int) -> None:\n    """Summary.\n\nArgs:\n    x: int"""\n    pass\n',
             encoding="utf-8",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--apply"])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--apply"])
+        out = capsys.readouterr().out
         assert rc == 0
-        assert "apply mode" in captured.out
-        # The file should have been modified
+        assert "apply mode" in out
         new_content = mod.read_text(encoding="utf-8")
         assert "Args:" not in new_content
 
-    def test_strip_private_flag(
+    def test_strip_private_setting(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(
+            tmp_path,
+            python={"code_style": {"docstring_strip_private": True}},
+        )
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text(
             'def _helper() -> None:\n    """Helper."""\n    pass\n',
             encoding="utf-8",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--strip-private"])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
         assert rc == 0
-        assert "Private" in captured.out
+        assert "Private" in out
 
-    def test_strip_tests_flag(
+    def test_strip_tests_setting(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(
+            tmp_path,
+            python={"code_style": {"docstring_strip_tests": True}},
+        )
         src = tmp_path / "src"
         tests = src / "tests"
         tests.mkdir(parents=True)
@@ -938,30 +914,36 @@ class TestMain:
             'def test_foo() -> None:\n    """Test foo."""\n    pass\n',
             encoding="utf-8",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--strip-tests"])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
         assert rc == 0
-        assert "Test function" in captured.out
+        assert "Test function" in out
 
-    def test_strip_nested_flag(
+    def test_strip_nested_setting(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(
+            tmp_path,
+            python={"code_style": {"docstring_strip_nested": True}},
+        )
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text(
             'def outer():\n    def inner():\n        """Nested."""\n        pass\n    pass\n',
             encoding="utf-8",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--strip-nested"])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
         assert rc == 0
-        assert "Nested" in captured.out
+        assert "Nested" in out
 
-    def test_strip_obvious_init_flag(
+    def test_strip_obvious_init_setting(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(
+            tmp_path,
+            python={"code_style": {"docstring_strip_obvious_init": True}},
+        )
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text(
@@ -971,45 +953,46 @@ class TestMain:
             "        pass\n",
             encoding="utf-8",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--strip-obvious-init"])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
         assert rc == 0
-        assert "obvious" in captured.out.lower()
+        assert "obvious" in out.lower()
 
-    def test_readouterr_ignore_dirs_contains_all_clear(
+    def test_empty_directory_contains_all_clear(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        src = tmp_path / "src"
-        skip = src / "skipme"
-        skip.mkdir(parents=True)
-        (skip / "mod.py").write_text(
-            'def f(x: int) -> None:\n    """Summary.\n\nArgs:\n    x: int"""\n    pass\n',
-            encoding="utf-8",
-        )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--ignore-dirs", "skipme"])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
+        _write_settings(tmp_path)
+        (tmp_path / "src").mkdir()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
         assert rc == 0
-        assert "all clear" in captured.out
-
-    def test_readouterr_empty_directory_contains_all_clear(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        src = tmp_path / "src"
-        src.mkdir()
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = DocstringStreamliner.main()
-        captured = capsys.readouterr()
-        assert rc == 0
-        assert "all clear" in captured.out
+        assert "all clear" in out
 
     def test_syntax_error_file_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "bad.py").write_text("def f(:\n    pass\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = DocstringStreamliner.main()
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         assert rc == 0
+
+    def test_gitignored_files_skipped(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import subprocess
+
+        subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+        (tmp_path / ".gitignore").write_text("ignored/\n")
+        _write_settings(tmp_path)
+        ignored = tmp_path / "src" / "ignored"
+        ignored.mkdir(parents=True)
+        (ignored / "mod.py").write_text(
+            'def f(x: int) -> None:\n    """Summary.\n\nArgs:\n    x: int"""\n    pass\n',
+            encoding="utf-8",
+        )
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "all clear" in out

@@ -11,35 +11,34 @@ Since :class:`~zolletta_metaskill.core.structs.ModuleInfo` does not capture
 ``instanceof`` expressions, this scanner uses
 :meth:`PHPEngine.parse_raw` to access the tree-sitter AST directly.
 
-Usage:
-    python3 open_closed_scanner.py <directory>
-        [--min-branches N] [--skip] [--strict]
+Scan roots come from ``php.autoload.psr-4`` in ``settings.json``; the
+branch threshold comes from ``php.patterns.ocp_min_branches`` (default: 3).
+The check runs when ``php.patterns.check_ocp`` is not ``false``. File
+enumeration is git-ignore aware.
 
-Arguments:
-    directory       Root directory to scan (default: src)
+Usage:
+    python3 open_closed_scanner.py [--json]
 
 Options:
-    --min-branches N   Minimum instanceof branches to flag (default: 3)
-    --skip             Skip this check entirely
-    --strict           Exit with code 1 if violations are found
+    --json             Output as JSON instead of markdown.
 
-Exit code: 0 if no violations (or --skip), 1 if violations found with --strict.
+Exit code: 0 always (report-only).
 
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
+
+from tree_sitter import Node
 
 from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
 from zolletta_metaskill.core.engine.php_engine import PHPEngine
+from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.core.structs import Finding, ModuleInfo
-
-if TYPE_CHECKING:
-    from tree_sitter import Node
 
 
 class OpenClosedScanner:
@@ -213,51 +212,62 @@ class OpenClosedScanner:
                 "PHP Open/Closed Principle (OCP) validator — detect if/elseif instanceof chains."
             )
         )
-        parser.add_argument(
-            "directory",
-            nargs="?",
-            default="src",
-            help="Root directory to scan (default: src)",
-        )
-        parser.add_argument(
-            "--min-branches",
-            type=int,
-            default=OpenClosedScanner._DEFAULT_MIN_BRANCHES,
-            help=(
-                f"Min instanceof branches to flag (default: "
-                f"{OpenClosedScanner._DEFAULT_MIN_BRANCHES})"
-            ),
-        )
-        parser.add_argument(
-            "--skip",
-            action="store_true",
-            help="Skip this check entirely (exit 0 with 'skipped' message)",
-        )
-        parser.add_argument(
-            "--strict",
-            action="store_true",
-            help="Exit with code 1 if violations are found",
-        )
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
         args = parser.parse_args()
 
         OpenClosedScanner._ensure_php_engine()
-        if args.skip:
-            print("=" * 70)
-            print("PHP OPEN/CLOSED PRINCIPLE (OCP) — VALIDATION REPORT")
-            print("=" * 70)
-            print("\nResult: SKIPPED (--skip flag)\n")
+
+        settings = ProjectConfig.load_settings()
+        languages = ProjectConfig.scan_languages(settings, "patterns.check_ocp")
+        php_langs = ProjectConfig.languages_for_extensions(languages, {".php"})
+        if not php_langs:
+            ProjectConfig.emit_skipped(args.json, "check_ocp disabled in settings.json")
             return 0
 
-        root = Path(args.directory)
-        if not root.exists():
-            print(f"Error: directory '{root}' does not exist", file=sys.stderr)
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, php_langs))
+        if not roots:
+            print(
+                "Error: no configured source directories exist on disk",
+                file=sys.stderr,
+            )
             return 1
 
+        raw_min = ProjectConfig.setting(settings, "php.patterns.ocp_min_branches", None)
+        min_branches = (
+            raw_min if isinstance(raw_min, int) else OpenClosedScanner._DEFAULT_MIN_BRANCHES
+        )
+
         all_findings: list[Finding] = []
-        for php_file in root.rglob("*.php"):
-            all_findings.extend(
-                OpenClosedScanner.scan_file(php_file, min_branches=args.min_branches)
+        scanned_files = 0
+        for root in roots:
+            for php_file in ProjectConfig.iter_files(root, {".php"}):
+                scanned_files += 1
+                all_findings.extend(
+                    OpenClosedScanner.scan_file(php_file, min_branches=min_branches)
+                )
+
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "directories": [str(r) for r in roots],
+                        "scanned_files": scanned_files,
+                        "min_branches": min_branches,
+                        "violation_count": len(all_findings),
+                        "violations": [
+                            {
+                                "file": f.file,
+                                "line": f.line,
+                                "severity": f.severity,
+                                "description": f.description,
+                            }
+                            for f in all_findings
+                        ],
+                    },
+                    indent=2,
+                )
             )
+            return 0
 
         print("=" * 70)
         print("PHP OPEN/CLOSED PRINCIPLE (OCP) — VALIDATION REPORT")
@@ -266,21 +276,14 @@ class OpenClosedScanner:
         if all_findings:
             print(f"\n## OCP violations ({len(all_findings)} found)\n")
             for f in all_findings:
-                try:
-                    rel = str(Path(f.file).relative_to(root))
-                except ValueError:  # pragma: no cover
-                    rel = f.file  # pragma: no cover
                 print(f"  {f.description}")
-                print(f"    -> {rel}:{f.line}")
+                print(f"    -> {f.file}:{f.line}")
                 print("    Fix: replace instanceof branching with polymorphism")
         else:
-            print(f"\n## OCP violations: none (threshold: {args.min_branches} branches)")
+            print(f"\n## OCP violations: none (threshold: {min_branches} branches)")
 
         print()
-        if all_findings and args.strict:
-            print("Result: OCP VIOLATIONS FOUND (strict mode)")
-            return 1
-        elif all_findings:
+        if all_findings:
             print("Result: OCP violations found (report-only mode)")
         else:
             print("Result: all clear")

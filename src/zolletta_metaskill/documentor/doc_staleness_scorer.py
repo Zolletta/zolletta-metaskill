@@ -8,13 +8,25 @@ Scores documentation freshness on a 0-100 scale using five weighted dimensions:
 - Completeness (20%): Whether expected sections exist
 - Accuracy (15%): Version strings, file paths, verifiable facts
 
+Scores the repository at the current directory. Behavior is configured in
+``.zolletta-metaskill/settings.json`` under ``documentation``:
+
+- ``staleness_threshold`` — fail (exit 1) when the aggregate score is below
+  this value (not set → report-only)
+- ``readme_focus`` — only score README files (default: false)
+- ``readme_sections`` — required sections for completeness scoring
+- ``diataxis_translations`` — path to a JSON file with translated Diátaxis
+  headings/directory names for non-English documentation
+- ``staleness_weights`` — per-dimension weight overrides
+  (``last_updated``, ``code_doc_alignment``, ``link_health``,
+  ``completeness``, ``accuracy``)
+
 Usage:
-    python doc_staleness_scorer.py /path/to/repo
-    python doc_staleness_scorer.py /path/to/repo --json
-    python doc_staleness_scorer.py /path/to/repo --threshold 60
-    python doc_staleness_scorer.py /path/to/repo --readme-focus
-    python doc_staleness_scorer.py /path/to/repo --required-sections "Installation,Usage,API"
-    python doc_staleness_scorer.py /path/to/repo --diataxis-translations translations.json
+    python doc_staleness_scorer.py [--json] [--quiet]
+
+Exit code: 0 normally; 1 when ``staleness_threshold`` is configured and the
+aggregate score falls below it (the only gate-keeping exception).
+
 """
 
 import argparse
@@ -26,6 +38,8 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+from zolletta_metaskill.core.project_config import ProjectConfig
 
 
 class DocStalenessScorer:
@@ -889,87 +903,69 @@ class DocStalenessScorer:
     # --- Main ---
 
     @staticmethod
-    def main() -> None:
+    def main() -> int:
         """Entry point for the documentation staleness scorer CLI."""
         parser = argparse.ArgumentParser(
-            description="Score documentation freshness on a 0-100 scale",
+            description="Score documentation freshness on a 0-100 scale for the "
+            "repository at the current directory. Configure via "
+            "documentation.* in .zolletta-metaskill/settings.json.",
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
-        parser.add_argument("repo_path", help="Path to the git repository")
         parser.add_argument("--json", action="store_true", help="Output as JSON")
-        parser.add_argument(
-            "--threshold",
-            type=float,
-            default=None,
-            help="Fail (exit 1) if aggregate score is below this value",
-        )
-        parser.add_argument("--readme-focus", action="store_true", help="Only score README files")
-        parser.add_argument(
-            "--required-sections",
-            default=None,
-            help="Comma-separated required sections for completeness scoring",
-        )
-        parser.add_argument(
-            "--diataxis-translations",
-            default=None,
-            help="Path to a JSON file with translated Diátaxis headings and "
-            "directory names (for non-English documentation). The English "
-            "signposts are built in; this file adds/replaces them with "
-            "language-specific equivalents.",
-        )
         parser.add_argument("--quiet", action="store_true", help="Only output score number")
-        parser.add_argument("--weight-updated", type=float, default=None)
-        parser.add_argument("--weight-alignment", type=float, default=None)
-        parser.add_argument("--weight-links", type=float, default=None)
-        parser.add_argument("--weight-completeness", type=float, default=None)
-        parser.add_argument("--weight-accuracy", type=float, default=None)
 
         args = parser.parse_args()
 
-        repo_path = os.path.abspath(args.repo_path)
-        if not os.path.isdir(repo_path):
-            print(f"Error: {repo_path} is not a directory", file=sys.stderr)
-            sys.exit(2)
+        repo_path = os.path.abspath(".")
+        settings = ProjectConfig.load_settings()
 
-        # Build weights
+        # Build weights (documentation.staleness_weights overrides defaults)
         weights = dict(DocStalenessScorer.DEFAULT_WEIGHTS)
-        if args.weight_updated is not None:
-            weights["last_updated"] = args.weight_updated
-        if args.weight_alignment is not None:
-            weights["code_doc_alignment"] = args.weight_alignment
-        if args.weight_links is not None:
-            weights["link_health"] = args.weight_links
-        if args.weight_completeness is not None:
-            weights["completeness"] = args.weight_completeness
-        if args.weight_accuracy is not None:
-            weights["accuracy"] = args.weight_accuracy
+        raw_weights = ProjectConfig.setting(settings, "documentation.staleness_weights", None)
+        if isinstance(raw_weights, dict):
+            for key in weights:
+                value = raw_weights.get(key)
+                if isinstance(value, (int, float)):
+                    weights[key] = float(value)
 
         # Normalize weights to sum to 1.0
         total_weight = sum(weights.values())
         if total_weight > 0:
             weights = {k: v / total_weight for k, v in weights.items()}
 
+        # Required sections (documentation.readme_sections overrides; the
+        # translations file can supply them when readme_sections is unset).
+        raw_sections = ProjectConfig.setting(settings, "documentation.readme_sections", None)
+        cli_sections = (
+            [s.strip() for s in raw_sections if isinstance(s, str)]
+            if isinstance(raw_sections, list)
+            else None
+        )
+
         # Load Diátaxis translations (non-English documentation)
-        if args.diataxis_translations:
-            translations = DocStalenessScorer._load_diataxis_translations(
-                args.diataxis_translations
-            )
+        translations_path = ProjectConfig.setting(
+            settings, "documentation.diataxis_translations", None
+        )
+        if isinstance(translations_path, str) and translations_path:
+            translations = DocStalenessScorer._load_diataxis_translations(translations_path)
             DocStalenessScorer._merge_translations(translations)
             translated_readme = translations.get("readme_sections")
-            if translated_readme and not args.required_sections:
+            if translated_readme and not cli_sections:
                 required_sections = [s.strip() for s in translated_readme]
             else:
                 required_sections = DocStalenessScorer.DEFAULT_README_SECTIONS
         else:
             required_sections = DocStalenessScorer.DEFAULT_README_SECTIONS
 
-        # Required sections (CLI override takes precedence)
-        if args.required_sections:
-            required_sections = [s.strip() for s in args.required_sections.split(",")]
+        # readme_sections from settings takes precedence
+        if cli_sections:
+            required_sections = cli_sections
+
+        readme_focus = bool(ProjectConfig.setting(settings, "documentation.readme_focus", False))
 
         # Find docs
         doc_files = DocStalenessScorer.find_doc_files(repo_path)
-        if args.readme_focus:
+        if readme_focus:
             doc_files = [d for d in doc_files if os.path.basename(d).lower().startswith("readme")]
 
         if not doc_files:
@@ -979,7 +975,7 @@ class DocStalenessScorer:
                 print(json.dumps({"error": "No documentation files found"}, indent=2))
             else:
                 print("No documentation files found.")
-            sys.exit(0)
+            return 0
 
         # Score each document
         scores = []
@@ -995,18 +991,19 @@ class DocStalenessScorer:
             report = DocStalenessScorer.generate_report(scores, as_json=args.json)
             print(report)
 
-        # Threshold check
-        if args.threshold is not None and aggregate < args.threshold:
+        # Threshold check (gate-keeping exception: exit 1 below configured score)
+        raw_threshold = ProjectConfig.setting(settings, "documentation.staleness_threshold", None)
+        threshold = float(raw_threshold) if isinstance(raw_threshold, (int, float)) else None
+        if threshold is not None and aggregate < threshold:
             if not args.quiet:
                 print(
-                    f"\nFAILED: Aggregate score {aggregate:.1f} is below "
-                    f"threshold {args.threshold}",
+                    f"\nFAILED: Aggregate score {aggregate:.1f} is below threshold {threshold}",
                     file=sys.stderr,
                 )
-            sys.exit(1)
+            return 1
 
-        sys.exit(0)
+        return 0
 
 
 if __name__ == "__main__":  # pragma: no cover
-    DocStalenessScorer.main()
+    sys.exit(DocStalenessScorer.main())

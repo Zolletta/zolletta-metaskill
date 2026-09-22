@@ -20,8 +20,8 @@ def _write_settings(tmp_path: Path, doc_dir: str) -> None:
     )
 
 
-class TestDetectDocConfig:
-    """Tests for DocConfigDetector.detect_doc_dir()."""
+class TestDocConfigDetector:
+    # --- Tests for DocConfigDetector.detect_doc_dir(). ---
 
     def test_detect_doc_dir_from_settings_returns_value(self, tmp_path: Path) -> None:
         """detect_doc_dir reads documentation.dir from settings.json."""
@@ -57,9 +57,7 @@ class TestDetectDocConfig:
         (settings_dir / "settings.json").write_text("not json", encoding="utf-8")
         assert DocConfigDetector.detect_doc_dir(tmp_path) == "docs"
 
-
-class TestMain:
-    """Tests for DocConfigDetector.main()."""
+    # --- Tests for DocConfigDetector.main(). ---
 
     def test_main_prints_docs(
         self,

@@ -49,7 +49,7 @@ This skill is organized into a lean entry point (this file) plus shared referenc
 | [code-exploration.md](../../docs/reference/code/code-exploration.md)                      | on demand | Code graph tools (tokensave) decision tree, subagent guidance, and task templates — **shared**                                                                                                                                                                                                                                  |
 | [tool-messages.md](../../docs/reference/tool-messages.md)                                 | on demand | "not installed" messages for the tool-failure handler — **shared**                                                                                                                                                                                                                                                              |
 
-**Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
+**Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
 
 ## Mandatory Procedure (Python)
 
@@ -94,7 +94,7 @@ When this skill runs a review, it writes its findings to a markdown file using t
 
 - **Path**: `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/patterns.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`; `runs_dir` from `settings.json`, default `.zolletta-metaskill`)
 - **Compound skills** (e.g. `zolletta-metaskill-review`) may override the folder and filename — follow their instructions instead
-- **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the [setup guard](../SKILL.md#setup-guard) — no manual setup needed
+- **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the [setup guard](../../SKILL.md#setup-guard) — no manual setup needed
 - **Format**: follow the [report template](assets/report_template.md) — grade at the top, scanning script results, findings grouped by severity with file/class/issue/principle/fix columns
 
 ## Best Practices Summary

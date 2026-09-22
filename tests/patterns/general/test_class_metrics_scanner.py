@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -11,7 +12,52 @@ from zolletta_metaskill.core.structs import Finding
 from zolletta_metaskill.patterns.general.class_metrics_scanner import ClassMetricsScanner
 
 
-class TestScanFile:
+def _write_settings(dirpath: Path, **overrides: object) -> Path:
+    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
+    settings: dict[str, object] = {
+        "language": "python",
+        "python": {
+            "patterns": {},
+            "paths": {"source": ["src"], "tests": ["tests"], "package": "mypkg"},
+        },
+        "php": None,
+    }
+    python_overrides = overrides.pop("python", None)
+    if isinstance(python_overrides, dict):
+        base_python = settings["python"]
+        assert isinstance(base_python, dict)
+        for key, value in python_overrides.items():
+            if isinstance(value, dict) and isinstance(base_python.get(key), dict):
+                base_python[key].update(value)
+            else:
+                base_python[key] = value
+    settings.update(overrides)
+    meta = dirpath / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    path = meta / "settings.json"
+    path.write_text(json.dumps(settings))
+    return path
+
+
+def test_write_settings_replaces_non_dict_python_value(tmp_path: Path) -> None:
+    """A non-dict ``python`` override value replaces the base value."""
+    path = _write_settings(tmp_path, python={"tools": "none"})
+    written = json.loads(path.read_text())
+    python = written["python"]
+    assert isinstance(python, dict)
+    assert python["tools"] == "none"
+
+
+def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
+    """Chdir into tmp_path and run main() with *argv*."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", argv)
+    return ClassMetricsScanner.main()
+
+
+class TestClassMetricsScanner:
+    # --- ScanFile ---
+
     def test_file_with_class(self, tmp_path: Path) -> None:
         f = tmp_path / "mod.py"
         f.write_text("class Foo:\n    def bar(self):\n        self.x = 1\n")
@@ -94,8 +140,8 @@ class TestScanFile:
         results = ClassMetricsScanner.scan_file(f)
         assert results == []
 
+    # --- ScanModule ---
 
-class TestScanModule:
     def test_moduleinfo_returns_findings_returns_class_metrics(self, tmp_path: Path) -> None:
         from zolletta_metaskill.core.structs import ClassInfo, MethodInfo, ModuleInfo
 
@@ -117,14 +163,15 @@ class TestScanModule:
         assert isinstance(results[0], Finding)
         assert results[0].category == "class_metrics"
 
+    # --- Main ---
 
-class TestMain:
-    def test_readouterr_main_success_contains_bigclass(
+    def test_main_success_contains_bigclass(
         self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        _write_settings(tmp_path, python={"patterns": {"class_metrics_min_lines": 5}})
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text(
@@ -132,12 +179,7 @@ class TestMain:
             + "    def method(self):\n        pass\n" * 20
             + "class Small:\n    pass\n"
         )
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", str(src), "--top", "10", "--min-lines", "5"],
-        )
-        rc = ClassMetricsScanner.main()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "LINES" in out
@@ -149,70 +191,116 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("x = 1\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = ClassMetricsScanner.main()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
-        assert rc == 1
+        assert rc == 0
         assert "No classes found" in err
 
-    def test_main_nonexistent_dir(
-        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    def test_main_missing_src(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "/nonexistent/path/xyz"])
-        rc = ClassMetricsScanner.main()
+        _write_settings(tmp_path)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "does not exist" in err
+        assert "no configured source directories" in err
 
-    def test_main_min_lines_filter(
+    def test_main_check_disabled(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path, python={"patterns": {"check_class_metrics": False}})
+        (tmp_path / "src").mkdir()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
+        assert "SKIPPED" in capsys.readouterr().out
+
+    def test_main_check_disabled_json(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path, python={"patterns": {"check_class_metrics": False}})
+        (tmp_path / "src").mkdir()
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["skipped"] is True
+
+    def test_main_min_lines_setting(
         self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        _write_settings(tmp_path, python={"patterns": {"class_metrics_min_lines": 100}})
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("class Small:\n    pass\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--min-lines", "100"])
-        rc = ClassMetricsScanner.main()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "Small" not in out
 
-    def test_main_default_directory(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.chdir(tmp_path)
-        src = tmp_path / "src"
-        src.mkdir()
-        (src / "mod.py").write_text("class Foo:\n    pass\n" * 20)
-        monkeypatch.setattr(sys, "argv", ["prog"])
-        rc = ClassMetricsScanner.main()
-        assert rc == 0
-
-    def test_main_top_limit(
+    def test_main_json_output(
         self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        _write_settings(tmp_path, python={"patterns": {"class_metrics_min_lines": 5}})
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "mod.py").write_text(
+            "class BigClass:\n" + "    def method(self):\n        pass\n" * 20
+        )
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["total_classes"] == 1
+        assert report["classes"][0]["class"] == "BigClass"
+        assert report["min_lines"] == 5
+        assert report["top"] == 30
+        assert report["directories"] == ["src"]
+
+    def test_main_top_limit_setting(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _write_settings(
+            tmp_path,
+            python={"patterns": {"class_metrics_top": 2, "class_metrics_min_lines": 5}},
+        )
         src = tmp_path / "src"
         src.mkdir()
         content = ""
         for i in range(5):
             content += f"class Class{i}:\n" + "    def m(self):\n        pass\n" * 20 + "\n"
         (src / "mod.py").write_text(content)
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", str(src), "--top", "2", "--min-lines", "5"],
-        )
-        rc = ClassMetricsScanner.main()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
-        # Only 2 classes should appear
         count = out.count("Class")
         assert count <= 2
+
+    def test_main_gitignored_files_skipped(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        import subprocess
+
+        subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+        (tmp_path / ".gitignore").write_text("src/ignored/\n")
+        _write_settings(tmp_path)
+        ignored = tmp_path / "src" / "ignored"
+        ignored.mkdir(parents=True)
+        (ignored / "mod.py").write_text("class Hidden:\n    pass\n")
+        rc = _run(tmp_path, monkeypatch, ["prog"])
+        err = capsys.readouterr().err
+        assert rc == 0
+        assert "No classes found" in err

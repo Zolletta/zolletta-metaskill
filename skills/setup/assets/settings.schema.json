@@ -75,7 +75,23 @@
     "documentation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["language", "dir", "adrs"],
+      "required": [
+        "language",
+        "dir",
+        "adrs",
+        "min_severity",
+        "staleness_threshold",
+        "readme_focus",
+        "readme_sections",
+        "diataxis_translations",
+        "staleness_weights",
+        "doc_patterns",
+        "check_external",
+        "include_referential",
+        "api_doc_recursive",
+        "api_doc_include_private",
+        "api_doc_suggest_coverage"
+      ],
       "properties": {
         "language": {
           "type": "string",
@@ -91,6 +107,79 @@
           "type": ["string", "null"],
           "description": "Relative path within documentation.dir where ADRs live (e.g. \"adr\"), \"\" if scattered in docs root, or null if no ADRs found. Auto-detected during setup.",
           "default": null
+        },
+        "min_severity": {
+          "type": "string",
+          "enum": ["critical", "high", "medium", "low", "info"],
+          "description": "Minimum severity reported by drift_analyzer (default: high).",
+          "default": "high"
+        },
+        "staleness_threshold": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 100,
+          "description": "If set, doc_staleness_scorer exits 1 when the freshness score falls below this value. null = report-only (default).",
+          "default": null
+        },
+        "readme_focus": {
+          "type": "boolean",
+          "description": "When true, doc_staleness_scorer only scores the README (default: false).",
+          "default": false
+        },
+        "readme_sections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Section names a README is expected to contain, checked by doc_staleness_scorer's completeness dimension.",
+          "default": ["installation", "usage", "api", "contributing", "license"]
+        },
+        "diataxis_translations": {
+          "type": ["string", "null"],
+          "description": "Path to a JSON file mapping Diataxis signpost headings to translations (used when documentation.language is not en). null = built-in translations.",
+          "default": null
+        },
+        "staleness_weights": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "description": "Custom dimension weights for doc_staleness_scorer (normalized to sum 1.0). null = built-in defaults.",
+          "properties": {
+            "last_updated":       { "type": "number" },
+            "code_doc_alignment": { "type": "number" },
+            "link_health":        { "type": "number" },
+            "completeness":       { "type": "number" },
+            "accuracy":           { "type": "number" }
+          },
+          "default": null
+        },
+        "doc_patterns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Glob patterns for documentation files scanned by drift_analyzer.",
+          "default": ["*.md", "*.rst", "*.txt", "*.adoc"]
+        },
+        "check_external": {
+          "type": "boolean",
+          "description": "When true, link_checker verifies external http(s) links too (default: false — external links are skipped).",
+          "default": false
+        },
+        "include_referential": {
+          "type": "boolean",
+          "description": "When true, drift_analyzer also reports referential drift (docs referencing symbols that moved), not just broken links.",
+          "default": false
+        },
+        "api_doc_recursive": {
+          "type": "boolean",
+          "description": "When true, api_doc_validator scans source roots recursively (default: true).",
+          "default": true
+        },
+        "api_doc_include_private": {
+          "type": "boolean",
+          "description": "When true, api_doc_validator also checks private/underscore modules (default: false).",
+          "default": false
+        },
+        "api_doc_suggest_coverage": {
+          "type": "boolean",
+          "description": "When true, api_doc_validator suggests a documentation coverage target based on public API surface (default: false).",
+          "default": false
         }
       }
     },
@@ -128,7 +217,7 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["tools", "code_style", "testing", "pyproject_mtime"],
+          "required": ["tools", "paths", "code_style", "testing", "patterns", "pyproject_mtime"],
           "properties": {
             "tools": {
               "type": "object",
@@ -143,8 +232,10 @@
                 "mypy":    { "$ref": "#/$defs/python_tools_mypy" }
               }
             },
+            "paths":      { "$ref": "#/$defs/python_paths" },
             "code_style": { "$ref": "#/$defs/python_code_style" },
             "testing":    { "$ref": "#/$defs/python_testing" },
+            "patterns":   { "$ref": "#/$defs/python_patterns" },
             "pyproject_mtime": {
               "type": "number",
               "description": "Modification time of pyproject.toml at last extraction (Unix timestamp). The setup guard uses it to detect staleness and trigger a light refresh."
@@ -218,6 +309,31 @@
       }
     },
 
+    "python_paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "tests", "package"],
+      "properties": {
+        "source": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Source roots scanned by every review script (the PHP-autoload equivalent Python lacked). Detected from pyproject.toml build config / layout by setup's python_paths_detector.",
+          "default": ["src"]
+        },
+        "tests": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Test roots scanned by test scanners. Detected from pytest testpaths or the tests/ directory.",
+          "default": ["tests"]
+        },
+        "package": {
+          "type": ["string", "null"],
+          "description": "Top-level package name used by mirror-structure checks (naming_conventions, test_structure). null when undetected.",
+          "default": null
+        }
+      }
+    },
+
     "python_code_style": {
       "type": "object",
       "additionalProperties": false,
@@ -225,24 +341,38 @@
         "check_acronym_casing",
         "check_no_relative_imports",
         "check_one_class_per_file",
+        "check_one_class_per_test_file",
+        "check_zero_class_files",
         "check_filename_matches_class",
         "check_public_docstrings",
         "check_docstring_no_type_repeat",
         "check_skip_obvious_docstrings",
         "check_line_length",
         "check_file_length",
+        "check_unused_all_exports",
+        "docstring_strip_private",
+        "docstring_strip_tests",
+        "docstring_strip_nested",
+        "docstring_strip_obvious_init",
         "vulture_min_confidence"
       ],
       "properties": {
         "check_acronym_casing":           { "type": "boolean", "default": true },
         "check_no_relative_imports":      { "type": "boolean", "default": true },
         "check_one_class_per_file":       { "type": "boolean", "default": true },
+        "check_one_class_per_test_file":  { "type": "boolean", "default": true, "description": "one_class_per_file_scanner also scans test roots: one test class per test file, named after its stem (test_user.py -> TestUser). Set false to skip test files." },
+        "check_zero_class_files":         { "type": "boolean", "default": true, "description": "Report files with 0 classes (utility/helper modules). Replaces the removed --ignore-zero flag — set false to hide them." },
         "check_filename_matches_class":   { "type": "boolean", "default": true },
         "check_public_docstrings":        { "type": "boolean", "default": true },
         "check_docstring_no_type_repeat": { "type": "boolean", "default": true },
         "check_skip_obvious_docstrings":  { "type": "boolean", "default": true },
         "check_line_length":              { "type": "boolean", "default": true },
         "check_file_length":              { "type": "boolean", "default": true },
+        "check_unused_all_exports":       { "type": "boolean", "default": true },
+        "docstring_strip_private":        { "type": "boolean", "default": false, "description": "docstring_streamliner removes docstrings from private functions when applying fixes." },
+        "docstring_strip_tests":          { "type": "boolean", "default": false, "description": "docstring_streamliner removes docstrings from test functions when applying fixes." },
+        "docstring_strip_nested":         { "type": "boolean", "default": false, "description": "docstring_streamliner removes docstrings from nested functions when applying fixes." },
+        "docstring_strip_obvious_init":   { "type": "boolean", "default": false, "description": "docstring_streamliner removes obvious __init__ docstrings when applying fixes." },
         "max_file_length":                { "type": "integer", "minimum": 1, "default": 800 },
         "vulture_min_confidence":         { "type": "integer", "minimum": 0, "maximum": 100, "default": 80 }
       }
@@ -254,12 +384,45 @@
       "required": [
         "coverage_gap_threshold",
         "coverage_well_covered_threshold",
-        "check_test_naming"
+        "check_test_naming",
+        "test_naming_min_segments"
       ],
       "properties": {
         "coverage_gap_threshold":          { "type": "integer", "minimum": 0, "maximum": 100, "default": 50 },
         "coverage_well_covered_threshold": { "type": "integer", "minimum": 0, "maximum": 100, "default": 80 },
-        "check_test_naming":               { "type": "boolean", "default": true }
+        "check_test_naming":               { "type": "boolean", "default": true },
+        "test_naming_min_segments":        { "type": "integer", "minimum": 1, "default": 3, "description": "Minimum number of underscore-separated segments a test function name must have (test_naming_scanner). Replaces the removed --min-segments flag." }
+      }
+    },
+
+    "python_patterns": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "check_ocp",
+        "check_isp",
+        "check_dip",
+        "check_lsp",
+        "check_test_structure",
+        "ocp_min_branches",
+        "isp_min_methods",
+        "dip_entry_points",
+        "class_metrics_top",
+        "class_metrics_min_lines",
+        "test_god_classes_top"
+      ],
+      "properties": {
+        "check_ocp":              { "type": "boolean", "default": true, "description": "Open/closed principle check (open_closed_scanner)." },
+        "check_isp":              { "type": "boolean", "default": true, "description": "Interface segregation check (interface_segregation_scanner)." },
+        "check_dip":              { "type": "boolean", "default": true, "description": "Dependency inversion check (dependency_inversion_scanner)." },
+        "check_lsp":              { "type": "boolean", "default": true, "description": "Liskov substitution check (liskov_substitution_scanner)." },
+        "check_test_structure":   { "type": "boolean", "default": true, "description": "Mirror-structure check between source and test trees (test_structure_scanner)." },
+        "ocp_min_branches":       { "type": "integer", "minimum": 1, "default": 3, "description": "Minimum branches in an if/elif chain before open_closed_scanner flags it." },
+        "isp_min_methods":        { "type": "integer", "minimum": 1, "default": 5, "description": "Minimum methods on an interface/class before interface_segregation_scanner flags it." },
+        "dip_entry_points":       { "type": "array", "items": { "type": "string" }, "description": "Module names treated as composition roots — exempt from dependency_inversion_scanner findings.", "default": ["main", "cli", "app", "__main__", "myproject", "manage", "wsgi", "asgi", "conftest"] },
+        "class_metrics_top":      { "type": "integer", "minimum": 1, "default": 30, "description": "How many largest classes class_metrics_scanner reports." },
+        "class_metrics_min_lines": { "type": "integer", "minimum": 1, "default": 50, "description": "Minimum class size (lines) class_metrics_scanner reports." },
+        "test_god_classes_top":   { "type": "integer", "minimum": 1, "default": 30, "description": "How many largest test classes test_god_classes_scanner reports." }
       }
     },
 
@@ -269,7 +432,7 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["tools", "code_style", "testing", "autoload", "php_version", "composer_mtime"],
+          "required": ["tools", "code_style", "testing", "patterns", "autoload", "php_version", "composer_mtime"],
           "properties": {
             "tools": {
               "type": "object",
@@ -285,6 +448,7 @@
             },
             "code_style":     { "$ref": "#/$defs/php_code_style" },
             "testing":        { "$ref": "#/$defs/php_testing" },
+            "patterns":       { "$ref": "#/$defs/php_patterns" },
             "autoload":       { "$ref": "#/$defs/php_autoload" },
             "php_version":    { "type": ["string", "null"], "description": "Minimum PHP version extracted from composer.json require.php (e.g. 8.2). null if unknown." },
             "composer_mtime": { "type": "number", "description": "Modification time of composer.json at last extraction (Unix timestamp). The setup guard uses it to detect staleness and trigger a light refresh." }
@@ -348,10 +512,30 @@
       }
     },
 
+    "php_patterns": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "check_ocp",
+        "check_isp",
+        "check_dip",
+        "ocp_min_branches",
+        "isp_min_methods"
+      ],
+      "properties": {
+        "check_ocp":        { "type": "boolean", "default": true, "description": "Open/closed principle check (open_closed_scanner)." },
+        "check_isp":        { "type": "boolean", "default": true, "description": "Interface segregation check (interface_segregation_scanner)." },
+        "check_dip":        { "type": "boolean", "default": true, "description": "Dependency inversion check (dependency_inversion_scanner)." },
+        "ocp_min_branches": { "type": "integer", "minimum": 1, "default": 3, "description": "Minimum branches in an if/elseif chain before open_closed_scanner flags it." },
+        "isp_min_methods":  { "type": "integer", "minimum": 1, "default": 7, "description": "Minimum methods on an interface/class before interface_segregation_scanner flags it. PHP default is 7 (higher than Python's 5)." }
+      }
+    },
+
     "php_code_style": {
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "check_acronym_casing",
         "check_union_types",
         "check_intersection_types",
         "check_enum_methods",
@@ -368,6 +552,7 @@
         "max_file_length"
       ],
       "properties": {
+        "check_acronym_casing":         { "type": "boolean", "default": true },
         "check_union_types":            { "type": "boolean", "default": true },
         "check_intersection_types":     { "type": "boolean", "default": true },
         "check_enum_methods":           { "type": "boolean", "default": true },

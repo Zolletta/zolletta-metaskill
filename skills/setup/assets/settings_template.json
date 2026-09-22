@@ -1,5 +1,5 @@
 {
-  "setup_version": "2.0.0",
+  "setup_version": "3.1.0",
   "setup_timestamp": "",
   "language": "",
   "container_name": null,
@@ -19,6 +19,18 @@
   "documentation": {
     "language": "en",
     "dir": "docs",
-    "adrs": null
+    "adrs": null,
+    "min_severity": "high",
+    "staleness_threshold": null,
+    "readme_focus": false,
+    "readme_sections": ["installation", "usage", "api", "contributing", "license"],
+    "diataxis_translations": null,
+    "staleness_weights": null,
+    "doc_patterns": ["*.md", "*.rst", "*.txt", "*.adoc"],
+    "check_external": false,
+    "include_referential": false,
+    "api_doc_recursive": true,
+    "api_doc_include_private": false,
+    "api_doc_suggest_coverage": false
   }
 }

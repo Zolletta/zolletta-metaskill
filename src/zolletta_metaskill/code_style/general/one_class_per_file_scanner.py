@@ -4,37 +4,54 @@
 Reports three categories of violations:
   - Files with 2+ classes (should be split into separate files)
   - Files with 0 classes that are not __init__.py (utility/constant files —
-    reported as low severity, not errors)
+    reported as low severity, not errors; source roots only)
   - Class names that don't match the filename (snake_case -> PascalCase)
 
-Usage:
-    python3 one_class_per_file_scanner.py [directory] [--strict] [--ignore-zero]
+Name matching is case-insensitive so acronym-cased classes (``ADRCache``,
+``PHPEngine``) match their lowercase filenames — letter casing itself is
+the acronym-casing check's domain, not this one's.
 
-Arguments:
-    directory       Root directory to scan (default: src)
+Test roots are scanned too (unless ``check_one_class_per_test_file`` is
+false): a test file must hold exactly one test class named after its stem
+(``test_user.py`` -> ``class TestUser``), so a source class maps to one
+merged test class per file. ``conftest.py`` is skipped and zero-class
+findings are suppressed for test roots — function-style test files are a
+valid layout this check does not police.
+
+Configuration comes from ``.zolletta-metaskill/settings.json``:
+
+- Scan roots: ``python.paths.source`` / ``php.autoload.psr-4`` (``src``
+  when unconfigured) and, for the test-side check, ``python.paths.tests`` /
+  ``php.autoload.psr-4-dev`` (``tests`` when unconfigured), enumerated
+  with git-ignore awareness.
+- ``<language>.code_style.check_one_class_per_file`` — when false for
+  every configured language the run reports SKIPPED.
+- ``<language>.code_style.check_one_class_per_test_file`` — when false
+  for every configured language, test roots are not scanned.
+- ``<language>.code_style.check_zero_class_files`` — when false for
+  every scanned language, zero-class findings are filtered out
+  (utility modules are allowed).
+
+Usage:
+    python3 one_class_per_file_scanner.py [--json]
 
 Options:
-    --strict        Treat name mismatches and zero-class files as errors
-                    (exit code 1). Default: report only, exit 0.
-    --ignore-zero   Don't report files with 0 classes (useful for projects
-                    that allow utility modules with only functions).
-    --skip          Skip this check entirely (exit 0 with 'skipped' message).
-                    Use for projects that intentionally don't follow this
-                    convention.
+    --json          Output as JSON instead of text.
 
-Exit code: 0 if no violations (or --strict not set or --skip), 1 if
-           violations found with --strict.
+Exit code: 0 always (report-only); 1 on usage errors such as no
+           configured source directory existing on disk.
 
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
 from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
-from zolletta_metaskill.core.engine.python_engine import PythonEngine
+from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.core.structs import Finding, ModuleInfo
 
 
@@ -42,26 +59,36 @@ class OneClassPerFileScanner:
     """Check the '1 class 1 file, 1 file 1 class' convention."""
 
     @staticmethod
-    def _ensure_python_engine() -> None:
-        """Ensure the PythonEngine is registered."""
-        EngineRegistry.ensure(PythonEngine())
-
-    @staticmethod
     def _snake_to_pascal(name: str) -> str:
         """Convert snake_case to PascalCase (e.g. my_class -> MyClass)."""
         return "".join(word.capitalize() for word in name.split("_"))
 
     @staticmethod
-    def scan_module(module: ModuleInfo) -> list[Finding]:
+    def _names_match(class_name: str, stem: str) -> bool:
+        """Return True when *class_name* corresponds to *stem*.
+
+        The comparison is case-insensitive: acronym-cased classes such as
+        ``ADRCache`` or ``TestADRCLI`` match ``adr_cache.py`` /
+        ``test_adr_cli.py``, while structurally different names
+        (``WrongName`` vs ``user.py``) still mismatch.
+        """
+        expected = OneClassPerFileScanner._snake_to_pascal(stem)
+        return class_name.lower() in {expected.lower(), stem.lower()}
+
+    @staticmethod
+    def scan_module(module: ModuleInfo, report_zero_class: bool = True) -> list[Finding]:
         """Scan a parsed module and return findings for class-structure violations.
 
         Args:
             module: The :class:`ModuleInfo` produced by an engine.
+            report_zero_class: When False, files with no classes produce no
+                finding (used for test roots, where function-style test
+                files are a valid layout).
 
         Returns:
             A list of :class:`Finding` objects.  Categories:
             ``"multi_class"`` (2+ classes), ``"zero_class"`` (no classes),
-            ``"name_mismatch"`` (class name != filename).
+            ``"name_mismatch"`` (class name doesn't correspond to filename).
 
         """
         if module.has_syntax_error:
@@ -84,6 +111,8 @@ class OneClassPerFileScanner:
             ]
 
         if len(classes) == 0:
+            if not report_zero_class:
+                return []
             return [
                 Finding(
                     file=file_path,
@@ -97,8 +126,8 @@ class OneClassPerFileScanner:
 
         # Exactly 1 class — check name match
         cls = classes[0]
-        expected_pascal = OneClassPerFileScanner._snake_to_pascal(module.path.stem)
-        if cls.name != expected_pascal and cls.name != module.path.stem:
+        if not OneClassPerFileScanner._names_match(cls.name, module.path.stem):
+            expected_pascal = OneClassPerFileScanner._snake_to_pascal(module.path.stem)
             return [
                 Finding(
                     file=file_path,
@@ -116,83 +145,131 @@ class OneClassPerFileScanner:
         return []
 
     @staticmethod
-    def scan_file(path: Path) -> list[Finding]:
+    def scan_file(path: Path, report_zero_class: bool = True) -> list[Finding]:
         """Backward-compatible wrapper that uses the registry to get an engine.
 
         Args:
             path: Path to a source file.
+            report_zero_class: When False, files with no classes produce no
+                finding (used for test roots).
 
         Returns:
             A list of :class:`Finding` objects (empty if no engine matches or
             the file has a syntax error).
 
         """
-        OneClassPerFileScanner._ensure_python_engine()
+        ProjectConfig.ensure_engines()
         engine = EngineRegistry.get_for_file(path)
         if engine is None:  # pragma: no cover
             return []
         module = engine.parse_module(path)
-        return OneClassPerFileScanner.scan_module(module)
+        return OneClassPerFileScanner.scan_module(module, report_zero_class)
 
     @staticmethod
     def main() -> int:
         """Entry point for the one-class-per-file checker CLI."""
         parser = argparse.ArgumentParser(
-            description="Check '1 class 1 file, 1 file 1 class' convention."
+            description="Check '1 class 1 file, 1 file 1 class' convention. "
+            "Scan roots and toggles come from .zolletta-metaskill/settings.json."
         )
-        parser.add_argument(
-            "directory",
-            nargs="?",
-            default="src",
-            help="Root directory to scan (default: src)",
-        )
-        parser.add_argument(
-            "--strict",
-            action="store_true",
-            help="Exit with code 1 if violations are found",
-        )
-        parser.add_argument(
-            "--ignore-zero",
-            action="store_true",
-            help="Don't report files with 0 classes",
-        )
-        parser.add_argument(
-            "--skip",
-            action="store_true",
-            help="Skip this check entirely (exit 0 with 'skipped' message). "
-            "Use for projects that intentionally don't follow this convention.",
-        )
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
         args = parser.parse_args()
 
-        OneClassPerFileScanner._ensure_python_engine()
-        if args.skip:
-            print("=" * 70)
-            print("1 CLASS 1 FILE, 1 FILE 1 CLASS — VALIDATION REPORT")
-            print("=" * 70)
-            print("\nResult: SKIPPED (--skip flag)\n")
+        settings = ProjectConfig.load_settings()
+        languages = ProjectConfig.scan_languages(settings, "code_style.check_one_class_per_file")
+        if not languages:
+            if args.json:
+                print(
+                    json.dumps(
+                        {
+                            "skipped": True,
+                            "reason": "check_one_class_per_file disabled in settings.json",
+                        }
+                    )
+                )
+            else:
+                print("=" * 70)
+                print("1 CLASS 1 FILE, 1 FILE 1 CLASS — VALIDATION REPORT")
+                print("=" * 70)
+                print("\nResult: SKIPPED (check_one_class_per_file disabled in settings.json)\n")
             return 0
 
-        root = Path(args.directory)
-        if not root.exists():
-            print(f"Error: directory '{root}' does not exist", file=sys.stderr)
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, languages))
+        if not roots:
+            print(
+                "Error: no configured source directories exist on disk",
+                file=sys.stderr,
+            )
             return 1
 
-        all_findings: list[Finding] = []
-        for py in root.rglob("*.py"):
-            if "__pycache__" in str(py):
-                continue
-            if py.name == "__init__.py":
-                continue
-            all_findings.extend(OneClassPerFileScanner.scan_file(py))
+        ProjectConfig.ensure_engines()
+        extensions = ProjectConfig.extensions_for(languages)
+        report_zero = ProjectConfig.any_enabled(
+            settings, languages, "code_style.check_zero_class_files"
+        )
 
-        if args.ignore_zero:
+        files: list[Path] = []
+        for root in roots:
+            for path in ProjectConfig.iter_files(root, extensions):
+                if path.name == "__init__.py":
+                    continue
+                files.append(path)
+
+        # --- Test roots (one test class per test file) ---
+        test_roots: list[Path] = []
+        if ProjectConfig.any_enabled(
+            settings, languages, "code_style.check_one_class_per_test_file"
+        ):
+            test_roots = ProjectConfig.existing_roots(ProjectConfig.test_roots(settings, languages))
+
+        seen = {str(path) for path in files}
+        test_files: list[Path] = []
+        for root in test_roots:
+            for path in ProjectConfig.iter_files(root, extensions):
+                if path.name in ("__init__.py", "conftest.py"):
+                    continue
+                if str(path) in seen:
+                    continue
+                test_files.append(path)
+
+        all_findings: list[Finding] = []
+        for path in files:
+            all_findings.extend(OneClassPerFileScanner.scan_file(path))
+        for path in test_files:
+            all_findings.extend(OneClassPerFileScanner.scan_file(path, report_zero_class=False))
+
+        if not report_zero:
             all_findings = [f for f in all_findings if f.category != "zero_class"]
 
         multi_class = [f for f in all_findings if f.category == "multi_class"]
         zero_class = [f for f in all_findings if f.category == "zero_class"]
         name_mismatch = [f for f in all_findings if f.category == "name_mismatch"]
 
-        has_violations = bool(multi_class or name_mismatch or zero_class)
+        has_violations = bool(all_findings)
+        scanned_dirs = [str(root) for root in roots] + [str(root) for root in test_roots]
+
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "directories": scanned_dirs,
+                        "scanned": len(files) + len(test_files),
+                        "violation_count": len(all_findings),
+                        "violations": [
+                            {
+                                "file": f.file,
+                                "line": f.line,
+                                "category": f.category,
+                                "severity": f.severity,
+                                "description": f.description,
+                            }
+                            for f in all_findings
+                        ],
+                    },
+                    indent=2,
+                )
+            )
+            return 0
 
         print("=" * 70)
         print("1 CLASS 1 FILE, 1 FILE 1 CLASS — VALIDATION REPORT")
@@ -201,9 +278,8 @@ class OneClassPerFileScanner:
         if multi_class:
             print(f"\n## Files with 2+ classes ({len(multi_class)} files)\n")
             for f in multi_class:
-                rel = str(Path(f.file).relative_to(root))
                 print(f"  {f.description}")
-                print(f"    -> {rel}")
+                print(f"    -> {f.file}")
                 print("    Fix: split into one file per class")
         else:
             print("\n## Files with 2+ classes: none")
@@ -211,28 +287,25 @@ class OneClassPerFileScanner:
         if name_mismatch:
             print(f"\n## Class name != filename ({len(name_mismatch)} files)\n")
             for f in name_mismatch:
-                rel = str(Path(f.file).relative_to(root))
                 print(f"  {f.description} (line {f.line})")
-                print(f"    -> {rel}")
+                print(f"    -> {f.file}")
         else:
             print("\n## Class name != filename: none")
 
-        if not args.ignore_zero:
+        if report_zero:
             if zero_class:
                 print(f"\n## Files with 0 classes ({len(zero_class)} files)\n")
                 for f in zero_class:
-                    rel = str(Path(f.file).relative_to(root))
-                    print(f"  {rel}")
-                if not args.strict:
-                    print("  (Low severity — utility/helper modules. Use --ignore-zero to hide.)")
+                    print(f"  {f.file}")
+                print(
+                    "  (Low severity — utility/helper modules. "
+                    "Set check_zero_class_files=false in settings.json to hide.)"
+                )
             else:
                 print("\n## Files with 0 classes: none")
 
         print()
-        if has_violations and args.strict:
-            print("Result: VIOLATIONS FOUND (strict mode)")
-            return 1
-        elif has_violations:
+        if has_violations:
             print("Result: violations found (report-only mode)")
         else:
             print("Result: all clear")

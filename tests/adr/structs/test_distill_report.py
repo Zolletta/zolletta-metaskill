@@ -5,8 +5,8 @@ from __future__ import annotations
 from zolletta_metaskill.adr.structs.distill_report import DistillReport
 
 
-class TestDistillReportDefaults:
-    """Tests for DistillReport default field values."""
+class TestDistillReport:
+    # --- Tests for DistillReport default field values. ---
 
     def test_distill_report_defaults_returns_empty_lists(self) -> None:
         """DistillReport defaults to empty lists and has_adrs=False."""
@@ -16,9 +16,7 @@ class TestDistillReportDefaults:
         assert report.removed == []
         assert report.has_adrs is False
 
-
-class TestDistillReportToDict:
-    """Tests for DistillReport.to_dict."""
+    # --- Tests for DistillReport.to_dict. ---
 
     def test_to_dict_with_defaults_returns_empty_dict(self) -> None:
         """to_dict returns empty lists and False for a default report."""

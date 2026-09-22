@@ -22,22 +22,19 @@ Exclusions:
   - Factory classes (classes with "Factory" in the name or that only create
     objects in their methods).
 
-Usage:
-    python3 dependency_inversion_scanner.py <directory>
-        [--entry-points <pattern1,pattern2,...>]
-        [--skip] [--strict]
+Scan roots come from ``python.paths.source`` in ``settings.json``; the
+entry-point patterns come from ``python.patterns.dip_entry_points``
+(default: main, cli, app, __main__, myproject, manage, wsgi, asgi,
+conftest). The check runs when ``python.patterns.check_dip`` is not
+``false``. File enumeration is git-ignore aware.
 
-Arguments:
-    directory       Root directory to scan (default: src)
+Usage:
+    python3 dependency_inversion_scanner.py [--json]
 
 Options:
-    --entry-points <patterns>  Comma-separated filename patterns to exclude
-                               from checking (default: main,cli,app,__main__,
-                               myproject,manage,wsgi,asgi,conftest)
-    --skip                     Skip this check entirely
-    --strict                   Exit with code 1 if violations are found
+    --json                     Output as JSON instead of markdown.
 
-Exit code: 0 if no violations (or --skip), 1 if violations found with --strict.
+Exit code: 0 always (report-only).
 
 """
 
@@ -45,9 +42,11 @@ from __future__ import annotations
 
 import argparse
 import ast
+import json
 import sys
-from pathlib import Path
 from typing import Any
+
+from zolletta_metaskill.core.project_config import ProjectConfig
 
 
 class DependencyInversionScanner:
@@ -254,81 +253,91 @@ class DependencyInversionScanner:
                 "Dependency Inversion validator — detect dependencies created instead of injected."
             )
         )
-        parser.add_argument(
-            "directory", nargs="?", default="src", help="Root directory to scan (default: src)"
-        )
-        parser.add_argument(
-            "--entry-points",
-            default="",
-            help="Comma-separated filename patterns to exclude (default: main,cli,app,...)",
-        )
-        parser.add_argument("--skip", action="store_true", help="Skip this check entirely")
-        parser.add_argument(
-            "--strict", action="store_true", help="Exit with code 1 if violations are found"
-        )
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
         args = parser.parse_args()
 
-        if args.skip:
-            print("=" * 70)
-            print("DEPENDENCY INVERSION — VALIDATION REPORT")
-            print("=" * 70)
-            print("\nResult: SKIPPED (--skip flag)\n")
+        settings = ProjectConfig.load_settings()
+        languages = ProjectConfig.scan_languages(settings, "patterns.check_dip")
+        py_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
+        if not py_langs:
+            ProjectConfig.emit_skipped(args.json, "check_dip disabled in settings.json")
             return 0
 
-        root = Path(args.directory)
-        if not root.exists():
-            print(f"Error: directory '{root}' does not exist", file=sys.stderr)
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, py_langs))
+        if not roots:
+            print(
+                "Error: no configured source directories exist on disk",
+                file=sys.stderr,
+            )
             return 1
 
-        entry_patterns = (
-            set(args.entry_points.split(","))
-            if args.entry_points
-            else DependencyInversionScanner.ENTRY_POINT_DEFAULTS
-        )
+        # Entry-point patterns: union across enabled languages, falling back
+        # to the built-in defaults when nothing is configured.
+        entry_patterns: set[str] = set()
+        for lang in sorted(py_langs):
+            value = ProjectConfig.setting(settings, f"{lang}.patterns.dip_entry_points", None)
+            if isinstance(value, list):
+                entry_patterns.update(v for v in value if isinstance(v, str))
+        if not entry_patterns:
+            entry_patterns = set(DependencyInversionScanner.ENTRY_POINT_DEFAULTS)
 
         all_violations: list[dict[str, Any]] = []
         scanned_files = 0
         skipped_files = 0
 
-        for py in root.rglob("*.py"):
-            if "__pycache__" in str(py):
-                continue
-            if py.name == "__init__.py":
-                continue
-
-            rel_path = str(py.relative_to(root))
-
-            if DependencyInversionScanner._is_entry_point(py.name, entry_patterns):
-                skipped_files += 1
-                continue
-
-            scanned_files += 1
-
-            try:
-                tree = ast.parse(py.read_text(encoding="utf-8"))
-            except SyntaxError:
-                continue
-
-            for node in ast.walk(tree):
-                if not isinstance(node, ast.ClassDef):
-                    continue
-                if DependencyInversionScanner._is_data_class(node):
-                    continue
-                if DependencyInversionScanner._is_factory(node.name):
-                    continue
-                if DependencyInversionScanner._is_composition_root(node):
+        for root in roots:
+            for py in ProjectConfig.iter_files(root, {".py"}):
+                if py.name == "__init__.py":
                     continue
 
-                init_params = DependencyInversionScanner._get_constructor_params(node)
-                created = DependencyInversionScanner._extract_created_dependencies(node)
+                rel_path = str(py.relative_to(root))
 
-                for v in created:
-                    # If the created class is already a constructor param, it's not a violation
-                    # (it might be re-wrapped or stored differently)
-                    if v["created"] in init_params:
+                if DependencyInversionScanner._is_entry_point(py.name, entry_patterns):
+                    skipped_files += 1
+                    continue
+
+                scanned_files += 1
+
+                try:
+                    tree = ast.parse(py.read_text(encoding="utf-8"))
+                except SyntaxError:
+                    continue
+
+                for node in ast.walk(tree):
+                    if not isinstance(node, ast.ClassDef):
                         continue
-                    v["file"] = rel_path
-                    all_violations.append(v)
+                    if DependencyInversionScanner._is_data_class(node):
+                        continue
+                    if DependencyInversionScanner._is_factory(node.name):
+                        continue
+                    if DependencyInversionScanner._is_composition_root(node):
+                        continue
+
+                    init_params = DependencyInversionScanner._get_constructor_params(node)
+                    created = DependencyInversionScanner._extract_created_dependencies(node)
+
+                    for v in created:
+                        # If the created class is already a constructor param, it's not a violation
+                        # (it might be re-wrapped or stored differently)
+                        if v["created"] in init_params:
+                            continue
+                        v["file"] = rel_path
+                        all_violations.append(v)
+
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "directories": [str(root) for root in roots],
+                        "scanned_files": scanned_files,
+                        "skipped_files": skipped_files,
+                        "violation_count": len(all_violations),
+                        "violations": all_violations,
+                    },
+                    indent=2,
+                )
+            )
+            return 0
 
         print("=" * 70)
         print("DEPENDENCY INVERSION — VALIDATION REPORT")
@@ -350,10 +359,7 @@ class DependencyInversionScanner:
             print("\n## Dependencies created internally instead of injected: none")
 
         print()
-        if all_violations and args.strict:
-            print("Result: DI VIOLATIONS FOUND (strict mode)")
-            return 1
-        elif all_violations:
+        if all_violations:
             print("Result: DI violations found (report-only mode)")
         else:
             print("Result: all clear")

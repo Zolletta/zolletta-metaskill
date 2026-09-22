@@ -5,29 +5,32 @@ Triage tool for test-side God classes. Reports test classes sorted by size,
 with method count and optional method name listing. Use --show-methods to
 spot test classes that test multiple unrelated SUTs.
 
-Usage:
-    python3 test_god_classes_scanner.py [directory] [--top N] [--show-methods]
+Test roots come from ``python.paths.tests`` in ``settings.json``; the row
+limit comes from ``python.patterns.test_god_classes_top`` (default 30).
+File enumeration is git-ignore aware.
 
-Arguments:
-    directory       Root directory to scan (default: tests)
+Usage:
+    python3 test_god_classes_scanner.py [--show-methods] [--json]
 
 Options:
-    --top N           Show only the top N classes (default: 30)
     --show-methods    List all method names per class (helps spot mixed SUTs)
+    --json            Output as JSON instead of a table.
 
-Exit code: 0 on success, 1 if no test classes are found.
+Exit code: 0 always (report-only).
 
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 from typing import Any
 
 from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
 from zolletta_metaskill.core.engine.python_engine import PythonEngine
+from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.core.structs import Finding, ModuleInfo
 
 
@@ -127,47 +130,71 @@ class TestGodClassesScanner:
     def main() -> int:
         """Entry point for the test God class scanner CLI."""
         parser = argparse.ArgumentParser(
-            description="Scan Python test classes for size and mixed-SUT detection."
-        )
-        parser.add_argument(
-            "directory",
-            nargs="?",
-            default="tests",
-            help="Root directory to scan (default: tests)",
-        )
-        parser.add_argument(
-            "--top",
-            type=int,
-            default=30,
-            help="Show only the top N classes (default: 30)",
+            description="Scan Python test classes for size and mixed-SUT detection. "
+            "Roots and thresholds come from .zolletta-metaskill/settings.json."
         )
         parser.add_argument(
             "--show-methods",
             action="store_true",
             help="List all method names per class (helps spot mixed SUTs)",
         )
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
         args = parser.parse_args()
 
         TestGodClassesScanner._ensure_python_engine()
-        root = Path(args.directory)
-        if not root.exists():
-            print(f"Error: directory '{root}' does not exist", file=sys.stderr)
+        settings = ProjectConfig.load_settings()
+        languages = ProjectConfig.scan_languages(settings, "patterns.check_test_god_classes")
+        py_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
+        if not py_langs:
+            ProjectConfig.emit_skipped(
+                args.json, "check_test_god_classes disabled in settings.json"
+            )
+            return 0
+
+        roots = ProjectConfig.existing_roots(ProjectConfig.test_roots(settings, py_langs))
+        if not roots:
+            print(
+                "Error: no configured test directories exist on disk",
+                file=sys.stderr,
+            )
             return 1
+
+        top_limits: list[int] = []
+        for lang in sorted(py_langs):
+            value = ProjectConfig.setting(settings, f"{lang}.patterns.test_god_classes_top", None)
+            if isinstance(value, int) and not isinstance(value, bool):
+                top_limits.append(value)
+        top_n = max(top_limits) if top_limits else 30
 
         all_results: list[dict[str, Any]] = []
-        for py in root.rglob("*.py"):
-            engine = EngineRegistry.get_for_file(py)
-            if engine is None:  # pragma: no cover
-                continue
-            module = engine.parse_module(py)
-            all_results.extend(TestGodClassesScanner._test_class_metrics(module))
+        for root in roots:
+            for py in ProjectConfig.iter_files(root, {".py"}):
+                engine = EngineRegistry.get_for_file(py)
+                if engine is None:  # pragma: no cover
+                    continue
+                module = engine.parse_module(py)
+                all_results.extend(TestGodClassesScanner._test_class_metrics(module))
 
         if not all_results:
-            print(f"No test classes found in {root}", file=sys.stderr)
-            return 1
+            print("No test classes found", file=sys.stderr)
+            return 0
 
         all_results.sort(key=lambda r: r["lines"], reverse=True)
-        top = all_results[: args.top]
+        top = all_results[:top_n]
+
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "directories": [str(root) for root in roots],
+                        "top": top_n,
+                        "total_classes": len(all_results),
+                        "classes": top,
+                    },
+                    indent=2,
+                )
+            )
+            return 0
 
         if args.show_methods:
             for r in top:

@@ -28,25 +28,17 @@ def _functions(info: ModuleInfo) -> dict[str, MethodInfo]:
     return {f.name: f for f in info.functions}
 
 
-# ---------------------------------------------------------------------------
-# Protocol conformance
-# ---------------------------------------------------------------------------
+class TestPythonEngine:
+    # --- Protocol conformance ---
 
-
-class TestProtocolConformance:
     def test_is_language_engine(self) -> None:
         assert isinstance(PythonEngine(), LanguageEngine)
 
     def test_pythonengine_language_property_returns_python(self) -> None:
         assert PythonEngine().language == "python"
 
+    # --- parse_module — classes ---
 
-# ---------------------------------------------------------------------------
-# parse_module — classes
-# ---------------------------------------------------------------------------
-
-
-class TestParseClasses:
     def test_simple_class_with_methods(self, tmp_path: Path) -> None:
         path = _write(
             tmp_path,
@@ -185,13 +177,8 @@ class TestParseClasses:
         assert cls.lineno == 3
         assert cls.end_lineno >= cls.lineno
 
+    # --- parse_module — functions ---
 
-# ---------------------------------------------------------------------------
-# parse_module — functions
-# ---------------------------------------------------------------------------
-
-
-class TestParseFunctions:
     def test_module_level_function(self, tmp_path: Path) -> None:
         path = _write(tmp_path, "mod.py", "def foo(a, b):\n    return a + b\n")
         info = PythonEngine().parse_module(path)
@@ -252,13 +239,8 @@ class TestParseFunctions:
         f = _functions(info)["foo"]
         assert f.raises == ["ValueError"]
 
+    # --- parse_module — imports ---
 
-# ---------------------------------------------------------------------------
-# parse_module — imports
-# ---------------------------------------------------------------------------
-
-
-class TestParseImports:
     def test_write_import_simple_returns_false(self, tmp_path: Path) -> None:
         path = _write(tmp_path, "mod.py", "import os\n")
         info = PythonEngine().parse_module(path)
@@ -303,13 +285,8 @@ class TestParseImports:
         info = PythonEngine().parse_module(path)
         assert info.imports[0].lineno == 3
 
+    # --- parse_module — __all__ ---
 
-# ---------------------------------------------------------------------------
-# parse_module — __all__
-# ---------------------------------------------------------------------------
-
-
-class TestAllExports:
     def test_write_all_exports_returns_multiple_items(self, tmp_path: Path) -> None:
         path = _write(tmp_path, "mod.py", '__all__ = ["Foo", "Bar"]\n')
         info = PythonEngine().parse_module(path)
@@ -326,13 +303,8 @@ class TestAllExports:
         info = PythonEngine().parse_module(path)
         assert info.all_exports is None
 
+    # --- parse_module — docstring ---
 
-# ---------------------------------------------------------------------------
-# parse_module — docstring
-# ---------------------------------------------------------------------------
-
-
-class TestDocstring:
     def test_module_with_docstring(self, tmp_path: Path) -> None:
         path = _write(tmp_path, "mod.py", '"""Module doc."""\n\nx = 1\n')
         info = PythonEngine().parse_module(path)
@@ -343,13 +315,8 @@ class TestDocstring:
         info = PythonEngine().parse_module(path)
         assert info.docstring is None
 
+    # --- parse_module — syntax errors ---
 
-# ---------------------------------------------------------------------------
-# parse_module — syntax errors
-# ---------------------------------------------------------------------------
-
-
-class TestSyntaxErrors:
     def test_write_syntax_error_returns_empty_list(self, tmp_path: Path) -> None:
         path = _write(tmp_path, "mod.py", "def foo(:\n    pass\n")
         info = PythonEngine().parse_module(path)
@@ -363,13 +330,8 @@ class TestSyntaxErrors:
         assert info.has_syntax_error is True
         assert info.classes == []
 
+    # --- parse_module — edge cases ---
 
-# ---------------------------------------------------------------------------
-# parse_module — edge cases
-# ---------------------------------------------------------------------------
-
-
-class TestEdgeCases:
     def test_write_empty_file_returns_none(self, tmp_path: Path) -> None:
         path = _write(tmp_path, "mod.py", "")
         info = PythonEngine().parse_module(path)
@@ -393,13 +355,8 @@ class TestEdgeCases:
         assert info.functions == []
         assert info.imports == []
 
+    # --- is_test_file ---
 
-# ---------------------------------------------------------------------------
-# is_test_file
-# ---------------------------------------------------------------------------
-
-
-class TestIsTestFile:
     def test_is_test_file_test_prefix_returns_true(self, tmp_path: Path) -> None:
         assert PythonEngine().is_test_file(tmp_path / "test_foo.py") is True
 
@@ -409,39 +366,24 @@ class TestIsTestFile:
     def test_is_test_file_regular_source_returns_false(self) -> None:
         assert PythonEngine().is_test_file(Path("/proj/src/foo.py")) is False
 
+    # --- is_source_file ---
 
-# ---------------------------------------------------------------------------
-# is_source_file
-# ---------------------------------------------------------------------------
-
-
-class TestIsSourceFile:
     def test_is_source_file_py_file_returns_true(self) -> None:
         assert PythonEngine().is_source_file(Path("foo.py")) is True
 
     def test_is_source_file_php_file_returns_false(self) -> None:
         assert PythonEngine().is_source_file(Path("foo.php")) is False
 
+    # --- file_extensions / test_file_glob ---
 
-# ---------------------------------------------------------------------------
-# file_extensions / test_file_glob
-# ---------------------------------------------------------------------------
-
-
-class TestMetadata:
     def test_file_extensions_file_extensions_returns_single_item(self) -> None:
         assert PythonEngine().file_extensions() == [".py"]
 
     def test_test_file_glob_returns_pattern(self) -> None:
         assert PythonEngine().test_file_glob() == "test_*.py"
 
+    # --- ModuleInfo basics ---
 
-# ---------------------------------------------------------------------------
-# ModuleInfo basics
-# ---------------------------------------------------------------------------
-
-
-class TestModuleInfo:
     def test_write_language_field_returns_path(self, tmp_path: Path) -> None:
         path = _write(tmp_path, "mod.py", "x = 1\n")
         info = PythonEngine().parse_module(path)

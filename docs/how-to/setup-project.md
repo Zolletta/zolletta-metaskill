@@ -65,7 +65,7 @@ Check that:
 
 ## Re-running setup
 
-Setup is idempotent. Re-running it preserves existing user-customized values in `settings.json` and only adds keys that are new. The setup guard automatically re-runs the pyproject extraction step (Step 6.5) when `pyproject.toml` changes, without re-running full setup.
+Setup is idempotent. Re-running it preserves existing user-customized values in `settings.json` and only adds keys that are new. The setup guard automatically re-runs the pyproject extraction and source-layout steps (Steps 7–8) when `pyproject.toml` changes, without re-running full setup.
 
 ## See also
 

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import ast
+import json
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -32,7 +34,57 @@ def _parse_func(source: str) -> ast.FunctionDef:
     raise AssertionError("No FunctionDef found in source")  # pragma: no cover
 
 
-class TestGetClassInfo:
+def _write_settings(dirpath: Path, **overrides: object) -> Path:
+    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
+    settings: dict[str, object] = {
+        "language": "python",
+        "python": {
+            "patterns": {},
+            "paths": {"source": ["src"], "tests": ["tests"], "package": "mypkg"},
+        },
+        "php": None,
+    }
+    python_overrides = overrides.pop("python", None)
+    if isinstance(python_overrides, dict):
+        base_python = settings["python"]
+        assert isinstance(base_python, dict)
+        for key, value in python_overrides.items():
+            if isinstance(value, dict) and isinstance(base_python.get(key), dict):
+                base_python[key].update(value)
+            else:
+                base_python[key] = value
+    settings.update(overrides)
+    meta = dirpath / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    path = meta / "settings.json"
+    path.write_text(json.dumps(settings))
+    return path
+
+
+def test_write_settings_replaces_non_dict_python_value(tmp_path: Path) -> None:
+    """A non-dict ``python`` override value replaces the base value."""
+    path = _write_settings(tmp_path, python={"tools": "none"})
+    written = json.loads(path.read_text())
+    python = written["python"]
+    assert isinstance(python, dict)
+    assert python["tools"] == "none"
+
+
+def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
+    """Chdir into tmp_path and run main() with *argv*."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", argv)
+    return InterfaceSegregationScanner.main()
+
+
+def _fat_protocol_src(count: int = 6, name: str = "BigProtocol") -> str:
+    methods = "\n".join(f"    def m{i}(self): pass" for i in range(count))
+    return f"class {name}(Protocol):\n{methods}\n"
+
+
+class TestInterfaceSegregationScanner:
+    # --- GetClassInfo ---
+
     def test_parse_class_simple_class_returns_bar(self) -> None:
         node = _parse_class("class Foo:\n    def bar(self):\n        pass\n")
         info = InterfaceSegregationScanner._get_class_info(node)
@@ -80,8 +132,8 @@ class TestGetClassInfo:
         assert "raises_not_implemented" in m
         assert "returns_none" in m
 
+    # --- RaisesNotImplemented ---
 
-class TestRaisesNotImplemented:
     def test_parse_func_raises_call_returns_true(self) -> None:
         func = _parse_func("def foo(self):\n    raise NotImplementedError()\n")
         assert InterfaceSegregationScanner._raises_not_implemented(func) is True
@@ -106,8 +158,8 @@ class TestRaisesNotImplemented:
         func = _parse_func("def foo(self):\n    raise\n")
         assert InterfaceSegregationScanner._raises_not_implemented(func) is False
 
+    # --- ReturnsNoneOnly ---
 
-class TestReturnsNoneOnly:
     def test_parse_func_pass_only_returns_true(self) -> None:
         func = _parse_func("def foo(self):\n    pass\n")
         assert InterfaceSegregationScanner._returns_none_only(func) is True
@@ -144,8 +196,8 @@ class TestReturnsNoneOnly:
         func = _parse_func("def foo(self):\n    x = 1\n")
         assert InterfaceSegregationScanner._returns_none_only(func) is False
 
+    # --- IsProtocolOrAbc ---
 
-class TestIsProtocolOrAbc:
     def test_is_protocol_or_abc_protocol_returns_true(self) -> None:
         info = {"bases": ["Protocol"]}
         assert InterfaceSegregationScanner._is_protocol_or_abc(info) is True
@@ -166,19 +218,19 @@ class TestIsProtocolOrAbc:
         info = {"bases": ["Foo", "Protocol"]}
         assert InterfaceSegregationScanner._is_protocol_or_abc(info) is True
 
+    # --- Main ---
 
-class TestMain:
     def test_main_no_violations(
         self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("class Foo:\n    def bar(self):\n        return 1\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = InterfaceSegregationScanner.main()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
@@ -189,12 +241,11 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
-        methods = "\n".join(f"    def m{i}(self): pass" for i in range(6))
-        (src / "mod.py").write_text(f"class BigProtocol(Protocol):\n{methods}\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = InterfaceSegregationScanner.main()
+        (src / "mod.py").write_text(_fat_protocol_src())
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "BigProtocol" in out
@@ -206,6 +257,7 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        _write_settings(tmp_path, python={"patterns": {"isp_min_methods": 2}})
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text(
@@ -216,70 +268,79 @@ class TestMain:
             "    def needed(self):\n        return 1\n"
             "    def not_needed(self):\n        raise NotImplementedError()\n"
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--min-methods", "2"])
-        rc = InterfaceSegregationScanner.main()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "not_needed" in out
+        assert "report-only" in out
 
-    def test_main_strict_with_violations(
+    def test_main_check_disabled(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        src = tmp_path / "src"
-        src.mkdir()
-        methods = "\n".join(f"    def m{i}(self): pass" for i in range(6))
-        (src / "mod.py").write_text(f"class BigProtocol(Protocol):\n{methods}\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--strict"])
-        rc = InterfaceSegregationScanner.main()
-        out = capsys.readouterr().out
-        assert rc == 1
-        assert "strict mode" in out
-
-    def test_readouterr_main_skip_contains_skipped(
-        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "src", "--skip"])
-        rc = InterfaceSegregationScanner.main()
+        _write_settings(tmp_path, python={"patterns": {"check_isp": False}})
+        (tmp_path / "src").mkdir()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "SKIPPED" in out
 
-    def test_main_nonexistent_dir(
-        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "/nonexistent/path/xyz"])
-        rc = InterfaceSegregationScanner.main()
-        err = capsys.readouterr().err
-        assert rc == 1
-        assert "does not exist" in err
-
-    def test_main_min_methods_threshold(
+    def test_main_check_disabled_json(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path, python={"patterns": {"check_isp": False}})
+        (tmp_path / "src").mkdir()
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["skipped"] is True
+
+    def test_main_missing_src(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
+        err = capsys.readouterr().err
+        assert rc == 1
+        assert "no configured source directories" in err
+
+    def test_main_min_methods_setting(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """``patterns.isp_min_methods`` filters protocols below the threshold."""
+        _write_settings(tmp_path, python={"patterns": {"isp_min_methods": 5}})
         src = tmp_path / "src"
         src.mkdir()
-        methods = "\n".join(f"    def m{i}(self): pass" for i in range(3))
-        (src / "mod.py").write_text(f"class SmallProto(Protocol):\n{methods}\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--min-methods", "5"])
-        rc = InterfaceSegregationScanner.main()
+        (src / "mod.py").write_text(_fat_protocol_src(count=3, name="SmallProto"))
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "Fat interfaces: none" in out
 
-    def test_main_skips_pycache(
-        self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-        monkeypatch: pytest.MonkeyPatch,
+    def test_main_json_output(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
-        pycache = src / "__pycache__"
-        pycache.mkdir()
-        methods = "\n".join(f"    def m{i}(self): pass" for i in range(6))
-        (pycache / "mod.py").write_text(f"class BigProtocol(Protocol):\n{methods}\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = InterfaceSegregationScanner.main()
+        (src / "mod.py").write_text(_fat_protocol_src())
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["violation_count"] == 1
+        assert report["fat_interfaces"][0]["name"] == "BigProtocol"
+        assert report["min_methods"] == 5
+        assert report["directories"] == ["src"]
+
+    def test_main_gitignored_dirs_skipped(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+        (tmp_path / ".gitignore").write_text("src/ignored/\n")
+        _write_settings(tmp_path)
+        ignored = tmp_path / "src" / "ignored"
+        ignored.mkdir(parents=True)
+        (ignored / "mod.py").write_text(_fat_protocol_src())
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "Fat interfaces: none" in out
@@ -287,35 +348,11 @@ class TestMain:
     def test_main_syntax_error_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "bad.py").write_text("class Foo:\n    def (:\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = InterfaceSegregationScanner.main()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
-
-    def test_main_default_directory(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.chdir(tmp_path)
-        src = tmp_path / "src"
-        src.mkdir()
-        (src / "mod.py").write_text("class Foo:\n    pass\n")
-        monkeypatch.setattr(sys, "argv", ["prog"])
-        rc = InterfaceSegregationScanner.main()
-        assert rc == 0
-
-    def test_main_report_only_with_violations(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        src = tmp_path / "src"
-        src.mkdir()
-        methods = "\n".join(f"    def m{i}(self): pass" for i in range(6))
-        (src / "mod.py").write_text(f"class BigProtocol(Protocol):\n{methods}\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = InterfaceSegregationScanner.main()
-        out = capsys.readouterr().out
-        assert rc == 0
-        assert "report-only" in out

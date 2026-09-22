@@ -46,7 +46,7 @@ src/myproject/engine/config/config_factory.py
 
 **Acceptable exceptions**:
 
-- Source directories containing only assets, templates, or dashboards (use `--ignore-dirs` to skip them).
+- Source directories containing only assets, templates, or dashboards (git-ignore them, or keep them out of the configured source roots, to skip them).
 - Source files with no classes (pure functions/constants) — may be tested indirectly through integration tests.
 - Test helpers, fixtures, mocks, and mixins live outside the mirrored tree (e.g., `tests/fixtures/`, `tests/mocks/`, `tests/mixins/`).
 

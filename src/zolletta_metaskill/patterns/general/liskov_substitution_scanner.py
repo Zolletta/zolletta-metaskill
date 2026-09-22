@@ -13,29 +13,31 @@ Checks:
   - Subclasses that override a method with a completely empty body (pass/None)
     suggesting the method doesn't belong in the hierarchy
 
-Usage:
-    python3 liskov_substitution_scanner.py <directory> [--skip] [--strict]
+Scan roots come from ``python.paths.source`` in ``settings.json``; the
+check runs when ``python.patterns.check_lsp`` is not ``false``. File
+enumeration is git-ignore aware.
 
-Arguments:
-    directory       Root directory to scan (default: src)
+Usage:
+    python3 liskov_substitution_scanner.py [--json]
 
 Options:
-    --skip            Skip this check entirely
-    --strict          Exit with code 1 if violations are found
+    --json            Output as JSON instead of markdown.
 
-Exit code: 0 if no violations (or --skip), 1 if violations found with --strict.
+Exit code: 0 always (report-only).
 
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 from typing import Any
 
 from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
 from zolletta_metaskill.core.engine.python_engine import PythonEngine
+from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.core.structs import ClassInfo, Finding, ModuleInfo
 
 
@@ -248,45 +250,42 @@ class LiskovSubstitutionScanner:
     def main() -> int:
         """Entry point for the Liskov Substitution Principle validator CLI."""
         parser = argparse.ArgumentParser(
-            description="Liskov Substitution Principle (LSP) validator."
+            description="Liskov Substitution Principle (LSP) validator. "
+            "Roots come from .zolletta-metaskill/settings.json."
         )
-        parser.add_argument(
-            "directory", nargs="?", default="src", help="Root directory to scan (default: src)"
-        )
-        parser.add_argument("--skip", action="store_true", help="Skip this check entirely")
-        parser.add_argument(
-            "--strict", action="store_true", help="Exit with code 1 if violations are found"
-        )
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
         args = parser.parse_args()
 
         LiskovSubstitutionScanner._ensure_python_engine()
-        if args.skip:
-            print("=" * 70)
-            print("LISKOV SUBSTITUTION (LSP) — VALIDATION REPORT")
-            print("=" * 70)
-            print("\nResult: SKIPPED (--skip flag)\n")
+        settings = ProjectConfig.load_settings()
+        languages = ProjectConfig.scan_languages(settings, "patterns.check_lsp")
+        py_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
+        if not py_langs:
+            ProjectConfig.emit_skipped(args.json, "check_lsp disabled in settings.json")
             return 0
 
-        root = Path(args.directory)
-        if not root.exists():
-            print(f"Error: directory '{root}' does not exist", file=sys.stderr)
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, py_langs))
+        if not roots:
+            print(
+                "Error: no configured source directories exist on disk",
+                file=sys.stderr,
+            )
             return 1
 
-        # Collect all classes across all files
+        # Collect all classes across all files and all roots
         all_classes: dict[str, dict[str, Any]] = {}
-        for py in root.rglob("*.py"):
-            if "__pycache__" in str(py):
-                continue
-            engine = EngineRegistry.get_for_file(py)
-            if engine is None:  # pragma: no cover
-                continue
-            module = engine.parse_module(py)
-            if module.has_syntax_error:
-                continue
-            for cls in module.classes:
-                info = LiskovSubstitutionScanner._build_class_info(cls)
-                info["file"] = str(py.relative_to(root))
-                all_classes.setdefault(cls.name, info)
+        for root in roots:
+            for py in ProjectConfig.iter_files(root, {".py"}):
+                engine = EngineRegistry.get_for_file(py)
+                if engine is None:  # pragma: no cover
+                    continue
+                module = engine.parse_module(py)
+                if module.has_syntax_error:
+                    continue
+                for cls in module.classes:
+                    info = LiskovSubstitutionScanner._build_class_info(cls)
+                    info["file"] = str(py.relative_to(root))
+                    all_classes.setdefault(cls.name, info)
 
         # Check each child against its parent
         violations: list[dict[str, Any]] = []
@@ -299,6 +298,20 @@ class LiskovSubstitutionScanner:
                         v["parent"] = base_name
                         v["file"] = info["file"]
                         violations.append(v)
+
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "directories": [str(root) for root in roots],
+                        "violation_count": len(violations),
+                        "violations": violations,
+                    },
+                    indent=2,
+                    default=str,
+                )
+            )
+            return 0
 
         print("=" * 70)
         print("LISKOV SUBSTITUTION (LSP) — VALIDATION REPORT")
@@ -326,10 +339,7 @@ class LiskovSubstitutionScanner:
             print("\n## LSP violations: none")
 
         print()
-        if violations and args.strict:
-            print("Result: LSP VIOLATIONS FOUND (strict mode)")
-            return 1
-        elif violations:
+        if violations:
             print("Result: LSP violations found (report-only mode)")
         else:
             print("Result: all clear")

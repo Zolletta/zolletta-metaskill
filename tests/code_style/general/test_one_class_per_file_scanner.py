@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -9,11 +11,32 @@ import pytest
 
 from zolletta_metaskill.code_style.general.one_class_per_file_scanner import OneClassPerFileScanner
 from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
+from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.core.structs import Finding
 
 
-class TestSnakeToPascal:
-    """Tests for OneClassPerFileScanner._snake_to_pascal()."""
+def _write_settings(dirpath: Path, **overrides: object) -> Path:
+    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
+    settings: dict[str, object] = {
+        "language": "python",
+        "python": {"code_style": {}},
+        "php": None,
+    }
+    settings.update(overrides)
+    meta = dirpath / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    path = meta / "settings.json"
+    path.write_text(json.dumps(settings))
+    return path
+
+
+def _git_init(root: Path) -> None:
+    """Initialise a git repo at *root* so gitignore rules apply."""
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+
+
+class TestOneClassPerFileScanner:
+    # --- Tests for OneClassPerFileScanner._snake_to_pascal(). ---
 
     def test_snake_to_pascal_simple_input_returns_myclass(self) -> None:
         assert OneClassPerFileScanner._snake_to_pascal("my_class") == "MyClass"
@@ -35,9 +58,7 @@ class TestSnakeToPascal:
         # split on "_" produces ["", "class"] -> "" + "Class"
         assert OneClassPerFileScanner._snake_to_pascal("_class") == "Class"
 
-
-class TestScanFile:
-    """Tests for OneClassPerFileScanner.scan_file() — now returns list[Finding]."""
+    # --- Tests for OneClassPerFileScanner.scan_file() — now returns list[Finding]. ---
 
     def test_single_class_no_violation(self, tmp_path: Path) -> None:
         """A file with one class matching the filename produces no findings."""
@@ -128,12 +149,11 @@ class TestScanFile:
         findings = OneClassPerFileScanner.scan_file(f)
         assert findings == []
 
-
-class TestScanModule:
-    """Tests for OneClassPerFileScanner.scan_module() with ModuleInfo directly."""
+    # --- Tests for OneClassPerFileScanner.scan_module() with ModuleInfo directly. ---
 
     def test_syntax_error_module(self, tmp_path: Path) -> None:
         """A module with has_syntax_error returns no findings."""
+        ProjectConfig.ensure_engines()
         engine = EngineRegistry.get_for_file(tmp_path / "bad.py")
         assert engine is not None
         module = engine.parse_module(tmp_path / "bad.py")
@@ -143,6 +163,7 @@ class TestScanModule:
 
     def test_multi_class_finding(self, tmp_path: Path) -> None:
         """Two top-level classes produce a multi_class finding."""
+        ProjectConfig.ensure_engines()
         f = tmp_path / "multi.py"
         f.write_text("class Foo:\n    pass\nclass Bar:\n    pass\n")
         engine = EngineRegistry.get_for_file(f)
@@ -154,6 +175,7 @@ class TestScanModule:
 
     def test_returns_finding_objects(self, tmp_path: Path) -> None:
         """scan_module returns Finding dataclass instances."""
+        ProjectConfig.ensure_engines()
         f = tmp_path / "utils.py"
         f.write_text("def helper():\n    return 1\n")
         engine = EngineRegistry.get_for_file(f)
@@ -163,37 +185,55 @@ class TestScanModule:
         assert len(findings) == 1
         assert isinstance(findings[0], Finding)
 
+    # --- Tests for OneClassPerFileScanner.main(). ---
 
-class TestMain:
-    """Tests for OneClassPerFileScanner.main()."""
-
-    def test_readouterr_main_skip_contains_skipped(
+    def test_main_check_disabled_reports_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "--skip"])
+        """check_one_class_per_file=false for every configured language → SKIPPED."""
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path, python={"code_style": {"check_one_class_per_file": False}})
+        (tmp_path / "src").mkdir()
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = OneClassPerFileScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
         assert "SKIPPED" in out
 
+    def test_main_check_disabled_json(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path, python={"code_style": {"check_one_class_per_file": False}})
+        (tmp_path / "src").mkdir()
+        monkeypatch.setattr(sys, "argv", ["prog", "--json"])
+        rc = OneClassPerFileScanner.main()
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["skipped"] is True
+
     def test_main_missing_dir(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        missing = tmp_path / "nonexistent"
-        monkeypatch.setattr(sys, "argv", ["prog", str(missing)])
+        """No configured source directory on disk → usage error."""
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = OneClassPerFileScanner.main()
         err = capsys.readouterr().err
         assert rc == 1
-        assert "does not exist" in err
+        assert "no configured source directories" in err
 
     def test_main_all_clear(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
         (root / "user.py").write_text("class User:\n    pass\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = OneClassPerFileScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -202,105 +242,97 @@ class TestMain:
     def test_main_multi_class_report_only(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
         (root / "multi.py").write_text("class Foo:\n    pass\nclass Bar:\n    pass\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = OneClassPerFileScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
         assert "violations found" in out
         assert "2+ classes" in out
 
-    def test_main_multi_class_strict(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        root = tmp_path / "src"
-        root.mkdir()
-        (root / "__init__.py").write_text("")
-        (root / "multi.py").write_text("class Foo:\n    pass\nclass Bar:\n    pass\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--strict"])
-        rc = OneClassPerFileScanner.main()
-        out = capsys.readouterr().out
-        assert rc == 1
-        assert "VIOLATIONS FOUND" in out
-
     def test_main_name_mismatch(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
         (root / "user.py").write_text("class WrongName:\n    pass\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = OneClassPerFileScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
         assert "Class name != filename" in out
         assert "WrongName" in out
 
-    def test_main_name_mismatch_strict(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        root = tmp_path / "src"
-        root.mkdir()
-        (root / "__init__.py").write_text("")
-        (root / "user.py").write_text("class WrongName:\n    pass\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--strict"])
-        rc = OneClassPerFileScanner.main()
-        assert rc == 1
-
     def test_main_zero_class_reported(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
         (root / "utils.py").write_text("def helper():\n    return 1\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = OneClassPerFileScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
         assert "0 classes" in out
         assert "utils.py" in out
 
-    def test_main_ignore_zero(
+    def test_main_zero_class_disabled(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        """check_zero_class_files=false filters zero-class findings."""
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path, python={"code_style": {"check_zero_class_files": False}})
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
         (root / "utils.py").write_text("def helper():\n    return 1\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--ignore-zero"])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = OneClassPerFileScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
-        # With --ignore-zero, the "0 classes" section is not printed at all
         assert "0 classes" not in out
         assert "utils.py" not in out
+        assert "all clear" in out
 
-    def test_main_ignore_zero_strict_no_violation(
+    def test_main_json_output(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
-        (root / "utils.py").write_text("def helper():\n    return 1\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--ignore-zero", "--strict"])
+        (root / "multi.py").write_text("class Foo:\n    pass\nclass Bar:\n    pass\n")
+        monkeypatch.setattr(sys, "argv", ["prog", "--json"])
         rc = OneClassPerFileScanner.main()
-        out = capsys.readouterr().out
+        report = json.loads(capsys.readouterr().out)
         assert rc == 0
-        assert "all clear" in out
+        assert report["directories"] == ["src"]
+        assert report["scanned"] == 1
+        assert report["violation_count"] == 1
+        assert report["violations"][0]["category"] == "multi_class"
 
     def test_main_syntax_error_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
         (root / "bad.py").write_text("def broken(:\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = OneClassPerFileScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -310,9 +342,11 @@ class TestMain:
     def test_main_empty_dir(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = OneClassPerFileScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -321,6 +355,8 @@ class TestMain:
     def test_main_nested_dirs(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
         root = tmp_path / "src"
         sub = root / "models"
         sub.mkdir(parents=True)
@@ -328,7 +364,7 @@ class TestMain:
         (sub / "__init__.py").write_text("")
         (sub / "item.py").write_text("class Item:\n    pass\n")
         (sub / "bad.py").write_text("class Wrong:\n    pass\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = OneClassPerFileScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -338,6 +374,11 @@ class TestMain:
     def test_main_pycache_ignored(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        """__pycache__ is excluded via gitignore-aware enumeration."""
+        _git_init(tmp_path)
+        (tmp_path / ".gitignore").write_text("__pycache__/\n")
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
@@ -345,7 +386,7 @@ class TestMain:
         pycache = root / "__pycache__"
         pycache.mkdir()
         (pycache / "junk.py").write_text("class Junk:\n    pass\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = OneClassPerFileScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -354,11 +395,13 @@ class TestMain:
     def test_main_class_name_matches_filename(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
         (root / "user_account.py").write_text("class UserAccount:\n    pass\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = OneClassPerFileScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -368,11 +411,13 @@ class TestMain:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Class name == file stem (snake_case) is also accepted."""
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
         (root / "__init__.py").write_text("")
         (root / "user.py").write_text("class user:\n    pass\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
+        monkeypatch.setattr(sys, "argv", ["prog"])
         rc = OneClassPerFileScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
@@ -381,7 +426,7 @@ class TestMain:
     def test_main_default_src(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """OneClassPerFileScanner.main() with default 'src' directory."""
+        """main() falls back to 'src' when no settings.json exists."""
         monkeypatch.chdir(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
@@ -392,3 +437,168 @@ class TestMain:
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
+
+    # --- Test-root scanning (check_one_class_per_test_file). ---
+
+    def test_scan_file_acronym_cased_class_matches_filename(self, tmp_path: Path) -> None:
+        """Acronym-cased classes match their lowercase filenames (case-insensitive)."""
+        f = tmp_path / "adr_cache.py"
+        f.write_text("class ADRCache:\n    pass\n")
+        assert OneClassPerFileScanner.scan_file(f) == []
+
+    def test_scan_module_zero_class_suppressed_for_test_roots(self, tmp_path: Path) -> None:
+        """report_zero_class=False suppresses zero-class findings (test roots)."""
+        ProjectConfig.ensure_engines()
+        f = tmp_path / "test_utils.py"
+        f.write_text("def test_helper_works_fine():\n    return 42\n")
+        engine = EngineRegistry.get_for_file(f)
+        assert engine is not None
+        module = engine.parse_module(f)
+        assert OneClassPerFileScanner.scan_module(module, report_zero_class=False) == []
+
+    def test_main_test_root_multi_class_test_file_flagged(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A test file with two test classes is flagged (one test class per file)."""
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
+        root = tmp_path / "src"
+        root.mkdir()
+        (root / "__init__.py").write_text("")
+        (root / "user.py").write_text("class User:\n    pass\n")
+        tests = tmp_path / "tests"
+        tests.mkdir()
+        (tests / "__init__.py").write_text("")
+        (tests / "test_user.py").write_text(
+            "class TestUser:\n    pass\nclass TestOther:\n    pass\n"
+        )
+        monkeypatch.setattr(sys, "argv", ["prog", "--json"])
+        rc = OneClassPerFileScanner.main()
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["directories"] == ["src", "tests"]
+        assert report["violation_count"] == 1
+        assert report["violations"][0]["category"] == "multi_class"
+        assert "test_user.py" in report["violations"][0]["file"]
+
+    def test_main_test_root_toggle_disables_test_scanning(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """check_one_class_per_test_file=false stops test roots being scanned."""
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path, python={"code_style": {"check_one_class_per_test_file": False}})
+        root = tmp_path / "src"
+        root.mkdir()
+        (root / "__init__.py").write_text("")
+        (root / "user.py").write_text("class User:\n    pass\n")
+        tests = tmp_path / "tests"
+        tests.mkdir()
+        (tests / "__init__.py").write_text("")
+        (tests / "test_user.py").write_text(
+            "class TestUser:\n    pass\nclass TestOther:\n    pass\n"
+        )
+        monkeypatch.setattr(sys, "argv", ["prog", "--json"])
+        rc = OneClassPerFileScanner.main()
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["directories"] == ["src"]
+        assert report["violation_count"] == 0
+
+    def test_main_test_root_conftest_skipped(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """conftest.py is never scanned, even with two classes."""
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
+        root = tmp_path / "src"
+        root.mkdir()
+        (root / "__init__.py").write_text("")
+        (root / "user.py").write_text("class User:\n    pass\n")
+        tests = tmp_path / "tests"
+        tests.mkdir()
+        (tests / "conftest.py").write_text("class A:\n    pass\nclass B:\n    pass\n")
+        monkeypatch.setattr(sys, "argv", ["prog", "--json"])
+        rc = OneClassPerFileScanner.main()
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["violation_count"] == 0
+
+    def test_main_test_root_name_mismatch_flagged(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A test class not named after its stem is a name_mismatch finding."""
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
+        root = tmp_path / "src"
+        root.mkdir()
+        (root / "__init__.py").write_text("")
+        (root / "user.py").write_text("class User:\n    pass\n")
+        tests = tmp_path / "tests"
+        tests.mkdir()
+        (tests / "__init__.py").write_text("")
+        (tests / "test_user.py").write_text("class TestSomethingElse:\n    pass\n")
+        monkeypatch.setattr(sys, "argv", ["prog", "--json"])
+        rc = OneClassPerFileScanner.main()
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["violation_count"] == 1
+        assert report["violations"][0]["category"] == "name_mismatch"
+
+    def test_main_test_root_acronym_class_name_accepted(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """TestADRCLI in test_adr_cli.py passes the case-insensitive name check."""
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
+        root = tmp_path / "src"
+        root.mkdir()
+        (root / "__init__.py").write_text("")
+        (root / "user.py").write_text("class User:\n    pass\n")
+        tests = tmp_path / "tests"
+        tests.mkdir()
+        (tests / "__init__.py").write_text("")
+        (tests / "test_adr_cli.py").write_text("class TestADRCLI:\n    pass\n")
+        monkeypatch.setattr(sys, "argv", ["prog", "--json"])
+        rc = OneClassPerFileScanner.main()
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["violation_count"] == 0
+
+    def test_main_test_root_function_style_not_flagged(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A function-style test file (0 classes) produces no zero_class finding."""
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
+        root = tmp_path / "src"
+        root.mkdir()
+        (root / "__init__.py").write_text("")
+        (root / "user.py").write_text("class User:\n    pass\n")
+        tests = tmp_path / "tests"
+        tests.mkdir()
+        (tests / "__init__.py").write_text("")
+        (tests / "test_utils.py").write_text("def test_helper_works_fine():\n    assert True\n")
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        rc = OneClassPerFileScanner.main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "all clear" in out
+
+    def test_main_overlapping_roots_not_duplicated(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A file under both source and test roots is reported exactly once."""
+        monkeypatch.chdir(tmp_path)
+        _write_settings(
+            tmp_path,
+            python={"code_style": {}, "paths": {"source": ["src"], "tests": ["src"]}},
+        )
+        root = tmp_path / "src"
+        root.mkdir()
+        (root / "__init__.py").write_text("")
+        (root / "multi.py").write_text("class Foo:\n    pass\nclass Bar:\n    pass\n")
+        monkeypatch.setattr(sys, "argv", ["prog", "--json"])
+        rc = OneClassPerFileScanner.main()
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["violation_count"] == 1

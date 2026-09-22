@@ -5,8 +5,8 @@ from __future__ import annotations
 from zolletta_metaskill.adr.adr_distiller import ADRDistiller
 
 
-class TestParseDirectives:
-    """Tests for ADRDistiller.parse_directives()."""
+class TestADRDistiller:
+    # --- Tests for ADRDistiller.parse_directives(). ---
 
     def test_parse_directives_returns_adr_001_use_postgres(self) -> None:
         content = (

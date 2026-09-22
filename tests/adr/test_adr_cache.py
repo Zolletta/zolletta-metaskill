@@ -8,8 +8,8 @@ from unittest.mock import patch
 from zolletta_metaskill.adr.adr_cache import ADRCache
 
 
-class TestCacheManagement:
-    """Tests for ADRCache."""
+class TestADRCache:
+    # --- Tests for ADRCache. ---
 
     def test_save_and_load_cache(self, tmp_path: Path) -> None:
         cache_path = tmp_path / "cache.json"

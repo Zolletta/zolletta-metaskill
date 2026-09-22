@@ -11,8 +11,8 @@ import pytest
 from zolletta_metaskill.setup.companion_skill_detector import CompanionSkillDetector
 
 
-class TestDetectCompanionSkills:
-    """Tests for CompanionSkillDetector.detect_companion_skills()."""
+class TestCompanionSkillDetector:
+    # --- Tests for CompanionSkillDetector.detect_companion_skills(). ---
 
     def test_detect_companion_skills_neither_installed_returns_false(self, tmp_path: Path) -> None:
         php_pro = tmp_path / "php-pro" / "SKILL.md"
@@ -57,9 +57,7 @@ class TestDetectCompanionSkills:
         assert result["php_pro"]["available"] is True
         assert result["python_development"]["available"] is True
 
-
-class TestMain:
-    """Tests for CompanionSkillDetector.main()."""
+    # --- Tests for CompanionSkillDetector.main(). ---
 
     def test_main_prints_json(
         self,

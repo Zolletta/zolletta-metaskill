@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import ast
+import json
+import subprocess
 import sys
 from pathlib import Path
 from typing import cast
@@ -42,7 +44,60 @@ def _parse_match(source: str) -> ast.Match:
     raise AssertionError("No Match found")  # pragma: no cover
 
 
-class TestIsTypeCheck:
+def _write_settings(dirpath: Path, **overrides: object) -> Path:
+    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
+    settings: dict[str, object] = {
+        "language": "python",
+        "python": {
+            "patterns": {},
+            "paths": {"source": ["src"], "tests": ["tests"], "package": "mypkg"},
+        },
+        "php": None,
+    }
+    python_overrides = overrides.pop("python", None)
+    if isinstance(python_overrides, dict):
+        base_python = settings["python"]
+        assert isinstance(base_python, dict)
+        for key, value in python_overrides.items():
+            if isinstance(value, dict) and isinstance(base_python.get(key), dict):
+                base_python[key].update(value)
+            else:
+                base_python[key] = value
+    settings.update(overrides)
+    meta = dirpath / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    path = meta / "settings.json"
+    path.write_text(json.dumps(settings))
+    return path
+
+
+def test_write_settings_replaces_non_dict_python_value(tmp_path: Path) -> None:
+    """A non-dict ``python`` override value replaces the base value."""
+    path = _write_settings(tmp_path, python={"tools": "none"})
+    written = json.loads(path.read_text())
+    python = written["python"]
+    assert isinstance(python, dict)
+    assert python["tools"] == "none"
+
+
+def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
+    """Chdir into tmp_path and run main() with *argv*."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", argv)
+    return OpenClosedScanner.main()
+
+
+_LADDER_SRC = (
+    "def f(x):\n"
+    "    if isinstance(x, int):\n        pass\n"
+    "    elif isinstance(x, str):\n        pass\n"
+    "    elif isinstance(x, float):\n        pass\n"
+)
+
+
+class TestOpenClosedScanner:
+    # --- IsTypeCheck ---
+
     def test_parse_call_isinstance_call_returns_true(self) -> None:
         node = _parse_call("isinstance(x, int)")
         assert OpenClosedScanner._is_type_check(node) is True
@@ -111,8 +166,8 @@ class TestIsTypeCheck:
                 return
         raise AssertionError("No Assign found")  # pragma: no cover
 
+    # --- ContainsTypeCheck ---
 
-class TestContainsTypeCheck:
     def test_bool_op_with_type_check(self) -> None:
         tree = _parse("isinstance(x, int) and x > 0")
         for node in ast.walk(tree):
@@ -141,8 +196,8 @@ class TestContainsTypeCheck:
                 return
         raise AssertionError("No BoolOp found")  # pragma: no cover
 
+    # --- CountTypeBranches ---
 
-class TestCountTypeBranches:
     def test_three_isinstance_branches(self) -> None:
         source = (
             "if isinstance(x, int):\n    pass\n"
@@ -177,8 +232,8 @@ class TestCountTypeBranches:
         node = _parse_if(source)
         assert OpenClosedScanner._count_type_branches(node) == 0
 
+    # --- IsStringTypeDispatch ---
 
-class TestIsStringTypeDispatch:
     def test_getattr_with_concat(self) -> None:
         node = _parse_call('builtins.getattr(obj, "method_" + type_name)')
         assert OpenClosedScanner._is_string_type_dispatch(node) is True
@@ -212,8 +267,8 @@ class TestIsStringTypeDispatch:
                 return
         raise AssertionError("No Assign found")  # pragma: no cover
 
+    # --- FindMatchOnType ---
 
-class TestFindMatchOnType:
     def test_match_on_class(self) -> None:
         source = "match x:\n    case int():\n        pass\n    case str():\n        pass\n"
         node = _parse_match(source)
@@ -229,8 +284,8 @@ class TestFindMatchOnType:
         node = _parse_match(source)
         assert OpenClosedScanner._find_match_on_type(node) is True
 
+    # --- ScanFile ---
 
-class TestScanFile:
     def test_type_ladder_violation(self, tmp_path: Path) -> None:
         f = tmp_path / "mod.py"
         f.write_text(
@@ -294,122 +349,106 @@ class TestScanFile:
         ladders = [v for v in violations if v["type"] == "type_ladder"]
         assert len(ladders) == 0
 
+    # --- Main ---
 
-class TestMain:
     def test_main_no_violations(
         self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("def f(x):\n    return x + 1\n")
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = OpenClosedScanner.main()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
 
-    def test_main_with_violations(
+    def test_main_with_violations_report_only(
         self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
-        (src / "mod.py").write_text(
-            "def f(x):\n"
-            "    if isinstance(x, int):\n        pass\n"
-            "    elif isinstance(x, str):\n        pass\n"
-            "    elif isinstance(x, float):\n        pass\n"
-        )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = OpenClosedScanner.main()
+        (src / "mod.py").write_text(_LADDER_SRC)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "type_ladder" in out
         assert "report-only" in out
 
-    def test_main_strict_with_violations(
+    def test_main_check_disabled(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        src = tmp_path / "src"
-        src.mkdir()
-        (src / "mod.py").write_text(
-            "def f(x):\n"
-            "    if isinstance(x, int):\n        pass\n"
-            "    elif isinstance(x, str):\n        pass\n"
-            "    elif isinstance(x, float):\n        pass\n"
-        )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--strict"])
-        rc = OpenClosedScanner.main()
-        out = capsys.readouterr().out
-        assert rc == 1
-        assert "strict mode" in out
-
-    def test_readouterr_main_skip_contains_skipped(
-        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "src", "--skip"])
-        rc = OpenClosedScanner.main()
+        _write_settings(tmp_path, python={"patterns": {"check_ocp": False}})
+        (tmp_path / "src").mkdir()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "SKIPPED" in out
 
-    def test_main_nonexistent_dir(
-        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "/nonexistent/path/xyz"])
-        rc = OpenClosedScanner.main()
-        err = capsys.readouterr().err
-        assert rc == 1
-        assert "does not exist" in err
-
-    def test_main_min_branches_filter(
+    def test_main_check_disabled_json(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        _write_settings(tmp_path, python={"patterns": {"check_ocp": False}})
+        (tmp_path / "src").mkdir()
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["skipped"] is True
+
+    def test_main_missing_src(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
+        err = capsys.readouterr().err
+        assert rc == 1
+        assert "no configured source directories" in err
+
+    def test_main_min_branches_setting(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """``patterns.ocp_min_branches`` filters type ladders below the threshold."""
+        _write_settings(tmp_path, python={"patterns": {"ocp_min_branches": 5}})
         src = tmp_path / "src"
         src.mkdir()
-        (src / "mod.py").write_text(
-            "def f(x):\n"
-            "    if isinstance(x, int):\n        pass\n"
-            "    elif isinstance(x, str):\n        pass\n"
-            "    elif isinstance(x, float):\n        pass\n"
-        )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src), "--min-branches", "5"])
-        rc = OpenClosedScanner.main()
+        (src / "mod.py").write_text(_LADDER_SRC)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
 
-    def test_main_default_directory(
+    def test_main_json_output(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
-        (src / "mod.py").write_text("def f(x):\n    return x\n")
-        monkeypatch.setattr(sys, "argv", ["prog"])
-        rc = OpenClosedScanner.main()
+        (src / "mod.py").write_text(_LADDER_SRC)
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
         assert rc == 0
+        assert report["violation_count"] == 1
+        assert report["violations"][0]["type"] == "type_ladder"
+        assert report["min_branches"] == 3
+        assert report["directories"] == ["src"]
 
-    def test_main_skips_pycache(
+    def test_main_gitignored_dirs_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        src = tmp_path / "src"
-        src.mkdir()
-        pycache = src / "__pycache__"
-        pycache.mkdir()
-        (pycache / "mod.py").write_text(
-            "def f(x):\n"
-            "    if isinstance(x, int):\n        pass\n"
-            "    elif isinstance(x, str):\n        pass\n"
-            "    elif isinstance(x, float):\n        pass\n"
-        )
-        monkeypatch.setattr(sys, "argv", ["prog", str(src)])
-        rc = OpenClosedScanner.main()
+        subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+        (tmp_path / ".gitignore").write_text("src/ignored/\n")
+        _write_settings(tmp_path)
+        ignored = tmp_path / "src" / "ignored"
+        ignored.mkdir(parents=True)
+        (ignored / "mod.py").write_text(_LADDER_SRC)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out

@@ -10,18 +10,21 @@ dependency is not installed.
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
 import pytest
 
-from zolletta_metaskill.core.engine.php_engine import _have_tree_sitter_php
+from zolletta_metaskill.core.engine.php_engine import PHPEngine
 from zolletta_metaskill.core.structs import Finding
 from zolletta_metaskill.patterns.php.dependency_inversion_scanner import (
     DependencyInversionScanner,
 )
 
-TS_PHP_AVAILABLE = _have_tree_sitter_php()
+TS_PHP_AVAILABLE = PHPEngine._have_tree_sitter_php()
+
+
 _skip_no_ts = pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
 
 
@@ -32,12 +35,63 @@ def _write_php(path: Path, content: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Pure helper tests (no tree-sitter required)
+# main() tests
 # ---------------------------------------------------------------------------
 
 
-class TestIsFactory:
-    """``_is_factory`` detects Factory/Builder class names."""
+def _write_settings(dirpath: Path, **overrides: object) -> Path:
+    """Write a minimal PHP settings.json under ``dirpath/.zolletta-metaskill``."""
+    settings: dict[str, object] = {
+        "language": "php",
+        "python": None,
+        "php": {
+            "autoload": {"psr-4": {"App\\": "src/"}},
+            "patterns": {},
+        },
+    }
+    php_overrides = overrides.pop("php", None)
+    if isinstance(php_overrides, dict):
+        base_php = settings["php"]
+        assert isinstance(base_php, dict)
+        for key, value in php_overrides.items():
+            if isinstance(value, dict) and isinstance(base_php.get(key), dict):
+                base_php[key].update(value)
+            else:
+                base_php[key] = value
+    settings.update(overrides)
+    meta = dirpath / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    path = meta / "settings.json"
+    path.write_text(json.dumps(settings))
+    return path
+
+
+def test_write_settings_replaces_non_dict_php_value(tmp_path: Path) -> None:
+    """A non-dict ``php`` override value replaces the base value."""
+    path = _write_settings(tmp_path, php={"tools": "none"})
+    written = json.loads(path.read_text())
+    php = written["php"]
+    assert isinstance(php, dict)
+    assert php["tools"] == "none"
+
+
+def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
+    """Chdir into tmp_path and run main() with *argv*."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", argv)
+    return DependencyInversionScanner.main()
+
+
+_DIP_VIOLATION = (
+    "<?php\nclass Bad {\n"
+    "    public function __construct() {\n"
+    "        $this->dep = new Dep();\n"
+    "    }\n}\n"
+)
+
+
+class TestDependencyInversionScanner:
+    # --- ``_is_factory`` detects Factory/Builder class names. ---
 
     def test_factory_in_name(self) -> None:
         assert DependencyInversionScanner._is_factory("UserFactory") is True
@@ -51,9 +105,7 @@ class TestIsFactory:
     def test_is_factory_empty_input_returns_false(self) -> None:
         assert DependencyInversionScanner._is_factory("") is False
 
-
-class TestIsRealDependency:
-    """``_is_real_dependency`` excludes PHP built-in types."""
+    # --- ``_is_real_dependency`` excludes PHP built-in types. ---
 
     def test_is_real_dependency_real_class_returns_true(self) -> None:
         assert DependencyInversionScanner._is_real_dependency("HttpClient") is True
@@ -70,16 +122,9 @@ class TestIsRealDependency:
     def test_is_real_dependency_scalar_array_returns_false(self) -> None:
         assert DependencyInversionScanner._is_real_dependency("array") is False
 
+    # --- ``scan_file`` parses a .php file and returns ``list[Finding]``. ---
 
-# ---------------------------------------------------------------------------
-# scan_file / scan_module tests (require tree-sitter-php)
-# ---------------------------------------------------------------------------
-
-
-@_skip_no_ts
-class TestScanFile:
-    """``scan_file`` parses a .php file and returns ``list[Finding]``."""
-
+    @_skip_no_ts
     def test_new_in_constructor(self, tmp_path: Path) -> None:
         """``new Dep()`` in __construct produces a DIP finding."""
         f = tmp_path / "Service.php"
@@ -101,6 +146,7 @@ class TestScanFile:
         assert "Service" in findings[0].description
         assert "__construct" in findings[0].description
 
+    @_skip_no_ts
     def test_new_in_regular_method(self, tmp_path: Path) -> None:
         """``new Dep()`` in a non-constructor method is also flagged."""
         f = tmp_path / "Controller.php"
@@ -119,6 +165,7 @@ class TestScanFile:
         assert "RequestHandler" in findings[0].description
         assert "handle" in findings[0].description
 
+    @_skip_no_ts
     def test_multiple_new_calls(self, tmp_path: Path) -> None:
         """Multiple ``new`` calls produce multiple findings."""
         f = tmp_path / "Multi.php"
@@ -138,6 +185,7 @@ class TestScanFile:
         assert "ServiceA" in descriptions
         assert "ServiceB" in descriptions
 
+    @_skip_no_ts
     def test_no_violation_injected_dependency(self, tmp_path: Path) -> None:
         """A class that receives deps via constructor params has no findings."""
         f = tmp_path / "GoodService.php"
@@ -154,6 +202,7 @@ class TestScanFile:
         findings = DependencyInversionScanner.scan_file(f)
         assert findings == []
 
+    @_skip_no_ts
     def test_factory_class_excluded(self, tmp_path: Path) -> None:
         """A class named *Factory is not flagged for ``new`` calls."""
         f = tmp_path / "UserFactory.php"
@@ -169,6 +218,7 @@ class TestScanFile:
         findings = DependencyInversionScanner.scan_file(f)
         assert findings == []
 
+    @_skip_no_ts
     def test_builder_class_excluded(self, tmp_path: Path) -> None:
         """A class named *Builder is not flagged for ``new`` calls."""
         f = tmp_path / "QueryBuilder.php"
@@ -184,6 +234,7 @@ class TestScanFile:
         findings = DependencyInversionScanner.scan_file(f)
         assert findings == []
 
+    @_skip_no_ts
     def test_built_in_type_not_flagged(self, tmp_path: Path) -> None:
         """``new DateTime()`` and similar built-ins are not flagged."""
         f = tmp_path / "DateHelper.php"
@@ -199,6 +250,7 @@ class TestScanFile:
         findings = DependencyInversionScanner.scan_file(f)
         assert findings == []
 
+    @_skip_no_ts
     def test_exception_not_flagged(self, tmp_path: Path) -> None:
         """``new Exception()`` is not a DIP violation."""
         f = tmp_path / "Validator.php"
@@ -214,6 +266,7 @@ class TestScanFile:
         findings = DependencyInversionScanner.scan_file(f)
         assert findings == []
 
+    @_skip_no_ts
     def test_write_php_empty_file_returns_empty_list(self, tmp_path: Path) -> None:
         """An empty .php file produces no findings."""
         f = tmp_path / "empty.php"
@@ -221,6 +274,7 @@ class TestScanFile:
         findings = DependencyInversionScanner.scan_file(f)
         assert findings == []
 
+    @_skip_no_ts
     def test_syntax_error_returns_empty(self, tmp_path: Path) -> None:
         """A file with a syntax error produces no findings."""
         f = tmp_path / "broken.php"
@@ -228,6 +282,7 @@ class TestScanFile:
         findings = DependencyInversionScanner.scan_file(f)
         assert findings == []
 
+    @_skip_no_ts
     def test_file_path_in_finding(self, tmp_path: Path) -> None:
         """The finding's file field matches the path."""
         f = tmp_path / "MyClass.php"
@@ -244,6 +299,7 @@ class TestScanFile:
         assert len(findings) == 1
         assert findings[0].file == str(f)
 
+    @_skip_no_ts
     def test_write_php_no_classes_returns_empty_list(self, tmp_path: Path) -> None:
         """A file with only free functions produces no findings."""
         f = tmp_path / "functions.php"
@@ -254,6 +310,7 @@ class TestScanFile:
         findings = DependencyInversionScanner.scan_file(f)
         assert findings == []
 
+    @_skip_no_ts
     def test_qualified_name_new(self, tmp_path: Path) -> None:
         r"""``new Namespace\Class()`` is detected."""
         f = tmp_path / "App.php"
@@ -270,6 +327,7 @@ class TestScanFile:
         assert len(findings) == 1
         assert "Service" in findings[0].description
 
+    @_skip_no_ts
     def test_non_php_file_returns_empty(self, tmp_path: Path) -> None:
         """A non-.php file returns no findings (no matching engine)."""
         f = tmp_path / "script.py"
@@ -277,11 +335,9 @@ class TestScanFile:
         findings = DependencyInversionScanner.scan_file(f)
         assert findings == []
 
+    # --- ``scan_module`` consumes ``ModuleInfo`` and returns ``list[Finding]``. ---
 
-@_skip_no_ts
-class TestScanModule:
-    """``scan_module`` consumes ``ModuleInfo`` and returns ``list[Finding]``."""
-
+    @_skip_no_ts
     def test_returns_finding_objects(self, tmp_path: Path) -> None:
         """Violations are returned as ``Finding`` dataclass instances."""
         f = tmp_path / "Service.php"
@@ -304,6 +360,7 @@ class TestScanModule:
         assert len(findings) == 1
         assert isinstance(findings[0], Finding)
 
+    @_skip_no_ts
     def test_syntax_error_module(self, tmp_path: Path) -> None:
         """A module with ``has_syntax_error`` returns no findings."""
         f = tmp_path / "bad.php"
@@ -317,6 +374,7 @@ class TestScanModule:
         assert module.has_syntax_error
         assert DependencyInversionScanner.scan_module(module) == []
 
+    @_skip_no_ts
     def test_non_php_language(self, tmp_path: Path) -> None:
         """A module with language != 'php' returns no findings."""
         from zolletta_metaskill.core.structs import ModuleInfo
@@ -328,26 +386,31 @@ class TestScanModule:
         )
         assert DependencyInversionScanner.scan_module(module) == []
 
+    # --- Tests for ``main()`` CLI entry point. ---
 
-# ---------------------------------------------------------------------------
-# main() tests
-# ---------------------------------------------------------------------------
-
-
-class TestMain:
-    """Tests for ``main()`` CLI entry point."""
-
-    def test_readouterr_main_skip_contains_skipped(
+    def test_check_disabled_reports_skipped(
         self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "--skip"])
-        rc = DependencyInversionScanner.main()
+        _write_settings(tmp_path, php={"patterns": {"check_dip": False}})
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "SKIPPED" in out
+
+    def test_check_disabled_json(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _write_settings(tmp_path, php={"patterns": {"check_dip": False}})
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert json.loads(out)["skipped"] is True
 
     def test_main_missing_dir(
         self,
@@ -355,12 +418,11 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        missing = tmp_path / "nonexistent"
-        monkeypatch.setattr(sys, "argv", ["prog", str(missing)])
-        rc = DependencyInversionScanner.main()
+        _write_settings(tmp_path)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "does not exist" in err
+        assert "source" in err
 
     @_skip_no_ts
     def test_main_all_clear(
@@ -369,17 +431,15 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        root = tmp_path / "src"
-        root.mkdir()
+        _write_settings(tmp_path)
         _write_php(
-            root / "Good.php",
+            tmp_path / "src" / "Good.php",
             "<?php\nclass Good {\n"
             "    public function __construct(Dep $dep) {\n"
             "        $this->dep = $dep;\n"
             "    }\n}\n",
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
-        rc = DependencyInversionScanner.main()
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
@@ -391,40 +451,28 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        root = tmp_path / "src"
-        root.mkdir()
-        _write_php(
-            root / "Bad.php",
-            "<?php\nclass Bad {\n"
-            "    public function __construct() {\n"
-            "        $this->dep = new Dep();\n"
-            "    }\n}\n",
-        )
-        monkeypatch.setattr(sys, "argv", ["prog", str(root)])
-        rc = DependencyInversionScanner.main()
+        _write_settings(tmp_path)
+        _write_php(tmp_path / "src" / "Bad.php", _DIP_VIOLATION)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
         assert "DIP violations" in out
         assert "Dep" in out
+        assert "report-only" in out
 
     @_skip_no_ts
-    def test_main_strict_mode(
+    def test_main_json_output(
         self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        root = tmp_path / "src"
-        root.mkdir()
-        _write_php(
-            root / "Bad.php",
-            "<?php\nclass Bad {\n"
-            "    public function __construct() {\n"
-            "        $this->dep = new Dep();\n"
-            "    }\n}\n",
-        )
-        monkeypatch.setattr(sys, "argv", ["prog", str(root), "--strict"])
-        rc = DependencyInversionScanner.main()
+        _write_settings(tmp_path)
+        _write_php(tmp_path / "src" / "Bad.php", _DIP_VIOLATION)
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
         out = capsys.readouterr().out
-        assert rc == 1
-        assert "strict mode" in out
+        assert rc == 0
+        payload = json.loads(out)
+        assert payload["violation_count"] == 1
+        assert payload["scanned_files"] == 1
+        assert payload["violations"][0]["severity"] == "medium"

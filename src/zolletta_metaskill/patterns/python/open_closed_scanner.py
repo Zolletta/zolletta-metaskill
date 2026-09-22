@@ -15,19 +15,18 @@ Checks:
 These are signals that the code is "open for modification" instead of "open
 for extension."
 
-Usage:
-    python3 open_closed_scanner.py <directory> [--min-branches N]
-        [--skip] [--strict]
+Scan roots come from ``python.paths.source`` in ``settings.json``; the
+branch threshold comes from ``python.patterns.ocp_min_branches`` (default
+3). The check runs when ``python.patterns.check_ocp`` is not ``false``.
+File enumeration is git-ignore aware.
 
-Arguments:
-    directory       Root directory to scan (default: src)
+Usage:
+    python3 open_closed_scanner.py [--json]
 
 Options:
-    --min-branches N  Minimum branch count to flag a type ladder (default: 3)
-    --skip            Skip this check entirely
-    --strict          Exit with code 1 if violations are found
+    --json            Output as JSON instead of markdown.
 
-Exit code: 0 if no violations (or --skip), 1 if violations found with --strict.
+Exit code: 0 always (report-only).
 
 """
 
@@ -35,9 +34,12 @@ from __future__ import annotations
 
 import argparse
 import ast
+import json
 import sys
 from pathlib import Path
 from typing import Any
+
+from zolletta_metaskill.core.project_config import ProjectConfig
 
 
 class OpenClosedScanner:
@@ -184,49 +186,61 @@ class OpenClosedScanner:
     @staticmethod
     def main() -> int:
         """Entry point for the Open/Closed Principle validator CLI."""
-        parser = argparse.ArgumentParser(description="Open/Closed Principle (OCP) validator.")
-        parser.add_argument(
-            "directory", nargs="?", default="src", help="Root directory to scan (default: src)"
+        parser = argparse.ArgumentParser(
+            description="Open/Closed Principle (OCP) validator. "
+            "Roots come from .zolletta-metaskill/settings.json."
         )
-        parser.add_argument(
-            "--min-branches",
-            type=int,
-            default=3,
-            help="Min type-check branches to flag (default: 3)",
-        )
-        parser.add_argument("--skip", action="store_true", help="Skip this check entirely")
-        parser.add_argument(
-            "--strict", action="store_true", help="Exit with code 1 if violations are found"
-        )
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
         args = parser.parse_args()
 
-        if args.skip:
-            print("=" * 70)
-            print("OPEN/CLOSED PRINCIPLE (OCP) — VALIDATION REPORT")
-            print("=" * 70)
-            print("\nResult: SKIPPED (--skip flag)\n")
+        settings = ProjectConfig.load_settings()
+        languages = ProjectConfig.scan_languages(settings, "patterns.check_ocp")
+        py_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
+        if not py_langs:
+            ProjectConfig.emit_skipped(args.json, "check_ocp disabled in settings.json")
             return 0
 
-        root = Path(args.directory)
-        if not root.exists():
-            print(f"Error: directory '{root}' does not exist", file=sys.stderr)
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, py_langs))
+        if not roots:
+            print(
+                "Error: no configured source directories exist on disk",
+                file=sys.stderr,
+            )
             return 1
 
+        limits: list[int] = []
+        for lang in sorted(py_langs):
+            value = ProjectConfig.setting(settings, f"{lang}.patterns.ocp_min_branches", None)
+            if isinstance(value, int) and not isinstance(value, bool):
+                limits.append(value)
+        min_branches = min(limits) if limits else 3
+
         all_violations: list[dict[str, Any]] = []
-        for py in root.rglob("*.py"):
-            if "__pycache__" in str(py):
-                continue
-            violations = OpenClosedScanner.scan_file(py)
-            for v in violations:
-                v["file"] = str(py.relative_to(root))
-                all_violations.append(v)
+        for root in roots:
+            for py in ProjectConfig.iter_files(root, {".py"}):
+                violations = OpenClosedScanner.scan_file(py)
+                for v in violations:
+                    v["file"] = str(py.relative_to(root))
+                    all_violations.append(v)
 
         # Filter by min-branches for type ladders
         filtered = [
-            v
-            for v in all_violations
-            if v["type"] != "type_ladder" or v["branches"] >= args.min_branches
+            v for v in all_violations if v["type"] != "type_ladder" or v["branches"] >= min_branches
         ]
+
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "directories": [str(root) for root in roots],
+                        "min_branches": min_branches,
+                        "violation_count": len(filtered),
+                        "violations": filtered,
+                    },
+                    indent=2,
+                )
+            )
+            return 0
 
         print("=" * 70)
         print("OPEN/CLOSED PRINCIPLE (OCP) — VALIDATION REPORT")
@@ -243,10 +257,7 @@ class OpenClosedScanner:
             print("\n## OCP violations: none")
 
         print()
-        if filtered and args.strict:
-            print("Result: OCP VIOLATIONS FOUND (strict mode)")
-            return 1
-        elif filtered:
+        if filtered:
             print("Result: OCP violations found (report-only mode)")
         else:
             print("Result: all clear")

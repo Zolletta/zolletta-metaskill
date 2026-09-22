@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -12,12 +13,10 @@ import pytest
 from zolletta_metaskill.documentor.link_checker import LinkChecker
 from zolletta_metaskill.documentor.structs.link_info import LinkInfo
 
-# ---------------------------------------------------------------------------
-# LinkInfo
-# ---------------------------------------------------------------------------
 
+class TestLinkChecker:
+    # --- LinkInfo ---
 
-class TestLinkInfo:
     def test_linkinfo_init_returns_none(self) -> None:
         link = LinkInfo("README.md", 5, "text", "target.md", "local_file")
         assert link.source_file == "README.md"
@@ -40,13 +39,8 @@ class TestLinkInfo:
         assert d["valid"] is True
         assert d["error"] is None
 
+    # --- classify_link ---
 
-# ---------------------------------------------------------------------------
-# classify_link
-# ---------------------------------------------------------------------------
-
-
-class TestClassifyLink:
     def test_classify_link_http_returns_external(self) -> None:
         assert LinkChecker.classify_link("http://example.com") == "external"
 
@@ -74,13 +68,8 @@ class TestClassifyLink:
     def test_image_with_anchor(self) -> None:
         assert LinkChecker.classify_link("image.png#fragment") == "image"
 
+    # --- extract_links ---
 
-# ---------------------------------------------------------------------------
-# extract_links
-# ---------------------------------------------------------------------------
-
-
-class TestExtractLinks:
     def test_extract_links_markdown_link_returns_local_file(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("See [guide](guide.md) for more.", encoding="utf-8")
@@ -178,13 +167,8 @@ class TestExtractLinks:
         assert links[0].line_number == 2
         assert links[1].line_number == 4
 
+    # --- slugify_heading ---
 
-# ---------------------------------------------------------------------------
-# slugify_heading
-# ---------------------------------------------------------------------------
-
-
-class TestSlugifyHeading:
     def test_slugify_heading_simple_input_returns_hello_world(self) -> None:
         assert LinkChecker.slugify_heading("Hello World") == "hello-world"
 
@@ -203,13 +187,8 @@ class TestSlugifyHeading:
     def test_slugify_heading_empty_input_returns_empty(self) -> None:
         assert LinkChecker.slugify_heading("") == ""
 
+    # --- extract_headings ---
 
-# ---------------------------------------------------------------------------
-# extract_headings
-# ---------------------------------------------------------------------------
-
-
-class TestExtractHeadings:
     def test_extract_headings_simple_headings_contains_sub(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("# Title\n## Section\n### Sub", encoding="utf-8")
@@ -235,13 +214,8 @@ class TestExtractHeadings:
         # 7 hashes is not a valid heading (only up to 6)
         assert "too-deep" not in headings
 
+    # --- find_duplicate_anchors ---
 
-# ---------------------------------------------------------------------------
-# find_duplicate_anchors
-# ---------------------------------------------------------------------------
-
-
-class TestFindDuplicateAnchors:
     def test_find_duplicate_anchors_no_duplicates_returns_empty_list(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("# Title\n## Section", encoding="utf-8")
@@ -266,9 +240,7 @@ class TestFindDuplicateAnchors:
         f.write_text("", encoding="utf-8")
         assert LinkChecker.find_duplicate_anchors(str(f)) == []
 
-    def test_find_duplicate_anchors_skips_headings_inside_code_block(
-        self, tmp_path: Path
-    ) -> None:
+    def test_find_duplicate_anchors_skips_headings_inside_code_block(self, tmp_path: Path) -> None:
         """Headings inside code blocks are not counted as duplicate anchors."""
         f = tmp_path / "test.md"
         f.write_text(
@@ -279,9 +251,7 @@ class TestFindDuplicateAnchors:
         # The # Title inside the code block is skipped, so no duplicates
         assert dups == []
 
-    def test_find_duplicate_anchors_code_block_with_duplicate_after(
-        self, tmp_path: Path
-    ) -> None:
+    def test_find_duplicate_anchors_code_block_with_duplicate_after(self, tmp_path: Path) -> None:
         """Headings after a code block are still checked for duplicates."""
         f = tmp_path / "test.md"
         f.write_text(
@@ -294,13 +264,23 @@ class TestFindDuplicateAnchors:
         assert dups[0][0] == "title"
         assert dups[0][1] == 5
 
+    # --- validate_link ---
 
-# ---------------------------------------------------------------------------
-# validate_link
-# ---------------------------------------------------------------------------
+    def test_template_placeholder_target_skipped(self) -> None:
+        link = LinkInfo("t.md", 1, "text", "{{lang_skill}}.md", "local_file")
+        LinkChecker.validate_link(link, "/repo", {})
+        assert link.is_valid is None
 
+    def test_template_file_link_skipped(self, tmp_path: Path) -> None:
+        link = LinkInfo("assets/summary_template.md", 1, "text", "patterns.md", "local_file")
+        LinkChecker.validate_link(link, str(tmp_path), {})
+        assert link.is_valid is None
 
-class TestValidateLink:
+    def test_template_file_external_link_not_skipped(self, tmp_path: Path) -> None:
+        link = LinkInfo("assets/summary_template.md", 1, "text", "https://example.com", "external")
+        LinkChecker.validate_link(link, str(tmp_path), {})
+        assert link.is_valid is True
+
     def test_linkinfo_external_skip_returns_true(self) -> None:
         link = LinkInfo("README.md", 1, "text", "https://example.com", "external")
         LinkChecker.validate_link(link, "/repo", {}, check_external=False)
@@ -456,13 +436,8 @@ class TestValidateLink:
         LinkChecker.validate_link(link, str(tmp_path), cache)
         assert link.is_valid is True
 
+    # --- _get_headings ---
 
-# ---------------------------------------------------------------------------
-# _get_headings
-# ---------------------------------------------------------------------------
-
-
-class TestGetHeadings:
     def test_get_headings_caches_result_returns_result1(self, tmp_path: Path) -> None:
         f = tmp_path / "test.md"
         f.write_text("# Title\n", encoding="utf-8")
@@ -473,13 +448,8 @@ class TestGetHeadings:
         result2 = LinkChecker._get_headings(str(f), cache)
         assert result2 is result1
 
+    # --- _check_case_insensitive ---
 
-# ---------------------------------------------------------------------------
-# _check_case_insensitive
-# ---------------------------------------------------------------------------
-
-
-class TestCheckCaseInsensitive:
     def test_check_case_insensitive_finds_match_contains_guide_md(self, tmp_path: Path) -> None:
         (tmp_path / "Guide.md").write_text("guide", encoding="utf-8")
         result = LinkChecker._check_case_insensitive(str(tmp_path / "guide.md"))
@@ -500,13 +470,8 @@ class TestCheckCaseInsensitive:
         with patch("os.listdir", side_effect=PermissionError("denied")):
             assert LinkChecker._check_case_insensitive(str(tmp_path / "guide.md")) is None
 
+    # --- validate_external_url ---
 
-# ---------------------------------------------------------------------------
-# validate_external_url
-# ---------------------------------------------------------------------------
-
-
-class TestValidateExternalUrl:
     def test_magicmock_success_returns_none(self) -> None:
         from unittest.mock import MagicMock
 
@@ -597,13 +562,8 @@ class TestValidateExternalUrl:
             valid, error = LinkChecker.validate_external_url("https://example.com")
         assert valid is False
 
+    # --- find_markdown_files ---
 
-# ---------------------------------------------------------------------------
-# find_markdown_files
-# ---------------------------------------------------------------------------
-
-
-class TestFindMarkdownFiles:
     def test_find_markdown_files_directory_is_valid(self, tmp_path: Path) -> None:
         (tmp_path / "a.md").write_text("a", encoding="utf-8")
         (tmp_path / "b.markdown").write_text("b", encoding="utf-8")
@@ -640,13 +600,8 @@ class TestFindMarkdownFiles:
         result = LinkChecker.find_markdown_files(str(tmp_path))
         assert result == sorted(result)
 
+    # --- generate_report ---
 
-# ---------------------------------------------------------------------------
-# generate_report
-# ---------------------------------------------------------------------------
-
-
-class TestGenerateReport:
     def test_empty_report_json(self) -> None:
         report = LinkChecker.generate_report([], {}, as_json=True)
         import json
@@ -725,79 +680,83 @@ class TestGenerateReport:
         data = json.loads(report)
         assert data["summary"]["skipped"] == 1
 
+    # --- main ---
 
-# ---------------------------------------------------------------------------
-# main
-# ---------------------------------------------------------------------------
+    def _write_settings(self, tmp_path: Path, **overrides: object) -> Path:
+        """Write a minimal settings.json under ``tmp_path/.zolletta-metaskill``."""
+        settings: dict[str, object] = {
+            "language": "python",
+            "documentation": {"check_external": False},
+        }
+        doc_overrides = overrides.pop("documentation", None)
+        if isinstance(doc_overrides, dict):
+            base_doc = settings["documentation"]
+            assert isinstance(base_doc, dict)
+            base_doc.update(doc_overrides)
+        settings.update(overrides)
+        meta = tmp_path / ".zolletta-metaskill"
+        meta.mkdir(parents=True, exist_ok=True)
+        path = meta / "settings.json"
+        path.write_text(json.dumps(settings))
+        return path
 
-
-class TestMain:
-    def test_module_nonexistent_path_raises_systemexit(
-        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "/nonexistent/path/xyz"])
-        with pytest.raises(SystemExit) as exc_info:
-            LinkChecker.main()
-        assert exc_info.value.code == 2
+    def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
+        """Chdir into tmp_path and run main() with *argv*."""
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", argv)
+        return LinkChecker.main()
 
     def test_no_markdown_files(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path)])
-        with pytest.raises(SystemExit) as exc_info:
-            LinkChecker.main()
-        assert exc_info.value.code == 0
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
         captured = capsys.readouterr()
+        assert rc == 0
         assert "No markdown files found" in captured.out
 
     def test_no_markdown_files_json(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path), "--json"])
-        with pytest.raises(SystemExit) as exc_info:
-            LinkChecker.main()
-        assert exc_info.value.code == 0
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        captured = capsys.readouterr()
+        assert rc == 0
+        data = json.loads(captured.out)
+        assert data["error"] == "No markdown files found"
 
-    def test_valid_links_exit_zero(
+    def test_valid_links_returns_zero(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         (tmp_path / "README.md").write_text("# Title\n[link](guide.md)\n", encoding="utf-8")
         (tmp_path / "guide.md").write_text("# Guide\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path)])
-        with pytest.raises(SystemExit) as exc_info:
-            LinkChecker.main()
-        assert exc_info.value.code == 0
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
 
-    def test_broken_links_exit_one(
+    def test_broken_links_report_only(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         (tmp_path / "README.md").write_text("# Title\n[link](nonexistent.md)\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path)])
-        with pytest.raises(SystemExit) as exc_info:
-            LinkChecker.main()
-        assert exc_info.value.code == 1
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        captured = capsys.readouterr()
+        assert rc == 0
+        assert "BROKEN LINKS" in captured.out
 
-    def test_duplicate_anchors_exit_one(
+    def test_duplicate_anchors_report_only(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         (tmp_path / "README.md").write_text("# Title\n# Title\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path)])
-        with pytest.raises(SystemExit) as exc_info:
-            LinkChecker.main()
-        assert exc_info.value.code == 1
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        captured = capsys.readouterr()
+        assert rc == 0
+        assert "DUPLICATE ANCHORS" in captured.out
 
-    def test_readouterr_json_output_raises_systemexit(
+    def test_json_output(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         (tmp_path / "README.md").write_text("# Title\n[link](guide.md)\n", encoding="utf-8")
         (tmp_path / "guide.md").write_text("# Guide\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path), "--json"])
-        with pytest.raises(SystemExit) as exc_info:
-            LinkChecker.main()
-        assert exc_info.value.code == 0
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
         captured = capsys.readouterr()
-        import json
-
+        assert rc == 0
         data = json.loads(captured.out)
         assert "summary" in data
 
@@ -805,64 +764,45 @@ class TestMain:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         (tmp_path / "README.md").write_text("# Title\n[link](nonexistent.md)\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path), "--broken-only", "--json"])
-        with pytest.raises(SystemExit) as exc_info:
-            LinkChecker.main()
-        assert exc_info.value.code == 1
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--broken-only", "--json"])
         captured = capsys.readouterr()
-        import json
-
+        assert rc == 0
         data = json.loads(captured.out)
         assert "all_links" not in data
+        assert data["summary"]["broken"] == 1
 
-    def test_single_file_input(
+    def test_check_external_setting(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        f = tmp_path / "README.md"
-        f.write_text("# Title\n[link](guide.md)\n", encoding="utf-8")
-        (tmp_path / "guide.md").write_text("# Guide\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["prog", str(f)])
-        with pytest.raises(SystemExit) as exc_info:
-            LinkChecker.main()
-        assert exc_info.value.code == 0
+        self._write_settings(tmp_path, documentation={"check_external": True})
+        (tmp_path / "README.md").write_text(
+            "# Title\n[link](https://example.com)\n", encoding="utf-8"
+        )
+        with patch(
+            "zolletta_metaskill.documentor.link_checker.LinkChecker.validate_external_url",
+            return_value=(True, None),
+        ) as mock_validate:
+            rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
+        mock_validate.assert_called_once_with("https://example.com")
 
-    def test_single_file_finds_git_root(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """When a file is passed, main() walks up to find the .git root."""
-        (tmp_path / ".git").mkdir()
-        sub = tmp_path / "docs"
-        sub.mkdir()
-        f = sub / "README.md"
-        f.write_text("# Title\n[link](guide.md)\n", encoding="utf-8")
-        (sub / "guide.md").write_text("# Guide\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["prog", str(f)])
-        with pytest.raises(SystemExit) as exc_info:
-            LinkChecker.main()
-        assert exc_info.value.code == 0
-
-    def test_check_external_flag(
+    def test_check_external_disabled_by_default(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         (tmp_path / "README.md").write_text(
             "# Title\n[link](https://example.com)\n", encoding="utf-8"
         )
-        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path), "--check-external"])
-        with (
-            patch(
-                "zolletta_metaskill.documentor.link_checker.LinkChecker.validate_external_url",
-                return_value=(True, None),
-            ),
-            pytest.raises(SystemExit) as exc_info,
-        ):
-            LinkChecker.main()
-        assert exc_info.value.code == 0
+        with patch(
+            "zolletta_metaskill.documentor.link_checker.LinkChecker.validate_external_url",
+            return_value=(True, None),
+        ) as mock_validate:
+            rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
+        mock_validate.assert_not_called()
 
     def test_empty_markdown_file(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         (tmp_path / "README.md").write_text("", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path)])
-        with pytest.raises(SystemExit) as exc_info:
-            LinkChecker.main()
-        assert exc_info.value.code == 0
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0

@@ -1,17 +1,85 @@
-"""Tests for ADROrchestrator.refresh()."""
+"""Tests for ADROrchestrator — distill, refresh, run, main, and truncate decisions."""
 
 from __future__ import annotations
 
+import json
 import os
+import sys
 from pathlib import Path
 
+import pytest
+
+from zolletta_metaskill.adr.adr_discovery import ADRDiscovery
 from zolletta_metaskill.adr.adr_orchestrator import ADROrchestrator
 
 from .conftest import write_adr
 
 
-class TestRefresh:
-    """Tests for ADROrchestrator.refresh()."""
+def write_settings(tmp_path: Path) -> None:
+    """Write a minimal settings.json into ``tmp_path/.zolletta-metaskill``."""
+    meta = tmp_path / ".zolletta-metaskill"
+    meta.mkdir(parents=True, exist_ok=True)
+    (meta / "settings.json").write_text(
+        json.dumps({"documentation": {"dir": "docs", "adrs": "adr"}})
+    )
+
+
+class TestADROrchestrator:
+    # --- Tests for ADROrchestrator.distill_adr(). ---
+
+    def test_accepted_adr_produces_directive(self, tmp_path: Path) -> None:
+        docs = tmp_path / "docs"
+        f = docs / "adr" / "0001-use-postgres.md"
+        write_adr(
+            f, "001", "Use Postgres", "Accepted", "We use PostgreSQL for the primary database."
+        )
+        record = ADRDiscovery._extract_metadata(f)
+        assert record is not None
+        distiller = ADROrchestrator(docs, "adr", tmp_path / "cache.json")
+        directive = distiller.distill_adr(record)
+        assert directive is not None
+        assert directive.startswith("- [ADR-001](adr/0001-use-postgres.md) ")
+        assert "PostgreSQL" in directive
+
+    def test_proposed_adr_excluded(self, tmp_path: Path) -> None:
+        docs = tmp_path / "docs"
+        f = docs / "adr" / "0001-test.md"
+        write_adr(f, "001", "Test", "Proposed", "Maybe do X.")
+        record = ADRDiscovery._extract_metadata(f)
+        assert record is not None
+        distiller = ADROrchestrator(docs, "adr", tmp_path / "cache.json")
+        assert distiller.distill_adr(record) is None
+
+    def test_deprecated_adr_excluded(self, tmp_path: Path) -> None:
+        docs = tmp_path / "docs"
+        f = docs / "adr" / "0001-test.md"
+        write_adr(f, "001", "Test", "Deprecated", "We used to do X.")
+        record = ADRDiscovery._extract_metadata(f)
+        assert record is not None
+        distiller = ADROrchestrator(docs, "adr", tmp_path / "cache.json")
+        assert distiller.distill_adr(record) is None
+
+    def test_superseded_adr_excluded(self, tmp_path: Path) -> None:
+        docs = tmp_path / "docs"
+        f = docs / "adr" / "0001-test.md"
+        write_adr(f, "001", "Test", "Superseded", "Old decision.")
+        record = ADRDiscovery._extract_metadata(f)
+        assert record is not None
+        distiller = ADROrchestrator(docs, "adr", tmp_path / "cache.json")
+        assert distiller.distill_adr(record) is None
+
+    def test_link_path_relative_to_docs_dir(self, tmp_path: Path) -> None:
+        docs = tmp_path / "docs"
+        f = docs / "0001-test.md"
+        write_adr(f, "001", "Test", "Accepted", "Do X.")
+        record = ADRDiscovery._extract_metadata(f)
+        assert record is not None
+        distiller = ADROrchestrator(docs, "", tmp_path / "cache.json")
+        directive = distiller.distill_adr(record)
+        assert directive is not None
+        assert "(0001-test.md)" in directive
+
+    # --- Tests for ADROrchestrator.refresh(). ---
 
     def test_fresh_start_creates_distilled_file(self, tmp_path: Path) -> None:
         docs = tmp_path / "docs"
@@ -194,3 +262,130 @@ class TestRefresh:
         report = distiller.refresh()
         assert report.has_adrs is True
         assert (docs / "adr" / "adr-distilled.md").exists()
+
+    # --- Tests for ADROrchestrator.run() — delegates to ADRCLI.run(). ---
+
+    def test_run_with_valid_adrs_returns_0(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        write_settings(tmp_path)
+        docs = tmp_path / "docs"
+        write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted", "We do X.")
+        monkeypatch.chdir(tmp_path)
+        rc = ADROrchestrator.run([])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "1 new" in out
+
+    def test_run_with_nonexistent_docs_dir_returns_1(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        write_settings(tmp_path)
+        monkeypatch.chdir(tmp_path)
+        rc = ADROrchestrator.run([])
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert "not a directory" in err
+
+    def test_run_with_none_argv_uses_sys_argv(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """When argv is None, ADRCLI.run reads from sys.argv."""
+        write_settings(tmp_path)
+        docs = tmp_path / "docs"
+        write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted", "We do X.")
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        rc = ADROrchestrator.run(None)
+        assert rc == 0
+
+    # --- Tests for ADROrchestrator.main(). ---
+
+    def test_main_with_adrs_returns_0(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        write_settings(tmp_path)
+        docs = tmp_path / "docs"
+        write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted", "We do X.")
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        rc = ADROrchestrator.main()
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "1 new" in out
+
+    def test_main_with_nonexistent_docs_dir_returns_1(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        write_settings(tmp_path)
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        rc = ADROrchestrator.main()
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert "not a directory" in err
+
+    # --- Tests for ADROrchestrator._truncate_decision(). ---
+
+    def test_short_text_preserved(self) -> None:
+        assert ADROrchestrator._truncate_decision("Use PostgreSQL.") == "Use PostgreSQL."
+
+    def test_truncates_at_sentence(self) -> None:
+        text = "Use PostgreSQL for the primary database. More text follows here."
+        result = ADROrchestrator._truncate_decision(text)
+        assert result == "Use PostgreSQL for the primary database."
+
+    def test_truncates_at_max_length(self) -> None:
+        text = "A " * 150  # 300 chars, no sentence boundary
+        result = ADROrchestrator._truncate_decision(text)
+        assert len(result) <= 203  # 200 + "..."
+        assert result.endswith("...")
+
+    def test_strips_markdown_bold(self) -> None:
+        result = ADROrchestrator._truncate_decision("**Important** decision.")
+        assert result == "Important decision."
+
+    def test_strips_markdown_italic(self) -> None:
+        assert ADROrchestrator._truncate_decision("*Important* decision.") == "Important decision."
+
+    def test_strips_markdown_code(self) -> None:
+        result = ADROrchestrator._truncate_decision("Use `postgres` database.")
+        assert result == "Use postgres database."
+
+    def test_strips_markdown_links(self) -> None:
+        result = ADROrchestrator._truncate_decision("See [docs](http://example.com) for info.")
+        assert result == "See docs for info."
+
+    def test_truncate_decision_empty_text_returns_empty(self) -> None:
+        assert ADROrchestrator._truncate_decision("") == ""
+
+    def test_truncate_decision_collapses_whitespace_returns_use_postgresql_now(self) -> None:
+        result = ADROrchestrator._truncate_decision("Use    PostgreSQL\n\nnow.")
+        assert result == "Use PostgreSQL now."
+
+    def test_no_word_boundary_in_long_text(self) -> None:
+        text = "a" * 250
+        result = ADROrchestrator._truncate_decision(text)
+        assert result.endswith("...")
+
+    def test_exactly_max_length_no_truncation(self) -> None:
+        """Text at exactly _MAX_DECISION_LEN chars is not truncated."""
+        text = "a" * ADROrchestrator._MAX_DECISION_LEN
+        result = ADROrchestrator._truncate_decision(text)
+        assert result == text
+        assert not result.endswith("...")

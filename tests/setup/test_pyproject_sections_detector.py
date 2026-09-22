@@ -11,8 +11,8 @@ import pytest
 from zolletta_metaskill.setup.pyproject_sections_detector import PyprojectSectionsDetector
 
 
-class TestDetectPyprojectSections:
-    """Tests for PyprojectSectionsDetector.detect_pyproject_sections()."""
+class TestPyprojectSectionsDetector:
+    # --- Tests for PyprojectSectionsDetector.detect_pyproject_sections(). ---
 
     def test_all_sections_present(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
@@ -70,9 +70,7 @@ class TestDetectPyprojectSections:
         assert result["ruff"]["available"] is True
         assert result["mypy"]["available"] is False
 
-
-class TestMain:
-    """Tests for PyprojectSectionsDetector.main()."""
+    # --- Tests for PyprojectSectionsDetector.main(). ---
 
     def test_main_prints_json(
         self,

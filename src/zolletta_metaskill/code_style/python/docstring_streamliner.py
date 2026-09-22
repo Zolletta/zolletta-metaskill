@@ -21,16 +21,19 @@ describes the element):
      redundant sections, nothing meaningful remains (no summary text and
      no kept sections).
 
-Opt-in transformations (require explicit flags):
+Opt-in transformations (enabled via ``python.code_style`` in
+``.zolletta-metaskill/settings.json``):
 
-  --strip-private   Remove docstrings from private functions/methods
-                    (leading underscore, but not dunder methods).
-  --strip-tests     Remove docstrings from ``test_*`` functions.
-  --strip-nested    Remove docstrings from nested/local functions.
-  --strip-obvious-init
-                    Remove ``__init__`` docstrings when every parameter
-                    has a type annotation (the signature is
-                    self-explanatory).
+  docstring_strip_private       Remove docstrings from private
+                                functions/methods (leading underscore,
+                                but not dunder methods).
+  docstring_strip_tests         Remove docstrings from ``test_*``
+                                functions.
+  docstring_strip_nested        Remove docstrings from nested/local
+                                functions.
+  docstring_strip_obvious_init  Remove ``__init__`` docstrings when every
+                                parameter has a type annotation (the
+                                signature is self-explanatory).
 
 Elements that are **never** touched:
 
@@ -42,25 +45,18 @@ Elements that are **never** touched:
   - Summary lines (always preserved unless the whole docstring is
     obsolete)
 
-Usage:
-    python3 docstring_streamliner.py [directory] [options]
+Scan roots come from ``python.paths.source`` in ``settings.json``; the
+check runs when ``python.code_style.check_docstring_no_type_repeat`` is
+not ``false``. File enumeration is git-ignore aware.
 
-Arguments:
-    directory             Root directory to scan (default: src).
+Usage:
+    python3 docstring_streamliner.py [--apply] [--json]
 
 Options:
-    --apply               Write changes to disk.  Default: dry-run report.
-    --strip-private       Also remove docstrings from private functions.
-    --strip-tests         Also remove docstrings from test functions.
-    --strip-nested        Also remove docstrings from nested/local functions.
-    --strip-obvious-init  Also remove obvious __init__ docstrings.
-    --strict              Exit with code 1 if any findings (even in dry-run).
-    --skip                Skip this check entirely (exit 0 with 'skipped'
-                          message).
-    --ignore-dirs         Comma-separated directory names to skip.
+    --apply   Write changes to disk.  Default: dry-run report.
+    --json    Output as JSON instead of markdown.
 
-Exit code: 0 if no findings (or --skip / non-strict), 1 if findings found
-           with --strict.
+Exit code: 0 always (report-only; ``--apply`` writes changes to disk).
 
 """
 
@@ -68,12 +64,14 @@ from __future__ import annotations
 
 import argparse
 import ast
+import json
 import re
 import sys
 from pathlib import Path
 from typing import Any, cast
 
 from zolletta_metaskill.code_style.python.structs import FileReport, Finding
+from zolletta_metaskill.core.project_config import ProjectConfig
 
 
 class DocstringStreamliner:
@@ -653,14 +651,42 @@ class DocstringStreamliner:
     # ---------------------------------------------------------------------------
 
     @staticmethod
-    def _rel(path: Path, root: Path) -> str:
+    def _rel(path: Path) -> str:
         try:
-            return str(path.relative_to(root))
+            return str(path.relative_to(Path(".").resolve()))
         except ValueError:
             return str(path)
 
     @staticmethod
-    def print_report(reports: list[FileReport], root: Path, apply_mode: bool) -> int:
+    def _findings_payload(reports: list[FileReport]) -> list[dict[str, Any]]:
+        findings: list[dict[str, Any]] = []
+        for report in reports:
+            for f in report.findings:
+                findings.append(
+                    {
+                        "file": DocstringStreamliner._rel(f.file),
+                        "line": f.line,
+                        "kind": f.kind,
+                        "detail": f.detail,
+                    }
+                )
+        return findings
+
+    @staticmethod
+    def json_report(reports: list[FileReport], directories: list[str], apply_mode: bool) -> int:
+        """Print a JSON report.  Return the total finding count."""
+        findings = DocstringStreamliner._findings_payload(reports)
+        result = {
+            "directories": directories,
+            "apply_mode": apply_mode,
+            "findings": findings,
+            "total": len(findings),
+        }
+        print(json.dumps(result, indent=2))
+        return len(findings)
+
+    @staticmethod
+    def print_report(reports: list[FileReport], apply_mode: bool) -> int:
         """Print a human-readable report.  Return the total finding count."""
         all_findings: list[Finding] = []
         for report in reports:
@@ -681,10 +707,10 @@ class DocstringStreamliner:
 
         kind_labels: dict[str, str] = {
             "redundant": "Redundant Args/Returns sections",
-            "private": "Private function docstrings (use --strip-private to remove)",
-            "test": "Test function docstrings (use --strip-tests to remove)",
-            "nested": "Nested function docstrings (use --strip-nested to remove)",
-            "obvious_init": "Obvious __init__ docstrings (use --strip-obvious-init to remove)",
+            "private": "Private function docstrings (docstring_strip_private)",
+            "test": "Test function docstrings (docstring_strip_tests)",
+            "nested": "Nested function docstrings (docstring_strip_nested)",
+            "obvious_init": "Obvious __init__ docstrings (docstring_strip_obvious_init)",
         }
 
         for kind, label in kind_labels.items():
@@ -693,7 +719,7 @@ class DocstringStreamliner:
                 continue
             print(f"\n## {label} ({len(items)} finding{'s' if len(items) != 1 else ''})\n")
             for f in items:
-                print(f"  {DocstringStreamliner._rel(f.file, root)}:{f.line}")
+                print(f"  {DocstringStreamliner._rel(f.file)}:{f.line}")
                 print(f"    {f.detail}")
 
         total = len(all_findings)
@@ -715,91 +741,74 @@ class DocstringStreamliner:
             description="Streamline Google-style docstrings per python-code-style Pattern 6.",
         )
         parser.add_argument(
-            "directory",
-            nargs="?",
-            default="src",
-            help="Root directory to scan (default: src)",
-        )
-        parser.add_argument(
             "--apply",
             action="store_true",
             help="Write changes to disk (default: dry-run report only).",
         )
         parser.add_argument(
-            "--strip-private",
+            "--json",
             action="store_true",
-            help="Also remove docstrings from private functions (_name).",
-        )
-        parser.add_argument(
-            "--strip-tests",
-            action="store_true",
-            help="Also remove docstrings from test_* functions.",
-        )
-        parser.add_argument(
-            "--strip-nested",
-            action="store_true",
-            help="Also remove docstrings from nested/local functions.",
-        )
-        parser.add_argument(
-            "--strip-obvious-init",
-            action="store_true",
-            help="Also remove __init__ docstrings when all params have annotations.",
-        )
-        parser.add_argument(
-            "--strict",
-            action="store_true",
-            help="Exit with code 1 if any findings are reported.",
-        )
-        parser.add_argument(
-            "--skip",
-            action="store_true",
-            help="Skip this check entirely (exit 0 with 'skipped' message).",
-        )
-        parser.add_argument(
-            "--ignore-dirs",
-            default="",
-            help="Comma-separated directory names to skip (e.g. __pycache__,assets).",
+            help="Output as JSON instead of markdown.",
         )
         args = parser.parse_args()
 
-        if args.skip:
-            print("=" * 70)
-            print("DOCSTRING STREAMLINE — REPORT")
-            print("=" * 70)
-            print("\nResult: SKIPPED (--skip flag)\n")
+        settings = ProjectConfig.load_settings()
+        languages = ProjectConfig.scan_languages(
+            settings, "code_style.check_docstring_no_type_repeat"
+        )
+        py_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
+        if not py_langs:
+            ProjectConfig.emit_skipped(
+                args.json, "check_docstring_no_type_repeat disabled in settings.json"
+            )
             return 0
 
-        root = Path(args.directory)
-        if not root.exists():
-            print(f"Error: directory '{root}' does not exist", file=sys.stderr)
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, py_langs))
+        if not roots:
+            print(
+                "Error: no configured Python source directories exist on disk "
+                f"({', '.join(str(r) for r in ProjectConfig.source_roots(settings, py_langs))})",
+                file=sys.stderr,
+            )
             return 1
 
-        ignore = {d.strip() for d in args.ignore_dirs.split(",") if d.strip()}
-        ignore.add("__pycache__")
+        strip_private = ProjectConfig.any_enabled(
+            settings, py_langs, "code_style.docstring_strip_private"
+        )
+        strip_tests = ProjectConfig.any_enabled(
+            settings, py_langs, "code_style.docstring_strip_tests"
+        )
+        strip_nested = ProjectConfig.any_enabled(
+            settings, py_langs, "code_style.docstring_strip_nested"
+        )
+        strip_obvious_init = ProjectConfig.any_enabled(
+            settings, py_langs, "code_style.docstring_strip_obvious_init"
+        )
 
+        files = [f for root in roots for f in ProjectConfig.iter_files(root, {".py"})]
         reports: list[FileReport] = []
-        for py in root.rglob("*.py"):
-            if any(part in ignore for part in py.parts):
-                continue
+        for py in files:
             report = DocstringStreamliner.process_file(
                 py,
-                strip_private=args.strip_private,
-                strip_tests=args.strip_tests,
-                strip_nested=args.strip_nested,
-                strip_obvious_init=args.strip_obvious_init,
+                strip_private=strip_private,
+                strip_tests=strip_tests,
+                strip_nested=strip_nested,
+                strip_obvious_init=strip_obvious_init,
             )
             if report.findings:
                 reports.append(report)
 
-        total = DocstringStreamliner.print_report(reports, root, apply_mode=args.apply)
+        directories = [str(root) for root in roots]
+        if args.json:
+            DocstringStreamliner.json_report(reports, directories, apply_mode=args.apply)
+        else:
+            DocstringStreamliner.print_report(reports, apply_mode=args.apply)
 
         if args.apply:
             for report in reports:
                 new_source = DocstringStreamliner.apply_edits(report.path, report.findings)
                 report.path.write_text(new_source, encoding="utf-8")
 
-        if args.strict and total > 0:
-            return 1
         return 0
 
 

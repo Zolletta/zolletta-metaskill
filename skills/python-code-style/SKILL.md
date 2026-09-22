@@ -37,18 +37,18 @@ Consistent code style and clear documentation make codebases maintainable and co
 
 ## Table 2 — Configurable settings (stored in `settings.json` under `python.code_style`)
 
-| #  | Area       | Name                                                      | Key                              | Default |
-|----|------------|-----------------------------------------------------------|----------------------------------|---------|
-| 3  | Naming     | Acronyms stay uppercase in class names                    | `check_acronym_casing`           | `true`  |
-| 7  | Imports    | Absolute imports only, no relative imports                | `check_no_relative_imports`      | `true`  |
-| 8  | Structure  | One class per file                                        | `check_one_class_per_file`       | `true`  |
-| 9  | Structure  | Filename matches class name                               | `check_filename_matches_class`   | `true`  |
-| 12 | Docstrings | Docstrings required on public classes, methods, functions | `check_public_docstrings`        | `true`  |
-| 14 | Docstrings | No type repetition in docstring Args/Returns              | `check_docstring_no_type_repeat` | `true`  |
-| 18 | Docstrings | Skip docstrings for obvious one-line functions            | `check_skip_obvious_docstrings`  | `true`  |
-| 20 | Formatting | Line length from project config                           | `check_line_length`              | `true`  |
+| #  | Area       | Name                                                      | Key                                    | Default       |
+|----|------------|-----------------------------------------------------------|----------------------------------------|---------------|
+| 3  | Naming     | Acronyms stay uppercase in class names                    | `check_acronym_casing`                 | `true`        |
+| 7  | Imports    | Absolute imports only, no relative imports                | `check_no_relative_imports`            | `true`        |
+| 8  | Structure  | One class per file                                        | `check_one_class_per_file`             | `true`        |
+| 9  | Structure  | Filename matches class name                               | `check_filename_matches_class`         | `true`        |
+| 12 | Docstrings | Docstrings required on public classes, methods, functions | `check_public_docstrings`              | `true`        |
+| 14 | Docstrings | No type repetition in docstring Args/Returns              | `check_docstring_no_type_repeat`       | `true`        |
+| 18 | Docstrings | Skip docstrings for obvious one-line functions            | `check_skip_obvious_docstrings`        | `true`        |
+| 20 | Formatting | Line length from project config                           | `check_line_length`                    | `true`        |
 | 21 | Structure  | File length limit                                         | `check_file_length`, `max_file_length` | `true`, `800` |
-| 22 | Dead code  | Vulture minimum confidence + unused `__all__` exports     | `vulture_min_confidence`         | `80`    |
+| 22 | Dead code  | Vulture minimum confidence + unused `__all__` exports     | `vulture_min_confidence`               | `80`          |
 
 ## Detailed rule explanations
 
@@ -81,13 +81,12 @@ Class names keep acronyms fully uppercase: `HTTPClientFactory`, not `HttpClientF
 - **Enforcement**: `acronym_casing_scanner.py` from `../../src/zolletta_metaskill/code_style/python/` (deterministic). The scanner splits each PascalCase class name into words, checks each word against the configured acronym list, and flags any word that case-insensitively matches an acronym but isn't all-uppercase.
 
 ```bash
-python3 ../../src/zolletta_metaskill/code_style/python/acronym_casing_scanner.py src/ --acronyms CI,MR,AST,DI
+python3 ../../src/zolletta_metaskill/code_style/python/acronym_casing_scanner.py
 ```
 
 The acronym list is built additively:
 1. **Shipped base**: `python-code-style/assets/acronyms.json` (common SE acronyms: CI, CD, CICD, HTTP, HTTPS, JSON, SQL, URL, etc.) — always loaded
 2. **Project-specific**: the top-level `acronyms` array in `settings.json` — merged with the shipped list (additive, not replacing). Use this for domain-specific acronyms not in the shipped list (e.g. `XML`, `SVG`)
-3. **`--acronyms` CLI flag**: fully replaces both (for testing/debugging only)
 
 To configure project-specific acronyms, add them to `settings.json`:
 ```json
@@ -174,7 +173,7 @@ Source files must not exceed `max_file_length` lines (default: `800`, read from 
 - **Enforcement**: `file_length_scanner.py` from `../../src/zolletta_metaskill/code_style/general/` (deterministic, language-agnostic).
 
 ```bash
-python3 ../../src/zolletta_metaskill/code_style/general/file_length_scanner.py src/
+python3 ../../src/zolletta_metaskill/code_style/general/file_length_scanner.py
 ```
 
 > The scanner is the single source of truth for this rule. Do not manually flag files that the scanner doesn't flag — the line count against the configured threshold is the objective criterion.
@@ -288,7 +287,7 @@ If `python.tools.vulture.available` is `false` in `settings.json`, skip dead-cod
 **Supplementary check — unused `__all__` exports:** vulture treats every name in `__all__` as "used" (public API export), so it never flags `__all__` entries that are never imported anywhere. This is a known gap. After running vulture, also run:
 
 ```bash
-python3 ../../src/zolletta_metaskill/code_style/python/unused_all_exports_scanner.py src/
+python3 ../../src/zolletta_metaskill/code_style/python/unused_all_exports_scanner.py
 ```
 
 This scanner cross-references every `__all__` entry against actual import statements across the source tree. Names listed in `__all__` but never imported by any other module are reported as unused exports. Report these as low-priority findings (same severity as vulture findings).
@@ -301,7 +300,7 @@ When this skill runs a review, it writes its findings to a markdown file using t
 
 - **Path**: `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/python-code-style.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`; `runs_dir` from `settings.json`, default `.zolletta-metaskill`)
 - **Compound skills** (e.g. `zolletta-metaskill-review`) may override the folder and filename — follow their instructions instead
-- **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the [setup guard](../SKILL.md#setup-guard) — no manual setup needed
+- **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the [setup guard](../../SKILL.md#setup-guard) — no manual setup needed
 - **Format**: follow the [report template](assets/report_template.md) — grade at the top, tool results (ruff, type checker, vulture), auto-fixable issues (informational, do not count toward grade), findings grouped by severity with file/symbol/rule ID/issue/fix columns
 
 ## Attribution
