@@ -921,9 +921,7 @@ class DocStalenessScorer:
 
         # Build weights (documentation.staleness_weights overrides defaults)
         weights = dict(DocStalenessScorer.DEFAULT_WEIGHTS)
-        raw_weights = ProjectConfig.setting(
-            settings, "documentation.staleness_weights", None
-        )
+        raw_weights = ProjectConfig.setting(settings, "documentation.staleness_weights", None)
         if isinstance(raw_weights, dict):
             for key in weights:
                 value = raw_weights.get(key)
@@ -937,9 +935,7 @@ class DocStalenessScorer:
 
         # Required sections (documentation.readme_sections overrides; the
         # translations file can supply them when readme_sections is unset).
-        raw_sections = ProjectConfig.setting(
-            settings, "documentation.readme_sections", None
-        )
+        raw_sections = ProjectConfig.setting(settings, "documentation.readme_sections", None)
         cli_sections = (
             [s.strip() for s in raw_sections if isinstance(s, str)]
             if isinstance(raw_sections, list)
@@ -951,9 +947,7 @@ class DocStalenessScorer:
             settings, "documentation.diataxis_translations", None
         )
         if isinstance(translations_path, str) and translations_path:
-            translations = DocStalenessScorer._load_diataxis_translations(
-                translations_path
-            )
+            translations = DocStalenessScorer._load_diataxis_translations(translations_path)
             DocStalenessScorer._merge_translations(translations)
             translated_readme = translations.get("readme_sections")
             if translated_readme and not cli_sections:
@@ -967,9 +961,7 @@ class DocStalenessScorer:
         if cli_sections:
             required_sections = cli_sections
 
-        readme_focus = bool(
-            ProjectConfig.setting(settings, "documentation.readme_focus", False)
-        )
+        readme_focus = bool(ProjectConfig.setting(settings, "documentation.readme_focus", False))
 
         # Find docs
         doc_files = DocStalenessScorer.find_doc_files(repo_path)
@@ -1000,19 +992,12 @@ class DocStalenessScorer:
             print(report)
 
         # Threshold check (gate-keeping exception: exit 1 below configured score)
-        raw_threshold = ProjectConfig.setting(
-            settings, "documentation.staleness_threshold", None
-        )
-        threshold = (
-            float(raw_threshold)
-            if isinstance(raw_threshold, (int, float))
-            else None
-        )
+        raw_threshold = ProjectConfig.setting(settings, "documentation.staleness_threshold", None)
+        threshold = float(raw_threshold) if isinstance(raw_threshold, (int, float)) else None
         if threshold is not None and aggregate < threshold:
             if not args.quiet:
                 print(
-                    f"\nFAILED: Aggregate score {aggregate:.1f} is below "
-                    f"threshold {threshold}",
+                    f"\nFAILED: Aggregate score {aggregate:.1f} is below threshold {threshold}",
                     file=sys.stderr,
                 )
             return 1

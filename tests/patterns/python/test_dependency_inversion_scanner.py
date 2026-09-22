@@ -319,6 +319,15 @@ def _write_settings(dirpath: Path, **overrides: object) -> Path:
     return path
 
 
+def test_write_settings_replaces_non_dict_python_value(tmp_path: Path) -> None:
+    """A non-dict ``python`` override value replaces the base value."""
+    path = _write_settings(tmp_path, python={"tools": "none"})
+    written = json.loads(path.read_text())
+    python = written["python"]
+    assert isinstance(python, dict)
+    assert python["tools"] == "none"
+
+
 def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "argv", argv)
@@ -477,9 +486,7 @@ class TestMain:
     def test_main_custom_entry_points(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        _write_settings(
-            tmp_path, python={"patterns": {"dip_entry_points": ["custom_entry"]}}
-        )
+        _write_settings(tmp_path, python={"patterns": {"dip_entry_points": ["custom_entry"]}})
         src = tmp_path / "src"
         src.mkdir()
         (src / "custom_entry.py").write_text(

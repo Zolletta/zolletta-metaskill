@@ -142,9 +142,7 @@ class OneClassPerFileScanner:
         args = parser.parse_args()
 
         settings = ProjectConfig.load_settings()
-        languages = ProjectConfig.scan_languages(
-            settings, "code_style.check_one_class_per_file"
-        )
+        languages = ProjectConfig.scan_languages(settings, "code_style.check_one_class_per_file")
         if not languages:
             if args.json:
                 print(
@@ -162,9 +160,7 @@ class OneClassPerFileScanner:
                 print("\nResult: SKIPPED (check_one_class_per_file disabled in settings.json)\n")
             return 0
 
-        roots = ProjectConfig.existing_roots(
-            ProjectConfig.source_roots(settings, languages)
-        )
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, languages))
         if not roots:
             print(
                 "Error: no configured source directories exist on disk",

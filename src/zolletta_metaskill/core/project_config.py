@@ -156,9 +156,10 @@ class ProjectConfig:
         enabled: set[str] = set()
         for lang in ProjectConfig.configured_languages(settings):
             section = settings.get(lang)
-            if isinstance(section, dict) and ProjectConfig.setting(
-                section, toggle_path, True
-            ) is False:
+            if (
+                isinstance(section, dict)
+                and ProjectConfig.setting(section, toggle_path, True) is False
+            ):
                 continue
             enabled.add(lang)
         return enabled
@@ -233,8 +234,7 @@ class ProjectConfig:
         return {
             lang
             for lang in languages
-            if lang in registered
-            and extensions & set(EngineRegistry.get(lang).file_extensions())
+            if lang in registered and extensions & set(EngineRegistry.get(lang).file_extensions())
         }
 
     # ------------------------------------------------------------------
@@ -365,17 +365,17 @@ class ProjectConfig:
         if adrs is None:
             return None
         if isinstance(adrs, str):
-            return ProjectConfig.docs_dir(settings) / adrs if adrs else ProjectConfig.docs_dir(
-                settings
+            return (
+                ProjectConfig.docs_dir(settings) / adrs
+                if adrs
+                else ProjectConfig.docs_dir(settings)
             )
         return None
 
     @staticmethod
     def runs_dir(settings: dict[str, Any]) -> Path:
         """Return the review-runs root (``runs_dir``, default ``.zolletta-metaskill``)."""
-        return Path(
-            ProjectConfig.setting(settings, "runs_dir", ProjectConfig.DEFAULT_RUNS_DIR)
-        )
+        return Path(ProjectConfig.setting(settings, "runs_dir", ProjectConfig.DEFAULT_RUNS_DIR))
 
     # ------------------------------------------------------------------
     # File enumeration

@@ -247,9 +247,7 @@ class TestMain:
         (test_pkg / "__init__.py").write_text("")
         return src_pkg, test_pkg
 
-    def _run(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]
-    ) -> int:
+    def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
         """Chdir into tmp_path and run main() with *argv*."""
         monkeypatch.chdir(tmp_path)
         monkeypatch.setattr(sys, "argv", argv)
@@ -259,9 +257,7 @@ class TestMain:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """check_filename_matches_class=false for every configured language → SKIPPED."""
-        _write_settings(
-            tmp_path, python={"code_style": {"check_filename_matches_class": False}}
-        )
+        _write_settings(tmp_path, python={"code_style": {"check_filename_matches_class": False}})
         self._make_project(tmp_path)
         rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
@@ -271,9 +267,7 @@ class TestMain:
     def test_main_check_disabled_json(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        _write_settings(
-            tmp_path, python={"code_style": {"check_filename_matches_class": False}}
-        )
+        _write_settings(tmp_path, python={"code_style": {"check_filename_matches_class": False}})
         self._make_project(tmp_path)
         rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
         report = json.loads(capsys.readouterr().out)

@@ -169,19 +169,13 @@ class AcronymCasingScanner:
         args = parser.parse_args()
 
         settings = ProjectConfig.load_settings()
-        languages = ProjectConfig.scan_languages(
-            settings, "code_style.check_acronym_casing"
-        )
+        languages = ProjectConfig.scan_languages(settings, "code_style.check_acronym_casing")
         py_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
         if not py_langs:
-            ProjectConfig.emit_skipped(
-                args.json, "check_acronym_casing disabled in settings.json"
-            )
+            ProjectConfig.emit_skipped(args.json, "check_acronym_casing disabled in settings.json")
             return 0
 
-        roots = ProjectConfig.existing_roots(
-            ProjectConfig.source_roots(settings, py_langs)
-        )
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, py_langs))
         if not roots:
             print(
                 "Error: no configured source directories exist on disk "

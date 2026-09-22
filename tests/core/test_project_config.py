@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -76,7 +77,7 @@ class TestSetting:
         assert ProjectConfig.setting({}, "python.code_style.x", 3) == 3
 
     def test_missing_leaf_returns_default(self) -> None:
-        settings = {"python": {"code_style": {}}}
+        settings: dict[str, Any] = {"python": {"code_style": {}}}
         assert ProjectConfig.setting(settings, "python.code_style.x", 3) == 3
 
     def test_non_dict_intermediate_returns_default(self) -> None:
@@ -139,7 +140,7 @@ class TestConfiguredLanguages:
         assert ProjectConfig.configured_languages(settings) == {"python", "php"}
 
     def test_null_sections_ignored(self) -> None:
-        settings = {"language": "python", "python": {"tools": {}}, "php": None}
+        settings: dict[str, Any] = {"language": "python", "python": {"tools": {}}, "php": None}
         assert ProjectConfig.configured_languages(settings) == {"python"}
 
     def test_non_string_language_ignored(self) -> None:
@@ -226,9 +227,7 @@ class TestExtensionsFor:
     def test_maps_languages(self) -> None:
         assert ProjectConfig.extensions_for({"python", "php"}) == {".py", ".php"}
 
-    def test_unregistered_language_warns(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_unregistered_language_warns(self, capsys: pytest.CaptureFixture[str]) -> None:
         result = ProjectConfig.extensions_for({"go", "python"})
         assert result == {".py"}
         assert "no engine for language 'go'" in capsys.readouterr().err
@@ -446,9 +445,7 @@ class TestIterFiles:
         """Git ls-files entries that are not files on disk are dropped."""
 
         def _fake_git(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[bytes]:
-            return subprocess.CompletedProcess(
-                args=[], returncode=0, stdout=b"ghost.py\0real.py\0"
-            )
+            return subprocess.CompletedProcess(args=[], returncode=0, stdout=b"ghost.py\0real.py\0")
 
         monkeypatch.setattr(subprocess, "run", _fake_git)
         root = tmp_path / "src"

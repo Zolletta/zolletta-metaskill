@@ -156,9 +156,7 @@ class TestFindTestFunctions:
         """Methods named test_* on non-Test* classes are not test functions."""
         f = tmp_path / "test_protocol.py"
         f.write_text(
-            "class _StubEngine:\n"
-            "    def test_file_glob(self):\n"
-            "        pass\n",
+            "class _StubEngine:\n    def test_file_glob(self):\n        pass\n",
         )
         result = TestNamingScanner._find_test_functions(f)
         assert result == []
@@ -229,9 +227,16 @@ def _write_settings(dirpath: Path, **overrides: object) -> Path:
     return path
 
 
-def run_scan(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]
-) -> int:
+def test_write_settings_replaces_non_dict_python_value(tmp_path: Path) -> None:
+    """A non-dict ``python`` override value replaces the base value."""
+    path = _write_settings(tmp_path, python={"tools": "none"})
+    written = json.loads(path.read_text())
+    python = written["python"]
+    assert isinstance(python, dict)
+    assert python["tools"] == "none"
+
+
+def run_scan(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
     """Chdir into *tmp_path* and run ``main()`` with *argv*."""
     monkeypatch.chdir(tmp_path)
     return main_with_argv(["scan", *argv])
@@ -565,12 +570,8 @@ class TestMainMultipleRoots:
             tmp_path,
             python={"paths": {"tests": ["tests", "spec"]}},
         )
-        write_test_file(
-            tmp_path / "tests" / "test_a.py", "def test_init():\n    assert True\n"
-        )
-        write_test_file(
-            tmp_path / "spec" / "test_b.py", "def test_add():\n    assert True\n"
-        )
+        write_test_file(tmp_path / "tests" / "test_a.py", "def test_init():\n    assert True\n")
+        write_test_file(tmp_path / "spec" / "test_b.py", "def test_add():\n    assert True\n")
         rc = run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
         data = json.loads(capsys.readouterr().out)
@@ -723,9 +724,7 @@ class TestScanModule:
         f = tmp_path / "test_protocol.py"
         write_test_file(
             f,
-            "class _StubEngine:\n"
-            "    def test_file_glob(self):\n"
-            "        pass\n",
+            "class _StubEngine:\n    def test_file_glob(self):\n        pass\n",
         )
         findings = TestNamingScanner.scan_file(f)
         assert findings == []

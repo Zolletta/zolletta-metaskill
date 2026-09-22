@@ -165,18 +165,13 @@ class NamingConventionsScanner:
                 print("NAMING CONVENTIONS — VALIDATION REPORT")
                 print("=" * 70)
                 print(
-                    "\nResult: SKIPPED "
-                    "(check_filename_matches_class disabled in settings.json)\n"
+                    "\nResult: SKIPPED (check_filename_matches_class disabled in settings.json)\n"
                 )
             return 0
 
         python_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
-        src_roots = ProjectConfig.existing_roots(
-            ProjectConfig.source_roots(settings, python_langs)
-        )
-        test_roots = ProjectConfig.existing_roots(
-            ProjectConfig.test_roots(settings, python_langs)
-        )
+        src_roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, python_langs))
+        test_roots = ProjectConfig.existing_roots(ProjectConfig.test_roots(settings, python_langs))
         if not src_roots:
             print(
                 "Error: no configured source directories exist on disk",
@@ -208,8 +203,7 @@ class NamingConventionsScanner:
             return 1
         if not test_pkgs:
             print(
-                f"Error: test package '{pkg_name}' does not exist under any "
-                "configured test root",
+                f"Error: test package '{pkg_name}' does not exist under any configured test root",
                 file=sys.stderr,
             )
             return 1
@@ -239,9 +233,7 @@ class NamingConventionsScanner:
         # --- Check 2: test file naming convention ---
         source_index: dict[Path, set[str]] = {}
         for src_pkg in src_pkgs:
-            for rel_dir, prefixes in NamingConventionsScanner._build_source_index(
-                src_pkg
-            ).items():
+            for rel_dir, prefixes in NamingConventionsScanner._build_source_index(src_pkg).items():
                 source_index.setdefault(rel_dir, set()).update(prefixes)
         orphan_tests: list[dict[str, Any]] = []
 
@@ -321,9 +313,7 @@ class NamingConventionsScanner:
             print("\n## Source file name != class name: none")
 
         if orphan_tests:
-            print(
-                f"\n## Test files not matching naming convention ({len(orphan_tests)} files)\n"
-            )
+            print(f"\n## Test files not matching naming convention ({len(orphan_tests)} files)\n")
             for item in orphan_tests:
                 print(f"  {item['file']}")
                 print(f"    Reason: {item['reason']}")

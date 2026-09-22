@@ -673,9 +673,7 @@ class DocstringStreamliner:
         return findings
 
     @staticmethod
-    def json_report(
-        reports: list[FileReport], directories: list[str], apply_mode: bool
-    ) -> int:
+    def json_report(reports: list[FileReport], directories: list[str], apply_mode: bool) -> int:
         """Print a JSON report.  Return the total finding count."""
         findings = DocstringStreamliner._findings_payload(reports)
         result = {
@@ -765,9 +763,7 @@ class DocstringStreamliner:
             )
             return 0
 
-        roots = ProjectConfig.existing_roots(
-            ProjectConfig.source_roots(settings, py_langs)
-        )
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, py_langs))
         if not roots:
             print(
                 "Error: no configured Python source directories exist on disk "
@@ -789,9 +785,7 @@ class DocstringStreamliner:
             settings, py_langs, "code_style.docstring_strip_obvious_init"
         )
 
-        files = [
-            f for root in roots for f in ProjectConfig.iter_files(root, {".py"})
-        ]
+        files = [f for root in roots for f in ProjectConfig.iter_files(root, {".py"})]
         reports: list[FileReport] = []
         for py in files:
             report = DocstringStreamliner.process_file(

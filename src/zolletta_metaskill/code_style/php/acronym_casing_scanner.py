@@ -225,19 +225,13 @@ class AcronymCasingScanner:
             return 0
 
         settings = ProjectConfig.load_settings()
-        languages = ProjectConfig.scan_languages(
-            settings, "code_style.check_acronym_casing"
-        )
+        languages = ProjectConfig.scan_languages(settings, "code_style.check_acronym_casing")
         php_langs = ProjectConfig.languages_for_extensions(languages, {".php"})
         if not php_langs:
-            ProjectConfig.emit_skipped(
-                args.json, "check_acronym_casing disabled in settings.json"
-            )
+            ProjectConfig.emit_skipped(args.json, "check_acronym_casing disabled in settings.json")
             return 0
 
-        roots = ProjectConfig.existing_roots(
-            ProjectConfig.source_roots(settings, php_langs)
-        )
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, php_langs))
         if not roots:
             print(
                 "Error: no configured source directories exist on disk "

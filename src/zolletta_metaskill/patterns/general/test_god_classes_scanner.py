@@ -143,9 +143,7 @@ class TestGodClassesScanner:
 
         TestGodClassesScanner._ensure_python_engine()
         settings = ProjectConfig.load_settings()
-        languages = ProjectConfig.scan_languages(
-            settings, "patterns.check_test_god_classes"
-        )
+        languages = ProjectConfig.scan_languages(settings, "patterns.check_test_god_classes")
         py_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
         if not py_langs:
             ProjectConfig.emit_skipped(
@@ -153,9 +151,7 @@ class TestGodClassesScanner:
             )
             return 0
 
-        roots = ProjectConfig.existing_roots(
-            ProjectConfig.test_roots(settings, py_langs)
-        )
+        roots = ProjectConfig.existing_roots(ProjectConfig.test_roots(settings, py_langs))
         if not roots:
             print(
                 "Error: no configured test directories exist on disk",
@@ -165,9 +161,7 @@ class TestGodClassesScanner:
 
         top_limits: list[int] = []
         for lang in sorted(py_langs):
-            value = ProjectConfig.setting(
-                settings, f"{lang}.patterns.test_god_classes_top", None
-            )
+            value = ProjectConfig.setting(settings, f"{lang}.patterns.test_god_classes_top", None)
             if isinstance(value, int) and not isinstance(value, bool):
                 top_limits.append(value)
         top_n = max(top_limits) if top_limits else 30

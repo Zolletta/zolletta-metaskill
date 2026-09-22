@@ -566,6 +566,15 @@ def _write_settings(dirpath: Path, **overrides: object) -> Path:
     return path
 
 
+def test_write_settings_replaces_non_dict_php_value(tmp_path: Path) -> None:
+    """A non-dict ``php`` override value replaces the base value."""
+    path = _write_settings(tmp_path, php={"tools": "none"})
+    written = json.loads(path.read_text())
+    php = written["php"]
+    assert isinstance(php, dict)
+    assert php["tools"] == "none"
+
+
 def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
     """Chdir into tmp_path and run main() with *argv*."""
     monkeypatch.chdir(tmp_path)

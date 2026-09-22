@@ -897,9 +897,7 @@ class TestMain:
         path.write_text(json.dumps(settings))
         return path
 
-    def _run(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]
-    ) -> int:
+    def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
         """Chdir into tmp_path and run main() with *argv*."""
         monkeypatch.chdir(tmp_path)
         monkeypatch.setattr(sys, "argv", argv)
@@ -972,9 +970,7 @@ class TestMain:
         with (
             p1,
             p2,
-            patch.object(
-                DocStalenessScorer, "score_document", return_value=score
-            ) as mock_score,
+            patch.object(DocStalenessScorer, "score_document", return_value=score) as mock_score,
         ):
             rc = self._run(tmp_path, monkeypatch, ["prog"])
         assert rc == 0
@@ -1052,9 +1048,7 @@ class TestMain:
     def test_required_sections_setting(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        self._write_settings(
-            tmp_path, documentation={"readme_sections": ["Foo", "Bar"]}
-        )
+        self._write_settings(tmp_path, documentation={"readme_sections": ["Foo", "Bar"]})
         (tmp_path / "README.md").write_text("# Foo\n\n# Bar\n" + "content\n" * 15)
         p1, p2 = self._patch_git()
         with p1, p2:
@@ -1102,9 +1096,7 @@ class TestMain:
                 }
             )
         )
-        self._write_settings(
-            tmp_path, documentation={"diataxis_translations": str(trans)}
-        )
+        self._write_settings(tmp_path, documentation={"diataxis_translations": str(trans)})
         (tmp_path / "README.md").write_text("# Installazione\n\n# Utilizzo\n" + "content\n" * 15)
         p1, p2 = self._patch_git()
         with p1, p2:
@@ -1123,9 +1115,7 @@ class TestMain:
                 }
             )
         )
-        self._write_settings(
-            tmp_path, documentation={"diataxis_translations": str(trans)}
-        )
+        self._write_settings(tmp_path, documentation={"diataxis_translations": str(trans)})
         (tmp_path / "README.md").write_text("# Installation\n\n# Usage\n" + "content\n" * 15)
         p1, p2 = self._patch_git()
         with p1, p2:
@@ -1156,9 +1146,7 @@ class TestMain:
         with (
             p1,
             p2,
-            patch.object(
-                DocStalenessScorer, "score_document", return_value=score
-            ) as mock_score,
+            patch.object(DocStalenessScorer, "score_document", return_value=score) as mock_score,
         ):
             rc = self._run(tmp_path, monkeypatch, ["prog"])
         assert rc == 0

@@ -147,9 +147,16 @@ def _write_settings(dirpath: Path, **overrides: object) -> Path:
     return path
 
 
-def _run(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]
-) -> int:
+def test_write_settings_replaces_non_dict_python_value(tmp_path: Path) -> None:
+    """A non-dict ``python`` override value replaces the base value."""
+    path = _write_settings(tmp_path, python={"tools": "none"})
+    written = json.loads(path.read_text())
+    python = written["python"]
+    assert isinstance(python, dict)
+    assert python["tools"] == "none"
+
+
+def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
     """Chdir into tmp_path and run main() with *argv*."""
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "argv", argv)
@@ -221,9 +228,7 @@ class TestMain:
     def test_main_check_disabled(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        _write_settings(
-            tmp_path, python={"patterns": {"check_test_god_classes": False}}
-        )
+        _write_settings(tmp_path, python={"patterns": {"check_test_god_classes": False}})
         (tmp_path / "tests").mkdir()
         rc = _run(tmp_path, monkeypatch, ["prog"])
         assert rc == 0
@@ -232,9 +237,7 @@ class TestMain:
     def test_main_check_disabled_json(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        _write_settings(
-            tmp_path, python={"patterns": {"check_test_god_classes": False}}
-        )
+        _write_settings(tmp_path, python={"patterns": {"check_test_god_classes": False}})
         (tmp_path / "tests").mkdir()
         rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
         report = json.loads(capsys.readouterr().out)
@@ -270,9 +273,7 @@ class TestMain:
         _write_settings(tmp_path)
         tests = tmp_path / "tests"
         tests.mkdir()
-        (tests / "test_mod.py").write_text(
-            "class TestFoo:\n    def test_a(self):\n        pass\n"
-        )
+        (tests / "test_mod.py").write_text("class TestFoo:\n    def test_a(self):\n        pass\n")
         rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
         report = json.loads(capsys.readouterr().out)
         assert rc == 0

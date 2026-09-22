@@ -237,9 +237,7 @@ class TestMain:
         path.write_text(json.dumps(settings))
         return path
 
-    def _run(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]
-    ) -> int:
+    def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
         """Chdir into tmp_path and run main() with *argv*."""
         monkeypatch.chdir(tmp_path)
         monkeypatch.setattr(sys, "argv", argv)
@@ -248,9 +246,7 @@ class TestMain:
     def test_check_disabled_reports_skipped(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        self._write_settings(
-            tmp_path, python={"code_style": {"check_acronym_casing": False}}
-        )
+        self._write_settings(tmp_path, python={"code_style": {"check_acronym_casing": False}})
         (tmp_path / "src").mkdir()
         rc = self._run(tmp_path, monkeypatch, ["scan"])
         out = capsys.readouterr().out
@@ -260,9 +256,7 @@ class TestMain:
     def test_check_disabled_json(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        self._write_settings(
-            tmp_path, python={"code_style": {"check_acronym_casing": False}}
-        )
+        self._write_settings(tmp_path, python={"code_style": {"check_acronym_casing": False}})
         (tmp_path / "src").mkdir()
         rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
         report = json.loads(capsys.readouterr().out)

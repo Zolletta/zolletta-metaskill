@@ -252,6 +252,14 @@ class TestMain:
         path.write_text(json.dumps(settings))
         return path
 
+    def test_write_settings_replaces_non_dict_python_value(self, tmp_path: Path) -> None:
+        """A non-dict ``python`` override value replaces the base value."""
+        path = self._write_settings(tmp_path, python={"tools": "none"})
+        written = json.loads(path.read_text())
+        python = written["python"]
+        assert isinstance(python, dict)
+        assert python["tools"] == "none"
+
     def _make_project(self, tmp_path: Path) -> tuple[Path, Path]:
         """Create a realistic src/ and tests/ structure."""
         src_pkg = tmp_path / "src" / "mypkg"
@@ -262,9 +270,7 @@ class TestMain:
         (test_pkg / "__init__.py").write_text("")
         return src_pkg, test_pkg
 
-    def _run(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]
-    ) -> int:
+    def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
         """Chdir into tmp_path and run main() with *argv*."""
         monkeypatch.chdir(tmp_path)
         monkeypatch.setattr(sys, "argv", argv)
@@ -273,9 +279,7 @@ class TestMain:
     def test_main_check_disabled_reports_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        self._write_settings(
-            tmp_path, python={"patterns": {"check_test_structure": False}}
-        )
+        self._write_settings(tmp_path, python={"patterns": {"check_test_structure": False}})
         self._make_project(tmp_path)
         rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
@@ -285,9 +289,7 @@ class TestMain:
     def test_main_check_disabled_json(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        self._write_settings(
-            tmp_path, python={"patterns": {"check_test_structure": False}}
-        )
+        self._write_settings(tmp_path, python={"patterns": {"check_test_structure": False}})
         self._make_project(tmp_path)
         rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
         report = json.loads(capsys.readouterr().out)
@@ -424,9 +426,7 @@ class TestMain:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """No package under any source root and none configured -> error."""
-        self._write_settings(
-            tmp_path, python={"paths": {"package": None}}
-        )
+        self._write_settings(tmp_path, python={"paths": {"package": None}})
         (tmp_path / "src").mkdir()
         (tmp_path / "tests").mkdir()
         rc = self._run(tmp_path, monkeypatch, ["prog"])

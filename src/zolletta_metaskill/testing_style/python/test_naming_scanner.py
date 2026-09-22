@@ -203,9 +203,7 @@ class TestNamingScanner:
         languages = ProjectConfig.scan_languages(settings, "testing.check_test_naming")
         py_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
         if not py_langs:
-            ProjectConfig.emit_skipped(
-                args.json, "check_test_naming disabled in settings.json"
-            )
+            ProjectConfig.emit_skipped(args.json, "check_test_naming disabled in settings.json")
             return 0
 
         roots = ProjectConfig.existing_roots(ProjectConfig.test_roots(settings, py_langs))

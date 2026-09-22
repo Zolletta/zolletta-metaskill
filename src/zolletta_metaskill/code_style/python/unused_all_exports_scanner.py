@@ -135,9 +135,7 @@ class UnusedAllExportsScanner:
         args = parser.parse_args()
 
         settings = ProjectConfig.load_settings()
-        languages = ProjectConfig.scan_languages(
-            settings, "code_style.check_unused_all_exports"
-        )
+        languages = ProjectConfig.scan_languages(settings, "code_style.check_unused_all_exports")
         py_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
         if not py_langs:
             ProjectConfig.emit_skipped(
@@ -145,9 +143,7 @@ class UnusedAllExportsScanner:
             )
             return 0
 
-        roots = ProjectConfig.existing_roots(
-            ProjectConfig.source_roots(settings, py_langs)
-        )
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, py_langs))
         if not roots:
             print(
                 "Error: no configured source directories exist on disk "
@@ -188,9 +184,7 @@ class UnusedAllExportsScanner:
                         {
                             "file": rel,
                             "symbol": entry,
-                            "importers": [
-                                str(p.relative_to(root_of[p])) for p in importers
-                            ],
+                            "importers": [str(p.relative_to(root_of[p])) for p in importers],
                         }
                     )
 

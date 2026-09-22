@@ -267,9 +267,7 @@ class TestFindDuplicateAnchors:
         f.write_text("", encoding="utf-8")
         assert LinkChecker.find_duplicate_anchors(str(f)) == []
 
-    def test_find_duplicate_anchors_skips_headings_inside_code_block(
-        self, tmp_path: Path
-    ) -> None:
+    def test_find_duplicate_anchors_skips_headings_inside_code_block(self, tmp_path: Path) -> None:
         """Headings inside code blocks are not counted as duplicate anchors."""
         f = tmp_path / "test.md"
         f.write_text(
@@ -280,9 +278,7 @@ class TestFindDuplicateAnchors:
         # The # Title inside the code block is skipped, so no duplicates
         assert dups == []
 
-    def test_find_duplicate_anchors_code_block_with_duplicate_after(
-        self, tmp_path: Path
-    ) -> None:
+    def test_find_duplicate_anchors_code_block_with_duplicate_after(self, tmp_path: Path) -> None:
         """Headings after a code block are still checked for duplicates."""
         f = tmp_path / "test.md"
         f.write_text(
@@ -766,9 +762,7 @@ class TestMain:
         path.write_text(json.dumps(settings))
         return path
 
-    def _run(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]
-    ) -> int:
+    def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
         """Chdir into tmp_path and run main() with *argv*."""
         monkeypatch.chdir(tmp_path)
         monkeypatch.setattr(sys, "argv", argv)
@@ -802,9 +796,7 @@ class TestMain:
     def test_broken_links_report_only(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        (tmp_path / "README.md").write_text(
-            "# Title\n[link](nonexistent.md)\n", encoding="utf-8"
-        )
+        (tmp_path / "README.md").write_text("# Title\n[link](nonexistent.md)\n", encoding="utf-8")
         rc = self._run(tmp_path, monkeypatch, ["prog"])
         captured = capsys.readouterr()
         assert rc == 0
@@ -833,9 +825,7 @@ class TestMain:
     def test_broken_only_flag(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        (tmp_path / "README.md").write_text(
-            "# Title\n[link](nonexistent.md)\n", encoding="utf-8"
-        )
+        (tmp_path / "README.md").write_text("# Title\n[link](nonexistent.md)\n", encoding="utf-8")
         rc = self._run(tmp_path, monkeypatch, ["prog", "--broken-only", "--json"])
         captured = capsys.readouterr()
         assert rc == 0

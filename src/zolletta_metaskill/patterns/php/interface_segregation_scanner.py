@@ -172,9 +172,7 @@ class InterfaceSegregationScanner:
             ProjectConfig.emit_skipped(args.json, "check_isp disabled in settings.json")
             return 0
 
-        roots = ProjectConfig.existing_roots(
-            ProjectConfig.source_roots(settings, php_langs)
-        )
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, php_langs))
         if not roots:
             print(
                 "Error: no configured source directories exist on disk",
@@ -182,9 +180,7 @@ class InterfaceSegregationScanner:
             )
             return 1
 
-        raw_min = ProjectConfig.setting(
-            settings, "php.patterns.isp_min_methods", None
-        )
+        raw_min = ProjectConfig.setting(settings, "php.patterns.isp_min_methods", None)
         min_methods = (
             raw_min
             if isinstance(raw_min, int)

@@ -521,9 +521,16 @@ def _write_settings(dirpath: Path, **overrides: object) -> Path:
     return path
 
 
-def _run(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]
-) -> int:
+def test_write_settings_replaces_non_dict_python_value(tmp_path: Path) -> None:
+    """A non-dict ``python`` override value replaces the base value."""
+    path = _write_settings(tmp_path, python={"tools": "none"})
+    written = json.loads(path.read_text())
+    python = written["python"]
+    assert isinstance(python, dict)
+    assert python["tools"] == "none"
+
+
+def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
     """Chdir into tmp_path and run main() with *argv*."""
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "argv", argv)
@@ -717,9 +724,7 @@ class TestMain:
         lib = tmp_path / "lib"
         src.mkdir()
         lib.mkdir()
-        (src / "animal.py").write_text(
-            "class Animal:\n    def speak(self):\n        return 's'\n"
-        )
+        (src / "animal.py").write_text("class Animal:\n    def speak(self):\n        return 's'\n")
         (lib / "dog.py").write_text(
             "class Dog(Animal):\n    def speak(self, extra):\n        return 'w'\n"
         )

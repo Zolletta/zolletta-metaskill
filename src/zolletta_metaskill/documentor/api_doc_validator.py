@@ -720,16 +720,12 @@ class APIDocValidator:
         include_private = bool(
             ProjectConfig.setting(settings, "documentation.include_private", False)
         )
-        recursive = bool(
-            ProjectConfig.setting(settings, "documentation.api_docs_recursive", False)
-        )
+        recursive = bool(ProjectConfig.setting(settings, "documentation.api_docs_recursive", False))
         suggest_coverage = bool(
             ProjectConfig.setting(settings, "documentation.suggest_coverage", False)
         )
 
-        source_roots = ProjectConfig.existing_roots(
-            ProjectConfig.source_roots(settings, languages)
-        )
+        source_roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, languages))
         if not source_roots:
             print(
                 "Error: no configured source directories exist on disk",

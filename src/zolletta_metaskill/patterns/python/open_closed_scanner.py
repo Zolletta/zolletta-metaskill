@@ -200,9 +200,7 @@ class OpenClosedScanner:
             ProjectConfig.emit_skipped(args.json, "check_ocp disabled in settings.json")
             return 0
 
-        roots = ProjectConfig.existing_roots(
-            ProjectConfig.source_roots(settings, py_langs)
-        )
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, py_langs))
         if not roots:
             print(
                 "Error: no configured source directories exist on disk",
@@ -227,9 +225,7 @@ class OpenClosedScanner:
 
         # Filter by min-branches for type ladders
         filtered = [
-            v
-            for v in all_violations
-            if v["type"] != "type_ladder" or v["branches"] >= min_branches
+            v for v in all_violations if v["type"] != "type_ladder" or v["branches"] >= min_branches
         ]
 
         if args.json:

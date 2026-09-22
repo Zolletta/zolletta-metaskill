@@ -943,9 +943,7 @@ class TestMain:
         path.write_text(json.dumps(settings))
         return path
 
-    def _run(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]
-    ) -> int:
+    def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
         """Chdir into tmp_path and run main() with *argv*."""
         monkeypatch.chdir(tmp_path)
         monkeypatch.setattr(sys, "argv", argv)
@@ -1057,9 +1055,7 @@ class TestMain:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Configured source roots scope the code-file discovery."""
-        self._write_settings(
-            tmp_path, python={"paths": {"source": ["src"], "tests": ["tests"]}}
-        )
+        self._write_settings(tmp_path, python={"paths": {"source": ["src"], "tests": ["tests"]}})
         (tmp_path / ".git").mkdir()
         src = tmp_path / "src"
         src.mkdir()

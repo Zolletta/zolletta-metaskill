@@ -30,6 +30,7 @@ def _write_settings(dirpath: Path, **overrides: object) -> Path:
     path.write_text(json.dumps(settings))
     return path
 
+
 # ---------------------------------------------------------------------------
 # _is_section_header
 # ---------------------------------------------------------------------------
@@ -860,9 +861,7 @@ class TestPrintReport:
 class TestMain:
     """Tests for DocstringStreamliner.main()."""
 
-    def _run(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]
-    ) -> int:
+    def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
         """Chdir into tmp_path and run main() with *argv*."""
         monkeypatch.chdir(tmp_path)
         monkeypatch.setattr(sys, "argv", argv)

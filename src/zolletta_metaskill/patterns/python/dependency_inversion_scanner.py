@@ -263,9 +263,7 @@ class DependencyInversionScanner:
             ProjectConfig.emit_skipped(args.json, "check_dip disabled in settings.json")
             return 0
 
-        roots = ProjectConfig.existing_roots(
-            ProjectConfig.source_roots(settings, py_langs)
-        )
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, py_langs))
         if not roots:
             print(
                 "Error: no configured source directories exist on disk",

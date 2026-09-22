@@ -488,9 +488,7 @@ class TestMain:
         mapping_file = tmp_path / "mapping.json"
         mapping_file.write_text(json.dumps({"cache": "Cache", "extract": "Extractor"}))
         monkeypatch.chdir(tmp_path)
-        monkeypatch.setattr(
-            sys, "argv", ["prog", str(f), "--mapping", str(mapping_file)]
-        )
+        monkeypatch.setattr(sys, "argv", ["prog", str(f), "--mapping", str(mapping_file)])
         rc = TestSplitter.main()
         out_dir = tmp_path / ".zolletta-metaskill" / "test_split" / "test_god"
         assert rc == 0
@@ -620,17 +618,13 @@ class TestMain:
         self._write_test_file(f)
         mapping = '{"cache": "Cache", "extract": "Extractor"}'
         monkeypatch.chdir(tmp_path)
-        monkeypatch.setattr(
-            sys, "argv", ["prog", str(f), "--mapping", mapping, "--json"]
-        )
+        monkeypatch.setattr(sys, "argv", ["prog", str(f), "--mapping", mapping, "--json"])
         rc = TestSplitter.main()
         out = capsys.readouterr().out
         assert rc == 0
         payload = json.loads(out)
         out_dir = tmp_path / ".zolletta-metaskill" / "test_split" / "test_god"
-        assert Path(payload["out_dir"]) == Path(
-            ".zolletta-metaskill/test_split/test_god"
-        )
+        assert Path(payload["out_dir"]) == Path(".zolletta-metaskill/test_split/test_god")
         assert "test_cache.py" in payload["written"]
         assert (out_dir / "test_cache.py").exists()
 

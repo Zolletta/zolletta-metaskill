@@ -187,17 +187,11 @@ class TestStructureScanner:
         languages = ProjectConfig.scan_languages(settings, "patterns.check_test_structure")
         py_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
         if not py_langs:
-            ProjectConfig.emit_skipped(
-                args.json, "check_test_structure disabled in settings.json"
-            )
+            ProjectConfig.emit_skipped(args.json, "check_test_structure disabled in settings.json")
             return 0
 
-        src_roots = ProjectConfig.existing_roots(
-            ProjectConfig.source_roots(settings, py_langs)
-        )
-        test_roots = ProjectConfig.existing_roots(
-            ProjectConfig.test_roots(settings, py_langs)
-        )
+        src_roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, py_langs))
+        test_roots = ProjectConfig.existing_roots(ProjectConfig.test_roots(settings, py_langs))
         if not src_roots:
             print(
                 "Error: no configured source directories exist on disk",
@@ -229,8 +223,7 @@ class TestStructureScanner:
             return 1
         if not test_pkgs:
             print(
-                f"Error: test package '{pkg_name}' does not exist under any "
-                "configured test root",
+                f"Error: test package '{pkg_name}' does not exist under any configured test root",
                 file=sys.stderr,
             )
             return 1

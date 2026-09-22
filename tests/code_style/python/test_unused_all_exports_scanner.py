@@ -184,9 +184,7 @@ class TestMain:
         path.write_text(json.dumps(settings))
         return path
 
-    def _run(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]
-    ) -> int:
+    def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
         """Chdir into tmp_path and run main() with *argv*."""
         monkeypatch.chdir(tmp_path)
         monkeypatch.setattr(sys, "argv", argv)
@@ -195,9 +193,7 @@ class TestMain:
     def test_check_disabled_reports_skipped(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        self._write_settings(
-            tmp_path, python={"code_style": {"check_unused_all_exports": False}}
-        )
+        self._write_settings(tmp_path, python={"code_style": {"check_unused_all_exports": False}})
         (tmp_path / "src").mkdir()
         rc = self._run(tmp_path, monkeypatch, ["scan"])
         out = capsys.readouterr().out
@@ -207,9 +203,7 @@ class TestMain:
     def test_check_disabled_json(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        self._write_settings(
-            tmp_path, python={"code_style": {"check_unused_all_exports": False}}
-        )
+        self._write_settings(tmp_path, python={"code_style": {"check_unused_all_exports": False}})
         (tmp_path / "src").mkdir()
         rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
         report = json.loads(capsys.readouterr().out)
@@ -258,9 +252,7 @@ class TestMain:
         self._write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
-        (src / "a.py").write_text(
-            '__all__ = ["unused_func"]\n\ndef unused_func():\n    pass\n'
-        )
+        (src / "a.py").write_text('__all__ = ["unused_func"]\n\ndef unused_func():\n    pass\n')
         rc = self._run(tmp_path, monkeypatch, ["scan"])
         out = capsys.readouterr().out
         assert rc == 0  # report-only
@@ -272,9 +264,7 @@ class TestMain:
         self._write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
-        (src / "a.py").write_text(
-            '__all__ = ["unused_func"]\n\ndef unused_func():\n    pass\n'
-        )
+        (src / "a.py").write_text('__all__ = ["unused_func"]\n\ndef unused_func():\n    pass\n')
         rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
         data = json.loads(capsys.readouterr().out)
         assert rc == 0
@@ -301,9 +291,7 @@ class TestMain:
         self._write_settings(tmp_path)
         src = tmp_path / "src"
         src.mkdir()
-        (src / "a.py").write_text(
-            '__all__ = ["foo"]\nfrom a import foo\n\ndef foo():\n    pass\n'
-        )
+        (src / "a.py").write_text('__all__ = ["foo"]\nfrom a import foo\n\ndef foo():\n    pass\n')
         rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
         data = json.loads(capsys.readouterr().out)
         assert rc == 0
@@ -329,9 +317,7 @@ class TestMain:
         self._write_settings(tmp_path)
         vendor = tmp_path / "src" / "vendor"
         vendor.mkdir(parents=True)
-        (vendor / "a.py").write_text(
-            '__all__ = ["unused"]\n\ndef unused():\n    pass\n'
-        )
+        (vendor / "a.py").write_text('__all__ = ["unused"]\n\ndef unused():\n    pass\n')
         rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
         data = json.loads(capsys.readouterr().out)
         assert rc == 0

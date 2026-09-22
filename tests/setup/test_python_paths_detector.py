@@ -66,7 +66,7 @@ class TestDetectSource:
     def test_hatch_empty_packages_falls_through(self, tmp_path: Path) -> None:
         _write_pyproject(
             tmp_path,
-            '[tool.hatch.build.targets.wheel]\npackages = []\n',
+            "[tool.hatch.build.targets.wheel]\npackages = []\n",
         )
         _make_package(tmp_path / "src", "mypkg")
         result = PythonPathsDetector.detect_python_paths(tmp_path)

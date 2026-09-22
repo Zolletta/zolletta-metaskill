@@ -197,9 +197,7 @@ class TestMain:
         path.write_text(json.dumps(settings))
         return path
 
-    def _run(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]
-    ) -> int:
+    def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
         """Chdir into tmp_path and run main() with *argv*."""
         monkeypatch.chdir(tmp_path)
         monkeypatch.setattr(sys, "argv", argv)
@@ -375,6 +373,7 @@ class TestMain:
         assert data["violation_count"] == 1
         assert data["violations"][0]["class"] == "ApiRepository"
 
+
 # ---------------------------------------------------------------------------
 # Coverage: _load_default_acronyms error handling (lines 112-118)
 # ---------------------------------------------------------------------------
@@ -390,13 +389,16 @@ class TestLoadDefaultAcronymsErrorHandling:
 
         If *content* is an Exception, read_text raises it instead.
         """
+
         def fake_exists(self: Path) -> bool:
             return "acronyms.json" in str(self)
 
         if isinstance(content, Exception):
+
             def fake_read_text(self: Path, encoding: str = "utf-8") -> str:
                 raise content
         else:
+
             def fake_read_text(self: Path, encoding: str = "utf-8") -> str:
                 return content
 

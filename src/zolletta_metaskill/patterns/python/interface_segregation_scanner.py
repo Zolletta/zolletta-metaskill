@@ -132,9 +132,7 @@ class InterfaceSegregationScanner:
             ProjectConfig.emit_skipped(args.json, "check_isp disabled in settings.json")
             return 0
 
-        roots = ProjectConfig.existing_roots(
-            ProjectConfig.source_roots(settings, py_langs)
-        )
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, py_langs))
         if not roots:
             print(
                 "Error: no configured source directories exist on disk",
@@ -239,10 +237,7 @@ class InterfaceSegregationScanner:
         print("=" * 70)
 
         if fat_interfaces:
-            print(
-                f"\n## Fat interfaces ({len(fat_interfaces)} found, "
-                f">= {min_methods} methods)\n"
-            )
+            print(f"\n## Fat interfaces ({len(fat_interfaces)} found, >= {min_methods} methods)\n")
             for item in fat_interfaces:
                 print(f"  {item['name']} ({item['method_count']} methods)")
                 print(f"    -> {item['file']}:{item['line']}")

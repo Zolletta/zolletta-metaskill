@@ -823,9 +823,7 @@ class DriftAnalyzer:
         languages = ProjectConfig.configured_languages(settings)
         source_dirs = [
             str(r)
-            for r in ProjectConfig.existing_roots(
-                ProjectConfig.source_roots(settings, languages)
-            )
+            for r in ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, languages))
         ]
         scopes = source_dirs or [""]
 

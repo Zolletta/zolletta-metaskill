@@ -524,9 +524,7 @@ class LinkChecker:
 
         # Validate all links
         for link in all_links:
-            LinkChecker.validate_link(
-                link, repo_path, heading_cache, check_external=check_external
-            )
+            LinkChecker.validate_link(link, repo_path, heading_cache, check_external=check_external)
 
         # Report
         report = LinkChecker.generate_report(

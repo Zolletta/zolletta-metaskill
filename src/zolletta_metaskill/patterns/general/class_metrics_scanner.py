@@ -142,14 +142,10 @@ class ClassMetricsScanner:
         languages = ProjectConfig.scan_languages(settings, "patterns.check_class_metrics")
         py_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
         if not py_langs:
-            ProjectConfig.emit_skipped(
-                args.json, "check_class_metrics disabled in settings.json"
-            )
+            ProjectConfig.emit_skipped(args.json, "check_class_metrics disabled in settings.json")
             return 0
 
-        roots = ProjectConfig.existing_roots(
-            ProjectConfig.source_roots(settings, py_langs)
-        )
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, py_langs))
         if not roots:
             print(
                 "Error: no configured source directories exist on disk",
@@ -162,14 +158,10 @@ class ClassMetricsScanner:
         min_lines_limits: list[int] = []
         top_limits: list[int] = []
         for lang in sorted(py_langs):
-            ml = ProjectConfig.setting(
-                settings, f"{lang}.patterns.class_metrics_min_lines", None
-            )
+            ml = ProjectConfig.setting(settings, f"{lang}.patterns.class_metrics_min_lines", None)
             if isinstance(ml, int) and not isinstance(ml, bool):
                 min_lines_limits.append(ml)
-            tp = ProjectConfig.setting(
-                settings, f"{lang}.patterns.class_metrics_top", None
-            )
+            tp = ProjectConfig.setting(settings, f"{lang}.patterns.class_metrics_top", None)
             if isinstance(tp, int) and not isinstance(tp, bool):
                 top_limits.append(tp)
         min_lines = min(min_lines_limits) if min_lines_limits else 50

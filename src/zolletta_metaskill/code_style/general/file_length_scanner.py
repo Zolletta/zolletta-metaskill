@@ -72,9 +72,7 @@ class FileLengthScanner:
         languages = ProjectConfig.scan_languages(settings, "code_style.check_file_length")
         extensions = ProjectConfig.extensions_for(languages)
         if not extensions and languages:
-            extensions = ProjectConfig.extensions_for(
-                set(EngineRegistry.available_languages())
-            )
+            extensions = ProjectConfig.extensions_for(set(EngineRegistry.available_languages()))
         return extensions
 
     @staticmethod
@@ -185,9 +183,7 @@ class FileLengthScanner:
                 print("\nResult: SKIPPED (check_file_length disabled in settings.json)\n")
             return 0
 
-        roots = ProjectConfig.existing_roots(
-            ProjectConfig.source_roots(settings, languages)
-        )
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, languages))
         if not roots:
             print(
                 "Error: no configured source directories exist on disk "
