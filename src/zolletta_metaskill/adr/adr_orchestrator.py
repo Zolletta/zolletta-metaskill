@@ -63,7 +63,7 @@ class ADROrchestrator:
         """
         records = ADRDiscovery.find_files(self.docs_dir, self.adrs_path)
         report = DistillReport()
-        report.has_adrs = any(r.status.lower() == "accepted" for r in records)
+        report.has_adrs = any(self._is_accepted(r.status) for r in records)
 
         # Load cache
         cache = ADRCache(self.cache_path)
@@ -78,8 +78,8 @@ class ADROrchestrator:
             key = ADRCache.key(record)
             current_keys.add(key)
             cached = old_cache.get(key)
-            was_accepted = cached is not None and cached.get("status", "").lower() == "accepted"
-            is_accepted = record.status.lower() == "accepted"
+            was_accepted = cached is not None and self._is_accepted(str(cached.get("status", "")))
+            is_accepted = self._is_accepted(record.status)
 
             if cached is None:
                 # New ADR
@@ -145,12 +145,15 @@ class ADROrchestrator:
         if report.has_adrs and directive_lines:
             # Check if we can do an in-place update (preserve category headings).
             # This works when the existing file has directives (not a placeholder)
-            # and no brand-new ADRs are being added (those need to be inserted, which
-            # the in-place updater doesn't support — it only replaces and removes).
+            # and every new directive replaces an existing line — the in-place
+            # updater doesn't support inserting lines (brand-new ADRs, or stale
+            # ADRs whose directive was previously absent from the file).
             existing_has_directives = bool(
                 existing_content is not None and ADRDistiller.parse_directives(existing_content)
             )
-            can_update_in_place = existing_has_directives and not report.new
+            can_update_in_place = existing_has_directives and all(
+                key in existing_directives for key in new_directives
+            )
             if can_update_in_place and existing_content is not None:
                 ADRDistiller.update_in_place(
                     distilled_path, existing_content, new_directives, report.removed
@@ -165,6 +168,16 @@ class ADROrchestrator:
 
         return report
 
+    @staticmethod
+    def _is_accepted(status: str) -> bool:
+        """Check whether an ADR status counts as Accepted.
+
+        A prefix match tolerates qualified statuses such as
+        ``Accepted (amended 2026-09-26)`` that would otherwise be silently
+        excluded by an exact comparison.
+        """
+        return status.strip().lower().startswith("accepted")
+
     def distill_adr(self, record: ADRRecord) -> str | None:
         """Mechanically distill an ADR into a directive line.
 
@@ -174,10 +187,11 @@ class ADROrchestrator:
             or ``None`` if the ADR is not Accepted (excluded).
 
         """
-        if record.status.lower() != "accepted":
+        if not self._is_accepted(record.status):
             return None
 
-        link_path = record.file_path.relative_to(self.docs_dir).as_posix()
+        adr_dir = self.docs_dir / self.adrs_path if self.adrs_path else self.docs_dir
+        link_path = record.file_path.relative_to(adr_dir).as_posix()
         decision = self._truncate_decision(record.decision_text)
         return f"- [ADR-{record.number}]({link_path}) {decision}"
 

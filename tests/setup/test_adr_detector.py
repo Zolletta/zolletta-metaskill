@@ -92,8 +92,8 @@ class TestADRDetector:
             "001",
             "Use Postgres",
         )
-        # Common subdir is "architecture" (first path component)
-        assert ADRDetector.detect_adrs(docs) == "architecture"
+        # Common dir is the full path to the ADR folder
+        assert ADRDetector.detect_adrs(docs) == "architecture/adr"
 
     def test_adrs_in_multiple_subdirs_returns_empty(self, tmp_path: Path) -> None:
         docs = tmp_path / "docs"
@@ -255,6 +255,16 @@ class TestADRDetector:
         f2.parent.mkdir(parents=True)
         f2.write_text("# ADR-002\n", encoding="utf-8")
         assert ADRDetector._determine_adrs_path([f1, f2], docs) == ""
+
+    def test_determine_adrs_path_nested_subdir_returns_full_path(self, tmp_path: Path) -> None:
+        docs = tmp_path / "docs"
+        docs.mkdir()
+        f1 = docs / "explanation" / "adr" / "0001.md"
+        f1.parent.mkdir(parents=True)
+        f1.write_text("# ADR-001\n", encoding="utf-8")
+        f2 = docs / "explanation" / "adr" / "0002.md"
+        f2.write_text("# ADR-002\n", encoding="utf-8")
+        assert ADRDetector._determine_adrs_path([f1, f2], docs) == "explanation/adr"
 
     # --- Tests for ADRDetector.main() CLI entry point. ---
 
