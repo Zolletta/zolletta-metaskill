@@ -22,4 +22,5 @@ status: generated
 - [ADR-0011](0011-skip-external-dependency-inspector.md) We do not integrate an external dependency inspector tool into Zolletta-metaskill.
 - [ADR-0012](0012-skip-property-based-testing-sensor.md) We do not add a property-based testing sensor to Zolletta-metaskill.
 - [ADR-0013](0013-skip-fuzz-testing-sensor.md) We do not add a fuzz testing sensor to Zolletta-metaskill.
+- [ADR-0014](0014-add-mutation-testing-sensor.md) We add a conditional mutation-testing sensor: setup detects mutmut (Python) / Infection (PHP) availability; the testing-style skills run it on the `changed` scope when installed, opted-in, and the coverage run is green, with deterministic survived-mutant extraction by mutmut_survived_reporter.py.
 - [ADR-0015](0015-standard-script-cli.md) All review scripts share one CLI contract: --json only; scan roots, toggles, and thresholds come from .zolletta-metaskill/settings.json via ProjectConfig.

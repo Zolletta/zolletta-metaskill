@@ -29,6 +29,29 @@
 |----------------|---------------|--------------|-------------------|---------------|
 | {{class_path}} | {{coverage}}% | {{yes_no}}   | {{yes_no}}        | {{fix}}       |
 
+## Mutation Testing
+
+> Only when `php.tools.infection.available` and `php.testing.check_mutation_testing`. Omit this section entirely when the sensor is skipped — note the skip reason in Recommendations instead.
+
+**Tool:** Infection {{infection_version}}
+**Scope:** {{mutation_target}} — {{files_mutated}} files, {{mutants_generated}} mutants generated
+
+| Status  | Count       |
+|---------|-------------|
+| Killed  | {{killed}}  |
+| Escaped | {{escaped}} |
+| Timeout | {{timeout}} |
+
+**Mutation score (MSI):** {{msi}}% (threshold: {{mutation_score_threshold}}%) — {{PASS_FAIL}}
+
+### Escaped mutants
+
+> Capped at `mutation_max_mutants` (default 50) rows; the full count is in the status table above.
+
+| File              | Line     | Mutation      | Issue                                 |
+|-------------------|----------|---------------|---------------------------------------|
+| {{file}}:{{line}} | {{line}} | {{old → new}} | {{gap}} — add {{suggested_test_name}} |
+
 ## Findings
 
 ### Critical

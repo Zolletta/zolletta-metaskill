@@ -1,5 +1,5 @@
 {
-  "setup_version": "3.1.0",
+  "setup_version": "3.2.0",
   "setup_timestamp": "",
   "language": "",
   "container_name": null,
@@ -8,12 +8,24 @@
   "python": null,
   "php": null,
   "subcommands": {
-    "patterns": { "model": null },
-    "documentor": { "model": null },
-    "python-code-style": { "model": null },
-    "python-testing-style": { "model": null },
-    "php-code-style": { "model": null },
-    "php-testing-style": { "model": null }
+    "patterns": {
+      "model": null
+    },
+    "documentor": {
+      "model": null
+    },
+    "python-code-style": {
+      "model": null
+    },
+    "python-testing-style": {
+      "model": null
+    },
+    "php-code-style": {
+      "model": null
+    },
+    "php-testing-style": {
+      "model": null
+    }
   },
   "runs_dir": ".zolletta-metaskill",
   "documentation": {
@@ -23,10 +35,21 @@
     "min_severity": "high",
     "staleness_threshold": null,
     "readme_focus": false,
-    "readme_sections": ["installation", "usage", "api", "contributing", "license"],
+    "readme_sections": [
+      "installation",
+      "usage",
+      "api",
+      "contributing",
+      "license"
+    ],
     "diataxis_translations": null,
     "staleness_weights": null,
-    "doc_patterns": ["*.md", "*.rst", "*.txt", "*.adoc"],
+    "doc_patterns": [
+      "*.md",
+      "*.rst",
+      "*.txt",
+      "*.adoc"
+    ],
     "check_external": false,
     "include_referential": false,
     "api_doc_recursive": true,

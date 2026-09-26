@@ -35,6 +35,11 @@ class PHPToolsDetector:
             [".php-cs-fixer.php", ".php-cs-fixer.dist.php"],
         ),
         ("phpcs", "squizlabs/php_codesniffer", [".phpcs.xml", "phpcs.xml.dist", ".phpcs.xml.dist"]),
+        (
+            "infection",
+            "infection/infection",
+            ["infection.json", "infection.json.dist", "infection.json5", "infection.json5.dist"],
+        ),
     ]
 
     @staticmethod

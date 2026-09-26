@@ -57,10 +57,10 @@ Only for items the scripts explicitly defer to judgment. Read source files **onl
 |------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `patterns`             | "Reason to change" test on top-N `class_metrics` candidates **[JUDGMENT]**; DIP composition-root suppression for flagged classes that wire DI containers **[JUDGMENT]**; "Missing tests" coverage cross-check (compare `cache/test_structure.md` "Missing tests" table against `cache/pytest_cov.txt` — downgrade to informational if coverage >50%) **[JUDGMENT]** |
 | `documentor`           | False-positive filtering for known FP patterns (code-fence anchors in `cache/link_checker.json`, phantom class methods in `cache/api_doc_validator.json`, parameter name collisions) — only open source files for FP candidates **[JUDGMENT]**                                                                                                                      |
-| `python-testing-style` | Indirect-coverage tracing for modules below the gap threshold in `cache/pytest_cov.txt` (use `tokensave_callers` or grep to check if callers are real vs mocked) **[JUDGMENT]**                                                                                                                                                                                     |
+| `python-testing-style` | Indirect-coverage tracing for modules below the gap threshold in `cache/pytest_cov.txt` (use `tokensave_callers` or grep to check if callers are real vs mocked) **[JUDGMENT]**; survived-mutant → suggested-test-name recommendations from `cache/mutmut_survived.txt` **[JUDGMENT]**                                                                              |
 | `python-code-style`    | Vulture false-positive review for dynamically-accessed methods in `cache/vulture.txt` **[JUDGMENT]**                                                                                                                                                                                                                                                                |
 | `php-code-style`       | PHPStan/Psalm false-positive review for dynamically-accessed methods **[JUDGMENT]**                                                                                                                                                                                                                                                                                 |
-| `php-testing-style`    | PHPUnit coverage gap indirect-coverage tracing **[JUDGMENT]**                                                                                                                                                                                                                                                                                                       |
+| `php-testing-style`    | PHPUnit coverage gap indirect-coverage tracing **[JUDGMENT]**; escaped-mutant → suggested-test-name recommendations from `cache/infection.txt` **[JUDGMENT]**                                                                                                                                                                                                       |
 
 **All subcommands**: severity assignment and grade calculation **[JUDGMENT]**.
 
@@ -88,14 +88,16 @@ The canonical script reference is [`scripts.md`](scripts.md) — refer to it for
 | `acronym_casing_scanner.py --json`     | `cache/acronym_casing.json`     | `python.code_style.check_acronym_casing`     |
 | `unused_all_exports_scanner.py --json` | `cache/unused_all_exports.json` | always                                       |
 | `one_class_per_file_scanner.py`        | `cache/one_class_per_file.txt`  | `python.code_style.check_one_class_per_file` |
-| `file_length_scanner.py` | `cache/file_length.txt` | `python.code_style.check_file_length` |
+| `file_length_scanner.py`               | `cache/file_length.txt`         | `python.code_style.check_file_length`        |
 
 ### `python-testing-style`
 
-| Script                                      | Cache file               | Condition                          |
-|---------------------------------------------|--------------------------|------------------------------------|
-| `pytest --cov --cov-report=term-missing -q` | `cache/pytest_cov.txt`   | `python.tools.pytest.available`    |
-| `test_naming_scanner.py --json`             | `cache/test_naming.json` | `python.testing.check_test_naming` |
+| Script                                      | Cache file                  | Condition                                                                                                |
+|---------------------------------------------|-----------------------------|----------------------------------------------------------------------------------------------------------|
+| `pytest --cov --cov-report=term-missing -q` | `cache/pytest_cov.txt`      | `python.tools.pytest.available`                                                                          |
+| `test_naming_scanner.py --json`             | `cache/test_naming.json`    | `python.testing.check_test_naming`                                                                       |
+| `mutmut run`                                | `cache/mutmut.txt`          | `python.tools.mutmut.available` AND `python.testing.check_mutation_testing` AND `pytest --cov` succeeded |
+| `mutmut_survived_reporter.py`               | `cache/mutmut_survived.txt` | `python.tools.mutmut.available` AND `python.testing.check_mutation_testing`                              |
 
 ### `patterns`
 
@@ -131,13 +133,14 @@ See [`documentation/operational-rules.md`](../documentation/operational-rules.md
 | `vendor/bin/psalm`                      | `cache/psalm.txt`        | `php.tools.psalm.available`        |
 | `vendor/bin/php-cs-fixer fix --dry-run` | `cache/php_cs_fixer.txt` | `php.tools.php_cs_fixer.available` |
 | `vendor/bin/phpcs`                      | `cache/phpcs.txt`        | `php.tools.phpcs.available`        |
-| `file_length_scanner.py` | `cache/file_length.txt` | `php.code_style.check_file_length` |
+| `file_length_scanner.py`                | `cache/file_length.txt`  | `php.code_style.check_file_length` |
 
 ### `php-testing-style`
 
-| Script                               | Cache file              | Condition                     |
-|--------------------------------------|-------------------------|-------------------------------|
-| `vendor/bin/phpunit --coverage-text` | `cache/phpunit_cov.txt` | `php.tools.phpunit.available` |
+| Script                               | Cache file              | Condition                                                                                               |
+|--------------------------------------|-------------------------|---------------------------------------------------------------------------------------------------------|
+| `vendor/bin/phpunit --coverage-text` | `cache/phpunit_cov.txt` | `php.tools.phpunit.available`                                                                           |
+| `vendor/bin/infection`               | `cache/infection.txt`   | `php.tools.infection.available` AND `php.testing.check_mutation_testing` AND the coverage run succeeded |
 
 ## Shared scripts (orchestrator only)
 

@@ -34,10 +34,11 @@ Setup detects and records the following:
 | **Docker container**        | Service name from `compose.yml` / `docker-compose.yml`                        |
 | **tokensave**               | Whether the tokensave MCP server is available                                 |
 | **Acronyms**                | Project-specific acronyms extracted from `AGENTS.md`                          |
-| **Python tooling**          | ruff, pytest, ty, vulture, mypy, uv availability                              |
+| **Python tooling**          | ruff, pytest, ty, vulture, mypy, mutmut, uv availability                      |
 | **Python config**           | Line length, target version, ruff/mypy/ty/pytest config from `pyproject.toml` |
 | **Python code-style rules** | Configurable rule toggles for `python-code-style`                             |
 | **Python testing rules**    | Configurable rule toggles for `python-testing-style`                          |
+| **PHP tooling**             | phpunit, phpstan, psalm, php-cs-fixer, phpcs, infection availability          |
 | **Documentation directory** | Read from `documentation.dir` in `settings.json` (default `docs/`)            |
 
 See [settings-schema.md](../reference/settings-schema.md) for the corresponding field names.

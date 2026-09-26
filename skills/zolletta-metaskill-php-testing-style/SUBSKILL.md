@@ -79,6 +79,31 @@ If you find a genuine gap, check whether the caller's tests mock the class or us
 - If callers mock the class → recommend a direct unit test class for the class itself
 - If callers use real instances but don't exercise all branches → recommend adding edge-case tests
 
+## Mutation testing
+
+> **Conditional sensor**: run it only when `php.tools.infection.available` is `true` AND `php.testing.check_mutation_testing` is not `false` AND the coverage run succeeded — Infection executes the test suite per mutant, so a red suite makes results meaningless. If the tool is unavailable or the toggle is off, skip with a note (same pattern as other unavailable tools).
+
+Coverage tells you what was *executed*; mutation testing tells you what was *verified*. Infection mutates the PHP source via AST (swap operators, constants, etc.) and runs the existing PHPUnit suite against each mutant — an escaped mutant is a test gap the suite did not catch.
+
+### Run
+
+Follow the shared "Running tools" convention (container detection) from the parent `SKILL.md`.
+
+- `mutation_target: "all"` — plain `vendor/bin/infection`.
+- `mutation_target: "changed"` (default) — `vendor/bin/infection --git-diff-filter=AM --git-diff-base=<default-branch> --ignore-msi-with-no-mutations`. Infection's built-in git diff covers the working tree plus committed changes vs the base natively — no file list needed. Resolve `<default-branch>` via `git symbolic-ref --short refs/remotes/origin/HEAD` (fallback `origin/main`).
+
+If `changed` can't be resolved (not a git repo, no default branch), **skip with a note** — never silently fall back to an `all` run.
+
+Infection needs a coverage driver (xdebug or pcov). If it errors on a missing driver, skip with a note — that is an environment gap, not a finding.
+
+### Report
+
+Persist Infection's stdout to `cache/infection.txt`. Parse the "Escaped Mutants" table (each row carries file, line, and the mutation) and the MSI figure from it. Apply `mutation_max_mutants` when listing escaped mutants and emit a `Mutation score: X% (threshold: Y%) — PASS/FAIL` line against `mutation_score_threshold`.
+
+Infection may write `infection.log`/`infection.json` in the project root — they are disposable; ensure they are git-ignored, do not commit them.
+
+Severity mapping: MSI below `mutation_score_threshold` → high finding; each escaped mutant → medium finding with a suggested test name; timeout mutants → low/informational (counts only).
+
 ## Review rules
 
 ### Always-on rules (cannot be disabled)
@@ -97,12 +122,16 @@ If you find a genuine gap, check whether the caller's tests mock the class or us
 
 ### Configurable settings (stored in `settings.json` under `php.testing`)
 
-| #  | Area     | Name                                                         | Key                               | Default |
-|----|----------|--------------------------------------------------------------|-----------------------------------|---------|
-| 10 | Coverage | Coverage gap threshold (below X% = gap)                      | `coverage_gap_threshold`          | `50`    |
-| 11 | Coverage | Well-covered threshold (above X% = don't flag)               | `coverage_well_covered_threshold` | `80`    |
-| 12 | Naming   | Test naming convention (`test_<unit>_<scenario>_<expected>`) | `check_test_naming`               | `true`  |
-| 13 | Mocking  | Prefer Mockery over PHPUnit mocks when Mockery is available  | `prefer_mockery`                  | `true`  |
+| #  | Area     | Name                                                         | Key                               | Default   |
+|----|----------|--------------------------------------------------------------|-----------------------------------|-----------|
+| 10 | Coverage | Coverage gap threshold (below X% = gap)                      | `coverage_gap_threshold`          | `50`      |
+| 11 | Coverage | Well-covered threshold (above X% = don't flag)               | `coverage_well_covered_threshold` | `80`      |
+| 12 | Naming   | Test naming convention (`test_<unit>_<scenario>_<expected>`) | `check_test_naming`               | `true`    |
+| 13 | Mocking  | Prefer Mockery over PHPUnit mocks when Mockery is available  | `prefer_mockery`                  | `true`    |
+| 14 | Mutation | Mutation testing run (requires `php.tools.infection`)        | `check_mutation_testing`          | `true`    |
+| 15 | Mutation | MSI threshold (below X% = finding)                           | `mutation_score_threshold`        | `80`      |
+| 16 | Mutation | Mutation target (`changed` files / `all`)                    | `mutation_target`                 | `changed` |
+| 17 | Mutation | Max escaped mutants detailed in the report                   | `mutation_max_mutants`            | `50`      |
 
 ## Detailed rule explanations
 
@@ -175,6 +204,33 @@ When Mockery is available (`php.tools.phpunit.available` and Mockery is installe
 
 - **Default**: `true`
 
+### #14 — Mutation testing (configurable: `check_mutation_testing`)
+
+When `php.tools.infection.available` is `true`, the review runs Infection on the `mutation_target` scope and reports escaped mutants as test gaps. Because mutation runs multiply the test suite's runtime by the mutant count, the toggle lets a project opt out without uninstalling the tool.
+
+- **Default**: `true` (still skipped unless `php.tools.infection.available`)
+
+### #15 — Mutation score threshold (configurable: `mutation_score_threshold`)
+
+The MSI (Mutation Score Indicator) below this percentage is flagged as a high-severity finding. The default is `80`.
+
+- **Type**: integer (0–100)
+- **Default**: `80`
+
+### #16 — Mutation target (configurable: `mutation_target`)
+
+`changed` (default) mutates only files changed vs the default branch plus the working tree (via `--git-diff-filter=AM --git-diff-base`) — the incremental mode Martin Fowler's sensor guidance calls for during coding sessions. `all` mutates the whole codebase — slow, intended for scheduled/CI reviews.
+
+- **Type**: string (`changed` | `all`)
+- **Default**: `changed`
+
+### #17 — Max detailed escaped mutants (configurable: `mutation_max_mutants`)
+
+Caps how many escaped mutants are listed with file/line in the report. Keeps reports bounded on large runs.
+
+- **Type**: integer (≥1)
+- **Default**: `50`
+
 ## Mocking patterns
 
 ### PHPUnit built-in mocks
@@ -245,15 +301,19 @@ Classify output:
 - **Auto-fixable** (formatting, style) → informational, not graded
 - **Not auto-fixable** (missing tests, low coverage, broken isolation) → findings with severity
 
-### Step 3 — Apply always-on rules (Table 1)
+### Step 3 — Run Infection (conditional)
+
+If `php.tools.infection.available` is `true`, `php.testing.check_mutation_testing` is not `false`, and the coverage run in Step 2 succeeded, run Infection per the "Mutation testing" section above and persist stdout to `cache/infection.txt`. Skip with a note otherwise.
+
+### Step 4 — Apply always-on rules (Table 1)
 
 For each `*Test.php` file in the `tests/` directory, check the 9 always-on rules.
 
-### Step 4 — Apply configurable rules (Table 2)
+### Step 5 — Apply configurable rules (Table 2)
 
 For each configurable rule that is `true` in `php.testing`, check it.
 
-### Step 5 — Write report
+### Step 6 — Write report
 
 Write the report to `<runs_dir>/<timestamp>/reports/php-testing-patterns.md` using the [report template](assets/report_template.md).
 

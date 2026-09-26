@@ -123,6 +123,37 @@ Homepage: https://github.com/python/mypy
 
 ---
 
+## mutmut
+
+```text
+ℹ mutmut is not installed.
+
+mutmut is a zero-config mutation tester for Python. It mutates the source at
+AST level and runs the existing test suite against each mutant, so Zolletta-
+metaskill can report which mutants survived (tests that exist but don't catch
+realistic bugs). Without mutmut, the mutation-testing section of the
+testing-style review is skipped; coverage analysis still runs.
+
+Homepage: https://github.com/boxed/mutmut
+```
+
+---
+
+## infection
+
+```text
+ℹ Infection is not installed.
+
+Infection is the standard mutation tester for PHP. It mutates PHP via AST and
+reads phpunit.xml automatically, so Zolletta-metaskill can report which mutants
+escaped the existing test suite. Without Infection, the mutation-testing
+section of the testing-style review is skipped; coverage analysis still runs.
+
+Homepage: https://infection.codes/
+```
+
+---
+
 # Tool "unconfigured" warnings — per tool
 
 ## ruff (unconfigured)

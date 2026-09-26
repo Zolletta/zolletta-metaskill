@@ -35,28 +35,37 @@ Initialize the `.zolletta-metaskill/` directory and write `settings.json` so tha
 
 If `.zolletta-metaskill/settings.json` already exists, read it and check `setup_version`:
 
-- **`"3.1.0"` or later** — no migration needed; proceed to the requested subcommand (or re-run setup if invoked explicitly).
-- **`"3.0.0"`** — additively backfill the key introduced in v3.1.0, then proceed:
+- **`"3.2.0"` or later** — no migration needed; proceed to the requested subcommand (or re-run setup if invoked explicitly).
+- **`"3.1.0"`** — additively backfill the keys introduced in v3.2.0, then proceed:
+  1. `python.tools.mutmut` / `php.tools.infection` — re-run the tool-detection step for the project language (Step 6 / Step 11) so `available` reflects the real installation state; do not guess `false`.
+  2. `python.testing` / `php.testing` mutation keys (`check_mutation_testing`, `mutation_score_threshold`, `mutation_target`, `mutation_max_mutants`) — copy the defaults from the schema doc.
+  3. **Merge only**: preserve every user-customized value; only add keys that are absent.
+  4. Set `setup_version` to `"3.2.0"`, write the file, and proceed.
+- **`"3.0.0"`** — additively backfill the keys introduced in v3.1.0 and v3.2.0, then proceed:
   1. `python.code_style.check_one_class_per_test_file` — copy the default (`true`) from the schema doc.
-  2. **Merge only**: preserve every user-customized value; only add keys that are absent.
-  3. Set `setup_version` to `"3.1.0"`, write the file, and proceed.
-- **`"2.x"`** — additively backfill the keys introduced in v3.0.0 and v3.1.0, then proceed:
+  2. The v3.2.0 keys listed above (tool detection + four `testing` keys per language).
+  3. **Merge only**: preserve every user-customized value; only add keys that are absent.
+  4. Set `setup_version` to `"3.2.0"`, write the file, and proceed.
+- **`"2.x"`** — additively backfill the keys introduced in v3.0.0, v3.1.0, and v3.2.0, then proceed:
   1. `python.paths` — run Step 8's `python_paths_detector.py` and store its output (Python projects only).
   2. `python.patterns`, `php.patterns` — copy the defaults from the schema doc.
   3. New `python.code_style` keys (`check_zero_class_files`, `check_unused_all_exports`, `docstring_strip_*`, `check_one_class_per_test_file`), `python.testing.test_naming_min_segments`, `php.code_style.check_acronym_casing`, and the new `documentation.*` keys — copy the defaults from the schema doc.
-  4. **Merge only**: preserve every user-customized value; only add keys that are absent.
-  5. Set `setup_version` to `"3.1.0"`, write the file, and proceed.
+  4. The v3.2.0 keys listed above (tool detection + four `testing` keys per language).
+  5. **Merge only**: preserve every user-customized value; only add keys that are absent.
+  6. Set `setup_version` to `"3.2.0"`, write the file, and proceed.
 - **`"1.x"` or absent** — migrate before writing the new file:
   1. If the old `subagent_profile` field exists and is non-null, it applied to all review subagents — set `subcommands.patterns.model`, `subcommands.documentor.model`, `subcommands.python-code-style.model`, `subcommands.python-testing-style.model`, `subcommands.php-code-style.model`, and `subcommands.php-testing-style.model` to its value. If it is `null` or absent, leave all review subcommand models at `null`.
   2. Remove `external_review_model` and `subagent_profile` from the file. (`external_review_model` was for the removed `external-review` subcommand — it is not migrated.)
   3. Add the full `subcommands` object with all six keys, preserving migrated values and defaulting unmigrated ones to `null`.
-  4. Apply the v3.0.0 + v3.1.0 backfill described above (`paths`, `patterns`, new `code_style`/`testing`/`documentation` keys).
-  5. Set `setup_version` to `"3.1.0"`.
+  4. Apply the v3.0.0 + v3.1.0 + v3.2.0 backfill described above (`paths`, `patterns`, new `code_style`/`testing`/`documentation` keys, mutation-testing keys).
+  5. Set `setup_version` to `"3.2.0"`.
   6. Write the migrated file and proceed.
 
 > **What changed in v3.0.0**: every review script now resolves scan roots and rule knobs from `settings.json` instead of CLI flags (see ADR-0015). New keys: `python.paths` (source/test roots + package — the PHP-autoload equivalent Python lacked), `python.patterns` and `php.patterns` (SOLID-check toggles and thresholds), new `python.code_style`/`python.testing`/`php.code_style` toggles, and the `documentation.*` options that drive the documentor tools. Backfill is additive: user-customized values are preserved, only absent keys are added.
 >
 > **What changed in v3.1.0**: `one_class_per_file_scanner.py` also scans test roots (one test class per test file, named after its stem) — gated by the new `python.code_style.check_one_class_per_test_file` toggle (default `true`, set `false` to skip test files). Its name check is now case-insensitive, so acronym-cased classes (`ADRCache`, `TestADRCLI`) match their lowercase filenames instead of being reported as false positives.
+
+> **What changed in v3.2.0**: conditional mutation-testing sensor (issue #47). New `python.tools.mutmut` / `php.tools.infection` availability keys, and four `testing` keys per language (`check_mutation_testing`, `mutation_score_threshold`, `mutation_target`, `mutation_max_mutants`). Backfill is additive: the tool-detection steps re-run so `available` reflects the real installation state, user-customized values are preserved, only absent keys are added.
 
 > **What changed in v2.0.0**: the `external_review_model` scalar (for the removed `external-review` subcommand) and the `subagent_profile` scalar (all review subagents) are replaced by `subcommands` — a per-subcommand map where each entry has a `model` field. The `external-review` subcommand is removed; `external_review_model` is not migrated. This lets the user configure a different model per subcommand (e.g. a strong model for `patterns`/`documentor`, a cheap one for `*-code-style`). See [`../../docs/reference/settings-schema.md`](../../docs/reference/settings-schema.md#subcommands-per-subcommand-model-configuration) for the full schema.
 
@@ -103,7 +112,7 @@ If language is not Python, set `python: null` and skip to Step 9.
    python3 ../../src/zolletta_metaskill/setup/pyproject_sections_detector.py
    ```
 
-   Prints JSON mapping each tool (`uv`, `ruff`, `pytest`, `ty`, `vulture`, `mypy`) to `{"available": bool}`.
+   Prints JSON mapping each tool (`uv`, `ruff`, `pytest`, `ty`, `vulture`, `mypy`, `mutmut`) to `{"available": bool}`.
 
 2. For tools not found in `pyproject.toml`, try calling `<command> --version` to check if the tool is installed. If `uv` is available (from step 1's JSON output), prefer `uv run <command> --version` — many tools (e.g. `ty`) are only accessible through `uv run` and would be missed by a bare `<command> --version`. If `container_name` is set, run inside the container via `docker compose exec <container_name> <command>` instead. If the version check succeeds, mark as available.
 
@@ -113,7 +122,7 @@ Read `pyproject.toml` and extract effective configuration for each available too
 
 For each available tool, extract its config fields into `python.tools.<tool>`. If a tool has no `[tool.*]` section, store its built-in defaults and print the corresponding "unconfigured" warning from `tool-messages.md`. See the schema doc for the full field list and defaults.
 
-`uv` and `vulture` have no config beyond `available`.
+`uv`, `vulture`, and `mutmut` have no config beyond `available`.
 
 **Write `python.code_style` and `python.testing`** — copy default rule toggles from the schema doc. If re-running setup, merge: preserve existing user-customized values, only add new keys.
 
@@ -158,7 +167,7 @@ If language is not PHP, set `php: null` and skip to Step 13.
    python3 ../../src/zolletta_metaskill/setup/php_tools_detector.py
    ```
 
-   Prints JSON mapping each tool (`phpunit`, `phpstan`, `psalm`, `php_cs_fixer`, `phpcs`) to `{"available": bool}`. A tool is available if found in `composer.json` `require-dev` or if a config file exists.
+   Prints JSON mapping each tool (`phpunit`, `phpstan`, `psalm`, `php_cs_fixer`, `phpcs`, `infection`) to `{"available": bool}`. A tool is available if found in `composer.json` `require-dev` or if a config file exists.
 
 2. For tools not found by the script, try calling `vendor/bin/<tool> --version` (inside the container if `container_name` is set, otherwise on the host). If it succeeds, mark as available.
 
@@ -169,6 +178,7 @@ Read `composer.json` and each tool's config file. Record `composer_mtime` (float
 - **`php_version`**: parse `composer.json` `require.php` constraint, store minimum version as string (e.g. `"8.2"`). If absent, `null`.
 - **`autoload`**: read `autoload.psr-4` and `autoload-dev.psr-4` into `php.autoload` (empty objects for missing keys).
 - **Per-tool config**: for each available tool, extract its config fields into `php.tools.<tool>`. If no config file exists, store built-in defaults and print the "unconfigured" warning. See the schema doc for the full field list and defaults.
+- `infection` is availability-only: `infection.json*` files are used for detection but not parsed — Infection is a zero-config tool that reads `phpunit.xml` automatically.
 
 **Write `php.code_style`, `php.testing`, and `php.patterns`** — same merge behavior as Python. PHP source/test roots resolve from `php.autoload` (`psr-4`/`psr-4-dev` values) — no `php.paths` is written.
 

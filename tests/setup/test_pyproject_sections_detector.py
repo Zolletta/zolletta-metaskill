@@ -33,6 +33,54 @@ class TestPyprojectSectionsDetector:
         assert result["ty"]["available"] is True
         assert result["uv"]["available"] is True
 
+    def test_mutmut_via_tool_section(self, tmp_path: Path) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text("[tool.mutmut]\n", encoding="utf-8")
+        result = PyprojectSectionsDetector.detect_pyproject_sections(pyproject)
+        assert result["mutmut"]["available"] is True
+
+    def test_mutmut_via_dependency_groups(self, tmp_path: Path) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text(
+            '[dependency-groups]\ndev = ["pytest>=8", "mutmut>=3"]\n',
+            encoding="utf-8",
+        )
+        result = PyprojectSectionsDetector.detect_pyproject_sections(pyproject)
+        assert result["mutmut"]["available"] is True
+
+    def test_mutmut_via_project_dependencies(self, tmp_path: Path) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text(
+            '[project]\ndependencies = ["mutmut"]\n',
+            encoding="utf-8",
+        )
+        result = PyprojectSectionsDetector.detect_pyproject_sections(pyproject)
+        assert result["mutmut"]["available"] is True
+
+    def test_mutmut_via_optional_dependencies(self, tmp_path: Path) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text(
+            "[project.optional-dependencies]\ndev = ['mutmut~=3.8']\n",
+            encoding="utf-8",
+        )
+        result = PyprojectSectionsDetector.detect_pyproject_sections(pyproject)
+        assert result["mutmut"]["available"] is True
+
+    def test_mutmut_absent(self, tmp_path: Path) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text("[project]\ndependencies = []\n", encoding="utf-8")
+        result = PyprojectSectionsDetector.detect_pyproject_sections(pyproject)
+        assert result["mutmut"]["available"] is False
+
+    def test_mutmut_not_matched_by_similar_names(self, tmp_path: Path) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text(
+            '[project]\ndependencies = ["pymutmut", "mutmut-x>=1"]\n',
+            encoding="utf-8",
+        )
+        result = PyprojectSectionsDetector.detect_pyproject_sections(pyproject)
+        assert result["mutmut"]["available"] is False
+
     def test_detect_pyproject_sections_no_sections_returns_false(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text("[build-system]\n", encoding="utf-8")

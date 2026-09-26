@@ -31,10 +31,30 @@
     "language": {
       "type": "string",
       "description": "Detected project language (lowercase).",
-      "enum": ["", "python", "php", "typescript", "javascript", "go", "rust", "java", "kotlin", "ruby", "c", "cpp", "csharp", "swift", "scala", "other"]
+      "enum": [
+        "",
+        "python",
+        "php",
+        "typescript",
+        "javascript",
+        "go",
+        "rust",
+        "java",
+        "kotlin",
+        "ruby",
+        "c",
+        "cpp",
+        "csharp",
+        "swift",
+        "scala",
+        "other"
+      ]
     },
     "container_name": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Docker container name for running tools. null if no Docker."
     },
     "tokensave_available": {
@@ -43,7 +63,9 @@
     },
     "acronyms": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Project-specific acronyms that must stay uppercase in class names (e.g. [\"CITE\"]). Extracted from AGENTS.md during setup. Always present, even for non-Python projects.",
       "default": []
     },
@@ -69,9 +91,7 @@
       "default": ".zolletta-metaskill"
     }
   },
-
   "$defs": {
-
     "documentation": {
       "type": "object",
       "additionalProperties": false,
@@ -104,18 +124,30 @@
           "default": "docs"
         },
         "adrs": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "Relative path within documentation.dir where ADRs live (e.g. \"adr\"), \"\" if scattered in docs root, or null if no ADRs found. Auto-detected during setup.",
           "default": null
         },
         "min_severity": {
           "type": "string",
-          "enum": ["critical", "high", "medium", "low", "info"],
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low",
+            "info"
+          ],
           "description": "Minimum severity reported by drift_analyzer (default: high).",
           "default": "high"
         },
         "staleness_threshold": {
-          "type": ["number", "null"],
+          "type": [
+            "number",
+            "null"
+          ],
           "minimum": 0,
           "maximum": 100,
           "description": "If set, doc_staleness_scorer exits 1 when the freshness score falls below this value. null = report-only (default).",
@@ -128,33 +160,64 @@
         },
         "readme_sections": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Section names a README is expected to contain, checked by doc_staleness_scorer's completeness dimension.",
-          "default": ["installation", "usage", "api", "contributing", "license"]
+          "default": [
+            "installation",
+            "usage",
+            "api",
+            "contributing",
+            "license"
+          ]
         },
         "diataxis_translations": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "Path to a JSON file mapping Diataxis signpost headings to translations (used when documentation.language is not en). null = built-in translations.",
           "default": null
         },
         "staleness_weights": {
-          "type": ["object", "null"],
+          "type": [
+            "object",
+            "null"
+          ],
           "additionalProperties": false,
           "description": "Custom dimension weights for doc_staleness_scorer (normalized to sum 1.0). null = built-in defaults.",
           "properties": {
-            "last_updated":       { "type": "number" },
-            "code_doc_alignment": { "type": "number" },
-            "link_health":        { "type": "number" },
-            "completeness":       { "type": "number" },
-            "accuracy":           { "type": "number" }
+            "last_updated": {
+              "type": "number"
+            },
+            "code_doc_alignment": {
+              "type": "number"
+            },
+            "link_health": {
+              "type": "number"
+            },
+            "completeness": {
+              "type": "number"
+            },
+            "accuracy": {
+              "type": "number"
+            }
           },
           "default": null
         },
         "doc_patterns": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Glob patterns for documentation files scanned by drift_analyzer.",
-          "default": ["*.md", "*.rst", "*.txt", "*.adoc"]
+          "default": [
+            "*.md",
+            "*.rst",
+            "*.txt",
+            "*.adoc"
+          ]
         },
         "check_external": {
           "type": "boolean",
@@ -187,55 +250,117 @@
       "type": "object",
       "additionalProperties": false,
       "description": "Per-subcommand configuration. Each key is a subcommand name; each value is an object with a `model` field (string|null, null = harness default). Profile/model ids are harness-specific; the skill never hardcodes one. The review orchestrator reads each subcommand's model and passes it to run_subagent.",
-      "required": ["patterns", "documentor", "python-code-style", "python-testing-style", "php-code-style", "php-testing-style"],
+      "required": [
+        "patterns",
+        "documentor",
+        "python-code-style",
+        "python-testing-style",
+        "php-code-style",
+        "php-testing-style"
+      ],
       "properties": {
-        "patterns":              { "$ref": "#/$defs/subcommand_entry" },
-        "documentor":            { "$ref": "#/$defs/subcommand_entry" },
-        "python-code-style":     { "$ref": "#/$defs/subcommand_entry" },
-        "python-testing-style":  { "$ref": "#/$defs/subcommand_entry" },
-        "php-code-style":        { "$ref": "#/$defs/subcommand_entry" },
-        "php-testing-style":     { "$ref": "#/$defs/subcommand_entry" }
+        "patterns": {
+          "$ref": "#/$defs/subcommand_entry"
+        },
+        "documentor": {
+          "$ref": "#/$defs/subcommand_entry"
+        },
+        "python-code-style": {
+          "$ref": "#/$defs/subcommand_entry"
+        },
+        "python-testing-style": {
+          "$ref": "#/$defs/subcommand_entry"
+        },
+        "php-code-style": {
+          "$ref": "#/$defs/subcommand_entry"
+        },
+        "php-testing-style": {
+          "$ref": "#/$defs/subcommand_entry"
+        }
       }
     },
-
     "subcommand_entry": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["model"],
+      "required": [
+        "model"
+      ],
       "properties": {
         "model": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "Harness-specific profile/model id for this subcommand. null = harness default. The user supplies a value that exists in their harness; the skill never hardcodes one.",
           "default": null
         }
       }
     },
-
     "python": {
       "oneOf": [
-        { "type": "null" },
+        {
+          "type": "null"
+        },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["tools", "paths", "code_style", "testing", "patterns", "pyproject_mtime"],
+          "required": [
+            "tools",
+            "paths",
+            "code_style",
+            "testing",
+            "patterns",
+            "pyproject_mtime"
+          ],
           "properties": {
             "tools": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["uv", "ruff", "pytest", "ty", "vulture", "mypy"],
+              "required": [
+                "uv",
+                "ruff",
+                "pytest",
+                "ty",
+                "vulture",
+                "mypy",
+                "mutmut"
+              ],
               "properties": {
-                "uv":      { "$ref": "#/$defs/python_tools_uv" },
-                "ruff":    { "$ref": "#/$defs/python_tools_ruff" },
-                "pytest":  { "$ref": "#/$defs/python_tools_pytest" },
-                "ty":      { "$ref": "#/$defs/python_tools_ty" },
-                "vulture": { "$ref": "#/$defs/python_tools_vulture" },
-                "mypy":    { "$ref": "#/$defs/python_tools_mypy" }
+                "uv": {
+                  "$ref": "#/$defs/python_tools_uv"
+                },
+                "ruff": {
+                  "$ref": "#/$defs/python_tools_ruff"
+                },
+                "pytest": {
+                  "$ref": "#/$defs/python_tools_pytest"
+                },
+                "ty": {
+                  "$ref": "#/$defs/python_tools_ty"
+                },
+                "vulture": {
+                  "$ref": "#/$defs/python_tools_vulture"
+                },
+                "mypy": {
+                  "$ref": "#/$defs/python_tools_mypy"
+                },
+                "mutmut": {
+                  "$ref": "#/$defs/python_tools_mutmut"
+                }
               }
             },
-            "paths":      { "$ref": "#/$defs/python_paths" },
-            "code_style": { "$ref": "#/$defs/python_code_style" },
-            "testing":    { "$ref": "#/$defs/python_testing" },
-            "patterns":   { "$ref": "#/$defs/python_patterns" },
+            "paths": {
+              "$ref": "#/$defs/python_paths"
+            },
+            "code_style": {
+              "$ref": "#/$defs/python_code_style"
+            },
+            "testing": {
+              "$ref": "#/$defs/python_testing"
+            },
+            "patterns": {
+              "$ref": "#/$defs/python_patterns"
+            },
             "pyproject_mtime": {
               "type": "number",
               "description": "Modification time of pyproject.toml at last extraction (Unix timestamp). The setup guard uses it to detect staleness and trigger a light refresh."
@@ -244,96 +369,193 @@
         }
       ]
     },
-
     "python_tools_uv": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["available"],
+      "required": [
+        "available"
+      ],
       "properties": {
-        "available": { "type": "boolean" }
+        "available": {
+          "type": "boolean"
+        }
       }
     },
-
     "python_tools_ruff": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["available", "line_length", "target_version", "select", "ignore"],
+      "required": [
+        "available",
+        "line_length",
+        "target_version",
+        "select",
+        "ignore"
+      ],
       "properties": {
-        "available":      { "type": "boolean" },
-        "line_length":    { "type": "integer", "minimum": 1 },
-        "target_version": { "type": "string", "description": "e.g. py312, py310" },
-        "select":         { "type": "array", "items": { "type": "string" } },
-        "ignore":         { "type": "array", "items": { "type": "string" } }
+        "available": {
+          "type": "boolean"
+        },
+        "line_length": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "target_version": {
+          "type": "string",
+          "description": "e.g. py312, py310"
+        },
+        "select": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ignore": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
-
     "python_tools_pytest": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["available", "addopts", "testpaths", "minversion"],
+      "required": [
+        "available",
+        "addopts",
+        "testpaths",
+        "minversion"
+      ],
       "properties": {
-        "available":   { "type": "boolean" },
-        "addopts":     { "type": "array", "items": { "type": "string" } },
-        "testpaths":   { "type": "array", "items": { "type": "string" } },
-        "minversion":  { "type": ["string", "null"] }
+        "available": {
+          "type": "boolean"
+        },
+        "addopts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "testpaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "minversion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     },
-
     "python_tools_ty": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["available", "python_version"],
+      "required": [
+        "available",
+        "python_version"
+      ],
       "properties": {
-        "available":       { "type": "boolean" },
-        "python_version":  { "type": ["string", "null"] }
+        "available": {
+          "type": "boolean"
+        },
+        "python_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     },
-
     "python_tools_vulture": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["available"],
+      "required": [
+        "available"
+      ],
       "properties": {
-        "available": { "type": "boolean" }
+        "available": {
+          "type": "boolean"
+        }
       }
     },
-
     "python_tools_mypy": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["available", "strict", "python_version"],
+      "required": [
+        "available",
+        "strict",
+        "python_version"
+      ],
       "properties": {
-        "available":      { "type": "boolean" },
-        "strict":         { "type": "boolean" },
-        "python_version": { "type": ["string", "null"] }
+        "available": {
+          "type": "boolean"
+        },
+        "strict": {
+          "type": "boolean"
+        },
+        "python_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     },
-
+    "python_tools_mutmut": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "available"
+      ],
+      "properties": {
+        "available": {
+          "type": "boolean",
+          "description": "mutmut is a zero-config mutation tester — availability only."
+        }
+      }
+    },
     "python_paths": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["source", "tests", "package"],
+      "required": [
+        "source",
+        "tests",
+        "package"
+      ],
       "properties": {
         "source": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Source roots scanned by every review script (the PHP-autoload equivalent Python lacked). Detected from pyproject.toml build config / layout by setup's python_paths_detector.",
-          "default": ["src"]
+          "default": [
+            "src"
+          ]
         },
         "tests": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Test roots scanned by test scanners. Detected from pytest testpaths or the tests/ directory.",
-          "default": ["tests"]
+          "default": [
+            "tests"
+          ]
         },
         "package": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "Top-level package name used by mirror-structure checks (naming_conventions, test_structure). null when undetected.",
           "default": null
         }
       }
     },
-
     "python_code_style": {
       "type": "object",
       "additionalProperties": false,
@@ -357,27 +579,89 @@
         "vulture_min_confidence"
       ],
       "properties": {
-        "check_acronym_casing":           { "type": "boolean", "default": true },
-        "check_no_relative_imports":      { "type": "boolean", "default": true },
-        "check_one_class_per_file":       { "type": "boolean", "default": true },
-        "check_one_class_per_test_file":  { "type": "boolean", "default": true, "description": "one_class_per_file_scanner also scans test roots: one test class per test file, named after its stem (test_user.py -> TestUser). Set false to skip test files." },
-        "check_zero_class_files":         { "type": "boolean", "default": true, "description": "Report files with 0 classes (utility/helper modules). Replaces the removed --ignore-zero flag — set false to hide them." },
-        "check_filename_matches_class":   { "type": "boolean", "default": true },
-        "check_public_docstrings":        { "type": "boolean", "default": true },
-        "check_docstring_no_type_repeat": { "type": "boolean", "default": true },
-        "check_skip_obvious_docstrings":  { "type": "boolean", "default": true },
-        "check_line_length":              { "type": "boolean", "default": true },
-        "check_file_length":              { "type": "boolean", "default": true },
-        "check_unused_all_exports":       { "type": "boolean", "default": true },
-        "docstring_strip_private":        { "type": "boolean", "default": false, "description": "docstring_streamliner removes docstrings from private functions when applying fixes." },
-        "docstring_strip_tests":          { "type": "boolean", "default": false, "description": "docstring_streamliner removes docstrings from test functions when applying fixes." },
-        "docstring_strip_nested":         { "type": "boolean", "default": false, "description": "docstring_streamliner removes docstrings from nested functions when applying fixes." },
-        "docstring_strip_obvious_init":   { "type": "boolean", "default": false, "description": "docstring_streamliner removes obvious __init__ docstrings when applying fixes." },
-        "max_file_length":                { "type": "integer", "minimum": 1, "default": 800 },
-        "vulture_min_confidence":         { "type": "integer", "minimum": 0, "maximum": 100, "default": 80 }
+        "check_acronym_casing": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_no_relative_imports": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_one_class_per_file": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_one_class_per_test_file": {
+          "type": "boolean",
+          "default": true,
+          "description": "one_class_per_file_scanner also scans test roots: one test class per test file, named after its stem (test_user.py -> TestUser). Set false to skip test files."
+        },
+        "check_zero_class_files": {
+          "type": "boolean",
+          "default": true,
+          "description": "Report files with 0 classes (utility/helper modules). Replaces the removed --ignore-zero flag — set false to hide them."
+        },
+        "check_filename_matches_class": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_public_docstrings": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_docstring_no_type_repeat": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_skip_obvious_docstrings": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_line_length": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_file_length": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_unused_all_exports": {
+          "type": "boolean",
+          "default": true
+        },
+        "docstring_strip_private": {
+          "type": "boolean",
+          "default": false,
+          "description": "docstring_streamliner removes docstrings from private functions when applying fixes."
+        },
+        "docstring_strip_tests": {
+          "type": "boolean",
+          "default": false,
+          "description": "docstring_streamliner removes docstrings from test functions when applying fixes."
+        },
+        "docstring_strip_nested": {
+          "type": "boolean",
+          "default": false,
+          "description": "docstring_streamliner removes docstrings from nested functions when applying fixes."
+        },
+        "docstring_strip_obvious_init": {
+          "type": "boolean",
+          "default": false,
+          "description": "docstring_streamliner removes obvious __init__ docstrings when applying fixes."
+        },
+        "max_file_length": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 800
+        },
+        "vulture_min_confidence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 80
+        }
       }
     },
-
     "python_testing": {
       "type": "object",
       "additionalProperties": false,
@@ -385,16 +669,64 @@
         "coverage_gap_threshold",
         "coverage_well_covered_threshold",
         "check_test_naming",
-        "test_naming_min_segments"
+        "test_naming_min_segments",
+        "check_mutation_testing",
+        "mutation_score_threshold",
+        "mutation_target",
+        "mutation_max_mutants"
       ],
       "properties": {
-        "coverage_gap_threshold":          { "type": "integer", "minimum": 0, "maximum": 100, "default": 50 },
-        "coverage_well_covered_threshold": { "type": "integer", "minimum": 0, "maximum": 100, "default": 80 },
-        "check_test_naming":               { "type": "boolean", "default": true },
-        "test_naming_min_segments":        { "type": "integer", "minimum": 1, "default": 3, "description": "Minimum number of underscore-separated segments a test function name must have (test_naming_scanner). Replaces the removed --min-segments flag." }
+        "coverage_gap_threshold": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 50
+        },
+        "coverage_well_covered_threshold": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 80
+        },
+        "check_test_naming": {
+          "type": "boolean",
+          "default": true
+        },
+        "test_naming_min_segments": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 3,
+          "description": "Minimum number of underscore-separated segments a test function name must have (test_naming_scanner). Replaces the removed --min-segments flag."
+        },
+        "check_mutation_testing": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run mutmut during python-testing-style reviews when python.tools.mutmut.available. Conditional sensor — mutation runs are slow, set false to opt out without uninstalling."
+        },
+        "mutation_score_threshold": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 80,
+          "description": "Mutation score below this percentage is flagged as a high-severity finding."
+        },
+        "mutation_target": {
+          "type": "string",
+          "enum": [
+            "changed",
+            "all"
+          ],
+          "default": "changed",
+          "description": "changed = mutate only files changed vs the default branch plus the working tree; all = full run (slow, for scheduled reviews)."
+        },
+        "mutation_max_mutants": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Cap on survived mutants detailed in the report."
+        }
       }
     },
-
     "python_patterns": {
       "type": "object",
       "additionalProperties": false,
@@ -412,106 +744,309 @@
         "test_god_classes_top"
       ],
       "properties": {
-        "check_ocp":              { "type": "boolean", "default": true, "description": "Open/closed principle check (open_closed_scanner)." },
-        "check_isp":              { "type": "boolean", "default": true, "description": "Interface segregation check (interface_segregation_scanner)." },
-        "check_dip":              { "type": "boolean", "default": true, "description": "Dependency inversion check (dependency_inversion_scanner)." },
-        "check_lsp":              { "type": "boolean", "default": true, "description": "Liskov substitution check (liskov_substitution_scanner)." },
-        "check_test_structure":   { "type": "boolean", "default": true, "description": "Mirror-structure check between source and test trees (test_structure_scanner)." },
-        "ocp_min_branches":       { "type": "integer", "minimum": 1, "default": 3, "description": "Minimum branches in an if/elif chain before open_closed_scanner flags it." },
-        "isp_min_methods":        { "type": "integer", "minimum": 1, "default": 5, "description": "Minimum methods on an interface/class before interface_segregation_scanner flags it." },
-        "dip_entry_points":       { "type": "array", "items": { "type": "string" }, "description": "Module names treated as composition roots — exempt from dependency_inversion_scanner findings.", "default": ["main", "cli", "app", "__main__", "myproject", "manage", "wsgi", "asgi", "conftest"] },
-        "class_metrics_top":      { "type": "integer", "minimum": 1, "default": 30, "description": "How many largest classes class_metrics_scanner reports." },
-        "class_metrics_min_lines": { "type": "integer", "minimum": 1, "default": 50, "description": "Minimum class size (lines) class_metrics_scanner reports." },
-        "test_god_classes_top":   { "type": "integer", "minimum": 1, "default": 30, "description": "How many largest test classes test_god_classes_scanner reports." }
+        "check_ocp": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open/closed principle check (open_closed_scanner)."
+        },
+        "check_isp": {
+          "type": "boolean",
+          "default": true,
+          "description": "Interface segregation check (interface_segregation_scanner)."
+        },
+        "check_dip": {
+          "type": "boolean",
+          "default": true,
+          "description": "Dependency inversion check (dependency_inversion_scanner)."
+        },
+        "check_lsp": {
+          "type": "boolean",
+          "default": true,
+          "description": "Liskov substitution check (liskov_substitution_scanner)."
+        },
+        "check_test_structure": {
+          "type": "boolean",
+          "default": true,
+          "description": "Mirror-structure check between source and test trees (test_structure_scanner)."
+        },
+        "ocp_min_branches": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 3,
+          "description": "Minimum branches in an if/elif chain before open_closed_scanner flags it."
+        },
+        "isp_min_methods": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 5,
+          "description": "Minimum methods on an interface/class before interface_segregation_scanner flags it."
+        },
+        "dip_entry_points": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Module names treated as composition roots — exempt from dependency_inversion_scanner findings.",
+          "default": [
+            "main",
+            "cli",
+            "app",
+            "__main__",
+            "myproject",
+            "manage",
+            "wsgi",
+            "asgi",
+            "conftest"
+          ]
+        },
+        "class_metrics_top": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30,
+          "description": "How many largest classes class_metrics_scanner reports."
+        },
+        "class_metrics_min_lines": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Minimum class size (lines) class_metrics_scanner reports."
+        },
+        "test_god_classes_top": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30,
+          "description": "How many largest test classes test_god_classes_scanner reports."
+        }
       }
     },
-
     "php": {
       "oneOf": [
-        { "type": "null" },
+        {
+          "type": "null"
+        },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["tools", "code_style", "testing", "patterns", "autoload", "php_version", "composer_mtime"],
+          "required": [
+            "tools",
+            "code_style",
+            "testing",
+            "patterns",
+            "autoload",
+            "php_version",
+            "composer_mtime"
+          ],
           "properties": {
             "tools": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["phpunit", "phpstan", "psalm", "php_cs_fixer", "phpcs"],
+              "required": [
+                "phpunit",
+                "phpstan",
+                "psalm",
+                "php_cs_fixer",
+                "phpcs",
+                "infection"
+              ],
               "properties": {
-                "phpunit":      { "$ref": "#/$defs/php_tools_phpunit" },
-                "phpstan":      { "$ref": "#/$defs/php_tools_phpstan" },
-                "psalm":        { "$ref": "#/$defs/php_tools_psalm" },
-                "php_cs_fixer": { "$ref": "#/$defs/php_tools_php_cs_fixer" },
-                "phpcs":        { "$ref": "#/$defs/php_tools_phpcs" }
+                "phpunit": {
+                  "$ref": "#/$defs/php_tools_phpunit"
+                },
+                "phpstan": {
+                  "$ref": "#/$defs/php_tools_phpstan"
+                },
+                "psalm": {
+                  "$ref": "#/$defs/php_tools_psalm"
+                },
+                "php_cs_fixer": {
+                  "$ref": "#/$defs/php_tools_php_cs_fixer"
+                },
+                "phpcs": {
+                  "$ref": "#/$defs/php_tools_phpcs"
+                },
+                "infection": {
+                  "$ref": "#/$defs/php_tools_infection"
+                }
               }
             },
-            "code_style":     { "$ref": "#/$defs/php_code_style" },
-            "testing":        { "$ref": "#/$defs/php_testing" },
-            "patterns":       { "$ref": "#/$defs/php_patterns" },
-            "autoload":       { "$ref": "#/$defs/php_autoload" },
-            "php_version":    { "type": ["string", "null"], "description": "Minimum PHP version extracted from composer.json require.php (e.g. 8.2). null if unknown." },
-            "composer_mtime": { "type": "number", "description": "Modification time of composer.json at last extraction (Unix timestamp). The setup guard uses it to detect staleness and trigger a light refresh." }
+            "code_style": {
+              "$ref": "#/$defs/php_code_style"
+            },
+            "testing": {
+              "$ref": "#/$defs/php_testing"
+            },
+            "patterns": {
+              "$ref": "#/$defs/php_patterns"
+            },
+            "autoload": {
+              "$ref": "#/$defs/php_autoload"
+            },
+            "php_version": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Minimum PHP version extracted from composer.json require.php (e.g. 8.2). null if unknown."
+            },
+            "composer_mtime": {
+              "type": "number",
+              "description": "Modification time of composer.json at last extraction (Unix timestamp). The setup guard uses it to detect staleness and trigger a light refresh."
+            }
           }
         }
       ]
     },
-
     "php_tools_phpunit": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["available", "bootstrap", "testpaths", "coverage_config"],
+      "required": [
+        "available",
+        "bootstrap",
+        "testpaths",
+        "coverage_config"
+      ],
       "properties": {
-        "available":       { "type": "boolean" },
-        "bootstrap":       { "type": ["string", "null"], "description": "Path to the bootstrap file (e.g. vendor/autoload.php). null if not configured." },
-        "testpaths":       { "type": "array", "items": { "type": "string" } },
-        "coverage_config": { "type": ["boolean", "null"], "description": "true if phpunit.xml configures coverage, false/null otherwise." }
+        "available": {
+          "type": "boolean"
+        },
+        "bootstrap": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Path to the bootstrap file (e.g. vendor/autoload.php). null if not configured."
+        },
+        "testpaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "coverage_config": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "true if phpunit.xml configures coverage, false/null otherwise."
+        }
       }
     },
-
     "php_tools_phpstan": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["available", "level", "paths", "memory_limit"],
+      "required": [
+        "available",
+        "level",
+        "paths",
+        "memory_limit"
+      ],
       "properties": {
-        "available":     { "type": "boolean" },
-        "level":         { "type": ["integer", "null"], "minimum": 0, "maximum": 9, "description": "PHPStan analysis level (0-9). null if config could not be read." },
-        "paths":         { "type": "array", "items": { "type": "string" } },
-        "memory_limit":  { "type": ["string", "null"], "description": "e.g. 256M. null if not configured." }
+        "available": {
+          "type": "boolean"
+        },
+        "level": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 9,
+          "description": "PHPStan analysis level (0-9). null if config could not be read."
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "memory_limit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "e.g. 256M. null if not configured."
+        }
       }
     },
-
     "php_tools_psalm": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["available", "error_level", "paths"],
+      "required": [
+        "available",
+        "error_level",
+        "paths"
+      ],
       "properties": {
-        "available":    { "type": "boolean" },
-        "error_level":  { "type": ["integer", "null"], "minimum": 1, "maximum": 8, "description": "Psalm error level (1-8). null if config could not be read." },
-        "paths":        { "type": "array", "items": { "type": "string" } }
+        "available": {
+          "type": "boolean"
+        },
+        "error_level": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 8,
+          "description": "Psalm error level (1-8). null if config could not be read."
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
-
     "php_tools_php_cs_fixer": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["available", "config_file"],
+      "required": [
+        "available",
+        "config_file"
+      ],
       "properties": {
-        "available":   { "type": "boolean" },
-        "config_file": { "type": "boolean", "description": "true if .php-cs-fixer.php or .php-cs-fixer.dist.php exists. The file is PHP code and cannot be parsed by setup — the php-code-style skill reads it at review time." }
+        "available": {
+          "type": "boolean"
+        },
+        "config_file": {
+          "type": "boolean",
+          "description": "true if .php-cs-fixer.php or .php-cs-fixer.dist.php exists. The file is PHP code and cannot be parsed by setup — the php-code-style skill reads it at review time."
+        }
       }
     },
-
     "php_tools_phpcs": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["available", "standard"],
+      "required": [
+        "available",
+        "standard"
+      ],
       "properties": {
-        "available": { "type": "boolean" },
-        "standard":  { "type": ["string", "null"], "description": "Coding standard (e.g. PSR12, Custom). null if not configured." }
+        "available": {
+          "type": "boolean"
+        },
+        "standard": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Coding standard (e.g. PSR12, Custom). null if not configured."
+        }
       }
     },
-
+    "php_tools_infection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "available"
+      ],
+      "properties": {
+        "available": {
+          "type": "boolean",
+          "description": "Infection is a zero-config mutation tester — availability only. infection.json* is not parsed."
+        }
+      }
+    },
     "php_patterns": {
       "type": "object",
       "additionalProperties": false,
@@ -523,14 +1058,35 @@
         "isp_min_methods"
       ],
       "properties": {
-        "check_ocp":        { "type": "boolean", "default": true, "description": "Open/closed principle check (open_closed_scanner)." },
-        "check_isp":        { "type": "boolean", "default": true, "description": "Interface segregation check (interface_segregation_scanner)." },
-        "check_dip":        { "type": "boolean", "default": true, "description": "Dependency inversion check (dependency_inversion_scanner)." },
-        "ocp_min_branches": { "type": "integer", "minimum": 1, "default": 3, "description": "Minimum branches in an if/elseif chain before open_closed_scanner flags it." },
-        "isp_min_methods":  { "type": "integer", "minimum": 1, "default": 7, "description": "Minimum methods on an interface/class before interface_segregation_scanner flags it. PHP default is 7 (higher than Python's 5)." }
+        "check_ocp": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open/closed principle check (open_closed_scanner)."
+        },
+        "check_isp": {
+          "type": "boolean",
+          "default": true,
+          "description": "Interface segregation check (interface_segregation_scanner)."
+        },
+        "check_dip": {
+          "type": "boolean",
+          "default": true,
+          "description": "Dependency inversion check (dependency_inversion_scanner)."
+        },
+        "ocp_min_branches": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 3,
+          "description": "Minimum branches in an if/elseif chain before open_closed_scanner flags it."
+        },
+        "isp_min_methods": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 7,
+          "description": "Minimum methods on an interface/class before interface_segregation_scanner flags it. PHP default is 7 (higher than Python's 5)."
+        }
       }
     },
-
     "php_code_style": {
       "type": "object",
       "additionalProperties": false,
@@ -552,53 +1108,148 @@
         "max_file_length"
       ],
       "properties": {
-        "check_acronym_casing":         { "type": "boolean", "default": true },
-        "check_union_types":            { "type": "boolean", "default": true },
-        "check_intersection_types":     { "type": "boolean", "default": true },
-        "check_enum_methods":           { "type": "boolean", "default": true },
-        "check_first_class_callables":  { "type": "boolean", "default": true },
-        "check_readonly_classes":       { "type": "boolean", "default": true },
-        "check_typed_constants":        { "type": "boolean", "default": true },
-        "check_override_attribute":     { "type": "boolean", "default": true },
-        "check_property_hooks":         { "type": "boolean", "default": true },
-        "check_asymmetric_visibility":  { "type": "boolean", "default": true },
-        "check_pipe_operator":          { "type": "boolean", "default": true },
-        "check_array_functions":        { "type": "boolean", "default": true },
-        "check_string_functions":       { "type": "boolean", "default": true },
-        "check_file_length":            { "type": "boolean", "default": true },
-        "max_file_length":              { "type": "integer", "minimum": 1, "default": 800 }
+        "check_acronym_casing": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_union_types": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_intersection_types": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_enum_methods": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_first_class_callables": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_readonly_classes": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_typed_constants": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_override_attribute": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_property_hooks": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_asymmetric_visibility": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_pipe_operator": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_array_functions": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_string_functions": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_file_length": {
+          "type": "boolean",
+          "default": true
+        },
+        "max_file_length": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 800
+        }
       }
     },
-
     "php_testing": {
       "type": "object",
       "additionalProperties": false,
       "required": [
         "coverage_gap_threshold",
         "coverage_well_covered_threshold",
-        "check_test_naming"
+        "check_test_naming",
+        "check_mutation_testing",
+        "mutation_score_threshold",
+        "mutation_target",
+        "mutation_max_mutants"
       ],
       "properties": {
-        "coverage_gap_threshold":          { "type": "integer", "minimum": 0, "maximum": 100, "default": 50 },
-        "coverage_well_covered_threshold": { "type": "integer", "minimum": 0, "maximum": 100, "default": 80 },
-        "check_test_naming":               { "type": "boolean", "default": true }
+        "coverage_gap_threshold": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 50
+        },
+        "coverage_well_covered_threshold": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 80
+        },
+        "check_test_naming": {
+          "type": "boolean",
+          "default": true
+        },
+        "check_mutation_testing": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run Infection during php-testing-style reviews when php.tools.infection.available. Conditional sensor — mutation runs are slow, set false to opt out without uninstalling."
+        },
+        "mutation_score_threshold": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 80,
+          "description": "MSI below this percentage is flagged as a high-severity finding."
+        },
+        "mutation_target": {
+          "type": "string",
+          "enum": [
+            "changed",
+            "all"
+          ],
+          "default": "changed",
+          "description": "changed = mutate only files changed vs the default branch plus the working tree; all = full run (slow, for scheduled reviews)."
+        },
+        "mutation_max_mutants": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Cap on escaped mutants detailed in the report."
+        }
       }
     },
-
     "php_autoload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["psr-4", "psr-4-dev"],
+      "required": [
+        "psr-4",
+        "psr-4-dev"
+      ],
       "properties": {
         "psr-4": {
           "type": "object",
           "description": "Production namespace to directory mapping from composer.json autoload.psr-4 (e.g. {\"App\\\\\": \"src/\"}). Empty object if absent.",
-          "additionalProperties": { "type": "string" }
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "psr-4-dev": {
           "type": "object",
           "description": "Test namespace to directory mapping from composer.json autoload-dev.psr-4 (e.g. {\"Tests\\\\\": \"tests/\"}). Empty object if absent.",
-          "additionalProperties": { "type": "string" }
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     }
