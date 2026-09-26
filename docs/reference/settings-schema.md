@@ -10,7 +10,7 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
 
 `.zolletta-metaskill/settings.json` is created by `/zolletta-metaskill setup` and read by every other subcommand. This page documents every field.
 
-> **JSON Schema**: the machine-readable source of truth for the shape of `settings.json` lives at [`skills/setup/assets/settings.schema.json`](../../skills/setup/assets/settings.schema.json) (JSON Schema draft 2020-12). This prose doc is the human-readable counterpart and must stay in sync — when a field is added, removed, or renamed, update both files in the same change.
+> **JSON Schema**: the machine-readable source of truth for the shape of `settings.json` lives at [`skills/zolletta-metaskill-setup/assets/settings.schema.json`](../../skills/zolletta-metaskill-setup/assets/settings.schema.json) (JSON Schema draft 2020-12). This prose doc is the human-readable counterpart and must stay in sync — when a field is added, removed, or renamed, update both files in the same change.
 
 ## Example (Python project)
 
@@ -248,7 +248,7 @@ The six subcommand keys:
 | `php-code-style`       | `php-code-style`                 | `null`          | Mechanical — PSR-12, naming, types (PHP only)            |
 | `php-testing-style`    | `php-testing-style`              | `null`          | Mechanical — PHPUnit, coverage gaps (PHP only)           |
 
-> **v1.x migration**: the `external_review_model` scalar (for the removed `external-review` subcommand) and the `subagent_profile` scalar (applied to all review subagents) are replaced by `subcommands` — a per-subcommand map. `external_review_model` is simply removed (the subcommand no longer exists); `subagent_profile` migrates to the 6 review subcommand entries. Setup migrates automatically — see `skills/setup/SKILL.md` → "Step 0 — Migration and missing-keys backfill".
+> **v1.x migration**: the `external_review_model` scalar (for the removed `external-review` subcommand) and the `subagent_profile` scalar (applied to all review subagents) are replaced by `subcommands` — a per-subcommand map. `external_review_model` is simply removed (the subcommand no longer exists); `subagent_profile` migrates to the 6 review subcommand entries. Setup migrates automatically — see `skills/zolletta-metaskill-setup/SUBSKILL.md` → "Step 0 — Migration and missing-keys backfill".
 >
 > **v3.0.0 backfill**: `python.paths`, `python.patterns`, `php.patterns`, and the new `code_style`/`testing`/`documentation` keys are added to existing settings.json files on the next setup run — additive only, user-customized values are preserved.
 
@@ -326,7 +326,7 @@ These control which checks the `python-code-style` skill enforces. All default t
 | `max_file_length`                | integer | `800`   | Structure  | Maximum allowed lines per file (enforced by `file_length_scanner.py`)                                                                |
 | `vulture_min_confidence`         | integer | `80`    | Dead code  | Minimum confidence for vulture findings (0–100)                                                                                      |
 
-> Rules not listed here (naming conventions, import order, private/test function docstring exemptions, type hints for public APIs) are **always-on** and cannot be disabled. See `skills/python-code-style/SKILL.md` → Table 1 for the full list.
+> Rules not listed here (naming conventions, import order, private/test function docstring exemptions, type hints for public APIs) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-python-code-style/SUBSKILL.md` → Table 1 for the full list.
 
 ### `python.testing` — configurable rule toggles
 
@@ -339,7 +339,7 @@ These control which checks the `python-testing-style` skill enforces and the cov
 | `check_test_naming`               | boolean | `true`  | Naming   | Test naming convention (`test_<unit>_<scenario>_<expected>`)                                    |
 | `test_naming_min_segments`        | integer | `3`     | Naming   | Minimum underscore-separated segments a test function name must have (`test_naming_scanner.py`) |
 
-> Rules not listed here (AAA structure, test isolation, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `skills/python-testing-style/SKILL.md` → "Always-on rules" for the full list.
+> Rules not listed here (AAA structure, test isolation, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-python-testing-style/SUBSKILL.md` → "Always-on rules" for the full list.
 
 ### `python.patterns` — SOLID/pattern scanner configuration
 
@@ -403,7 +403,7 @@ These control which checks the `php-code-style` skill enforces. All default to `
 | `check_file_length`           | boolean | `true`  | Structure   | Files must not exceed `max_file_length` lines                         | all     |
 | `max_file_length`             | integer | `800`   | Structure   | Maximum allowed lines per file (enforced by `file_length_scanner.py`) | all     |
 
-> Rules not listed here (`declare(strict_types=1)`, return/parameter/property type declarations, nullable types, `void`/`never`, avoid `mixed`, constructor promotion, match expression, nullsafe operator, named arguments, attributes, enums, readonly properties, arrow functions, PSR-4 autoloading, PSR-12 coding style, camelCase methods, namespace usage, no `@` suppression, file upload validation) are **always-on** and cannot be disabled. See `skills/php-code-style/SKILL.md` → "Always-on rules" for the full list.
+> Rules not listed here (`declare(strict_types=1)`, return/parameter/property type declarations, nullable types, `void`/`never`, avoid `mixed`, constructor promotion, match expression, nullsafe operator, named arguments, attributes, enums, readonly properties, arrow functions, PSR-4 autoloading, PSR-12 coding style, camelCase methods, namespace usage, no `@` suppression, file upload validation) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-php-code-style/SUBSKILL.md` → "Always-on rules" for the full list.
 
 ### `php.testing` — configurable rule toggles
 
@@ -415,7 +415,7 @@ These control which checks the `php-testing-style` skill enforces and the covera
 | `coverage_well_covered_threshold` | integer | `80`    | Coverage | Coverage above this % is well-covered — do not flag (0–100)              |
 | `check_test_naming`               | boolean | `true`  | Naming   | PHPUnit test naming convention (`*Test.php`, methods start with `test_`) |
 
-> Rules not listed here (one test class per SUT, test directory mirroring per PSR-4, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `skills/php-testing-style/SKILL.md` → "Always-on rules" for the full list.
+> Rules not listed here (one test class per SUT, test directory mirroring per PSR-4, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-php-testing-style/SUBSKILL.md` → "Always-on rules" for the full list.
 
 ### `php.patterns` — SOLID scanner configuration
 

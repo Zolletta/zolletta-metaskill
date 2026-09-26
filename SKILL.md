@@ -23,7 +23,7 @@ All paths are relative to where this SKILL.md is found.
 
 ## Subcommands
 
-The subcommand table is owned by the `help` skill — see [`skills/help/SKILL.md`](skills/help/SKILL.md) for the canonical list.
+The subcommand table is owned by the `help` skill — see [`skills/zolletta-metaskill-help/SUBSKILL.md`](skills/zolletta-metaskill-help/SUBSKILL.md) for the canonical list.
 When no subcommand is given, or the subcommand is `help`, the help table is displayed (see [Dispatch](#dispatch) below).
 
 ## Shared resources
@@ -45,7 +45,7 @@ If you maintain rules as part of your agent configuration, those are the **singl
 Before dispatching to **any** subcommand (including `setup` itself), check if `.zolletta-metaskill/settings.json` exists in the current project root:
 
 1. If it **exists**, read it and proceed to the requested subcommand. The subcommand may read `language`, `container_name`, `tokensave_available`, `acronyms`, `python`, `php`, `subcommands`, and `runs_dir` from it. See [`docs/reference/settings-schema.md`](docs/reference/settings-schema.md) for the full field shape.
-2. If it **does not exist**, run the full `setup` procedure first (read `skills/setup/SKILL.md` and execute every step). Once `settings.json` is written, proceed to the requested subcommand.
+2. If it **does not exist**, run the full `setup` procedure first (read `skills/zolletta-metaskill-setup/SUBSKILL.md` and execute every step). Once `settings.json` is written, proceed to the requested subcommand.
 3. If the user invoked `/zolletta-metaskill setup` explicitly, run setup and stop — do not dispatch to another subcommand.
 4. **Staleness check (Python projects only)**: if `settings.json` exists and `python` is not `null`, compare `pyproject.toml`'s current modification time against `python.pyproject_mtime`. If they differ (the file was modified after the last setup), re-run **only** Steps 7–8 of setup (pyproject extraction + source layout detection) and patch the `python.tools.*` configuration fields + `python.paths` + `python.pyproject_mtime` in `settings.json`. Do not re-run full setup (language detection, Docker probe, tokensave probe). If `pyproject.toml` does not exist or `python` is `null`, skip this check.
 5. **Staleness check (PHP projects only)**: if `settings.json` exists and `php` is not `null`, compare `composer.json`'s current modification time against `php.composer_mtime`. If they differ (the file was modified after the last setup), re-run **only** Step 12 of setup (composer.json + tool config extraction) and patch the `php.tools.*` configuration fields + `php.autoload` + `php.php_version` + `php.composer_mtime` in `settings.json`. Do not re-run full setup (language detection, Docker probe, tokensave probe). If `composer.json` does not exist or `php` is `null`, skip this check.
@@ -71,7 +71,7 @@ When any subcommand calls a tokensave MCP tool and receives a **tool-not-found**
 2. **Print the "not installed" message**: read the tokensave message from [`docs/reference/tool-messages.md`](docs/reference/tool-messages.md) and print it. The message explains why Zolletta-metaskill benefits from the tool and links to the project homepage. **Do NOT install anything.**
 3. **Continue with fallback**: proceed using grep + targeted reads instead of the graph tool. Do not abort the subcommand — the review can still complete, just with reduced coverage.
 
-This handler applies to every subcommand that uses tokensave (`patterns`, `documentor`, `review`). Each subcommand's SKILL.md links back to this section.
+This handler applies to every subcommand that uses tokensave (`patterns`, `documentor`, `review`). Each subcommand's SUBSKILL.md links back to this section.
 
 > **Bundled language skills**: `python-code-style`, `python-testing-style`, `php-code-style`, and `php-testing-style` are bundled inside this meta-skill, so they are always available — the "not found" case does not apply. The `*_available` flags in `settings.json` only reflect whether the project language is Python or PHP.
 
@@ -81,6 +81,6 @@ This handler applies to every subcommand that uses tokensave (`patterns`, `docum
 
 When invoked as `/zolletta-metaskill <subcommand>`:
 
-1. If no subcommand is given, does not exists, or the subcommand is `help`, read `skills/help/SKILL.md` and execute its instructions (display the help table). Stop — do not run the setup guard or any other subcommand.
+1. If no subcommand is given, does not exists, or the subcommand is `help`, read `skills/zolletta-metaskill-help/SUBSKILL.md` and execute its instructions (display the help table). Stop — do not run the setup guard or any other subcommand.
 2. Run the **setup guard** (see above) — ensure `.zolletta-metaskill/settings.json` exists.
-3. Read the SKILL.md at `skills/<subcommand>/SKILL.md` and execute its instructions.
+3. Read `skills/zolletta-metaskill-<subcommand>/SUBSKILL.md` and execute its instructions.

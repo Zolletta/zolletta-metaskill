@@ -1,5 +1,5 @@
 ---
-name: python-code-style
+name: zolletta-metaskill-python-code-style
 license: MIT
 description: Python code style, linting, formatting, naming conventions, and documentation standards. Use when writing new code, reviewing style, configuring linters, writing docstrings, or establishing project standards.
 ---

@@ -6,11 +6,11 @@ skills: [help, setup, review, patterns, documentor, adr-distiller, python-*, php
 
 # Subcommands Reference
 
-Zolletta-MetaSkill is invoked as `/zolletta-metaskill <subcommand>`. Each subcommand has its own `SKILL.md` with detailed instructions.
+Zolletta-MetaSkill is invoked as `/zolletta-metaskill <subcommand>`. Each subcommand has its own `SUBSKILL.md` with detailed instructions.
 
 ## Subcommand table
 
-The canonical subcommand table is owned by the `help` skill — see [`skills/help/SKILL.md`](../../skills/help/SKILL.md) for the full list.
+The canonical subcommand table is owned by the `help` skill — see [`skills/zolletta-metaskill-help/SUBSKILL.md`](../../skills/zolletta-metaskill-help/SUBSKILL.md) for the full list.
 The table is displayed when the user runs `/zolletta-metaskill` with no argument or `/zolletta-metaskill help`.
 
 ## Setup guard
@@ -40,6 +40,6 @@ This handler applies to every subcommand that uses tokensave (`patterns`, `docum
 
 When invoked as `/zolletta-metaskill <subcommand>`:
 
-1. If no subcommand is given, or the subcommand is `help`, read `skills/help/SKILL.md` and execute its instructions (display the help table). Stop — do not run the setup guard or any other subcommand.
+1. If no subcommand is given, or the subcommand is `help`, read `skills/zolletta-metaskill-help/SUBSKILL.md` and execute its instructions (display the help table). Stop — do not run the setup guard or any other subcommand.
 2. Run the **setup guard** — ensure `.zolletta-metaskill/settings.json` exists.
-3. Read the SKILL.md at `<subcommand>/SKILL.md` and execute its instructions.
+3. Read `skills/zolletta-metaskill-<subcommand>/SUBSKILL.md` and execute its instructions.

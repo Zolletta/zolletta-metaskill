@@ -147,7 +147,7 @@ nav:
           - "5 Parallel subagents": explanation/adr/0005-review-orchestrator-with-parallel-subagents.md
           - "6 Setup guard": explanation/adr/0006-setup-guard-pattern.md
           - "7 Language-neutral engine": explanation/adr/0007-language-neutral-engine-protocol.md
-          - "8 Skills directory": explanation/adr/0008-skills-directory-grouping.md
+          - "8 Subskills directory": explanation/adr/0008-skills-directory-grouping.md
           - "9 Python scripts": explanation/adr/0009-inline-shell-replaced-with-python-scripts.md
           - "10 ADR distiller": explanation/adr/0010-add-adr-distiller.md
           - "11 Skip external dependency inspector": explanation/adr/0011-skip-external-dependency-inspector.md

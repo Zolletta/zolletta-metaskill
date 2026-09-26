@@ -1,5 +1,5 @@
 ---
-name: php-testing-style
+name: zolletta-metaskill-php-testing-style
 license: MIT + Commons Clause
 description: >
   PHP test code review: PHPUnit test naming, directory mirroring, coverage gap

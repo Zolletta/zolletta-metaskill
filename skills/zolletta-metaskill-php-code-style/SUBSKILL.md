@@ -1,5 +1,5 @@
 ---
-name: php-code-style
+name: zolletta-metaskill-php-code-style
 license: MIT + Commons Clause
 description: >
   PHP code style review: strict typing, modern PHP 8.x features, PSR-12 compliance,
