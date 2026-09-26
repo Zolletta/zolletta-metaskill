@@ -94,11 +94,13 @@ Then open <http://127.0.0.1:8000>.
 
 ```
 src/zolletta_metaskill/   # Python package (scanning scripts, engines, setup)
-skills/                   # SKILL.md files for each subcommand
+skills/                # SUBSKILL.md files for each subcommand (zolletta-metaskill-<name>/)
 docs/                     # Diátaxis-structured documentation
 tests/                    # Test suite (mirrors src/ structure)
 assets/                   # Logos and images
-install.sh                # One-command installer
+install.sh                # One-command installer (clones latest git tag)
+dev-install.sh            # Dev installer (copies the working tree - You might want to use this when developing, it istall your working copy)
+install-manifest.txt      # Copy list shared by both installers
 ```
 
 ## License

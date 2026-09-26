@@ -17,18 +17,15 @@ Install the Zolletta-metaskill skill family so it is available to the AI agent.
 
 ### Option 1 — One-command installer (recommended)
 
-Clone the repository and run the `install.sh` script:
-
 ```bash
-git clone https://github.com/Zolletta/zolletta-metaskill.git
-cd zolletta-metaskill
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/Zolletta/zolletta-metaskill/main/install.sh | bash
 ```
 
 The `install.sh` script:
 
-1. Copies the skill to `~/.agents/skills/zolletta-metaskill` (excluding `.git/`, `.venv/`, caches, and other generated files)
-2. Symlinks it into every detected AI agent tool's skills directory
+1. Clones the **latest git tag** into a temp directory
+2. Copies only the files listed in `install-manifest.txt` 
+3. Symlinks it into every detected AI agent tool's skills directory
 
 Supported tools (auto-detected — only installed tools are linked):
 
@@ -38,6 +35,7 @@ Supported tools (auto-detected — only installed tools are linked):
 | Cursor      | `~/.cursor/skills/zolletta-metaskill`           |
 | Gemini CLI  | `~/.gemini/skills/zolletta-metaskill`           |
 | Devin       | `~/.config/devin/skills/zolletta-metaskill`     |
+| OpenCode    | `~/.config/opencode/skills/zolletta-metaskill`  |
 | Windsurf    | `~/.codeium/windsurf/skills/zolletta-metaskill` |
 | Cline       | `~/.cline/skills/zolletta-metaskill`            |
 | Roo Code    | `~/.roo/skills/zolletta-metaskill`              |
