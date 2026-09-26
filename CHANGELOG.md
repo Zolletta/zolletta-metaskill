@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v3.1.0 (2026-09-26)
+
+### Features
+
+- **testing-style**: Add mutation testing sensor (mutmut / Infection)
+  ([#60](https://github.com/Zolletta/zolletta-metaskill/pull/60),
+  [`a0d7dd8`](https://github.com/Zolletta/zolletta-metaskill/commit/a0d7dd8272802ff3a6704fd1cb74d7ca41e3fde7))
+
+
 ## v3.0.0 (2026-09-26)
 
 ### Bug Fixes
