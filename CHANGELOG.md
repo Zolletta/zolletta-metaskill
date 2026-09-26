@@ -2,6 +2,32 @@
 
 <!-- version list -->
 
+## v3.0.0 (2026-09-26)
+
+### Bug Fixes
+
+- **adr**: Nested ADR dirs, file-relative links, amended statuses
+  ([#59](https://github.com/Zolletta/zolletta-metaskill/pull/59),
+  [`a4117f6`](https://github.com/Zolletta/zolletta-metaskill/commit/a4117f69655d5cc4b70d53a1fb74eec3f7f11233))
+
+### Features
+
+- **install**: Manifest-driven install with git-tag clone
+  ([#59](https://github.com/Zolletta/zolletta-metaskill/pull/59),
+  [`a4117f6`](https://github.com/Zolletta/zolletta-metaskill/commit/a4117f69655d5cc4b70d53a1fb74eec3f7f11233))
+
+### Refactoring
+
+- **skills**: Rename sub-skill files to SUBSKILL.md
+  ([#59](https://github.com/Zolletta/zolletta-metaskill/pull/59),
+  [`a4117f6`](https://github.com/Zolletta/zolletta-metaskill/commit/a4117f69655d5cc4b70d53a1fb74eec3f7f11233))
+
+### Breaking Changes
+
+- **skills**: Subcommand instruction files are SUBSKILL.md, not SKILL.md; all
+  skills/zolletta-metaskill-*/ paths changed accordingly.
+
+
 ## v2.0.0 (2026-09-22)
 
 ### Code Style
