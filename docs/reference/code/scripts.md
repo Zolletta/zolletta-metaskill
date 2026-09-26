@@ -327,6 +327,30 @@ The acronym list is built additively:
 1. **Shipped base**: `python-code-style/assets/acronyms.json` (common SE acronyms: CI, CD, CICD, HTTP, HTTPS, JSON, SQL, URL, etc.) — always loaded
 2. **Project-specific**: the top-level `acronyms` array in `settings.json` — merged with the shipped list (additive, not replacing)
 
+## Mutation Testing
+
+### mutmut_survived_reporter.py
+
+Reports survived mutants from a completed `mutmut run` — the deterministic extraction step of the conditional mutation-testing sensor (issue #47). Wraps `mutmut results` (per-mutant status lines) and `mutmut show <name>` (per-mutant diff), merging them into a per-mutant `file:line` + diff table with status counts and a `Mutation score: X% (threshold: Y%) — PASS/FAIL` line.
+
+Run it from the project root — the same directory where `mutmut run` was executed (mutmut's `mutants/` result cache resolves relative to the cwd). There is no positional directory argument.
+
+```bash
+python3 src/zolletta_metaskill/testing_style/python/mutmut_survived_reporter.py [--json]
+```
+
+| Setting                                   | Default | Description                                           |
+|-------------------------------------------|---------|-------------------------------------------------------|
+| `python.tools.mutmut.available`           | —       | Not `true` → `Result: SKIPPED`, exit 0                |
+| `python.testing.check_mutation_testing`   | true    | `false` → `Result: SKIPPED`, exit 0                   |
+| `python.testing.mutation_score_threshold` | 80      | Mutation score below this → FAIL line + high finding  |
+| `python.testing.mutation_max_mutants`     | 50      | Cap on survived mutants detailed with diffs           |
+| `python.paths.source`                     | `[src]` | Filters reported survivors to configured source roots |
+
+Survivors are mutants with status `survived` or `no tests` — both mean the suite did not kill the mutant. Timeout mutants appear in the counts table only. The score is `killed / evaluated` where `evaluated` excludes `not checked`/`skipped`/interrupted mutants.
+
+Report-only — exits 0 whether or not mutants survive; exits 1 only when the `mutmut` invocation itself fails.
+
 ## test_splitter.py
 
 Automates splitting a test God class that tests multiple SUTs into per-SUT test files. Unlike the scanners this is a *transformer*, so it keeps its operational arguments.

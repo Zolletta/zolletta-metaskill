@@ -15,21 +15,21 @@
 
 ## Coverage Summary
 
-| Metric                  | Value   |
-|-------------------------|---------|
-| Total coverage          | 99%     |
-| Modules scanned         | 69      |
-| Modules below threshold | 0       |
+| Metric                  | Value |
+|-------------------------|-------|
+| Total coverage          | 99%   |
+| Modules scanned         | 69    |
+| Modules below threshold | 0     |
 
 > Coverage collected via `uv run pytest --cov=zolletta_metaskill --cov-report=term-missing` (1532 passed, 4.14s). `coverage_gap_threshold` = 50, `coverage_well_covered_threshold` = 80 (from `settings.json` → `python.testing`).
 
 ### Modules below 100% (informational — all above well-covered threshold)
 
-| Module                                              | Stmts | Miss | Cover | Missing lines          |
-|-----------------------------------------------------|-------|------|-------|------------------------|
-| `adr/adr_orchestrator.py`                           | 107   | 4    | 96%   | 225-227, 232-234       |
-| `code_style/php/acronym_casing_scanner.py`          | 139   | 15   | 89%   | 112-118, 188, 249-270  |
-| `documentor/api_doc_validator.py`                   | 354   | 1    | 99%   | 425                    |
+| Module                                     | Stmts | Miss | Cover | Missing lines         |
+|--------------------------------------------|-------|------|-------|-----------------------|
+| `adr/adr_orchestrator.py`                  | 107   | 4    | 96%   | 225-227, 232-234      |
+| `code_style/php/acronym_casing_scanner.py` | 139   | 15   | 89%   | 112-118, 188, 249-270 |
+| `documentor/api_doc_validator.py`          | 354   | 1    | 99%   | 425                   |
 
 All other modules: 100%. No module qualifies as a coverage gap (all ≥ 89% > 80% well-covered threshold).
 
@@ -37,9 +37,13 @@ All other modules: 100%. No module qualifies as a coverage gap (all ≥ 89% > 80
 
 > Only modules below `coverage_gap_threshold` (50%) with no direct test references and all callers mocked.
 
-| Module | Coverage | Direct Tests | Indirect Coverage | Suggested Fix |
-|--------|----------|--------------|-------------------|---------------|
+| Module | Coverage | Direct Tests | Indirect Coverage | Suggested Fix                          |
+|--------|----------|--------------|-------------------|----------------------------------------|
 | —      | —        | —            | —                 | None. No module is below 50% coverage. |
+
+## Mutation Testing
+
+Skipped — `python.tools.mutmut.available` is `false` in `settings.json` (mutmut is not installed in this project). When the tool is available and `python.testing.check_mutation_testing` is `true`, this section shows the killed/survived/timeout counts, the `Mutation score: X% (threshold: Y%) — PASS/FAIL` line, and up to `mutation_max_mutants` survived mutants with a suggested test name each.
 
 ## Tool Results
 

@@ -43,6 +43,14 @@ class TestPHPToolsDetector:
         result = PHPToolsDetector.detect_php_tools_from_composer(tmp_path / "nonexistent.json")
         assert all(v is False for v in result.values())
 
+    def test_infection_via_composer(self, tmp_path: Path) -> None:
+        composer = tmp_path / "composer.json"
+        composer.write_text(
+            '{"require-dev": {"infection/infection": "^0.29"}}', encoding="utf-8"
+        )
+        result = PHPToolsDetector.detect_php_tools_from_composer(composer)
+        assert result["infection"] is True
+
     # --- Tests for PHPToolsDetector.detect_php_tools_from_config_files(). ---
 
     def test_detect_php_tools_from_config_files_phpunit_xml_returns_false(
@@ -64,6 +72,18 @@ class TestPHPToolsDetector:
         (tmp_path / "phpstan.neon").write_text("level: 6\n", encoding="utf-8")
         result = PHPToolsDetector.detect_php_tools_from_config_files(tmp_path)
         assert result["phpstan"] is True
+
+    def test_infection_config_files(self, tmp_path: Path) -> None:
+        for config in (
+            "infection.json",
+            "infection.json.dist",
+            "infection.json5",
+            "infection.json5.dist",
+        ):
+            (tmp_path / config).write_text("{}", encoding="utf-8")
+            result = PHPToolsDetector.detect_php_tools_from_config_files(tmp_path)
+            assert result["infection"] is True
+            (tmp_path / config).unlink()
 
     def test_no_config_files(self, tmp_path: Path) -> None:
         result = PHPToolsDetector.detect_php_tools_from_config_files(tmp_path)

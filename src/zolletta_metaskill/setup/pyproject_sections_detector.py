@@ -3,8 +3,13 @@
 
 Checks for the configuration sections used by the setup skill to determine
 Python tool availability: ``[tool.ruff]``, ``[tool.mypy]``,
-``[tool.pytest.ini_options]``, ``[tool.vulture]``, ``[tool.ty]``, and
-``[project]`` (for uv).
+``[tool.pytest.ini_options]``, ``[tool.vulture]``, ``[tool.ty]``,
+``[tool.mutmut]``, and ``[project]`` (for uv).
+
+``mutmut`` has no required configuration section, so it is additionally
+detected as a quoted dependency specifier (e.g. ``"mutmut>=3"``) in
+``[dependency-groups]``, ``[project.optional-dependencies]``, or
+``[project.dependencies]``.
 
 Usage:
     python3 pyproject_sections_detector.py [pyproject.toml]
@@ -33,7 +38,14 @@ class PyprojectSectionsDetector:
         ("pytest", r"^\[tool\.pytest\.ini_options\]"),
         ("vulture", r"^\[tool\.vulture\]"),
         ("ty", r"^\[tool\.ty\]"),
+        ("mutmut", r"^\[tool\.mutmut\]"),
         ("uv_project", r"^\[project\]"),
+    ]
+
+    # (tool_name, quoted-dependency regex) — tools that are also detectable as
+    # dependency specifiers ("mutmut>=3") even without a [tool.*] section.
+    _DEPENDENCY_PACKAGES: list[tuple[str, str]] = [
+        ("mutmut", r"[\"']mutmut(?:[^\w-]|$)"),
     ]
 
     @staticmethod
@@ -59,6 +71,12 @@ class PyprojectSectionsDetector:
                 continue
             found = bool(re.search(pattern, content, re.MULTILINE))
             result[tool] = {"available": found}
+
+        # Fallback: quoted dependency specifiers (e.g. "mutmut>=3" in
+        # dependency-groups / optional-dependencies / project.dependencies).
+        for tool, pattern in PyprojectSectionsDetector._DEPENDENCY_PACKAGES:
+            if not result[tool]["available"]:
+                result[tool]["available"] = bool(re.search(pattern, content))
 
         # uv: [project] section OR uv.lock file
         uv_available = bool(re.search(r"^\[project\]", content, re.MULTILINE))

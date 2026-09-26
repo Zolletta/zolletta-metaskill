@@ -21,6 +21,7 @@ The skill evaluates test code across six areas, combining always-on structural r
 - **Test isolation** — tests must be independent, with no shared mutable state between them. Each test should clean up after itself. Use fixtures with appropriate scopes (`function`, `module`, `session`) to manage shared resources without coupling tests to each other.
 - **Test naming** — test functions should follow the `test_<unit>_<scenario>_<expected_outcome>` pattern so that the name alone describes what is being tested. The skill enforces this with the deterministic `src/zolletta_metaskill/testing_style/python/test_naming_scanner.py` scanner, which counts underscore-separated segments after the `test_` prefix and flags functions with fewer than the minimum (default: 3). Good names look like `test_create_user_with_valid_data_returns_user`; bad names look like `test_1` or `test_init`.
 - **Coverage gaps** — the skill runs `pytest --cov` and analyses whether code is actually exercised by tests, regardless of whether a dedicated `test_<module>.py` file exists. This is a mandatory step: never flag a coverage gap based on grep alone.
+- **Mutation testing** — when `python.tools.mutmut.available`, the skill runs `mutmut` on the `mutation_target` scope (default: files changed vs the default branch) and reports survived mutants — mutants the suite did not kill — as test gaps. Deterministic extraction is done by `src/zolletta_metaskill/testing_style/python/mutmut_survived_reporter.py`, which wraps `mutmut results`/`mutmut show` into the status counts, the PASS/FAIL score line, and per-mutant diffs.
 - **Mocking patterns** — when a class has no direct test file, the skill traces the call chain to determine whether callers instantiate the class for real (with mocked dependencies) or replace it entirely with a `MagicMock` or `patch`. A real instance means the class is indirectly covered; a full mock means it is not.
 - **Fixture design** — fixtures should use the narrowest scope that makes sense and avoid coupling tests through shared mutable state. The skill checks that fixtures are not leaking state between tests.
 - **AAA structure** — each test follows the Arrange-Act-Assert pattern: set up preconditions, execute the code under test, then verify the results. Tests that mix arrangement and assertion, or that assert before acting, are flagged.
@@ -51,13 +52,17 @@ The `patterns` skill runs `src/zolletta_metaskill/testing_style/general/test_str
 
 ## Configurable rule toggles via settings.json
 
-The skill reads its configurable rules from the `python.testing` object in `settings.json`. Three settings are available:
+The skill reads its configurable rules from the `python.testing` object in `settings.json`. Seven settings are available:
 
-| Key                               | Type            | Default | Description                                                                                                                                                           |
-|-----------------------------------|-----------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `coverage_gap_threshold`          | integer (0–100) | `50`    | Module coverage below this percentage is a candidate gap (combined with the other two conditions from Step 3)                                                         |
-| `coverage_well_covered_threshold` | integer (0–100) | `80`    | Module coverage above this percentage is never flagged as a gap, even with no direct test references                                                                  |
-| `check_test_naming`               | boolean         | `true`  | When `true`, the skill runs `src/zolletta_metaskill/testing_style/python/test_naming_scanner.py` to enforce the `test_<unit>_<scenario>_<expected>` naming convention |
+| Key                               | Type            | Default   | Description                                                                                                                                                           |
+|-----------------------------------|-----------------|-----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `coverage_gap_threshold`          | integer (0–100) | `50`      | Module coverage below this percentage is a candidate gap (combined with the other two conditions from Step 3)                                                         |
+| `coverage_well_covered_threshold` | integer (0–100) | `80`      | Module coverage above this percentage is never flagged as a gap, even with no direct test references                                                                  |
+| `check_test_naming`               | boolean         | `true`    | When `true`, the skill runs `src/zolletta_metaskill/testing_style/python/test_naming_scanner.py` to enforce the `test_<unit>_<scenario>_<expected>` naming convention |
+| `check_mutation_testing`          | boolean         | `true`    | When `true` and `python.tools.mutmut.available`, the skill runs `mutmut` — set `false` to opt out of the slow mutation run without uninstalling the tool              |
+| `mutation_score_threshold`        | integer (0–100) | `80`      | Mutation score below this percentage is a high-severity finding                                                                                                       |
+| `mutation_target`                 | string          | `changed` | `changed` = mutate only files changed vs the default branch; `all` = full run (slow, for scheduled reviews)                                                           |
+| `mutation_max_mutants`            | integer         | `50`      | Cap on survived mutants detailed in the report                                                                                                                        |
 
 The remaining rules — AAA pattern, test isolation, mandatory coverage gap detection, and the scope boundary with `patterns` — are always-on and cannot be disabled. Follows [review mode](../../../reference/code/review-mode.md) — read-only, two-bucket classification, no fixes applied.
 

@@ -19,6 +19,7 @@ Review test suites for isolation, naming, coverage gaps, mocking patterns, fixtu
 - **Test isolation** — no shared mutable state; fixtures with appropriate scopes
 - **Test naming** — descriptive pattern (`test_<unit>_<scenario>_<expected_outcome>`)
 - **Coverage gaps** — runs coverage and checks if code is actually exercised, never flags based on grep alone
+- **Mutation testing** — when a mutation tool is installed (mutmut for Python, Infection for PHP), runs it on the changed files and reports survived/escaped mutants as test gaps
 - **Mocking patterns** — traces call chains to distinguish real instances from full mocks
 - **Fixture design** — narrowest scope, no state leaking between tests
 - **AAA structure** — Arrange-Act-Assert; mixed arrangement/assertion flagged
@@ -51,11 +52,15 @@ The `patterns` skill runs the structural test scanner, which produces a "Missing
 
 The review reads its configurable rules from the `settings.json` file. The available settings are:
 
-| Key                               | Type            | Default | Description                                                     |
-|-----------------------------------|-----------------|---------|-----------------------------------------------------------------|
-| `coverage_gap_threshold`          | integer (0–100) | `50`    | Module coverage below this percentage is a candidate gap        |
-| `coverage_well_covered_threshold` | integer (0–100) | `80`    | Module coverage above this percentage is never flagged as a gap |
-| `check_test_naming`               | boolean         | `true`  | When `true`, enforce the test naming convention                 |
+| Key                               | Type            | Default   | Description                                                               |
+|-----------------------------------|-----------------|-----------|---------------------------------------------------------------------------|
+| `coverage_gap_threshold`          | integer (0–100) | `50`      | Module coverage below this percentage is a candidate gap                  |
+| `coverage_well_covered_threshold` | integer (0–100) | `80`      | Module coverage above this percentage is never flagged as a gap           |
+| `check_test_naming`               | boolean         | `true`    | When `true`, enforce the test naming convention                           |
+| `check_mutation_testing`          | boolean         | `true`    | Run the mutation tester when installed — `false` opts out of the slow run |
+| `mutation_score_threshold`        | integer (0–100) | `80`      | Mutation score/MSI below this percentage is a finding                     |
+| `mutation_target`                 | string          | `changed` | `changed` = mutate changed files only; `all` = full run (slow)            |
+| `mutation_max_mutants`            | integer         | `50`      | Cap on survived/escaped mutants detailed in the report                    |
 
 The remaining rules — AAA pattern, test isolation, mandatory coverage gap detection, and the scope boundary with `patterns` — are always-on and cannot be disabled.
 

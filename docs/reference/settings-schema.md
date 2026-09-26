@@ -16,7 +16,7 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
 
 ```json
 {
-  "setup_version": "3.0.0",
+  "setup_version": "3.2.0",
   "setup_timestamp": "2026-07-16T14:30:00",
   "language": "python",
   "container_name": "myproject",
@@ -40,7 +40,8 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
       },
       "ty": { "available": true, "python_version": "3.12" },
       "vulture": { "available": true },
-      "mypy": { "available": true, "strict": true, "python_version": "3.12" }
+      "mypy": { "available": true, "strict": true, "python_version": "3.12" },
+      "mutmut": { "available": true }
     },
     "paths": {
       "source": ["src"],
@@ -71,7 +72,11 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
       "coverage_gap_threshold": 50,
       "coverage_well_covered_threshold": 80,
       "check_test_naming": true,
-      "test_naming_min_segments": 3
+      "test_naming_min_segments": 3,
+      "check_mutation_testing": true,
+      "mutation_score_threshold": 80,
+      "mutation_target": "changed",
+      "mutation_max_mutants": 50
     },
     "patterns": {
       "check_ocp": true,
@@ -121,7 +126,7 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
 
 ```json
 {
-  "setup_version": "3.0.0",
+  "setup_version": "3.2.0",
   "setup_timestamp": "2026-07-16T14:30:00",
   "language": "php",
   "container_name": "myproject",
@@ -144,7 +149,8 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
       },
       "psalm": { "available": false, "error_level": 1, "paths": ["src"] },
       "php_cs_fixer": { "available": true, "config_file": true },
-      "phpcs": { "available": false, "standard": "PSR12" }
+      "phpcs": { "available": false, "standard": "PSR12" },
+      "infection": { "available": false }
     },
     "code_style": {
       "check_acronym_casing": true,
@@ -166,7 +172,11 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
     "testing": {
       "coverage_gap_threshold": 50,
       "coverage_well_covered_threshold": 80,
-      "check_test_naming": true
+      "check_test_naming": true,
+      "check_mutation_testing": true,
+      "mutation_score_threshold": 80,
+      "mutation_target": "changed",
+      "mutation_max_mutants": 50
     },
     "patterns": {
       "check_ocp": true,
@@ -290,14 +300,15 @@ The source and test roots every review script scans — the equivalent of what P
 
 Each tool is an object with an `available` boolean. Tools that have configuration (ruff, mypy, ty, pytest) also carry their effective config extracted from `pyproject.toml`. When a tool's `[tool.*]` section is absent, setup stores the tool's **real built-in defaults** (not skill-invented fallbacks) and prints an "unconfigured" warning.
 
-| Field                  | Type   | Description                                                                                                                            |
-|------------------------|--------|----------------------------------------------------------------------------------------------------------------------------------------|
-| `python.tools.uv`      | object | `{ "available": boolean }` — uv has no config beyond availability                                                                      |
-| `python.tools.ruff`    | object | `{ "available": boolean, "line_length": integer, "target_version": string, "select": array, "ignore": array }` — effective ruff config |
-| `python.tools.pytest`  | object | `{ "available": boolean, "addopts": array, "testpaths": array, "minversion": string or null }` — effective pytest config               |
-| `python.tools.ty`      | object | `{ "available": boolean, "python_version": string or null }` — effective ty config                                                     |
-| `python.tools.vulture` | object | `{ "available": boolean }` — vulture has no config beyond availability                                                                 |
-| `python.tools.mypy`    | object | `{ "available": boolean, "strict": boolean, "python_version": string or null }` — effective mypy config                                |
+| Field                  | Type   | Description                                                                                                                               |
+|------------------------|--------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| `python.tools.uv`      | object | `{ "available": boolean }` — uv has no config beyond availability                                                                         |
+| `python.tools.ruff`    | object | `{ "available": boolean, "line_length": integer, "target_version": string, "select": array, "ignore": array }` — effective ruff config    |
+| `python.tools.pytest`  | object | `{ "available": boolean, "addopts": array, "testpaths": array, "minversion": string or null }` — effective pytest config                  |
+| `python.tools.ty`      | object | `{ "available": boolean, "python_version": string or null }` — effective ty config                                                        |
+| `python.tools.vulture` | object | `{ "available": boolean }` — vulture has no config beyond availability                                                                    |
+| `python.tools.mypy`    | object | `{ "available": boolean, "strict": boolean, "python_version": string or null }` — effective mypy config                                   |
+| `python.tools.mutmut`  | object | `{ "available": boolean }` — mutmut is a zero-config mutation tester; detected from `[tool.mutmut]` or a `"mutmut…"` dependency specifier |
 
 > **Type checker resolution**: there is no `type_checker` field. Review skills run all available type checkers: `ty` if `python.tools.ty.available` is `true`, `mypy` if `python.tools.mypy.available` is `true`. When both are available, both run. If neither is available, type checking is skipped.
 
@@ -332,12 +343,16 @@ These control which checks the `python-code-style` skill enforces. All default t
 
 These control which checks the `python-testing-style` skill enforces and the coverage thresholds it uses.
 
-| Key                               | Type    | Default | Area     | Rule                                                                                            |
-|-----------------------------------|---------|---------|----------|-------------------------------------------------------------------------------------------------|
-| `coverage_gap_threshold`          | integer | `50`    | Coverage | Coverage below this % is a gap (0–100)                                                          |
-| `coverage_well_covered_threshold` | integer | `80`    | Coverage | Coverage above this % is well-covered — do not flag (0–100)                                     |
-| `check_test_naming`               | boolean | `true`  | Naming   | Test naming convention (`test_<unit>_<scenario>_<expected>`)                                    |
-| `test_naming_min_segments`        | integer | `3`     | Naming   | Minimum underscore-separated segments a test function name must have (`test_naming_scanner.py`) |
+| Key                               | Type    | Default   | Area     | Rule                                                                                                                          |
+|-----------------------------------|---------|-----------|----------|-------------------------------------------------------------------------------------------------------------------------------|
+| `coverage_gap_threshold`          | integer | `50`      | Coverage | Coverage below this % is a gap (0–100)                                                                                        |
+| `coverage_well_covered_threshold` | integer | `80`      | Coverage | Coverage above this % is well-covered — do not flag (0–100)                                                                   |
+| `check_test_naming`               | boolean | `true`    | Naming   | Test naming convention (`test_<unit>_<scenario>_<expected>`)                                                                  |
+| `test_naming_min_segments`        | integer | `3`       | Naming   | Minimum underscore-separated segments a test function name must have (`test_naming_scanner.py`)                               |
+| `check_mutation_testing`          | boolean | `true`    | Mutation | Run `mutmut` during the review when `python.tools.mutmut.available` — set `false` to opt out of the slow mutation run         |
+| `mutation_score_threshold`        | integer | `80`      | Mutation | Mutation score below this percentage is a high-severity finding (0–100)                                                       |
+| `mutation_target`                 | string  | `changed` | Mutation | `changed` = mutate only files changed vs the default branch plus working tree; `all` = full run (slow, for scheduled reviews) |
+| `mutation_max_mutants`            | integer | `50`      | Mutation | Cap on survived mutants detailed in the report                                                                                |
 
 > Rules not listed here (AAA structure, test isolation, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-python-testing-style/SUBSKILL.md` → "Always-on rules" for the full list.
 
@@ -378,6 +393,7 @@ Each tool is an object with an `available` boolean. Tools that have configuratio
 | `php.tools.psalm`        | object | `{ "available": boolean, "error_level": integer or null, "paths": array }` — effective psalm config extracted from `psalm.xml`                                          |
 | `php.tools.php_cs_fixer` | object | `{ "available": boolean, "config_file": boolean }` — `config_file` is `true` if `.php-cs-fixer.php` or `.php-cs-fixer.dist.php` exists                                  |
 | `php.tools.phpcs`        | object | `{ "available": boolean, "standard": string or null }` — effective phpcs config extracted from `.phpcs.xml` or `phpcs.xml.dist`                                         |
+| `php.tools.infection`    | object | `{ "available": boolean }` — Infection is a zero-config mutation tester; `infection.json*` is used for detection but not parsed                                         |
 
 > **Static analysis resolution**: there is no `static_analyser` field. Review skills run all available static analysers: `phpstan` if `php.tools.phpstan.available` is `true`, `psalm` if `php.tools.psalm.available` is `true`. When both are available, both run. If neither is available, static analysis is skipped.
 
@@ -409,11 +425,15 @@ These control which checks the `php-code-style` skill enforces. All default to `
 
 These control which checks the `php-testing-style` skill enforces and the coverage thresholds it uses.
 
-| Key                               | Type    | Default | Area     | Rule                                                                     |
-|-----------------------------------|---------|---------|----------|--------------------------------------------------------------------------|
-| `coverage_gap_threshold`          | integer | `50`    | Coverage | Coverage below this % is a gap (0–100)                                   |
-| `coverage_well_covered_threshold` | integer | `80`    | Coverage | Coverage above this % is well-covered — do not flag (0–100)              |
-| `check_test_naming`               | boolean | `true`  | Naming   | PHPUnit test naming convention (`*Test.php`, methods start with `test_`) |
+| Key                               | Type    | Default   | Area     | Rule                                                                                                                                                      |
+|-----------------------------------|---------|-----------|----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `coverage_gap_threshold`          | integer | `50`      | Coverage | Coverage below this % is a gap (0–100)                                                                                                                    |
+| `coverage_well_covered_threshold` | integer | `80`      | Coverage | Coverage above this % is well-covered — do not flag (0–100)                                                                                               |
+| `check_test_naming`               | boolean | `true`    | Naming   | PHPUnit test naming convention (`*Test.php`, methods start with `test_`)                                                                                  |
+| `check_mutation_testing`          | boolean | `true`    | Mutation | Run Infection during the review when `php.tools.infection.available` — set `false` to opt out of the slow mutation run                                    |
+| `mutation_score_threshold`        | integer | `80`      | Mutation | MSI below this percentage is a high-severity finding (0–100)                                                                                              |
+| `mutation_target`                 | string  | `changed` | Mutation | `changed` = Infection's `--git-diff-filter` covers working tree + committed changes vs the default branch; `all` = full run (slow, for scheduled reviews) |
+| `mutation_max_mutants`            | integer | `50`      | Mutation | Cap on escaped mutants detailed in the report                                                                                                             |
 
 > Rules not listed here (one test class per SUT, test directory mirroring per PSR-4, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-php-testing-style/SUBSKILL.md` → "Always-on rules" for the full list.
 

@@ -35,6 +35,7 @@ dev = [
     "mypy>=1.10",
     "ty>=0.0.72",
     "vulture>=2.10",
+    "mutmut>=3.8.0",
     "python-semantic-release>=9.0",
     "gitpython>=3.1.59",
 ]
