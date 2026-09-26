@@ -95,19 +95,15 @@ class ADRDetector:
     def _determine_adrs_path(adr_files: list[Path], docs_dir: Path) -> str:
         """Determine the ADR subdirectory path relative to *docs_dir*.
 
-        If all ADR files share a common subdirectory under *docs_dir*,
-        return that subdirectory name. If they are scattered in the docs
-        root or in multiple subdirectories, return ``""``.
+        If all ADR files share a common directory under *docs_dir*,
+        return that directory path (may be nested, e.g. ``"explanation/adr"``).
+        If they are scattered in the docs root or in multiple directories,
+        return ``""``.
         """
         parents: set[str] = set()
         for f in adr_files:
             rel = f.relative_to(docs_dir)
-            parts = rel.parts
-            if len(parts) == 1:
-                # File is directly in docs_dir
-                parents.add("")
-            else:
-                parents.add(parts[0])
+            parents.add(rel.parent.as_posix() if rel.parent != Path(".") else "")
         if len(parents) == 1:
             return next(iter(parents))
         return ""

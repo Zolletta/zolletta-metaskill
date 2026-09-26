@@ -38,8 +38,19 @@ class TestADROrchestrator:
         distiller = ADROrchestrator(docs, "adr", tmp_path / "cache.json")
         directive = distiller.distill_adr(record)
         assert directive is not None
-        assert directive.startswith("- [ADR-001](adr/0001-use-postgres.md) ")
+        assert directive.startswith("- [ADR-001](0001-use-postgres.md) ")
         assert "PostgreSQL" in directive
+
+    def test_accepted_amended_status_produces_directive(self, tmp_path: Path) -> None:
+        docs = tmp_path / "docs"
+        f = docs / "adr" / "0001-test.md"
+        write_adr(f, "001", "Test", "Accepted (amended 2026-09-26)", "We do X.")
+        record = ADRDiscovery._extract_metadata(f)
+        assert record is not None
+        distiller = ADROrchestrator(docs, "adr", tmp_path / "cache.json")
+        directive = distiller.distill_adr(record)
+        assert directive is not None
+        assert "[ADR-001]" in directive
 
     def test_proposed_adr_excluded(self, tmp_path: Path) -> None:
         docs = tmp_path / "docs"
@@ -68,7 +79,7 @@ class TestADROrchestrator:
         distiller = ADROrchestrator(docs, "adr", tmp_path / "cache.json")
         assert distiller.distill_adr(record) is None
 
-    def test_link_path_relative_to_docs_dir(self, tmp_path: Path) -> None:
+    def test_link_path_relative_to_adr_dir(self, tmp_path: Path) -> None:
         docs = tmp_path / "docs"
         f = docs / "0001-test.md"
         write_adr(f, "001", "Test", "Accepted", "Do X.")
@@ -106,8 +117,8 @@ class TestADROrchestrator:
         distilled_path = docs / "adr" / "adr-distilled.md"
         content = distilled_path.read_text(encoding="utf-8")
         refined = content.replace(
-            "- [ADR-001](adr/0001-test.md) We do X.",
-            "- [ADR-001](adr/0001-test.md) We do X instead of Y.",
+            "- [ADR-001](0001-test.md) We do X.",
+            "- [ADR-001](0001-test.md) We do X instead of Y.",
         )
         distilled_path.write_text(refined, encoding="utf-8")
         # Second run — no changes to ADR
@@ -243,6 +254,29 @@ class TestADROrchestrator:
         result = (docs / "adr" / "adr-distilled.md").read_text(encoding="utf-8")
         assert "[ADR-002]" not in result
         assert "[ADR-001]" in result
+
+    def test_stale_adr_missing_directive_inserted(self, tmp_path: Path) -> None:
+        """A stale ADR whose directive is absent from the file is inserted.
+
+        The in-place updater can only replace existing lines, so a stale ADR
+        with no directive line present (e.g. it was previously non-Accepted)
+        must trigger a full write instead of being silently dropped.
+        """
+        docs = tmp_path / "docs"
+        write_adr(docs / "adr" / "0001-keep.md", "001", "Keep", "Accepted", "We do X.")
+        f2 = docs / "adr" / "0002-new.md"
+        write_adr(f2, "002", "New", "Proposed", "We do Y.")
+        cache_path = tmp_path / "cache.json"
+        distiller = ADROrchestrator(docs, "adr", cache_path)
+        distiller.refresh()
+        # ADR-002 becomes Accepted — stale, but no directive line exists yet
+        write_adr(f2, "002", "New", "Accepted", "We do Y.")
+        os.utime(f2, (9999999999, 9999999999))  # far-future mtime to force staleness
+        report = distiller.refresh()
+        assert "ADR-002" in report.stale
+        result = (docs / "adr" / "adr-distilled.md").read_text(encoding="utf-8")
+        assert "[ADR-001]" in result
+        assert "[ADR-002]" in result
 
     def test_oserror_reading_distilled_file(self, tmp_path: Path) -> None:
         """OSError reading existing distilled file is handled gracefully.

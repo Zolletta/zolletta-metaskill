@@ -77,9 +77,9 @@ What is scanned and with what limit is driven entirely by `.zolletta-metaskill/s
 python3 src/zolletta_metaskill/code_style/general/file_length_scanner.py [--json]
 ```
 
-| Option   | Default | Description                        |
-|----------|---------|------------------------------------|
-| `--json` | off     | Output as JSON instead of text     |
+| Option   | Default | Description                    |
+|----------|---------|--------------------------------|
+| `--json` | off     | Output as JSON instead of text |
 
 Violations are report-only — the scanner exits 0 whether or not any are found.
 
@@ -151,10 +151,10 @@ Detects fat interfaces — Protocols/ABCs with many methods where implementers s
 python3 src/zolletta_metaskill/patterns/python/interface_segregation_scanner.py [--json]
 ```
 
-| Setting                          | Default | Description                                  |
-|----------------------------------|---------|----------------------------------------------|
-| `python.patterns.check_isp`      | true    | Check toggle                                 |
-| `python.patterns.isp_min_methods`| 5       | Minimum abstract method count to flag as fat |
+| Setting                           | Default | Description                                  |
+|-----------------------------------|---------|----------------------------------------------|
+| `python.patterns.check_isp`       | true    | Check toggle                                 |
+| `python.patterns.isp_min_methods` | 5       | Minimum abstract method count to flag as fat |
 
 **Checks**: Protocol/ABC classes with N+ methods, implementers that raise NotImplementedError or have stub bodies (pass/return None) for interface methods.
 
@@ -213,10 +213,10 @@ Detects fat interfaces — PHP interfaces with many methods where implementers a
 python3 src/zolletta_metaskill/patterns/php/interface_segregation_scanner.py [--json]
 ```
 
-| Setting                          | Default | Description                          |
-|----------------------------------|---------|--------------------------------------|
-| `php.patterns.check_isp`         | true    | Check toggle                         |
-| `php.patterns.isp_min_methods`   | 7       | Minimum method count to flag as fat  |
+| Setting                        | Default | Description                         |
+|--------------------------------|---------|-------------------------------------|
+| `php.patterns.check_isp`       | true    | Check toggle                        |
+| `php.patterns.isp_min_methods` | 7       | Minimum method count to flag as fat |
 
 **How it works**: uses `ModuleInfo` directly (no raw AST needed). PHP interfaces are mapped to `ClassInfo` with `is_abstract=True` and no attributes. Interfaces with more than `isp_min_methods` methods are flagged as fat.
 
@@ -228,10 +228,10 @@ Detects `if/elseif` chains that use `instanceof` to branch on subtypes — an OC
 python3 src/zolletta_metaskill/patterns/php/open_closed_scanner.py [--json]
 ```
 
-| Setting                            | Default | Description                          |
-|------------------------------------|---------|--------------------------------------|
-| `php.patterns.check_ocp`           | true    | Check toggle                         |
-| `php.patterns.ocp_min_branches`    | 3       | Minimum instanceof branches to flag  |
+| Setting                         | Default | Description                         |
+|---------------------------------|---------|-------------------------------------|
+| `php.patterns.check_ocp`        | true    | Check toggle                        |
+| `php.patterns.ocp_min_branches` | 3       | Minimum instanceof branches to flag |
 
 **How it works**: since `ModuleInfo` does not capture `instanceof` expressions, this scanner calls `PHPEngine.parse_raw()` to access the tree-sitter AST directly and counts `instanceof` branches in `if_statement` nodes.
 
@@ -335,13 +335,13 @@ Automates splitting a test God class that tests multiple SUTs into per-SUT test 
 python3 src/zolletta_metaskill/patterns/python/test_splitter.py <test_file> [--mapping <m>] [--class <name>] [--dry-run] [--json]
 ```
 
-| Option        | Default                          | Description                                    |
-|---------------|----------------------------------|------------------------------------------------|
-| `<test_file>` | (req)                            | Path to the test file to split                 |
-| `--mapping`   | auto-derived from method names   | JSON/explicit SUT mapping                      |
-| `--class`     | (all test classes)               | Split only this class                          |
-| `--dry-run`   | off                              | Show what would be split without writing files |
-| `--json`      | off                              | Output the split plan as JSON                  |
+| Option        | Default                        | Description                                    |
+|---------------|--------------------------------|------------------------------------------------|
+| `<test_file>` | (req)                          | Path to the test file to split                 |
+| `--mapping`   | auto-derived from method names | JSON/explicit SUT mapping                      |
+| `--class`     | (all test classes)             | Split only this class                          |
+| `--dry-run`   | off                            | Show what would be split without writing files |
+| `--json`      | off                            | Output the split plan as JSON                  |
 
 Split files are written under `<runs_dir>/test_split/<test_file_stem>/` (default `.zolletta-metaskill/test_split/`).
 
@@ -371,11 +371,25 @@ These are project-management scripts at the repository root, separate from the s
 
 ### `install.sh`
 
-Installs the skill into `~/.agents/skills/` and symlinks it into every detected AI agent tool's skills directory.
+Clones the latest git tag, copies the files listed in `install-manifest.txt` into `~/.agents/skills/`, and symlinks the result into every detected AI agent tool's skills directory.
 
 ```bash
-./install.sh           # install/refresh
-./install.sh --force   # replace real dirs with symlinks
+./install.sh                  # clone latest tag, install/refresh
+./install.sh --force          # replace real dirs with symlinks
+./install.sh --source <dir>   # install from a local directory instead of cloning
 ```
+
+### `dev-install.sh`
+
+Shortcut for `install.sh --source "$PWD"` — installs the working tree instead of cloning the latest tag. Forwards extra arguments (`--force`, ...).
+
+```bash
+./dev-install.sh           # install the working tree
+./dev-install.sh --force   # + replace real dirs with symlinks
+```
+
+### `install-manifest.txt`
+
+The copy list shared by `install.sh` and `dev-install.sh` — one path per line, `#` comments, missing entries skipped. When a source predates the file (old tags), the installer falls back to a built-in default list.
 
 See [Install Zolletta-MetaSkill](../../how-to/install.md) for details.

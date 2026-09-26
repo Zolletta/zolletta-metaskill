@@ -3,53 +3,108 @@
 # every detected AI agent tool's skills directory.
 #
 # Usage:
-#   ./.install           # install/refresh
-#   ./.install --force   # replace real dirs with symlinks
+#   ./install.sh                  # clone the latest git tag and install it
+#   ./install.sh --force          # replace real dirs with symlinks
+#   ./install.sh --source <dir>   # install from a local directory
+#                                 # (dev-install.sh is a shortcut for this)
 #
-# Safety: this script NEVER uses rm -rf. It uses cp -R + selective
-# find -delete / rm -f for cleanup of excludes in the destination only.
+# The list of files copied lives in install-manifest.txt (repo root).
+# When the manifest is absent (e.g. an old tag), a built-in default is used.
+#
+# Safety: this script NEVER uses rm -rf. Destination cleanup uses
+# find -delete only.
 
 set -euo pipefail
 
 FORCE=false
-REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
+SOURCE_DIR=""
 CANONICAL_DEST="$HOME/.agents/skills/zolletta-metaskill"
+REPO_URL_DEFAULT="https://github.com/Zolletta/zolletta-metaskill.git"
+MANIFEST_NAME="install-manifest.txt"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --force) FORCE=true; shift ;;
+        --source) SOURCE_DIR="$2"; shift 2 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done
 
 # ---------------------------------------------------------------------------
-# Step 1 — Ensure ~/.agents/skills/ exists
+# Step 1 — Resolve the source tree
 # ---------------------------------------------------------------------------
+
+CLONE_DIR=""
+if [[ -n "$SOURCE_DIR" ]]; then
+    SOURCE_DIR="$(cd "$SOURCE_DIR" && pwd)"
+    echo "Installing from local source: $SOURCE_DIR"
+else
+    # Prefer the repo's own remote when the script runs from inside a clone
+    # (SKILL.md sits at the repo root — if it's absent, e.g. the script was
+    # fetched standalone via curl, the cwd may be inside an unrelated repo
+    # whose remote must not be picked up).
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    if [[ -f "$SCRIPT_DIR/SKILL.md" ]]; then
+        REPO_URL="$(git -C "$SCRIPT_DIR" remote get-url origin 2>/dev/null || echo "$REPO_URL_DEFAULT")"
+    else
+        REPO_URL="$REPO_URL_DEFAULT"
+    fi
+
+    TAG="$(git ls-remote --tags "$REPO_URL" \
+        | sed -n 's|.*refs/tags/\(v[0-9][0-9.]*\)$|\1|p' \
+        | sort -V | tail -1)"
+
+    CLONE_DIR="$(mktemp -d /tmp/zolletta-metaskill.XXXXXX)"
+    trap 'if [[ -n "$CLONE_DIR" && -d "$CLONE_DIR" ]]; then find "$CLONE_DIR" -delete 2>/dev/null || true; fi' EXIT
+
+    if [[ -n "$TAG" ]]; then
+        echo "Cloning latest tag $TAG from $REPO_URL ..."
+        git clone --quiet --depth 1 --branch "$TAG" "$REPO_URL" "$CLONE_DIR"
+    else
+        echo "No git tags found — cloning the default branch ..."
+        git clone --quiet --depth 1 "$REPO_URL" "$CLONE_DIR"
+    fi
+    SOURCE_DIR="$CLONE_DIR"
+fi
+
+# ---------------------------------------------------------------------------
+# Step 2 — Copy the manifest-listed files into ~/.agents/skills/
+# ---------------------------------------------------------------------------
+
 mkdir -p "$HOME/.agents/skills"
 
-# ---------------------------------------------------------------------------
-# Step 2 — Copy the skill to ~/.agents/skills/zolletta-metaskill
-# ---------------------------------------------------------------------------
-
-# If the repo IS already at the canonical destination, skip the copy.
-if [[ "$REPO_ROOT" == "$CANONICAL_DEST" ]]; then
-    echo "Repo is already at $CANONICAL_DEST — skipping copy."
+# If the source IS already at the canonical destination, skip the copy.
+if [[ "$SOURCE_DIR" == "$CANONICAL_DEST" ]]; then
+    echo "Source is already at $CANONICAL_DEST — skipping copy."
 else
-    echo "Copying skill to $CANONICAL_DEST ..."
+    echo "Installing to $CANONICAL_DEST ..."
     mkdir -p "$CANONICAL_DEST"
-    cp -R "$REPO_ROOT/" "$CANONICAL_DEST/"
+    # Wipe the destination first so renamed/removed files don't linger stale
+    # (e.g. SKILL.md -> SUBSKILL.md inside a subskill folder).
+    # Using find -delete — never rm -rf.
+    find "$CANONICAL_DEST" -mindepth 1 -delete 2>/dev/null || true
 
-    # Remove excluded dirs/files from the destination (NOT from source).
-    # Using find -delete and rm -f — never rm -rf.
-    for excl in .venv .git .tokensave .zolletta-metaskill .ruff_cache .mypy_cache .pytest_cache htmlcov dist; do
-        if [[ -e "$CANONICAL_DEST/$excl" ]]; then
-            find "$CANONICAL_DEST/$excl" -delete 2>/dev/null || true
+    # Read the copy list from the manifest, with a built-in fallback for
+    # sources that predate it.
+    ITEMS=()
+    if [[ -f "$SOURCE_DIR/$MANIFEST_NAME" ]]; then
+        while IFS= read -r line; do
+            item="${line%%#*}"
+            item="${item//[[:space:]]/}"
+            [[ -n "$item" ]] && ITEMS+=("$item")
+        done < "$SOURCE_DIR/$MANIFEST_NAME"
+    else
+        ITEMS=(src skills subskills docs assets pyproject.toml CHANGELOG.md CONTRIBUTING.md LICENSE README.md SKILL.md)
+    fi
+
+    copied=0
+    for item in "${ITEMS[@]}"; do
+        if [[ -e "$SOURCE_DIR/$item" ]]; then
+            cp -R "$SOURCE_DIR/$item" "$CANONICAL_DEST/"
+            copied=$((copied + 1))
         fi
     done
-    find "$CANONICAL_DEST" -name '__pycache__' -type d -exec find {} -delete \; 2>/dev/null || true
-    find "$CANONICAL_DEST" -name '.DS_Store' -delete 2>/dev/null || true
-    rm -f "$CANONICAL_DEST/.coverage" "$CANONICAL_DEST/coverage.xml" "$CANONICAL_DEST/junit.xml" "$CANONICAL_DEST/uv.lock" 2>/dev/null || true
-    echo "Copy complete."
+    echo "Copy complete ($copied items)."
 fi
 
 # ---------------------------------------------------------------------------
@@ -62,6 +117,7 @@ TOOLS=(
     "Cursor|$HOME/.cursor|skills"
     "Gemini CLI|$HOME/.gemini|skills"
     "Devin|$HOME/.config/devin|skills"
+    "OpenCode|$HOME/.config/opencode|skills"
     "Windsurf|$HOME/.codeium/windsurf|skills"
     "Cline|$HOME/.cline|skills"
     "Roo Code|$HOME/.roo|skills"
@@ -100,7 +156,14 @@ for entry in "${TOOLS[@]}"; do
     # Handle existing entry
     if [[ -e "$link_target" || -L "$link_target" ]]; then
         if [[ -L "$link_target" ]]; then
-            ln -sf "$CANONICAL_DEST" "$link_target"
+            if [[ "$(readlink "$link_target")" == "$CANONICAL_DEST" ]]; then
+                printf "%-15s %-20s %s\n" "$name" "already linked" "$link_target"
+                continue
+            fi
+            # rm first — ln -sf would follow a symlink-to-dir and create the
+            # link inside it (self-referential link in the destination).
+            rm -f "$link_target"
+            ln -s "$CANONICAL_DEST" "$link_target"
             printf "%-15s %-20s %s\n" "$name" "updated" "$link_target"
             continue
         elif [[ -d "$link_target" ]]; then

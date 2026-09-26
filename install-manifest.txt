@@ -1,0 +1,16 @@
+# Files and directories copied into ~/.agents/skills/zolletta-metaskill
+# by install.sh / dev-install.sh. One entry per line — missing entries
+# are skipped silently. Everything else (tests/, .git/, PLAN-*.md,
+# mkdocs.yml, caches) stays out of the installed skill.
+
+SKILL.md
+README.md
+LICENSE
+CHANGELOG.md
+CONTRIBUTING.md
+pyproject.toml
+
+src
+docs
+skills
+subskills
