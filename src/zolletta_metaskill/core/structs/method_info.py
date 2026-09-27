@@ -13,7 +13,9 @@ class MethodInfo:
         name: The method or function name.
         lineno: The 1-based line number where the definition starts.
         end_lineno: The 1-based line number where the definition ends.
-        params: Parameter names excluding the receiver (``self`` / ``this``).
+        params: Parameter names — positional, positional-only, and
+            keyword-only — excluding the receiver (``self`` / ``cls``) and
+            variadics (``*args`` / ``**kwargs`` / ``...$args``).
         is_public: Whether the member is publicly visible.
         is_static: Whether the member is static.
         return_type: Return type annotation as a string, if any.

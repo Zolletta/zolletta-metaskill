@@ -12,7 +12,7 @@ Consistent code style and clear documentation make codebases maintainable and co
 
 > **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../../docs/reference/code/review-mode.md`](../../docs/reference/code/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
 
-> **Execution protocol**: when running a review, follow [`../../docs/reference/code/scripts-first-protocol.md`](../../docs/reference/code/scripts-first-protocol.md) — batch-run the scripts listed in the per-subcommand table (ruff, ty, mypy, vulture, acronym_casing_scanner, unused_all_exports_scanner, one_class_per_file_scanner, file_length_scanner, function_length_scanner, suppression_reason_scanner), persist their output to `cache/`, assemble deterministic report sections from cached output, then run only the judgment pass items (vulture false-positive review for dynamically-accessed methods). Write your report to `reports/python-code-style.md`. Do not re-read source files the scripts already parsed.
+> **Execution protocol**: when running a review, follow [`../../docs/reference/code/scripts-first-protocol.md`](../../docs/reference/code/scripts-first-protocol.md) — batch-run the scripts listed in the per-subcommand table (ruff, ty, mypy, vulture, acronym_casing_scanner, unused_all_exports_scanner, one_class_per_file_scanner, file_length_scanner, function_length_scanner, max_arguments_scanner, suppression_reason_scanner), persist their output to `cache/`, assemble deterministic report sections from cached output, then run only the judgment pass items (vulture false-positive review for dynamically-accessed methods). Write your report to `reports/python-code-style.md`. Do not re-read source files the scripts already parsed.
 
 ## When to Use This Skill
 
@@ -50,6 +50,7 @@ Consistent code style and clear documentation make codebases maintainable and co
 | 21 | Structure  | File length limit                                         | `check_file_length`, `max_file_length`         | `true`, `800` |
 | 22 | Dead code  | Vulture minimum confidence + unused `__all__` exports     | `vulture_min_confidence`                       | `80`          |
 | 24 | Structure  | Function length limit                                     | `check_function_length`, `max_function_length` | `true`, `100` |
+| 25 | Structure  | Max arguments per function/method                         | `check_max_arguments`, `max_arguments`         | `true`, `5`   |
 
 ## Detailed rule explanations
 
@@ -169,7 +170,7 @@ The filename is the snake_case form of the class name: `user_repository.py` → 
 
 **#21 — File length limit** *(configurable: `check_file_length`, `max_file_length`)*
 
-Source files must not exceed `max_file_length` lines (default: `800`, read from `python.code_style.max_file_length` in `settings.json`). File length is one of the low-hanging-fruit maintainability sensors for catching AI failure modes (Martin Fowler — [Maintainability sensors for coding agents](https://martinfowler.com/articles/sensors-for-coding-agents.html)): overly long files usually signal a module doing too much. Some files legitimately exceed the limit (generated code, large enums) — raise `max_file_length` for the project to exempt them.
+Source files must not exceed `max_file_length` lines (default: `800`, read from `python.code_style.max_file_length` in `settings.json`). File length is one of the low-hanging-fruit maintainability sensors for catching AI failure modes (Martin Fowler — *Maintainability sensors for coding agents*): overly long files usually signal a module doing too much. Some files legitimately exceed the limit (generated code, large enums) — raise `max_file_length` for the project to exempt them.
 
 - **Enforcement**: `file_length_scanner.py` from `../../src/zolletta_metaskill/code_style/general/` (deterministic, language-agnostic).
 
@@ -190,6 +191,18 @@ python3 ../../src/zolletta_metaskill/code_style/general/function_length_scanner.
 ```
 
 > The scanner is the single source of truth for this rule. Do not manually flag functions that the scanner doesn't flag — the line span against the configured threshold is the objective criterion.
+
+**#25 — Max arguments limit** *(configurable: `check_max_arguments`, `max_arguments`)*
+
+Functions and methods must not declare more than `max_arguments` parameters (default: `5`, read from `python.code_style.max_arguments` in `settings.json` — seeded from `python.tools.ruff.max_args` when configured, matching ruff `PLR0913`). Positional-only, positional-or-keyword, and keyword-only parameters count; `self`, `cls`, `*args`, and `**kwargs` do not. Long parameter lists are a classic AI-generation smell — the fix is usually a parameter object or a small collaborator, not more arguments.
+
+- **Enforcement**: `max_arguments_scanner.py` from `../../src/zolletta_metaskill/code_style/general/` (deterministic, language-agnostic).
+
+```bash
+python3 ../../src/zolletta_metaskill/code_style/general/max_arguments_scanner.py
+```
+
+> The scanner is the single source of truth for this rule. Do not manually flag functions that the scanner doesn't flag — the declared-parameter count against the configured threshold is the objective criterion.
 
 ### Docstrings
 

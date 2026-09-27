@@ -90,6 +90,7 @@ The canonical script reference is [`scripts.md`](scripts.md) — refer to it for
 | `one_class_per_file_scanner.py`        | `cache/one_class_per_file.txt`  | `python.code_style.check_one_class_per_file` |
 | `file_length_scanner.py`               | `cache/file_length.txt`         | `python.code_style.check_file_length`        |
 | `function_length_scanner.py`           | `cache/function_length.txt`     | `python.code_style.check_function_length`    |
+| `max_arguments_scanner.py`             | `cache/max_arguments.txt`       | `python.code_style.check_max_arguments`      |
 | `suppression_reason_scanner.py --json` | `cache/suppression_reason.json` | always                                       |
 
 ### `python-testing-style`
@@ -137,6 +138,7 @@ See [`documentation/operational-rules.md`](../documentation/operational-rules.md
 | `vendor/bin/phpcs`                      | `cache/phpcs.txt`               | `php.tools.phpcs.available`            |
 | `file_length_scanner.py`                | `cache/file_length.txt`         | `php.code_style.check_file_length`     |
 | `function_length_scanner.py`            | `cache/function_length.txt`     | `php.code_style.check_function_length` |
+| `max_arguments_scanner.py`              | `cache/max_arguments.txt`       | `php.code_style.check_max_arguments`   |
 | `suppression_reason_scanner.py --json`  | `cache/suppression_reason.json` | always                                 |
 
 ### `php-testing-style`

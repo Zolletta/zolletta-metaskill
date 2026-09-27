@@ -81,6 +81,7 @@ Review PHP code for type safety, modern PHP feature adoption, PSR-12 compliance,
 | 33 | Perf      | Native string functions over regex | `check_string_functions`                       | `true`        | all     |
 | 34 | Structure | File length limit                  | `check_file_length`, `max_file_length`         | `true`, `800` | all     |
 | 36 | Structure | Function length limit              | `check_function_length`, `max_function_length` | `true`, `100` | all     |
+| 37 | Structure | Max arguments limit                | `check_max_arguments`, `max_arguments`         | `true`, `5`   | all     |
 
 ## Version gating
 
@@ -184,9 +185,9 @@ Write the report to `<runs_dir>/<timestamp>/reports/php-code-style.md` using the
 - **#32 Array functions** — use native array functions (`array_map`, `array_filter`, `array_column`, `array_reduce`) instead of manual `foreach` loops when transforming or filtering arrays.
 - **#33 String functions** — use native string functions (`str_contains`, `str_starts_with`, `str_ends_with`, `strpos`) instead of regex (`preg_match`) when the pattern is a literal.
 
-### Structure (#34, #36)
+### Structure (#34, #36, #37)
 
-- **#34 File length limit** — source files must not exceed `max_file_length` lines (default: `800`, read from `php.code_style.max_file_length` in `settings.json`). File length is one of the low-hanging-fruit maintainability sensors for catching AI failure modes (Martin Fowler — [Maintainability sensors for coding agents](https://martinfowler.com/articles/sensors-for-coding-agents.html)): overly long files usually signal a class doing too much. Some files legitimately exceed the limit (generated code, large enums) — raise `max_file_length` for the project to exempt them. Enforced by the language-agnostic `file_length_scanner.py`:
+- **#34 File length limit** — source files must not exceed `max_file_length` lines (default: `800`, read from `php.code_style.max_file_length` in `settings.json`). File length is one of the low-hanging-fruit maintainability sensors for catching AI failure modes (Martin Fowler — *Maintainability sensors for coding agents*): overly long files usually signal a class doing too much. Some files legitimately exceed the limit (generated code, large enums) — raise `max_file_length` for the project to exempt them. Enforced by the language-agnostic `file_length_scanner.py`:
 
 ```bash
 python3 ../../src/zolletta_metaskill/code_style/general/file_length_scanner.py
@@ -196,6 +197,12 @@ python3 ../../src/zolletta_metaskill/code_style/general/file_length_scanner.py
 
 ```bash
 python3 ../../src/zolletta_metaskill/code_style/general/function_length_scanner.py
+```
+
+- **#37 Max arguments limit** — functions and methods must not declare more than `max_arguments` parameters (default: `5`, read from `php.code_style.max_arguments` in `settings.json`). Variadic parameters (`...$args`) do not count toward the limit — the semantics match ruff `PLR0913` (`self`/`cls`, `*args`, `**kwargs` excluded). Long parameter lists are a classic AI-generation smell — the fix is usually a parameter object or a small collaborator. Enforced by the language-agnostic `max_arguments_scanner.py`:
+
+```bash
+python3 ../../src/zolletta_metaskill/code_style/general/max_arguments_scanner.py
 ```
 
 ### Security (#21)

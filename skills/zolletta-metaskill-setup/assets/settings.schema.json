@@ -390,6 +390,7 @@
         "target_version",
         "select",
         "ignore",
+        "max_args",
         "max_statements"
       ],
       "properties": {
@@ -415,6 +416,15 @@
           "items": {
             "type": "string"
           }
+        },
+        "max_args": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "default": null,
+          "description": "Mirrors [tool.ruff.lint.pylint] max-args (the PLR0913 threshold). null when unconfigured — ruff's built-in default is 5."
         },
         "max_statements": {
           "type": [
@@ -582,6 +592,7 @@
         "check_line_length",
         "check_file_length",
         "check_function_length",
+        "check_max_arguments",
         "check_unused_all_exports",
         "docstring_strip_private",
         "docstring_strip_tests",
@@ -640,6 +651,10 @@
           "type": "boolean",
           "default": true
         },
+        "check_max_arguments": {
+          "type": "boolean",
+          "default": true
+        },
         "check_unused_all_exports": {
           "type": "boolean",
           "default": true
@@ -668,6 +683,12 @@
           "type": "integer",
           "minimum": 1,
           "default": 800
+        },
+        "max_arguments": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 5,
+          "description": "Maximum declared parameters per function/method (enforced by max_arguments_scanner.py). Seeded from python.tools.ruff.max_args when configured, else 5."
         },
         "max_function_length": {
           "type": "integer",
@@ -1128,7 +1149,9 @@
         "check_file_length",
         "max_file_length",
         "check_function_length",
-        "max_function_length"
+        "max_function_length",
+        "check_max_arguments",
+        "max_arguments"
       ],
       "properties": {
         "check_acronym_casing": {
@@ -1191,6 +1214,16 @@
           "type": "integer",
           "minimum": 1,
           "default": 800
+        },
+        "check_max_arguments": {
+          "type": "boolean",
+          "default": true
+        },
+        "max_arguments": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 5,
+          "description": "Maximum declared parameters per function/method (enforced by max_arguments_scanner.py)."
         },
         "check_function_length": {
           "type": "boolean",

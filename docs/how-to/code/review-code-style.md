@@ -49,6 +49,10 @@ The review runs the project's configured linter and formatter in check-only mode
 
 The review flags source files that exceed the project's configured maximum line count (`max_file_length`, default 800). The check is enforced by the language-agnostic `file_length_scanner.py` — it counts lines in the files of the project's configured language(s) and skips anything git ignores. Files that legitimately exceed the limit (generated code, large enums) can be exempted by raising the threshold in `settings.json`.
 
+### Max arguments
+
+The review flags functions and methods that declare more parameters than the configured `max_arguments` (default 5). The check is enforced by the language-agnostic `max_arguments_scanner.py`, which counts declared parameters the way ruff `PLR0913` does — positional and keyword parameters count, while `self`/`cls`, `*args`/`**kwargs`, and PHP variadics do not. Long parameter lists usually signal a missing abstraction — the fix is typically a parameter object or a small collaborator.
+
 ### Function length
 
 The review flags functions and methods whose line span exceeds the configured `max_function_length` (default 100). The check is enforced by the language-agnostic `function_length_scanner.py` — it measures the span from the definition line to the end of the body via the language engines, so it is a line count, not a statement count. A long function serving one purpose is not necessarily a finding — the sensor flags it for review; the usual fix is extracting a collaborator.
@@ -61,7 +65,7 @@ The review runs the project's configured dead-code detector. Findings below the 
 
 **Always-on** (cannot be disabled): descriptive filenames, class naming convention, function/variable naming, constant naming, import grouping, private functions exempt from docs, test functions exempt from docs, type hints for public APIs.
 
-**Configurable** (toggled via `settings.json`, all default to enabled): acronym casing, absolute imports, one class per file, filename matches class, file length limit, function length limit, public docstrings, no type repetition in docs, skip obvious one-liner docs, line length, dead-code confidence threshold.
+**Configurable** (toggled via `settings.json`, all default to enabled): acronym casing, absolute imports, one class per file, filename matches class, file length limit, max arguments limit, function length limit, public docstrings, no type repetition in docs, skip obvious one-liner docs, line length, dead-code confidence threshold.
 
 See the language-specific guides for the exact `settings.json` keys.
 

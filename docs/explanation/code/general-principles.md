@@ -521,6 +521,7 @@ grep -c "public function\|private function\|protected function" src/MyClass.php
 ### Symptoms (not proofs)
 
 - **7+ constructor parameters** — suggests too many responsibilities, not a DI problem.
+- **Long parameter lists on any function or method** — a signature with more declared parameters than the configured `max_arguments` (default `5`, `PLR0913` parity) usually signals a missing parameter object or collaborator; `max_arguments_scanner.py` flags them deterministically.
 - **Methods from different layers** — API parsing + business logic + DB access + formatting.
 - **I/O mixed with business logic** — SQL/HTTP calls embedded in domain rules.
 - **High attribute count** — many `self.*` / `$this->` attributes suggest state for multiple concerns.

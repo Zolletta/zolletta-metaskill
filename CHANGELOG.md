@@ -2,6 +2,36 @@
 
 <!-- version list -->
 
+## v3.3.0 (2026-09-27)
+
+### Features
+
+- **code-style**: Add max-arguments sensor
+  ([#63](https://github.com/Zolletta/zolletta-metaskill/pull/63),
+  [`2698fde`](https://github.com/Zolletta/zolletta-metaskill/commit/2698fde34dcf38e01615cde79eacb016ffbf256d))
+
+### Refactoring
+
+- **tests**: Move helpers into the test class
+  ([#63](https://github.com/Zolletta/zolletta-metaskill/pull/63),
+  [`2698fde`](https://github.com/Zolletta/zolletta-metaskill/commit/2698fde34dcf38e01615cde79eacb016ffbf256d))
+
+
+## v3.2.0 (2026-09-27)
+
+### Code Style
+
+- Document selected/ignored ruff rules in pyproject.toml
+  ([#61](https://github.com/Zolletta/zolletta-metaskill/pull/61),
+  [`9b2448d`](https://github.com/Zolletta/zolletta-metaskill/commit/9b2448d7e14beb4aff2d406996c115dc6de114bb))
+
+### Features
+
+- **code-style**: Add suppress-with-reason convention for Any/mixed
+  ([#61](https://github.com/Zolletta/zolletta-metaskill/pull/61),
+  [`9b2448d`](https://github.com/Zolletta/zolletta-metaskill/commit/9b2448d7e14beb4aff2d406996c115dc6de114bb))
+
+
 ## v3.1.0 (2026-09-26)
 
 ### Features
