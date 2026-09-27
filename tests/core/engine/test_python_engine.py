@@ -196,6 +196,38 @@ class TestPythonEngine:
         f = _functions(info)["foo"]
         assert f.params == ["x"]
 
+    def test_function_counts_posonly_and_kwonly_params(self, tmp_path: Path) -> None:
+        """Posonlyargs and kwonlyargs count toward params (PLR0913 parity)."""
+        path = _write(tmp_path, "mod.py", "def foo(a, /, b, *, c, d):\n    pass\n")
+        info = PythonEngine().parse_module(path)
+        f = _functions(info)["foo"]
+        assert f.params == ["a", "b", "c", "d"]
+
+    def test_function_excludes_vararg_and_kwarg(self, tmp_path: Path) -> None:
+        """*args/** kwargs are variadics, not counted parameters."""
+        path = _write(tmp_path, "mod.py", "def foo(a, *args, b, **kwargs):\n    pass\n")
+        info = PythonEngine().parse_module(path)
+        f = _functions(info)["foo"]
+        assert f.params == ["a", "b"]
+
+    def test_method_excludes_self_and_cls_among_kwonly(self, tmp_path: Path) -> None:
+        path = _write(
+            tmp_path,
+            "mod.py",
+            "class Foo:\n"
+            "    def bar(self, a, *, b):\n"
+            "        pass\n"
+            "    @classmethod\n"
+            "    def make(cls, x, *, y):\n"
+            "        pass\n",
+        )
+        info = PythonEngine().parse_module(path)
+        cls = _classes(info)["Foo"]
+        bar = next(m for m in cls.methods if m.name == "bar")
+        make = next(m for m in cls.methods if m.name == "make")
+        assert bar.params == ["a", "b"]
+        assert make.params == ["x", "y"]
+
     def test_function_with_return_type(self, tmp_path: Path) -> None:
         path = _write(tmp_path, "mod.py", "def foo() -> str:\n    return 'hi'\n")
         info = PythonEngine().parse_module(path)

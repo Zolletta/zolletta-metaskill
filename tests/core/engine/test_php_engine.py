@@ -135,6 +135,44 @@ class Calculator {
         assert "string" in maybe.return_type
 
     @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    def test_parse_params_excludes_variadic(self, tmp_path: Path) -> None:
+        """``...$args`` variadics are not counted (PLR0913 parity)."""
+        engine = PHPEngine()
+        src = """<?php
+class Foo {
+    public function m(int $a, string ...$rest) {}
+}
+function f(callable $cb, int ...$nums) {}
+"""
+        path = tmp_path / "variadic.php"
+        path.write_text(src, encoding="utf-8")
+
+        info = engine.parse_module(path)
+        m = next(meth for meth in info.classes[0].methods if meth.name == "m")
+        assert m.params == ["a"]
+        f = next(func for func in info.functions if func.name == "f")
+        assert f.params == ["cb"]
+
+    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    def test_parse_params_includes_promoted(self, tmp_path: Path) -> None:
+        """Promoted constructor parameters still count as parameters."""
+        engine = PHPEngine()
+        src = """<?php
+class Point {
+    public function __construct(
+        private readonly int $x,
+        protected string $name = 'p',
+    ) {}
+}
+"""
+        path = tmp_path / "Point.php"
+        path.write_text(src, encoding="utf-8")
+
+        info = engine.parse_module(path)
+        ctor = next(m for m in info.classes[0].methods if m.name == "__construct")
+        assert ctor.params == ["x", "name"]
+
+    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
     def test_parse_abstract_class(self, tmp_path: Path) -> None:
         engine = PHPEngine()
         src = """<?php

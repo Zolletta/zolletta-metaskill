@@ -448,13 +448,25 @@ class PHPEngine:
         return True  # pragma: no cover
 
     def _collect_params(self, node: Node, source: bytes) -> list[str]:
-        """Extract parameter names from a ``formal_parameters`` child."""
+        """Extract parameter names from a ``formal_parameters`` child.
+
+        Promoted constructor parameters (``property_promotion_parameter``)
+        count like regular parameters; variadic parameters
+        (``variadic_parameter``, ``...$args``) are skipped — they accept an
+        unbounded argument list, matching PLR0913's exclusion of
+        ``*args``/``**kwargs``.
+        """
         params_node = self._child_by_type(node, "formal_parameters")
         if params_node is None:  # pragma: no cover
             return []
         names: list[str] = []
         for descendant in self._iter_descendants(params_node):
             if descendant.type == "variable_name":
+                if (
+                    descendant.parent is not None
+                    and descendant.parent.type == "variadic_parameter"
+                ):
+                    continue
                 name_child = self._child_by_type(descendant, "name")
                 if name_child is not None:
                     names.append(self._node_text(name_child, source))
