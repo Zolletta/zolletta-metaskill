@@ -452,5 +452,5 @@ public function getPayload(): mixed { ... }
 
 PHPStan also supports the inline form with a dotted error identifier (`// @phpstan-ignore argument.type <reason>`); `@phpstan-ignore-next-line` and `@phpstan-ignore-line` have no identifier slot — the reason alone suffices. The reason must explain *why* the type is deliberately broad, not just that it is. Suppressions missing the identifier or the reason are findings under rule #7 — `suppression_reason_scanner.py` flags them deterministically.
 
-**Why this matters**: Fowler's *Maintainability sensors for coding agents* ("Guidance for self-correction") — the sensor fires, the agent makes the judgment call, and when it suppresses it must document why. A reasonless suppression hides intent; a reasoned one records it for the next agent.
+**Why this matters**: Fowler's [Maintainability sensors for coding agents](https://martinfowler.com/articles/sensors-for-coding-agents.html) ("Guidance for self-correction") — the sensor fires, the agent makes the judgment call, and when it suppresses it must document why. A reasonless suppression hides intent; a reasoned one records it for the next agent.
 

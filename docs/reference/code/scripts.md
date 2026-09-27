@@ -69,7 +69,7 @@ python3 src/zolletta_metaskill/code_style/general/one_class_per_file_scanner.py 
 
 ### file_length_scanner.py
 
-Flags files that exceed a configurable maximum line count. Language-agnostic — it does not parse code, it counts lines. Implements the "file length" sensor from Martin Fowler's *Maintainability sensors for coding agents*.
+Flags files that exceed a configurable maximum line count. Language-agnostic — it does not parse code, it counts lines. Implements the "file length" sensor from Martin Fowler's [Maintainability sensors for coding agents](https://martinfowler.com/articles/sensors-for-coding-agents.html).
 
 What is scanned and with what limit is driven entirely by `.zolletta-metaskill/settings.json`: the scanner reads the project's `language` (and any populated `<language>` sections) and scans those extensions, honours each language's `code_style.check_file_length` toggle (a disabled language is not scanned; if it is off for every configured language the run reports SKIPPED), and reads each enabled language's `code_style.max_file_length` (the smallest wins, default 800). It also skips anything git ignores (`.gitignore`, `.git/info/exclude`, `core.excludesFile`) — so `vendor/`, `node_modules/`, and build output never appear in the report. Outside a git repository every matching file is scanned.
 
@@ -87,7 +87,7 @@ Git-ignored files are never scanned; files with extensions not belonging to the 
 
 ### function_length_scanner.py
 
-Flags functions and methods whose line span exceeds a configurable maximum — the "function length" sensor from Martin Fowler's *Maintainability sensors for coding agents* (issue #44). The scanner parses each file via its language engine and measures `end_lineno - lineno + 1` per function/method: signature and body (docstring included) count, decorators and docblocks do not. Lines are not statements — comments and blank lines inflate the count versus ruff `PLR0915` (`max-statements`), so the default is intentionally lenient.
+Flags functions and methods whose line span exceeds a configurable maximum — the "function length" sensor from Martin Fowler's [Maintainability sensors for coding agents](https://martinfowler.com/articles/sensors-for-coding-agents.html). The scanner parses each file via its language engine and measures `end_lineno - lineno + 1` per function/method: signature and body (docstring included) count, decorators and docblocks do not. Lines are not statements — comments and blank lines inflate the count versus ruff `PLR0915` (`max-statements`), so the default is intentionally lenient.
 
 What is scanned and with what limit is driven entirely by `.zolletta-metaskill/settings.json`: the scanner reads the project's `language` (and any populated `<language>` sections) and scans those extensions, honours each language's `code_style.check_function_length` toggle (a disabled language is not scanned; if it is off for every configured language the run reports SKIPPED), and reads each enabled language's `code_style.max_function_length` (the smallest wins, default 100). It skips anything git ignores and any file that fails to parse (a `Could not parse` warning; PHP files on hosts without the optional `tree-sitter-php` dependency degrade the same way).
 
@@ -103,7 +103,7 @@ Violations are report-only — the scanner exits 0 whether or not any are found;
 
 ### suppression_reason_scanner.py
 
-Flags type-checker suppressions that lack an error code or a reason — the deterministic half of the "suppress-with-reason" convention (Fowler — *Maintainability sensors for coding agents*, "Guidance for self-correction"; issue #41). A suppressed diagnostic on a deliberately broad type is an acceptable judgment call only when the suppression carries the specific checker code/identifier **and** a reason explaining why the type is broad.
+Flags type-checker suppressions that lack an error code or a reason — the deterministic half of the "suppress-with-reason" convention (Fowler — [Maintainability sensors for coding agents](https://martinfowler.com/articles/sensors-for-coding-agents.html), "Guidance for self-correction"). A suppressed diagnostic on a deliberately broad type is an acceptable judgment call only when the suppression carries the specific checker code/identifier **and** a reason explaining why the type is broad.
 
 Per-language checks:
 

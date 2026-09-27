@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-Issue #47 asks for the "incremental mutation testing" sensor from Martin Fowler's *Maintainability sensors for coding agents*. Coverage tells you what was *executed*; mutation testing tells you what was *verified*. For AI-generated code where tests achieve high coverage but may be shallow, it is the sensor that separates "tests exist" from "tests protect against bugs."
+Issue #47 asks for the "incremental mutation testing" sensor from Martin Fowler's [Maintainability sensors for coding agents](https://martinfowler.com/articles/sensors-for-coding-agents.html). Coverage tells you what was *executed*; mutation testing tells you what was *verified*. For AI-generated code where tests achieve high coverage but may be shallow, it is the sensor that separates "tests exist" from "tests protect against bugs."
 
 Both target tools are zero-config: [mutmut](https://github.com/boxed/mutmut) (Python) mutates at AST level and auto-detects pytest; [Infection](https://infection.codes/) (PHP) mutates via AST and reads `phpunit.xml` automatically. Only installation detection is needed in setup.
 
