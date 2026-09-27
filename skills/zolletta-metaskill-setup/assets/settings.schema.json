@@ -391,7 +391,8 @@
         "select",
         "ignore",
         "max_args",
-        "max_statements"
+        "max_statements",
+        "max_complexity"
       ],
       "properties": {
         "available": {
@@ -434,6 +435,15 @@
           "minimum": 1,
           "default": null,
           "description": "Mirrors [tool.ruff.lint.pylint] max-statements (the PLR0915 threshold). null when unconfigured — ruff's built-in default is 50."
+        },
+        "max_complexity": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "default": null,
+          "description": "Mirrors [tool.ruff.lint.mccabe] max-complexity (the C901 threshold). null when unconfigured — ruff's built-in default is 10."
         }
       }
     },
@@ -593,6 +603,7 @@
         "check_file_length",
         "check_function_length",
         "check_max_arguments",
+        "check_cyclomatic_complexity",
         "check_unused_all_exports",
         "docstring_strip_private",
         "docstring_strip_tests",
@@ -655,6 +666,10 @@
           "type": "boolean",
           "default": true
         },
+        "check_cyclomatic_complexity": {
+          "type": "boolean",
+          "default": true
+        },
         "check_unused_all_exports": {
           "type": "boolean",
           "default": true
@@ -695,6 +710,12 @@
           "minimum": 1,
           "default": 100,
           "description": "Maximum line span per function/method (enforced by function_length_scanner.py). Lines are not statements — see python.tools.ruff.max_statements for the PLR0915 alternative."
+        },
+        "max_cyclomatic_complexity": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 10,
+          "description": "Maximum allowed cyclomatic complexity per function/method (enforced by cyclomatic_complexity_scanner.py). Seeded from python.tools.ruff.max_complexity when configured, else 10 — matching ruff C901."
         },
         "vulture_min_confidence": {
           "type": "integer",
@@ -1151,7 +1172,9 @@
         "check_function_length",
         "max_function_length",
         "check_max_arguments",
-        "max_arguments"
+        "max_arguments",
+        "check_cyclomatic_complexity",
+        "max_cyclomatic_complexity"
       ],
       "properties": {
         "check_acronym_casing": {
@@ -1234,6 +1257,16 @@
           "minimum": 1,
           "default": 100,
           "description": "Maximum line span per function/method (enforced by function_length_scanner.py)."
+        },
+        "check_cyclomatic_complexity": {
+          "type": "boolean",
+          "default": true
+        },
+        "max_cyclomatic_complexity": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 10,
+          "description": "Maximum allowed cyclomatic complexity per function/method (enforced by cyclomatic_complexity_scanner.py)."
         }
       }
     },
