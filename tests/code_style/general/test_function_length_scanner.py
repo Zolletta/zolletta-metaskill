@@ -19,56 +19,60 @@ from zolletta_metaskill.core.structs import ClassInfo, Finding, MethodInfo, Modu
 TS_PHP_AVAILABLE = PHPEngine._have_tree_sitter_php()
 
 
-def _write_settings(dirpath: Path, **overrides: object) -> Path:
-    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
-    settings: dict[str, object] = {
-        "language": "python",
-        "python": {"code_style": {}},
-        "php": None,
-    }
-    settings.update(overrides)
-    meta = dirpath / ".zolletta-metaskill"
-    meta.mkdir(parents=True, exist_ok=True)
-    path = meta / "settings.json"
-    path.write_text(json.dumps(settings))
-    return path
-
-
-def _git_init(root: Path) -> None:
-    """Initialise a git repo at *root* so gitignore rules apply."""
-    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
-
-
-def _write(path: Path, source: str) -> Path:
-    """Write *source* to *path* and return it."""
-    path.write_text(source)
-    return path
-
-
-def _method(name: str, lineno: int, end_lineno: int) -> MethodInfo:
-    """Build a :class:`MethodInfo` spanning ``lineno``..``end_lineno``."""
-    return MethodInfo(name=name, lineno=lineno, end_lineno=end_lineno)
-
-
-def _py_function(name: str, body_lines: int) -> str:
-    """Return Python source for a function spanning ``body_lines + 1`` lines."""
-    body = "\n".join(f"    x{i} = {i}" for i in range(body_lines))
-    return f"def {name}():\n{body}\n"
-
-
 class TestFunctionLengthScanner:
+    # --- Helpers. ---
+
+    @staticmethod
+    def _write_settings(dirpath: Path, **overrides: object) -> Path:
+        """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
+        settings: dict[str, object] = {
+            "language": "python",
+            "python": {"code_style": {}},
+            "php": None,
+        }
+        settings.update(overrides)
+        meta = dirpath / ".zolletta-metaskill"
+        meta.mkdir(parents=True, exist_ok=True)
+        path = meta / "settings.json"
+        path.write_text(json.dumps(settings))
+        return path
+
+    @staticmethod
+    def _git_init(root: Path) -> None:
+        """Initialise a git repo at *root* so gitignore rules apply."""
+        subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+
+    @staticmethod
+    def _write(path: Path, source: str) -> Path:
+        """Write *source* to *path* and return it."""
+        path.write_text(source)
+        return path
+
+    @staticmethod
+    def _method(name: str, lineno: int, end_lineno: int) -> MethodInfo:
+        """Build a :class:`MethodInfo` spanning ``lineno``..``end_lineno``."""
+        return MethodInfo(name=name, lineno=lineno, end_lineno=end_lineno)
+
+    @staticmethod
+    def _py_function(name: str, body_lines: int) -> str:
+        """Return Python source for a function spanning ``body_lines + 1`` lines."""
+        body = "\n".join(f"    x{i} = {i}" for i in range(body_lines))
+        return f"def {name}():\n{body}\n"
+
     # --- Tests for FunctionLengthScanner.resolve_extensions(). ---
 
     def test_python_language_returns_py(self, tmp_path: Path) -> None:
-        settings = _write_settings(tmp_path, language="python")
+        settings = self._write_settings(tmp_path, language="python")
         assert FunctionLengthScanner.resolve_extensions(settings) == {".py"}
 
     def test_php_language_returns_php(self, tmp_path: Path) -> None:
-        settings = _write_settings(tmp_path, language="php", python=None, php={"code_style": {}})
+        settings = self._write_settings(
+            tmp_path, language="php", python=None, php={"code_style": {}}
+        )
         assert FunctionLengthScanner.resolve_extensions(settings) == {".php"}
 
     def test_polyglot_settings_scans_all_configured_languages(self, tmp_path: Path) -> None:
-        settings = _write_settings(tmp_path, language="python", php={"code_style": {}})
+        settings = self._write_settings(tmp_path, language="python", php={"code_style": {}})
         assert FunctionLengthScanner.resolve_extensions(settings) == {".py", ".php"}
 
     def test_missing_settings_falls_back_to_all_engines(self, tmp_path: Path) -> None:
@@ -78,7 +82,7 @@ class TestFunctionLengthScanner:
     def test_unknown_language_falls_back_to_all_engines(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        settings = _write_settings(tmp_path, language="go", python=None)
+        settings = self._write_settings(tmp_path, language="go", python=None)
         result = FunctionLengthScanner.resolve_extensions(settings)
         err = capsys.readouterr().err
         assert "no engine for language 'go'" in err
@@ -92,7 +96,7 @@ class TestFunctionLengthScanner:
         assert FunctionLengthScanner.resolve_extensions(bad) == {".py", ".php"}
 
     def test_disabled_language_not_scanned(self, tmp_path: Path) -> None:
-        settings = _write_settings(
+        settings = self._write_settings(
             tmp_path,
             language="python",
             python={"code_style": {"check_function_length": False}},
@@ -101,7 +105,7 @@ class TestFunctionLengthScanner:
         assert FunctionLengthScanner.resolve_extensions(settings) == {".php"}
 
     def test_all_languages_disabled_returns_empty(self, tmp_path: Path) -> None:
-        settings = _write_settings(
+        settings = self._write_settings(
             tmp_path,
             language="python",
             python={"code_style": {"check_function_length": False}},
@@ -111,13 +115,13 @@ class TestFunctionLengthScanner:
     # --- Tests for FunctionLengthScanner.resolve_max_lines(). ---
 
     def test_reads_max_function_length_from_settings(self, tmp_path: Path) -> None:
-        settings = _write_settings(
+        settings = self._write_settings(
             tmp_path, python={"code_style": {"max_function_length": 50}}
         )
         assert FunctionLengthScanner.resolve_max_lines(settings) == 50
 
     def test_smallest_limit_wins_across_languages(self, tmp_path: Path) -> None:
-        settings = _write_settings(
+        settings = self._write_settings(
             tmp_path,
             language="python",
             python={"code_style": {"max_function_length": 100}},
@@ -126,7 +130,7 @@ class TestFunctionLengthScanner:
         assert FunctionLengthScanner.resolve_max_lines(settings) == 60
 
     def test_no_configured_limit_falls_back_to_default(self, tmp_path: Path) -> None:
-        settings = _write_settings(tmp_path)  # code_style is empty
+        settings = self._write_settings(tmp_path)  # code_style is empty
         assert FunctionLengthScanner.resolve_max_lines(settings) == 100
 
     def test_missing_settings_falls_back_to_default(self, tmp_path: Path) -> None:
@@ -134,11 +138,11 @@ class TestFunctionLengthScanner:
         assert FunctionLengthScanner.resolve_max_lines(missing) == 100
 
     def test_language_field_without_section_falls_back(self, tmp_path: Path) -> None:
-        settings = _write_settings(tmp_path, python=None)
+        settings = self._write_settings(tmp_path, python=None)
         assert FunctionLengthScanner.resolve_max_lines(settings) == 100
 
     def test_section_without_code_style_falls_back(self, tmp_path: Path) -> None:
-        settings = _write_settings(tmp_path, python={"tools": {}})
+        settings = self._write_settings(tmp_path, python={"tools": {}})
         assert FunctionLengthScanner.resolve_max_lines(settings) == 100
 
     # --- Tests for FunctionLengthScanner.scan_module(). ---
@@ -147,7 +151,7 @@ class TestFunctionLengthScanner:
         module = ModuleInfo(
             path=tmp_path / "mod.py",
             language="python",
-            functions=[_method("big", 10, 140)],
+            functions=[self._method("big", 10, 140)],
         )
         findings = FunctionLengthScanner.scan_module(module, max_lines=100)
         assert len(findings) == 1
@@ -165,7 +169,7 @@ class TestFunctionLengthScanner:
         module = ModuleInfo(
             path=tmp_path / "mod.py",
             language="python",
-            functions=[_method("ok", 1, 100)],
+            functions=[self._method("ok", 1, 100)],
         )
         assert FunctionLengthScanner.scan_module(module, max_lines=100) == []
 
@@ -178,7 +182,7 @@ class TestFunctionLengthScanner:
                     name="Big",
                     lineno=1,
                     end_lineno=200,
-                    methods=[_method("run", 20, 150)],
+                    methods=[self._method("run", 20, 150)],
                 )
             ],
         )
@@ -191,7 +195,7 @@ class TestFunctionLengthScanner:
         module = ModuleInfo(
             path=tmp_path / "bad.py",
             language="python",
-            functions=[_method("big", 1, 200)],
+            functions=[self._method("big", 1, 200)],
             has_syntax_error=True,
         )
         assert FunctionLengthScanner.scan_module(module, max_lines=5) == []
@@ -200,29 +204,29 @@ class TestFunctionLengthScanner:
         module = ModuleInfo(
             path=tmp_path / "mod.py",
             language="python",
-            functions=[_method("a", 1, 5), _method("b", 10, 20)],
+            functions=[self._method("a", 1, 5), self._method("b", 10, 20)],
         )
         assert FunctionLengthScanner.scan_module(module, max_lines=100) == []
 
     # --- Tests for FunctionLengthScanner.scan_file(). ---
 
     def test_python_file_over_limit_returns_finding(self, tmp_path: Path) -> None:
-        f = _write(tmp_path / "mod.py", _py_function("big", 150))
+        f = self._write(tmp_path / "mod.py", self._py_function("big", 150))
         findings = FunctionLengthScanner.scan_file(f, max_lines=100)
         assert len(findings) == 1
         assert findings[0].category == "function_length"
         assert findings[0].file == str(f)
 
     def test_python_file_under_limit_returns_empty(self, tmp_path: Path) -> None:
-        f = _write(tmp_path / "mod.py", _py_function("small", 10))
+        f = self._write(tmp_path / "mod.py", self._py_function("small", 10))
         assert FunctionLengthScanner.scan_file(f, max_lines=100) == []
 
     def test_unknown_extension_returns_empty(self, tmp_path: Path) -> None:
-        f = _write(tmp_path / "script.rb", "def big\n" * 200)
+        f = self._write(tmp_path / "script.rb", "def big\n" * 200)
         assert FunctionLengthScanner.scan_file(f, max_lines=5) == []
 
     def test_syntax_error_file_returns_empty(self, tmp_path: Path) -> None:
-        f = _write(tmp_path / "bad.py", "def broken(:\n" * 200)
+        f = self._write(tmp_path / "bad.py", "def broken(:\n" * 200)
         assert FunctionLengthScanner.scan_file(f, max_lines=5) == []
 
     def test_import_error_warns_and_returns_empty(
@@ -235,14 +239,14 @@ class TestFunctionLengthScanner:
             raise ImportError("tree-sitter-php missing")
 
         monkeypatch.setattr(PythonEngine, "parse_module", _fail)
-        f = _write(tmp_path / "mod.py", _py_function("big", 150))
+        f = self._write(tmp_path / "mod.py", self._py_function("big", 150))
         assert FunctionLengthScanner.scan_file(f, max_lines=5) == []
         assert "Warning: could not parse" in capsys.readouterr().err
 
     @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
     def test_php_file_over_limit_returns_finding(self, tmp_path: Path) -> None:
         body = "\n".join(f"    $x{i} = {i};" for i in range(120))
-        f = _write(tmp_path / "lib.php", f"<?php\nfunction big() {{\n{body}\n}}\n")
+        f = self._write(tmp_path / "lib.php", f"<?php\nfunction big() {{\n{body}\n}}\n")
         findings = FunctionLengthScanner.scan_file(f, max_lines=100)
         assert len(findings) == 1
         assert "'big'" in findings[0].description
@@ -252,8 +256,8 @@ class TestFunctionLengthScanner:
     def test_scans_only_matching_extension(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "a.py", _py_function("big", 150))
-        _write(root / "b.txt", "x\n" * 200)
+        self._write(root / "a.py", self._py_function("big", 150))
+        self._write(root / "b.txt", "x\n" * 200)
         findings = FunctionLengthScanner.scan_directory(
             root, max_lines=100, extensions={".py"}
         )
@@ -263,7 +267,7 @@ class TestFunctionLengthScanner:
     def test_nested_directories_scanned(self, tmp_path: Path) -> None:
         sub = tmp_path / "src" / "pkg" / "sub"
         sub.mkdir(parents=True)
-        _write(sub / "deep.py", _py_function("big", 150))
+        self._write(sub / "deep.py", self._py_function("big", 150))
         findings = FunctionLengthScanner.scan_directory(
             tmp_path / "src", max_lines=100, extensions={".py"}
         )
@@ -271,12 +275,12 @@ class TestFunctionLengthScanner:
         assert findings[0].file == str(sub / "deep.py")
 
     def test_gitignored_file_skipped(self, tmp_path: Path) -> None:
-        _git_init(tmp_path)
+        self._git_init(tmp_path)
         (tmp_path / ".gitignore").write_text("ignored.py\n")
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "ignored.py", _py_function("big", 150))
-        _write(root / "real.py", _py_function("small", 5))
+        self._write(root / "ignored.py", self._py_function("big", 150))
+        self._write(root / "real.py", self._py_function("small", 5))
         findings = FunctionLengthScanner.scan_directory(
             root, max_lines=100, extensions={".py"}
         )
@@ -285,7 +289,7 @@ class TestFunctionLengthScanner:
     def test_outside_git_repo_scans_everything(self, tmp_path: Path) -> None:
         vendor = tmp_path / "src" / "vendor"
         vendor.mkdir(parents=True)
-        _write(vendor / "dep.py", _py_function("big", 150))
+        self._write(vendor / "dep.py", self._py_function("big", 150))
         findings = FunctionLengthScanner.scan_directory(
             tmp_path / "src", max_lines=100, extensions={".py"}
         )
@@ -300,12 +304,12 @@ class TestFunctionLengthScanner:
         )
 
     def test_max_lines_resolved_from_settings(self, tmp_path: Path) -> None:
-        settings = _write_settings(
+        settings = self._write_settings(
             tmp_path, python={"code_style": {"max_function_length": 10}}
         )
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "mid.py", _py_function("mid", 20))
+        self._write(root / "mid.py", self._py_function("mid", 20))
         findings = FunctionLengthScanner.scan_directory(
             root, extensions={".py"}, settings_path=settings
         )
@@ -313,11 +317,11 @@ class TestFunctionLengthScanner:
 
     def test_extensions_resolved_from_settings(self, tmp_path: Path) -> None:
         """scan_directory() without ``extensions`` resolves them itself."""
-        settings = _write_settings(tmp_path, python={"code_style": {}})
+        settings = self._write_settings(tmp_path, python={"code_style": {}})
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "mid.py", _py_function("mid", 20))
-        _write(root / "mid.txt", "x\n" * 200)
+        self._write(root / "mid.py", self._py_function("mid", 20))
+        self._write(root / "mid.txt", "x\n" * 200)
         findings = FunctionLengthScanner.scan_directory(
             root, max_lines=10, settings_path=settings
         )
@@ -331,10 +335,10 @@ class TestFunctionLengthScanner:
     ) -> None:
         """check_function_length=false for every configured language → SKIPPED."""
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path, python={"code_style": {"check_function_length": False}})
+        self._write_settings(tmp_path, python={"code_style": {"check_function_length": False}})
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "mod.py", _py_function("big", 150))
+        self._write(root / "mod.py", self._py_function("big", 150))
         monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FunctionLengthScanner.main()
         out = capsys.readouterr().out
@@ -345,7 +349,7 @@ class TestFunctionLengthScanner:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path, python={"code_style": {"check_function_length": False}})
+        self._write_settings(tmp_path, python={"code_style": {"check_function_length": False}})
         root = tmp_path / "src"
         root.mkdir()
         monkeypatch.setattr(sys, "argv", ["prog", "--json"])
@@ -359,7 +363,7 @@ class TestFunctionLengthScanner:
     ) -> None:
         """No configured source directory on disk → usage error."""
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path)
+        self._write_settings(tmp_path)
         monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FunctionLengthScanner.main()
         err = capsys.readouterr().err
@@ -370,10 +374,10 @@ class TestFunctionLengthScanner:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path)
+        self._write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "short.py", _py_function("small", 10))
+        self._write(root / "short.py", self._py_function("small", 10))
         monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FunctionLengthScanner.main()
         out = capsys.readouterr().out
@@ -384,10 +388,10 @@ class TestFunctionLengthScanner:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path, python={"code_style": {"max_function_length": 10}})
+        self._write_settings(tmp_path, python={"code_style": {"max_function_length": 10}})
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "long.py", _py_function("big", 20))
+        self._write(root / "long.py", self._py_function("big", 20))
         monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FunctionLengthScanner.main()
         out = capsys.readouterr().out
@@ -400,15 +404,15 @@ class TestFunctionLengthScanner:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(tmp_path)
-        _write_settings(
+        self._write_settings(
             tmp_path,
             language="python",
             python={"code_style": {"max_function_length": 10}},
         )
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "long.php", "<?php\n" + "echo 1;\n" * 50)
-        _write(root / "short.py", _py_function("small", 5))
+        self._write(root / "long.php", "<?php\n" + "echo 1;\n" * 50)
+        self._write(root / "short.py", self._py_function("small", 5))
         monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FunctionLengthScanner.main()
         out = capsys.readouterr().out
@@ -421,7 +425,7 @@ class TestFunctionLengthScanner:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(tmp_path)
-        _write_settings(
+        self._write_settings(
             tmp_path,
             language="php",
             python=None,
@@ -433,8 +437,8 @@ class TestFunctionLengthScanner:
         root = tmp_path / "src"
         root.mkdir()
         body = "\n".join(f"    $x{i} = {i};" for i in range(20))
-        _write(root / "long.php", f"<?php\nfunction big() {{\n{body}\n}}\n")
-        _write(root / "long.py", _py_function("alsolong", 30))
+        self._write(root / "long.php", f"<?php\nfunction big() {{\n{body}\n}}\n")
+        self._write(root / "long.py", self._py_function("alsolong", 30))
         monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FunctionLengthScanner.main()
         out = capsys.readouterr().out
@@ -446,10 +450,10 @@ class TestFunctionLengthScanner:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path, python={"code_style": {"max_function_length": 5}})
+        self._write_settings(tmp_path, python={"code_style": {"max_function_length": 5}})
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "mod.py", _py_function("big", 10))
+        self._write(root / "mod.py", self._py_function("big", 10))
         monkeypatch.setattr(sys, "argv", ["prog", "--json"])
         rc = FunctionLengthScanner.main()
         report = json.loads(capsys.readouterr().out)
@@ -473,11 +477,11 @@ class TestFunctionLengthScanner:
             raise ImportError("engine unavailable")
 
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path, python={"code_style": {"max_function_length": 5}})
+        self._write_settings(tmp_path, python={"code_style": {"max_function_length": 5}})
         monkeypatch.setattr(PythonEngine, "parse_module", _fail)
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "mod.py", _py_function("big", 10))
+        self._write(root / "mod.py", self._py_function("big", 10))
         monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FunctionLengthScanner.main()
         captured = capsys.readouterr()
