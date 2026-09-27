@@ -30,7 +30,8 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
         "line_length": 100,
         "target_version": "py312",
         "select": ["E", "W", "F", "I", "B", "C4", "D", "UP", "T20", "SIM"],
-        "ignore": ["B008", "T201", "D104", "D107", "D203", "D213"]
+        "ignore": ["B008", "T201", "D104", "D107", "D203", "D213"],
+        "max_args": null
       },
       "pytest": {
         "available": true,
@@ -60,12 +61,14 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
       "check_skip_obvious_docstrings": true,
       "check_line_length": true,
       "check_file_length": true,
+      "check_max_arguments": true,
       "check_unused_all_exports": true,
       "docstring_strip_private": false,
       "docstring_strip_tests": false,
       "docstring_strip_nested": false,
       "docstring_strip_obvious_init": false,
       "max_file_length": 800,
+      "max_arguments": 5,
       "vulture_min_confidence": 80
     },
     "testing": {
@@ -167,7 +170,9 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
       "check_array_functions": true,
       "check_string_functions": true,
       "check_file_length": true,
-      "max_file_length": 800
+      "max_file_length": 800,
+      "check_max_arguments": true,
+      "max_arguments": 5
     },
     "testing": {
       "coverage_gap_threshold": 50,
@@ -300,15 +305,15 @@ The source and test roots every review script scans — the equivalent of what P
 
 Each tool is an object with an `available` boolean. Tools that have configuration (ruff, mypy, ty, pytest) also carry their effective config extracted from `pyproject.toml`. When a tool's `[tool.*]` section is absent, setup stores the tool's **real built-in defaults** (not skill-invented fallbacks) and prints an "unconfigured" warning.
 
-| Field                  | Type   | Description                                                                                                                               |
-|------------------------|--------|-------------------------------------------------------------------------------------------------------------------------------------------|
-| `python.tools.uv`      | object | `{ "available": boolean }` — uv has no config beyond availability                                                                         |
-| `python.tools.ruff`    | object | `{ "available": boolean, "line_length": integer, "target_version": string, "select": array, "ignore": array }` — effective ruff config    |
-| `python.tools.pytest`  | object | `{ "available": boolean, "addopts": array, "testpaths": array, "minversion": string or null }` — effective pytest config                  |
-| `python.tools.ty`      | object | `{ "available": boolean, "python_version": string or null }` — effective ty config                                                        |
-| `python.tools.vulture` | object | `{ "available": boolean }` — vulture has no config beyond availability                                                                    |
-| `python.tools.mypy`    | object | `{ "available": boolean, "strict": boolean, "python_version": string or null }` — effective mypy config                                   |
-| `python.tools.mutmut`  | object | `{ "available": boolean }` — mutmut is a zero-config mutation tester; detected from `[tool.mutmut]` or a `"mutmut…"` dependency specifier |
+| Field                  | Type   | Description                                                                                                                                                                                                                                                                          |
+|------------------------|--------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `python.tools.uv`      | object | `{ "available": boolean }` — uv has no config beyond availability                                                                                                                                                                                                                    |
+| `python.tools.ruff`    | object | `{ "available": boolean, "line_length": integer, "target_version": string, "select": array, "ignore": array, "max_args": integer or null }` — effective ruff config; `max_args` mirrors `[tool.ruff.lint.pylint] max-args` (`null` when unconfigured — ruff's built-in default is 5) |
+| `python.tools.pytest`  | object | `{ "available": boolean, "addopts": array, "testpaths": array, "minversion": string or null }` — effective pytest config                                                                                                                                                             |
+| `python.tools.ty`      | object | `{ "available": boolean, "python_version": string or null }` — effective ty config                                                                                                                                                                                                   |
+| `python.tools.vulture` | object | `{ "available": boolean }` — vulture has no config beyond availability                                                                                                                                                                                                               |
+| `python.tools.mypy`    | object | `{ "available": boolean, "strict": boolean, "python_version": string or null }` — effective mypy config                                                                                                                                                                              |
+| `python.tools.mutmut`  | object | `{ "available": boolean }` — mutmut is a zero-config mutation tester; detected from `[tool.mutmut]` or a `"mutmut…"` dependency specifier                                                                                                                                            |
 
 > **Type checker resolution**: there is no `type_checker` field. Review skills run all available type checkers: `ty` if `python.tools.ty.available` is `true`, `mypy` if `python.tools.mypy.available` is `true`. When both are available, both run. If neither is available, type checking is skipped.
 
@@ -316,26 +321,28 @@ Each tool is an object with an `available` boolean. Tools that have configuratio
 
 These control which checks the `python-code-style` skill enforces. All default to `true` (or `80` for the confidence threshold). Set to `false` to disable a check for the project.
 
-| Key                              | Type    | Default | Area       | Rule                                                                                                                                 |
-|----------------------------------|---------|---------|------------|--------------------------------------------------------------------------------------------------------------------------------------|
-| `check_acronym_casing`           | boolean | `true`  | Naming     | Acronyms stay uppercase in class names (`HTTPClientFactory`)                                                                         |
-| `check_no_relative_imports`      | boolean | `true`  | Imports    | Absolute imports only, no relative imports                                                                                           |
-| `check_one_class_per_file`       | boolean | `true`  | Structure  | One class per file (all classes, not just public)                                                                                    |
-| `check_one_class_per_test_file`  | boolean | `true`  | Structure  | `one_class_per_file_scanner` also scans test roots: one test class per test file, named after its stem (`test_user.py` → `TestUser`) |
-| `check_zero_class_files`         | boolean | `true`  | Structure  | Report files with 0 classes (utility/helper modules). Set `false` to hide them — replaces the removed `--ignore-zero` flag           |
-| `check_filename_matches_class`   | boolean | `true`  | Structure  | Filename matches class name (`snake_case.py` → `PascalCase`)                                                                         |
-| `check_public_docstrings`        | boolean | `true`  | Docstrings | Docstrings required on public classes, methods, functions                                                                            |
-| `check_docstring_no_type_repeat` | boolean | `true`  | Docstrings | No type repetition in docstring Args/Returns                                                                                         |
-| `check_skip_obvious_docstrings`  | boolean | `true`  | Docstrings | Skip docstrings for obvious one-line functions                                                                                       |
-| `check_line_length`              | boolean | `true`  | Formatting | Line length from `python.tools.ruff.line_length`                                                                                     |
-| `check_file_length`              | boolean | `true`  | Structure  | Files must not exceed `max_file_length` lines                                                                                        |
-| `check_unused_all_exports`       | boolean | `true`  | Dead code  | `__all__` entries must be used outside their module (`unused_all_exports_scanner.py`)                                                |
-| `docstring_strip_private`        | boolean | `false` | Docstrings | `docstring_streamliner.py` removes private-function docstrings when applying fixes                                                   |
-| `docstring_strip_tests`          | boolean | `false` | Docstrings | `docstring_streamliner.py` removes test-function docstrings when applying fixes                                                      |
-| `docstring_strip_nested`         | boolean | `false` | Docstrings | `docstring_streamliner.py` removes nested-function docstrings when applying fixes                                                    |
-| `docstring_strip_obvious_init`   | boolean | `false` | Docstrings | `docstring_streamliner.py` removes obvious `__init__` docstrings when applying fixes                                                 |
-| `max_file_length`                | integer | `800`   | Structure  | Maximum allowed lines per file (enforced by `file_length_scanner.py`)                                                                |
-| `vulture_min_confidence`         | integer | `80`    | Dead code  | Minimum confidence for vulture findings (0–100)                                                                                      |
+| Key                              | Type    | Default | Area       | Rule                                                                                                                                               |
+|----------------------------------|---------|---------|------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `check_acronym_casing`           | boolean | `true`  | Naming     | Acronyms stay uppercase in class names (`HTTPClientFactory`)                                                                                       |
+| `check_no_relative_imports`      | boolean | `true`  | Imports    | Absolute imports only, no relative imports                                                                                                         |
+| `check_one_class_per_file`       | boolean | `true`  | Structure  | One class per file (all classes, not just public)                                                                                                  |
+| `check_one_class_per_test_file`  | boolean | `true`  | Structure  | `one_class_per_file_scanner` also scans test roots: one test class per test file, named after its stem (`test_user.py` → `TestUser`)               |
+| `check_zero_class_files`         | boolean | `true`  | Structure  | Report files with 0 classes (utility/helper modules). Set `false` to hide them — replaces the removed `--ignore-zero` flag                         |
+| `check_filename_matches_class`   | boolean | `true`  | Structure  | Filename matches class name (`snake_case.py` → `PascalCase`)                                                                                       |
+| `check_public_docstrings`        | boolean | `true`  | Docstrings | Docstrings required on public classes, methods, functions                                                                                          |
+| `check_docstring_no_type_repeat` | boolean | `true`  | Docstrings | No type repetition in docstring Args/Returns                                                                                                       |
+| `check_skip_obvious_docstrings`  | boolean | `true`  | Docstrings | Skip docstrings for obvious one-line functions                                                                                                     |
+| `check_line_length`              | boolean | `true`  | Formatting | Line length from `python.tools.ruff.line_length`                                                                                                   |
+| `check_file_length`              | boolean | `true`  | Structure  | Files must not exceed `max_file_length` lines                                                                                                      |
+| `check_max_arguments`            | boolean | `true`  | Structure  | Functions/methods must not exceed `max_arguments` declared parameters (`max_arguments_scanner.py`)                                                 |
+| `check_unused_all_exports`       | boolean | `true`  | Dead code  | `__all__` entries must be used outside their module (`unused_all_exports_scanner.py`)                                                              |
+| `docstring_strip_private`        | boolean | `false` | Docstrings | `docstring_streamliner.py` removes private-function docstrings when applying fixes                                                                 |
+| `docstring_strip_tests`          | boolean | `false` | Docstrings | `docstring_streamliner.py` removes test-function docstrings when applying fixes                                                                    |
+| `docstring_strip_nested`         | boolean | `false` | Docstrings | `docstring_streamliner.py` removes nested-function docstrings when applying fixes                                                                  |
+| `docstring_strip_obvious_init`   | boolean | `false` | Docstrings | `docstring_streamliner.py` removes obvious `__init__` docstrings when applying fixes                                                               |
+| `max_file_length`                | integer | `800`   | Structure  | Maximum allowed lines per file (enforced by `file_length_scanner.py`)                                                                              |
+| `max_arguments`                  | integer | `5`     | Structure  | Maximum declared parameters per function/method (enforced by `max_arguments_scanner.py`). Seeded from `python.tools.ruff.max_args` when configured |
+| `vulture_min_confidence`         | integer | `80`    | Dead code  | Minimum confidence for vulture findings (0–100)                                                                                                    |
 
 > Rules not listed here (naming conventions, import order, private/test function docstring exemptions, type hints for public APIs) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-python-code-style/SUBSKILL.md` → Table 1 for the full list.
 
@@ -401,23 +408,25 @@ Each tool is an object with an `available` boolean. Tools that have configuratio
 
 These control which checks the `php-code-style` skill enforces. All default to `true`. Set to `false` to disable a check for the project. Rules whose minimum PHP version is higher than the detected `php_version` are silently skipped (not flagged) — the skill prints a note listing which rules were skipped.
 
-| Key                           | Type    | Default | Area        | Rule                                                                  | Min PHP |
-|-------------------------------|---------|---------|-------------|-----------------------------------------------------------------------|---------|
-| `check_acronym_casing`        | boolean | `true`  | Naming      | Acronyms stay uppercase in class names (`HTTPClientFactory`)          | all     |
-| `check_union_types`           | boolean | `true`  | Types       | Union types declared where multiple types are possible                | 8.0+    |
-| `check_intersection_types`    | boolean | `true`  | Types       | Intersection types for interface composition                          | 8.1+    |
-| `check_enum_methods`          | boolean | `true`  | Modern      | Enums with methods instead of class constants for finite sets         | 8.1+    |
-| `check_first_class_callables` | boolean | `true`  | Modern      | First-class callable syntax (`$obj->method(...)`)                     | 8.1+    |
-| `check_readonly_classes`      | boolean | `true`  | Modern      | Readonly classes for immutable data                                   | 8.2+    |
-| `check_typed_constants`       | boolean | `true`  | Modern      | Typed class constants                                                 | 8.3+    |
-| `check_override_attribute`    | boolean | `true`  | Modern      | `#[\Override]` attribute on overriding methods                        | 8.3+    |
-| `check_property_hooks`        | boolean | `true`  | Modern      | Property hooks for computed properties                                | 8.4+    |
-| `check_asymmetric_visibility` | boolean | `true`  | Modern      | Asymmetric visibility (`public-read protected-set`)                   | 8.4+    |
-| `check_pipe_operator`         | boolean | `true`  | Modern      | Pipe operator (`\|>`) for function composition                        | 8.5+    |
-| `check_array_functions`       | boolean | `true`  | Performance | Use native array functions over manual loops                          | all     |
-| `check_string_functions`      | boolean | `true`  | Performance | Use native string functions over regex                                | all     |
-| `check_file_length`           | boolean | `true`  | Structure   | Files must not exceed `max_file_length` lines                         | all     |
-| `max_file_length`             | integer | `800`   | Structure   | Maximum allowed lines per file (enforced by `file_length_scanner.py`) | all     |
+| Key                           | Type    | Default | Area        | Rule                                                                                               | Min PHP |
+|-------------------------------|---------|---------|-------------|----------------------------------------------------------------------------------------------------|---------|
+| `check_acronym_casing`        | boolean | `true`  | Naming      | Acronyms stay uppercase in class names (`HTTPClientFactory`)                                       | all     |
+| `check_union_types`           | boolean | `true`  | Types       | Union types declared where multiple types are possible                                             | 8.0+    |
+| `check_intersection_types`    | boolean | `true`  | Types       | Intersection types for interface composition                                                       | 8.1+    |
+| `check_enum_methods`          | boolean | `true`  | Modern      | Enums with methods instead of class constants for finite sets                                      | 8.1+    |
+| `check_first_class_callables` | boolean | `true`  | Modern      | First-class callable syntax (`$obj->method(...)`)                                                  | 8.1+    |
+| `check_readonly_classes`      | boolean | `true`  | Modern      | Readonly classes for immutable data                                                                | 8.2+    |
+| `check_typed_constants`       | boolean | `true`  | Modern      | Typed class constants                                                                              | 8.3+    |
+| `check_override_attribute`    | boolean | `true`  | Modern      | `#[\Override]` attribute on overriding methods                                                     | 8.3+    |
+| `check_property_hooks`        | boolean | `true`  | Modern      | Property hooks for computed properties                                                             | 8.4+    |
+| `check_asymmetric_visibility` | boolean | `true`  | Modern      | Asymmetric visibility (`public-read protected-set`)                                                | 8.4+    |
+| `check_pipe_operator`         | boolean | `true`  | Modern      | Pipe operator (`\|>`) for function composition                                                     | 8.5+    |
+| `check_array_functions`       | boolean | `true`  | Performance | Use native array functions over manual loops                                                       | all     |
+| `check_string_functions`      | boolean | `true`  | Performance | Use native string functions over regex                                                             | all     |
+| `check_file_length`           | boolean | `true`  | Structure   | Files must not exceed `max_file_length` lines                                                      | all     |
+| `max_file_length`             | integer | `800`   | Structure   | Maximum allowed lines per file (enforced by `file_length_scanner.py`)                              | all     |
+| `check_max_arguments`         | boolean | `true`  | Structure   | Functions/methods must not exceed `max_arguments` declared parameters (`max_arguments_scanner.py`) | all     |
+| `max_arguments`               | integer | `5`     | Structure   | Maximum declared parameters per function/method (enforced by `max_arguments_scanner.py`)           | all     |
 
 > Rules not listed here (`declare(strict_types=1)`, return/parameter/property type declarations, nullable types, `void`/`never`, avoid `mixed`, constructor promotion, match expression, nullsafe operator, named arguments, attributes, enums, readonly properties, arrow functions, PSR-4 autoloading, PSR-12 coding style, camelCase methods, namespace usage, no `@` suppression, file upload validation) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-php-code-style/SUBSKILL.md` → "Always-on rules" for the full list.
 

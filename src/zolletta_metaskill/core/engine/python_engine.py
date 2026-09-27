@@ -181,7 +181,11 @@ class PythonEngine:
 
     def _build_method(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> MethodInfo:
         """Build a :class:`MethodInfo` from a function definition node."""
-        params = [arg.arg for arg in node.args.args if arg.arg not in ("self", "cls")]
+        params = [
+            arg.arg
+            for arg in (*node.args.posonlyargs, *node.args.args, *node.args.kwonlyargs)
+            if arg.arg not in ("self", "cls")
+        ]
         is_static = any(
             isinstance(dec, ast.Name) and dec.id == "staticmethod" for dec in node.decorator_list
         )
