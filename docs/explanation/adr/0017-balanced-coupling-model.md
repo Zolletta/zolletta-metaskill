@@ -29,9 +29,9 @@ cannot be copied.
 
 ## Decision
 
-Adopt the Balanced Coupling model in the `patterns` review, split the
-repo's standard way — deterministic triage via script, verdict via
-judgment:
+Adopt the Balanced Coupling model in the patterns review as deterministic triage (integration_graph_scanner.py emits internal edges) plus a judgment pass that flags only unbalanced-and-volatile integrations.
+
+Details:
 
 - **New scanner** `integration_graph_scanner.py` (patterns/general) —
   language-agnostic via `LanguageEngine`/`ModuleInfo.imports`, following
