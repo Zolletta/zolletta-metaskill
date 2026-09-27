@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v3.2.0 (2026-09-27)
+
+### Code Style
+
+- Document selected/ignored ruff rules in pyproject.toml
+  ([#61](https://github.com/Zolletta/zolletta-metaskill/pull/61),
+  [`9b2448d`](https://github.com/Zolletta/zolletta-metaskill/commit/9b2448d7e14beb4aff2d406996c115dc6de114bb))
+
+### Features
+
+- **code-style**: Add suppress-with-reason convention for Any/mixed
+  ([#61](https://github.com/Zolletta/zolletta-metaskill/pull/61),
+  [`9b2448d`](https://github.com/Zolletta/zolletta-metaskill/commit/9b2448d7e14beb4aff2d406996c115dc6de114bb))
+
+
 ## v3.1.0 (2026-09-26)
 
 ### Features
