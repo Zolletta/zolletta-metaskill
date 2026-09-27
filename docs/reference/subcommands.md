@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [help, setup, review, patterns, documentor, adr-distiller, python-*, php-*]
+skills: [help, version, setup, review, patterns, documentor, adr-distiller, python-*, php-*]
 ---
 
 # Subcommands Reference
@@ -40,6 +40,6 @@ This handler applies to every subcommand that uses tokensave (`patterns`, `docum
 
 When invoked as `/zolletta-metaskill <subcommand>`:
 
-1. If no subcommand is given, or the subcommand is `help`, read `skills/zolletta-metaskill-help/SUBSKILL.md` and execute its instructions (display the help table). Stop — do not run the setup guard or any other subcommand.
+1. If no subcommand is given, or the subcommand is `help`, read `skills/zolletta-metaskill-help/SUBSKILL.md` and execute its instructions (display the help table). If the subcommand is `version`, read `skills/zolletta-metaskill-version/SUBSKILL.md` and execute its instructions (print the installed version). Both are purely informational — stop, do not run the setup guard or any other subcommand.
 2. Run the **setup guard** — ensure `.zolletta-metaskill/settings.json` exists.
 3. Read `skills/zolletta-metaskill-<subcommand>/SUBSKILL.md` and execute its instructions.

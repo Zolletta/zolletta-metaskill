@@ -13,7 +13,7 @@ A family of generic code review skills with specializations for
 - PHP
 - Others (Work in progress)
 
-Invoke with `/zolletta-metaskill <subcommand>` to run a specific review, `/zolletta-metaskill help` to list available subcommands, or `/zolletta-metaskill` with no argument to see the help table.
+Invoke with `/zolletta-metaskill <subcommand>` to run a specific review, `/zolletta-metaskill version` to print the installed version, `/zolletta-metaskill help` to list available subcommands, or `/zolletta-metaskill` with no argument to see the help table.
 
 All paths are relative to where this SKILL.md is found.
 
@@ -81,6 +81,6 @@ This handler applies to every subcommand that uses tokensave (`patterns`, `docum
 
 When invoked as `/zolletta-metaskill <subcommand>`:
 
-1. If no subcommand is given, does not exists, or the subcommand is `help`, read `skills/zolletta-metaskill-help/SUBSKILL.md` and execute its instructions (display the help table). Stop — do not run the setup guard or any other subcommand.
+1. If no subcommand is given, does not exist, or the subcommand is `help`, read `skills/zolletta-metaskill-help/SUBSKILL.md` and execute its instructions (display the help table). If the subcommand is `version`, read `skills/zolletta-metaskill-version/SUBSKILL.md` and execute its instructions (print the installed version). Both are purely informational. Stop — do not run the setup guard or any other subcommand.
 2. Run the **setup guard** (see above) — ensure `.zolletta-metaskill/settings.json` exists.
 3. Read `skills/zolletta-metaskill-<subcommand>/SUBSKILL.md` and execute its instructions.
