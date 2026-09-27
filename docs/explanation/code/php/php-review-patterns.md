@@ -436,3 +436,21 @@ readonly class GenericDataDTO {
 **Why this matters**: every property is readonly without listing `readonly` on each one — immutability is a class-level contract. See [PHP readonly classes](https://www.php.net/manual/en/language.oop5.readonly.php#language.oop5.readonly.readonly-class).
 
 > This is the PHP analogue of Python's `@dataclass(frozen=True)`. See [structural-conventions.md](../structural-conventions.md) → Value-Object Suffixes for the naming convention.
+
+## Suppress-with-Reason for `mixed`
+
+Default: use a specific type or union — `mixed` only when the value is genuinely dynamic (decoded JSON, plugin payloads). When a specific type would add noise without value, `mixed` is an acceptable **judgment call** — but the PHPStan/Psalm diagnostic it produces must be suppressed **with an identifier and a reason**:
+
+```php
+/** @phpstan-ignore-next-line decoded JSON payload — typed at the consumer boundary */
+public function getPayload(): mixed { ... }
+
+// or Psalm:
+/** @psalm-suppress MixedReturnStatement decoded JSON payload — typed at the consumer boundary */
+public function getPayload(): mixed { ... }
+```
+
+PHPStan also supports the inline form with a dotted error identifier (`// @phpstan-ignore argument.type <reason>`); `@phpstan-ignore-next-line` and `@phpstan-ignore-line` have no identifier slot — the reason alone suffices. The reason must explain *why* the type is deliberately broad, not just that it is. Suppressions missing the identifier or the reason are findings under rule #7 — `suppression_reason_scanner.py` flags them deterministically.
+
+**Why this matters**: Fowler's *Maintainability sensors for coding agents* ("Guidance for self-correction") — the sensor fires, the agent makes the judgment call, and when it suppresses it must document why. A reasonless suppression hides intent; a reasoned one records it for the next agent.
+

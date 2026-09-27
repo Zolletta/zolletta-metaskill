@@ -39,6 +39,8 @@ Private functions and test functions are exempt from the documentation requireme
 
 All public APIs must have type annotations. The review uses the project's configured type checker to verify this. Missing annotations on public functions, methods, and classes are reported as findings.
 
+A deliberately broad type (`Any` in Python, `mixed` in PHP) is an acceptable judgment call when a specific type would add noise without value — but the checker diagnostic it produces must be suppressed with the specific error code/identifier **and** a reason explaining why the type is broad. `suppression_reason_scanner.py` flags suppressions missing the code or the reason as findings.
+
 ### Formatting
 
 The review runs the project's configured linter and formatter in check-only mode. Line length and target version are read from the project configuration (not hardcoded). Import grouping (stdlib, third-party, local) is enforced when the linter's import-sorting rule is selected.

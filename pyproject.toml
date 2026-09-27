@@ -51,10 +51,36 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "W", "F", "I", "B", "C4", "D", "UP", "T20", "SIM"]
+# Selected rule families:
+#   E, W    — pycodestyle errors and warnings (whitespace, line length via E501, ...)
+#   F       — pyflakes (unused imports/variables, undefined names, ...)
+#   I       — isort (import sorting; see [tool.ruff.lint.isort])
+#   B       — flake8-bugbear (likely bugs: mutable defaults, unused loop vars, ...)
+#   C4      — flake8-comprehensions (unnecessary list/dict/set calls, ...)
+#   D       — pydocstyle (docstring presence and formatting)
+#   UP      — pyupgrade (modern syntax for target-version py312)
+#   T20     — flake8-print (no print/pprint in library code)
+#   SIM     — flake8-simplify (collapsible ifs, redundant code, ...)
+#   PGH003  — blanket `# type: ignore` must name the ignored error code (issue #41)
+#   PGH004  — blanket `# noqa` must name the ignored rule codes (issue #41)
+select = ["E", "W", "F", "I", "B", "C4", "D", "UP", "T20", "SIM", "PGH003", "PGH004"]
+
+# Suppressed rules:
+#   B008  — function call in default argument; Typer/argparse defaults legitimately
+#           call functions (e.g. `Option(default_factory=...)`-style patterns)
+#   T201  — `print` allowed: these files ARE the CLI entry points, stdout is the
+#           interface (reporters/scanners print their reports)
+#   D104  — missing docstring in `__init__.py`; package init files are empty
+#   D107  — missing docstring in `__init__`; constructor docs live on the class
+#   D203  — one blank line before class docstring (conflicts with D211, we keep D211)
+#   D213  — multi-line docstring summary starts at second line (conflicts with D212,
+#           we keep D212-style summaries on the first line)
 ignore = ["B008", "T201", "D104", "D107", "D203", "D213"]
 
 [tool.ruff.lint.per-file-ignores]
+# Tests are exempt from docstring rules (D100 module / D101 class / D102 method /
+# D103 function / D105 magic-method docstrings) and from B010 (setattr with a
+# constant attribute name — used to poke internals under test).
 "tests/**/*.py" = ["D100", "D101", "D102", "D103", "D105", "B010"]
 
 [tool.ruff.lint.isort]
