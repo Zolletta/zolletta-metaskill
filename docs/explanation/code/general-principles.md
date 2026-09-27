@@ -439,6 +439,12 @@ def process_order(order: Order) -> Result:
 
 **Why this matters**: focused functions are easier to test, name, and reuse. See [Clean Code — Function Size](https://wiki.c2.com/?FunctionSize).
 
+Deterministic enforcement: `function_length_scanner.py` flags functions spanning more than the configured `max_function_length` (default `100` lines — deliberately lenient because lines are not statements). A long function serving one purpose is not necessarily a finding — the sensor flags it for review.
+
+```bash
+python3 src/zolletta_metaskill/code_style/general/function_length_scanner.py
+```
+
 ## Dependency Injection
 
 Pass dependencies through constructors for testability. This is the mechanism that implements DIP.

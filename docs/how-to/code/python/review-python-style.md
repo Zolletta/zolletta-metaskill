@@ -52,6 +52,10 @@ When `check_file_length` is `true`, the skill runs `src/zolletta_metaskill/code_
 
 When `check_max_arguments` is `true`, the skill runs `src/zolletta_metaskill/code_style/general/max_arguments_scanner.py` to flag functions and methods declaring more than `max_arguments` parameters (default: `5`, matching ruff `PLR0913` / `max-args`; setup seeds the threshold from `python.tools.ruff.max_args` when configured). Counting includes positional-only, positional-or-keyword, and keyword-only parameters; `self`, `cls`, `*args`, and `**kwargs` are excluded. Long parameter lists usually signal a missing abstraction — extract a parameter object or a small collaborator.
 
+### Function length
+
+When `check_function_length` is `true`, the skill runs `src/zolletta_metaskill/code_style/general/function_length_scanner.py` to flag functions and methods spanning more than `max_function_length` lines (default: `100`). The metric is a line span — signature through end of body, decorators excluded — not a statement count, so it is intentionally lenient. A long function serving one purpose is not necessarily a finding; the usual fix is extracting a collaborator. If the project's ruff config enables `PLR0915`, `ruff check` reports statement-count violations as well — `python.tools.ruff.max_statements` surfaces that threshold.
+
 ## Always-on vs configurable rules
 
 The rules above are tagged **always-on** (cannot be disabled) or **configurable** (toggled via `settings.json`, all default to enabled).
@@ -80,12 +84,14 @@ Configure rule toggles by editing the `python.code_style` object in `.zolletta-m
     "max_file_length": 800,
     "check_max_arguments": true,
     "max_arguments": 5,
+    "check_function_length": true,
+    "max_function_length": 100,
     "vulture_min_confidence": 80
   }
 }
 ```
 
-For example, to disable the one-class-per-file check and lower the vulture confidence threshold to 60, set `check_one_class_per_file` to `false` and `vulture_min_confidence` to `60`. To disable the file-length check entirely, set `check_file_length` to `false`; to keep it but allow longer files, raise `max_file_length`. The same pattern applies to the max-arguments check via `check_max_arguments` / `max_arguments`. The always-on rules have no corresponding keys in `settings.json` and cannot be disabled.
+For example, to disable the one-class-per-file check and lower the vulture confidence threshold to 60, set `check_one_class_per_file` to `false` and `vulture_min_confidence` to `60`. To disable the file-length check entirely, set `check_file_length` to `false`; to keep it but allow longer files, raise `max_file_length`. The same pattern applies to the max-arguments check via `check_max_arguments` / `max_arguments` and the function-length check via `check_function_length` / `max_function_length`. The always-on rules have no corresponding keys in `settings.json` and cannot be disabled.
 
 ## See also
 

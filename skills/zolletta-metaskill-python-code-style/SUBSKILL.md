@@ -12,7 +12,7 @@ Consistent code style and clear documentation make codebases maintainable and co
 
 > **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../../docs/reference/code/review-mode.md`](../../docs/reference/code/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
 
-> **Execution protocol**: when running a review, follow [`../../docs/reference/code/scripts-first-protocol.md`](../../docs/reference/code/scripts-first-protocol.md) — batch-run the scripts listed in the per-subcommand table (ruff, ty, mypy, vulture, acronym_casing_scanner, unused_all_exports_scanner, one_class_per_file_scanner, file_length_scanner, max_arguments_scanner, suppression_reason_scanner), persist their output to `cache/`, assemble deterministic report sections from cached output, then run only the judgment pass items (vulture false-positive review for dynamically-accessed methods). Write your report to `reports/python-code-style.md`. Do not re-read source files the scripts already parsed.
+> **Execution protocol**: when running a review, follow [`../../docs/reference/code/scripts-first-protocol.md`](../../docs/reference/code/scripts-first-protocol.md) — batch-run the scripts listed in the per-subcommand table (ruff, ty, mypy, vulture, acronym_casing_scanner, unused_all_exports_scanner, one_class_per_file_scanner, file_length_scanner, function_length_scanner, max_arguments_scanner, suppression_reason_scanner), persist their output to `cache/`, assemble deterministic report sections from cached output, then run only the judgment pass items (vulture false-positive review for dynamically-accessed methods). Write your report to `reports/python-code-style.md`. Do not re-read source files the scripts already parsed.
 
 ## When to Use This Skill
 
@@ -37,19 +37,20 @@ Consistent code style and clear documentation make codebases maintainable and co
 
 ## Table 2 — Configurable settings (stored in `settings.json` under `python.code_style`)
 
-| #  | Area       | Name                                                      | Key                                    | Default       |
-|----|------------|-----------------------------------------------------------|----------------------------------------|---------------|
-| 3  | Naming     | Acronyms stay uppercase in class names                    | `check_acronym_casing`                 | `true`        |
-| 7  | Imports    | Absolute imports only, no relative imports                | `check_no_relative_imports`            | `true`        |
-| 8  | Structure  | One class per file                                        | `check_one_class_per_file`             | `true`        |
-| 9  | Structure  | Filename matches class name                               | `check_filename_matches_class`         | `true`        |
-| 12 | Docstrings | Docstrings required on public classes, methods, functions | `check_public_docstrings`              | `true`        |
-| 14 | Docstrings | No type repetition in docstring Args/Returns              | `check_docstring_no_type_repeat`       | `true`        |
-| 18 | Docstrings | Skip docstrings for obvious one-line functions            | `check_skip_obvious_docstrings`        | `true`        |
-| 20 | Formatting | Line length from project config                           | `check_line_length`                    | `true`        |
-| 21 | Structure  | File length limit                                         | `check_file_length`, `max_file_length` | `true`, `800` |
-| 22 | Dead code  | Vulture minimum confidence + unused `__all__` exports     | `vulture_min_confidence`               | `80`          |
-| 25 | Structure  | Max arguments per function/method                         | `check_max_arguments`, `max_arguments` | `true`, `5`   |
+| #  | Area       | Name                                                      | Key                                            | Default       |
+|----|------------|-----------------------------------------------------------|------------------------------------------------|---------------|
+| 3  | Naming     | Acronyms stay uppercase in class names                    | `check_acronym_casing`                         | `true`        |
+| 7  | Imports    | Absolute imports only, no relative imports                | `check_no_relative_imports`                    | `true`        |
+| 8  | Structure  | One class per file                                        | `check_one_class_per_file`                     | `true`        |
+| 9  | Structure  | Filename matches class name                               | `check_filename_matches_class`                 | `true`        |
+| 12 | Docstrings | Docstrings required on public classes, methods, functions | `check_public_docstrings`                      | `true`        |
+| 14 | Docstrings | No type repetition in docstring Args/Returns              | `check_docstring_no_type_repeat`               | `true`        |
+| 18 | Docstrings | Skip docstrings for obvious one-line functions            | `check_skip_obvious_docstrings`                | `true`        |
+| 20 | Formatting | Line length from project config                           | `check_line_length`                            | `true`        |
+| 21 | Structure  | File length limit                                         | `check_file_length`, `max_file_length`         | `true`, `800` |
+| 22 | Dead code  | Vulture minimum confidence + unused `__all__` exports     | `vulture_min_confidence`                       | `80`          |
+| 24 | Structure  | Function length limit                                     | `check_function_length`, `max_function_length` | `true`, `100` |
+| 25 | Structure  | Max arguments per function/method                         | `check_max_arguments`, `max_arguments`         | `true`, `5`   |
 
 ## Detailed rule explanations
 
@@ -178,6 +179,18 @@ python3 ../../src/zolletta_metaskill/code_style/general/file_length_scanner.py
 ```
 
 > The scanner is the single source of truth for this rule. Do not manually flag files that the scanner doesn't flag — the line count against the configured threshold is the objective criterion.
+
+**#24 — Function length limit** *(configurable: `check_function_length`, `max_function_length`)*
+
+Functions and methods must not span more than `max_function_length` lines (default: `100`, read from `python.code_style.max_function_length` in `settings.json`). The metric is a line span — signature through end of body, docstring included, decorators excluded — **not** a statement count: comments and blank lines count too, which is why the default is lenient (ruff `PLR0915` measures statements with a built-in default of 50). A long function serving one purpose is not necessarily a finding — the sensor flags it for review; the usual fix is extracting a collaborator. If the project's ruff config enables `PLR0915`, `ruff check` reports statement-count violations as well (`python.tools.ruff.max_statements` surfaces that threshold) — report overlapping findings once under this rule.
+
+- **Enforcement**: `function_length_scanner.py` from `../../src/zolletta_metaskill/code_style/general/` (deterministic, language-agnostic).
+
+```bash
+python3 ../../src/zolletta_metaskill/code_style/general/function_length_scanner.py
+```
+
+> The scanner is the single source of truth for this rule. Do not manually flag functions that the scanner doesn't flag — the line span against the configured threshold is the objective criterion.
 
 **#25 — Max arguments limit** *(configurable: `check_max_arguments`, `max_arguments`)*
 

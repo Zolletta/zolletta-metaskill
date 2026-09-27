@@ -65,22 +65,23 @@ Review PHP code for type safety, modern PHP feature adoption, PSR-12 compliance,
 
 ## Table 2 — Configurable rules (stored in `settings.json` under `php.code_style`)
 
-| #  | Area      | Name                               | Key                                    | Default       | Min PHP |
-|----|-----------|------------------------------------|----------------------------------------|---------------|---------|
-| 22 | Types     | Union types                        | `check_union_types`                    | `true`        | 8.0+    |
-| 23 | Types     | Intersection types                 | `check_intersection_types`             | `true`        | 8.1+    |
-| 24 | Modern    | Enums with methods                 | `check_enum_methods`                   | `true`        | 8.1+    |
-| 25 | Modern    | First-class callable syntax        | `check_first_class_callables`          | `true`        | 8.1+    |
-| 26 | Modern    | Readonly classes                   | `check_readonly_classes`               | `true`        | 8.2+    |
-| 27 | Modern    | Typed class constants              | `check_typed_constants`                | `true`        | 8.3+    |
-| 28 | Modern    | `#[\Override]` attribute           | `check_override_attribute`             | `true`        | 8.3+    |
-| 29 | Modern    | Property hooks                     | `check_property_hooks`                 | `true`        | 8.4+    |
-| 30 | Modern    | Asymmetric visibility              | `check_asymmetric_visibility`          | `true`        | 8.4+    |
-| 31 | Modern    | Pipe operator                      | `check_pipe_operator`                  | `true`        | 8.5+    |
-| 32 | Perf      | Native array functions over loops  | `check_array_functions`                | `true`        | all     |
-| 33 | Perf      | Native string functions over regex | `check_string_functions`               | `true`        | all     |
-| 34 | Structure | File length limit                  | `check_file_length`, `max_file_length` | `true`, `800` | all     |
-| 37 | Structure | Max arguments limit                | `check_max_arguments`, `max_arguments` | `true`, `5`   | all     |
+| #  | Area      | Name                               | Key                                            | Default       | Min PHP |
+|----|-----------|------------------------------------|------------------------------------------------|---------------|---------|
+| 22 | Types     | Union types                        | `check_union_types`                            | `true`        | 8.0+    |
+| 23 | Types     | Intersection types                 | `check_intersection_types`                     | `true`        | 8.1+    |
+| 24 | Modern    | Enums with methods                 | `check_enum_methods`                           | `true`        | 8.1+    |
+| 25 | Modern    | First-class callable syntax        | `check_first_class_callables`                  | `true`        | 8.1+    |
+| 26 | Modern    | Readonly classes                   | `check_readonly_classes`                       | `true`        | 8.2+    |
+| 27 | Modern    | Typed class constants              | `check_typed_constants`                        | `true`        | 8.3+    |
+| 28 | Modern    | `#[\Override]` attribute           | `check_override_attribute`                     | `true`        | 8.3+    |
+| 29 | Modern    | Property hooks                     | `check_property_hooks`                         | `true`        | 8.4+    |
+| 30 | Modern    | Asymmetric visibility              | `check_asymmetric_visibility`                  | `true`        | 8.4+    |
+| 31 | Modern    | Pipe operator                      | `check_pipe_operator`                          | `true`        | 8.5+    |
+| 32 | Perf      | Native array functions over loops  | `check_array_functions`                        | `true`        | all     |
+| 33 | Perf      | Native string functions over regex | `check_string_functions`                       | `true`        | all     |
+| 34 | Structure | File length limit                  | `check_file_length`, `max_file_length`         | `true`, `800` | all     |
+| 36 | Structure | Function length limit              | `check_function_length`, `max_function_length` | `true`, `100` | all     |
+| 37 | Structure | Max arguments limit                | `check_max_arguments`, `max_arguments`         | `true`, `5`   | all     |
 
 ## Version gating
 
@@ -184,12 +185,18 @@ Write the report to `<runs_dir>/<timestamp>/reports/php-code-style.md` using the
 - **#32 Array functions** — use native array functions (`array_map`, `array_filter`, `array_column`, `array_reduce`) instead of manual `foreach` loops when transforming or filtering arrays.
 - **#33 String functions** — use native string functions (`str_contains`, `str_starts_with`, `str_ends_with`, `strpos`) instead of regex (`preg_match`) when the pattern is a literal.
 
-### Structure (#34, #37)
+### Structure (#34, #36, #37)
 
 - **#34 File length limit** — source files must not exceed `max_file_length` lines (default: `800`, read from `php.code_style.max_file_length` in `settings.json`). File length is one of the low-hanging-fruit maintainability sensors for catching AI failure modes (Martin Fowler — *Maintainability sensors for coding agents*): overly long files usually signal a class doing too much. Some files legitimately exceed the limit (generated code, large enums) — raise `max_file_length` for the project to exempt them. Enforced by the language-agnostic `file_length_scanner.py`:
 
 ```bash
 python3 ../../src/zolletta_metaskill/code_style/general/file_length_scanner.py
+```
+
+- **#36 Function length limit** — functions and methods must not span more than `max_function_length` lines (default: `100`, read from `php.code_style.max_function_length` in `settings.json`). The metric is a line span (signature through end of body, docblock excluded) — not a statement count. PHPStan and Psalm have no built-in function-length rule, so the tree-sitter-backed `function_length_scanner.py` is the deterministic check (it requires the optional `tree-sitter-php` dependency; without it `.php` files warn and are skipped). A long function serving one purpose is not necessarily a finding — the sensor flags it for review; the usual fix is extracting a collaborator:
+
+```bash
+python3 ../../src/zolletta_metaskill/code_style/general/function_length_scanner.py
 ```
 
 - **#37 Max arguments limit** — functions and methods must not declare more than `max_arguments` parameters (default: `5`, read from `php.code_style.max_arguments` in `settings.json`). Variadic parameters (`...$args`) do not count toward the limit — the semantics match ruff `PLR0913` (`self`/`cls`, `*args`, `**kwargs` excluded). Long parameter lists are a classic AI-generation smell — the fix is usually a parameter object or a small collaborator. Enforced by the language-agnostic `max_arguments_scanner.py`:
