@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v3.5.0 (2026-09-27)
+
+### Features
+
+- **code-style**: Add cyclomatic-complexity sensor (#45)
+  ([#65](https://github.com/Zolletta/zolletta-metaskill/pull/65),
+  [`04c417e`](https://github.com/Zolletta/zolletta-metaskill/commit/04c417e93a278745ea94757100894591d2905d45))
+
+
 ## v3.4.0 (2026-09-27)
 
 ### Features
