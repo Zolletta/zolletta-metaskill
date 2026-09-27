@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v3.4.0 (2026-09-27)
+
+### Features
+
+- **code-style**: Add function-length sensor
+  ([#64](https://github.com/Zolletta/zolletta-metaskill/pull/64),
+  [`96e3e20`](https://github.com/Zolletta/zolletta-metaskill/commit/96e3e20efd719d43944be2b6a49436859f34a059))
+
+### Refactoring
+
+- **tests**: Move helpers into the test class
+  ([#64](https://github.com/Zolletta/zolletta-metaskill/pull/64),
+  [`96e3e20`](https://github.com/Zolletta/zolletta-metaskill/commit/96e3e20efd719d43944be2b6a49436859f34a059))
+
+
 ## v3.3.0 (2026-09-27)
 
 ### Features
