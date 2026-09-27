@@ -65,21 +65,21 @@ Review PHP code for type safety, modern PHP feature adoption, PSR-12 compliance,
 
 ## Table 2 — Configurable rules (stored in `settings.json` under `php.code_style`)
 
-| #  | Area   | Name                               | Key                           | Default | Min PHP |
-|----|--------|------------------------------------|-------------------------------|---------|---------|
-| 22 | Types  | Union types                        | `check_union_types`           | `true`  | 8.0+    |
-| 23 | Types  | Intersection types                 | `check_intersection_types`    | `true`  | 8.1+    |
-| 24 | Modern | Enums with methods                 | `check_enum_methods`          | `true`  | 8.1+    |
-| 25 | Modern | First-class callable syntax        | `check_first_class_callables` | `true`  | 8.1+    |
-| 26 | Modern | Readonly classes                   | `check_readonly_classes`      | `true`  | 8.2+    |
-| 27 | Modern | Typed class constants              | `check_typed_constants`       | `true`  | 8.3+    |
-| 28 | Modern | `#[\Override]` attribute           | `check_override_attribute`    | `true`  | 8.3+    |
-| 29 | Modern | Property hooks                     | `check_property_hooks`        | `true`  | 8.4+    |
-| 30 | Modern | Asymmetric visibility              | `check_asymmetric_visibility` | `true`  | 8.4+    |
-| 31 | Modern | Pipe operator                      | `check_pipe_operator`         | `true`  | 8.5+    |
-| 32 | Perf   | Native array functions over loops  | `check_array_functions`       | `true`  | all     |
-| 33 | Perf   | Native string functions over regex | `check_string_functions`      | `true`  | all     |
-| 34 | Structure | File length limit               | `check_file_length`, `max_file_length` | `true`, `800` | all |
+| #  | Area      | Name                               | Key                                    | Default       | Min PHP |
+|----|-----------|------------------------------------|----------------------------------------|---------------|---------|
+| 22 | Types     | Union types                        | `check_union_types`                    | `true`        | 8.0+    |
+| 23 | Types     | Intersection types                 | `check_intersection_types`             | `true`        | 8.1+    |
+| 24 | Modern    | Enums with methods                 | `check_enum_methods`                   | `true`        | 8.1+    |
+| 25 | Modern    | First-class callable syntax        | `check_first_class_callables`          | `true`        | 8.1+    |
+| 26 | Modern    | Readonly classes                   | `check_readonly_classes`               | `true`        | 8.2+    |
+| 27 | Modern    | Typed class constants              | `check_typed_constants`                | `true`        | 8.3+    |
+| 28 | Modern    | `#[\Override]` attribute           | `check_override_attribute`             | `true`        | 8.3+    |
+| 29 | Modern    | Property hooks                     | `check_property_hooks`                 | `true`        | 8.4+    |
+| 30 | Modern    | Asymmetric visibility              | `check_asymmetric_visibility`          | `true`        | 8.4+    |
+| 31 | Modern    | Pipe operator                      | `check_pipe_operator`                  | `true`        | 8.5+    |
+| 32 | Perf      | Native array functions over loops  | `check_array_functions`                | `true`        | all     |
+| 33 | Perf      | Native string functions over regex | `check_string_functions`               | `true`        | all     |
+| 34 | Structure | File length limit                  | `check_file_length`, `max_file_length` | `true`, `800` | all     |
 
 ## Version gating
 
@@ -137,7 +137,14 @@ Write the report to `<runs_dir>/<timestamp>/reports/php-code-style.md` using the
 - **#4 Property types** — every class property must have a type declaration (PHP 7.4+ typed properties).
 - **#5 Nullable types** — use `?Type` explicitly instead of `Type|null` in unions for single nullable types.
 - **#6 `void`/`never`** — use `void` for methods that return nothing, `never` for methods that never return (throw or exit). PHP 8.1+ for `never`.
-- **#7 Avoid `mixed`** — when a specific type or union is possible, use it instead of `mixed`. `mixed` is acceptable only for genuinely dynamic values (e.g. decoded JSON).
+- **#7 Avoid `mixed`** — when a specific type or union is possible, use it instead of `mixed`. `mixed` is acceptable only for genuinely dynamic values (e.g. decoded JSON). Judgment call: when a specific type would add noise without value, `mixed` may be kept if the resulting PHPStan/Psalm diagnostic is suppressed with an identifier **and** a reason explaining why the type is deliberately broad:
+  ```php
+  /** @phpstan-ignore-next-line decoded JSON payload — typed at the consumer boundary */
+  public function getPayload(): mixed { ... }
+  // or Psalm:
+  /** @psalm-suppress MixedReturnStatement decoded JSON payload — typed at the consumer boundary */
+  ```
+  `suppression_reason_scanner.py` flags suppressions missing an identifier or a reason — those are findings under this rule; do not manually flag suppressions the scanner does not flag.
 - **#22 Union types** — prefer union types (`A|B`) over `mixed` when the value can be one of several known types. PHP 8.0+.
 - **#23 Intersection types** — use intersection types (`A&B`) when a value must implement multiple interfaces. PHP 8.1+.
 

@@ -72,6 +72,13 @@ uv run mypy .
 - Exception: in tests that deliberately exercise edge cases by passing invalid values (e.g. `None` where a non-nullable type is expected, reassigning dunder methods on a `Mock`, or `json.load` returning `Any`), `# type: ignore[...]` is allowed. In these cases:
   1. Do not change the implementation method signatures to accommodate the test — the type mismatch is intentional.
   2. Add a comment on the line above explaining _why_ the ignore is necessary (what edge case is being tested).
+- Exception (judgment call): when a specific type would add noise without value — generic plugin data, truly dynamic payloads — `Any` is acceptable. If a checker diagnostic results, suppress it with `# type: ignore[<code>]` plus a reason on the same line or the line above:
+
+  ```python
+  return payload  # type: ignore[no-any-return] — plugin payload is genuinely dynamic; typed at the consumer boundary
+  ```
+
+  The reason must explain *why* the type is deliberately broad, not just that it is. Never a blanket `# type: ignore` — the missing `[<code>]` and the missing reason are flagged deterministically by `suppression_reason_scanner.py` (and ruff `PGH003`), and are findings under rule #19.
 
   3.6. **ty inherits all mypy rules.** Any rule above applies identically when using `ty` as the type checker.
 

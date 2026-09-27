@@ -85,6 +85,27 @@ Violations are report-only — the scanner exits 0 whether or not any are found.
 
 Git-ignored files are never scanned; files with extensions not belonging to the scanned language(s) are skipped as well.
 
+### suppression_reason_scanner.py
+
+Flags type-checker suppressions that lack an error code or a reason — the deterministic half of the "suppress-with-reason" convention (Fowler — *Maintainability sensors for coding agents*, "Guidance for self-correction"; issue #41). A suppressed diagnostic on a deliberately broad type is an acceptable judgment call only when the suppression carries the specific checker code/identifier **and** a reason explaining why the type is broad.
+
+Per-language checks:
+
+- **Python** — `# type: ignore` comments (real comments only, via `tokenize`): `missing error code` when no `[<code>]` list follows (ruff `PGH003` equivalent); `missing reason` when no free text follows on the same line and the line above is not a `#` comment.
+- **PHP** — `@phpstan-ignore`, `@phpstan-ignore-line`, `@phpstan-ignore-next-line`, `@psalm-suppress` inside `//`, `/* */`, `/** */` comments: `missing identifier` where the slot exists but is empty (`@phpstan-ignore-next-line` has none — reason only); `missing reason` when no free text follows (docblock `*` continuation lines count).
+
+Languages and extensions resolve from `.zolletta-metaskill/settings.json` via the engine registry — only `.py`/`.php` are scanned; with no usable language the run reports SKIPPED. Scan roots come from `python.paths.source` / `php.autoload.psr-4` (`src` fallback); git-ignored files are skipped.
+
+```bash
+python3 src/zolletta_metaskill/code_style/general/suppression_reason_scanner.py [--json]
+```
+
+| Option   | Default | Description                    |
+|----------|---------|--------------------------------|
+| `--json` | off     | Output as JSON instead of text |
+
+Violations are report-only — the scanner exits 0 whether or not any are found; 1 only when no configured source directory exists on disk.
+
 ### test_structure_scanner.py
 
 Checks that the test directory structure mirrors the source directory structure. Outputs a markdown report with five tables:

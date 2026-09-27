@@ -12,7 +12,7 @@ Consistent code style and clear documentation make codebases maintainable and co
 
 > **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../../docs/reference/code/review-mode.md`](../../docs/reference/code/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
 
-> **Execution protocol**: when running a review, follow [`../../docs/reference/code/scripts-first-protocol.md`](../../docs/reference/code/scripts-first-protocol.md) — batch-run the scripts listed in the per-subcommand table (ruff, ty, mypy, vulture, acronym_casing_scanner, unused_all_exports_scanner, one_class_per_file_scanner, file_length_scanner), persist their output to `cache/`, assemble deterministic report sections from cached output, then run only the judgment pass items (vulture false-positive review for dynamically-accessed methods). Write your report to `reports/python-code-style.md`. Do not re-read source files the scripts already parsed.
+> **Execution protocol**: when running a review, follow [`../../docs/reference/code/scripts-first-protocol.md`](../../docs/reference/code/scripts-first-protocol.md) — batch-run the scripts listed in the per-subcommand table (ruff, ty, mypy, vulture, acronym_casing_scanner, unused_all_exports_scanner, one_class_per_file_scanner, file_length_scanner, suppression_reason_scanner), persist their output to `cache/`, assemble deterministic report sections from cached output, then run only the judgment pass items (vulture false-positive review for dynamically-accessed methods). Write your report to `reports/python-code-style.md`. Do not re-read source files the scripts already parsed.
 
 ## When to Use This Skill
 
@@ -247,6 +247,8 @@ One-line functions where the name and signature are self-explanatory do not need
 **#19 — Type hints required for all public APIs** *(always-on)*
 
 All public classes, methods, and functions must include type annotations for parameters and return types. Enforcement is via the available type checkers with `disallow_untyped_defs` or equivalent, plus manual review for the public vs. private distinction. Run `ty` if `python.tools.ty.available` is `true` and `mypy` if `python.tools.mypy.available` is `true` — when both are available, both run. If neither is available, type checking is skipped.
+
+Judgment call: `Any` is acceptable when a specific type would add noise without value (generic plugin data, truly dynamic payloads). When a checker diagnostic results, the suppression must carry the specific error code and a reason explaining why the type is deliberately broad — per `docs/reference/code/python/python-code-style.md` §3.5. `suppression_reason_scanner.py` is the single source of truth for missing codes/reasons — do not manually flag suppressions it does not flag.
 
 ### Formatting
 

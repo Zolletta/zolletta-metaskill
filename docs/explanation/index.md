@@ -25,10 +25,10 @@ SOLID, structural conventions, error handling, performance, and security.
 
 Strategy autodiscovery, Protocol vs ABC, interface vs abstract, traits.
 
-| Document                                                        | Description                                           |
-|-----------------------------------------------------------------|-------------------------------------------------------|
-| [Python review patterns](code/python/python-review-patterns.md) | Strategy autodiscovery, Protocol vs ABC               |
-| [PHP review patterns](code/php/php-review-patterns.md)          | Strategy autodiscovery, interface vs abstract, traits |
+| Document                                                        | Description                                                                    |
+|-----------------------------------------------------------------|--------------------------------------------------------------------------------|
+| [Python review patterns](code/python/python-review-patterns.md) | Strategy autodiscovery, Protocol vs ABC                                        |
+| [PHP review patterns](code/php/php-review-patterns.md)          | Strategy autodiscovery, interface vs abstract, traits, suppression-with-reason |
 
 ## Documentation principles
 
@@ -56,7 +56,7 @@ Design decisions and their rationale, captured as numbered ADRs.
 | [ADR-0005 Parallel subagents](adr/0005-review-orchestrator-with-parallel-subagents.md) | Review orchestrator with parallel subagents       |
 | [ADR-0006 Setup guard](adr/0006-setup-guard-pattern.md)                                | Setup guard pattern for settings staleness        |
 | [ADR-0007 Language-neutral engine](adr/0007-language-neutral-engine-protocol.md)       | LanguageEngine protocol with ModuleInfo model     |
-| [ADR-0008 Skills directory](adr/0008-skills-directory-grouping.md)                     | Sub-skills grouped under skills/ directory     |
+| [ADR-0008 Skills directory](adr/0008-skills-directory-grouping.md)                     | Sub-skills grouped under skills/ directory        |
 | [ADR-0009 Python scripts](adr/0009-inline-shell-replaced-with-python-scripts.md)       | Inline shell replaced by testable Python scripts  |
 | [ADR-0010 ADR distiller](adr/0010-add-adr-distiller.md)                                | ADR distiller for extracting accepted directives  |
 | [ADR-0011 No dependency inspector](adr/0011-skip-external-dependency-inspector.md)     | Skip external dependency inspector tool           |

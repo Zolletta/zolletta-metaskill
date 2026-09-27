@@ -55,6 +55,7 @@ Short description definitions of the patterns and anti-patterns from [Augmented 
 | "No borderline — emit or suppress, never hedge"       | Active Partner                      | Tell Me a Lie, AI Slop                    |
 | "Reason to change" test before God class verdict      | Active Partner                      | Unvalidated Leaps, Perfect Recall Fallacy |
 | Coverage cross-check before "missing tests" finding   | —                                   | Unvalidated Leaps                         |
+| Suppress-with-reason convention for `Any`/`mixed`     | Active Partner                      | Silent Misalignment                       |
 | Review-mode (read-only, no fixes)                     | —                                   | Sunk Cost                                 |
 | Fresh timestamped run folder per review               | Happy to Delete                     | Sunk Cost                                 |
 | Previous review comparison (carry-forward)            | Feedback Loop                       | Flying Blind                              |
