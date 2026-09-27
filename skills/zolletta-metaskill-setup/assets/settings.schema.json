@@ -389,7 +389,8 @@
         "line_length",
         "target_version",
         "select",
-        "ignore"
+        "ignore",
+        "max_statements"
       ],
       "properties": {
         "available": {
@@ -414,6 +415,15 @@
           "items": {
             "type": "string"
           }
+        },
+        "max_statements": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "default": null,
+          "description": "Mirrors [tool.ruff.lint.pylint] max-statements (the PLR0915 threshold). null when unconfigured — ruff's built-in default is 50."
         }
       }
     },
@@ -571,6 +581,7 @@
         "check_skip_obvious_docstrings",
         "check_line_length",
         "check_file_length",
+        "check_function_length",
         "check_unused_all_exports",
         "docstring_strip_private",
         "docstring_strip_tests",
@@ -625,6 +636,10 @@
           "type": "boolean",
           "default": true
         },
+        "check_function_length": {
+          "type": "boolean",
+          "default": true
+        },
         "check_unused_all_exports": {
           "type": "boolean",
           "default": true
@@ -653,6 +668,12 @@
           "type": "integer",
           "minimum": 1,
           "default": 800
+        },
+        "max_function_length": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 100,
+          "description": "Maximum line span per function/method (enforced by function_length_scanner.py). Lines are not statements — see python.tools.ruff.max_statements for the PLR0915 alternative."
         },
         "vulture_min_confidence": {
           "type": "integer",
@@ -1105,7 +1126,9 @@
         "check_array_functions",
         "check_string_functions",
         "check_file_length",
-        "max_file_length"
+        "max_file_length",
+        "check_function_length",
+        "max_function_length"
       ],
       "properties": {
         "check_acronym_casing": {
@@ -1168,6 +1191,16 @@
           "type": "integer",
           "minimum": 1,
           "default": 800
+        },
+        "check_function_length": {
+          "type": "boolean",
+          "default": true
+        },
+        "max_function_length": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 100,
+          "description": "Maximum line span per function/method (enforced by function_length_scanner.py)."
         }
       }
     },
