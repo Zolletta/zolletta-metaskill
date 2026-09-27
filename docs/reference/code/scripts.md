@@ -108,7 +108,7 @@ Violations are report-only — the scanner exits 0 whether or not any are found;
 
 ### max_arguments_scanner.py
 
-Flags functions and methods declaring more parameters than the configured threshold — the "max number of arguments" sensor from Martin Fowler's *Maintainability sensors for coding agents* (issue #42). Long parameter lists are a classic AI-generation smell; the fix is usually a parameter object or a small collaborator.
+Flags functions and methods declaring more parameters than the configured threshold — the "max number of arguments" sensor from Martin Fowler's [Maintainability sensors for coding agents](https://martinfowler.com/articles/sensors-for-coding-agents.html). Long parameter lists are a classic AI-generation smell; the fix is usually a parameter object or a small collaborator.
 
 Parameter counting matches ruff `PLR0913` (`max-args`) semantics: positional-only, positional-or-keyword, and keyword-only parameters count; `self`/`cls`, `*args`/`**kwargs`, and PHP variadics (`...$args`) do not.
 

@@ -19,55 +19,59 @@ from zolletta_metaskill.core.structs import ClassInfo, Finding, MethodInfo, Modu
 TS_PHP_AVAILABLE = PHPEngine._have_tree_sitter_php()
 
 
-def _write_settings(dirpath: Path, **overrides: object) -> Path:
-    """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
-    settings: dict[str, object] = {
-        "language": "python",
-        "python": {"code_style": {}},
-        "php": None,
-    }
-    settings.update(overrides)
-    meta = dirpath / ".zolletta-metaskill"
-    meta.mkdir(parents=True, exist_ok=True)
-    path = meta / "settings.json"
-    path.write_text(json.dumps(settings))
-    return path
-
-
-def _git_init(root: Path) -> None:
-    """Initialise a git repo at *root* so gitignore rules apply."""
-    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
-
-
-def _write(path: Path, source: str) -> Path:
-    """Write *source* to *path* and return it."""
-    path.write_text(source)
-    return path
-
-
-def _function(name: str, params: int, lineno: int = 1) -> MethodInfo:
-    """Build a :class:`MethodInfo` with *params* declared parameters."""
-    return MethodInfo(
-        name=name,
-        lineno=lineno,
-        end_lineno=lineno + 1,
-        params=[f"p{i}" for i in range(params)],
-    )
-
-
 class TestMaxArgumentsScanner:
+    # --- Helpers. ---
+
+    @staticmethod
+    def _write_settings(dirpath: Path, **overrides: object) -> Path:
+        """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
+        settings: dict[str, object] = {
+            "language": "python",
+            "python": {"code_style": {}},
+            "php": None,
+        }
+        settings.update(overrides)
+        meta = dirpath / ".zolletta-metaskill"
+        meta.mkdir(parents=True, exist_ok=True)
+        path = meta / "settings.json"
+        path.write_text(json.dumps(settings))
+        return path
+
+    @staticmethod
+    def _git_init(root: Path) -> None:
+        """Initialise a git repo at *root* so gitignore rules apply."""
+        subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+
+    @staticmethod
+    def _write(path: Path, source: str) -> Path:
+        """Write *source* to *path* and return it."""
+        path.write_text(source)
+        return path
+
+    @staticmethod
+    def _function(name: str, params: int, lineno: int = 1) -> MethodInfo:
+        """Build a :class:`MethodInfo` with *params* declared parameters."""
+        return MethodInfo(
+            name=name,
+            lineno=lineno,
+            end_lineno=lineno + 1,
+            params=[f"p{i}" for i in range(params)],
+        )
+
     # --- Tests for MaxArgumentsScanner.resolve_extensions(). ---
 
     def test_python_language_returns_py(self, tmp_path: Path) -> None:
-        settings = _write_settings(tmp_path, language="python")
+        settings = self._write_settings(tmp_path, language="python")
         assert MaxArgumentsScanner.resolve_extensions(settings) == {".py"}
 
     def test_php_language_returns_php(self, tmp_path: Path) -> None:
-        settings = _write_settings(tmp_path, language="php", python=None, php={"code_style": {}})
+        settings = self._write_settings(
+            tmp_path, language="php", python=None, php={"code_style": {}}
+        )
         assert MaxArgumentsScanner.resolve_extensions(settings) == {".php"}
 
     def test_polyglot_settings_scans_all_configured_languages(self, tmp_path: Path) -> None:
-        settings = _write_settings(tmp_path, language="python", php={"code_style": {}})
+        settings = self._write_settings(tmp_path, language="python", php={"code_style": {}})
         assert MaxArgumentsScanner.resolve_extensions(settings) == {".py", ".php"}
 
     def test_missing_settings_falls_back_to_all_engines(self, tmp_path: Path) -> None:
@@ -77,7 +81,7 @@ class TestMaxArgumentsScanner:
     def test_unknown_language_falls_back_to_all_engines(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        settings = _write_settings(tmp_path, language="go", python=None)
+        settings = self._write_settings(tmp_path, language="go", python=None)
         result = MaxArgumentsScanner.resolve_extensions(settings)
         err = capsys.readouterr().err
         assert "no engine for language 'go'" in err
@@ -91,7 +95,7 @@ class TestMaxArgumentsScanner:
         assert MaxArgumentsScanner.resolve_extensions(bad) == {".py", ".php"}
 
     def test_disabled_language_not_scanned(self, tmp_path: Path) -> None:
-        settings = _write_settings(
+        settings = self._write_settings(
             tmp_path,
             language="python",
             python={"code_style": {"check_max_arguments": False}},
@@ -100,7 +104,7 @@ class TestMaxArgumentsScanner:
         assert MaxArgumentsScanner.resolve_extensions(settings) == {".php"}
 
     def test_all_languages_disabled_returns_empty(self, tmp_path: Path) -> None:
-        settings = _write_settings(
+        settings = self._write_settings(
             tmp_path,
             language="python",
             python={"code_style": {"check_max_arguments": False}},
@@ -110,11 +114,11 @@ class TestMaxArgumentsScanner:
     # --- Tests for MaxArgumentsScanner.resolve_max_args(). ---
 
     def test_reads_max_arguments_from_settings(self, tmp_path: Path) -> None:
-        settings = _write_settings(tmp_path, python={"code_style": {"max_arguments": 3}})
+        settings = self._write_settings(tmp_path, python={"code_style": {"max_arguments": 3}})
         assert MaxArgumentsScanner.resolve_max_args(settings) == 3
 
     def test_smallest_limit_wins_across_languages(self, tmp_path: Path) -> None:
-        settings = _write_settings(
+        settings = self._write_settings(
             tmp_path,
             language="python",
             python={"code_style": {"max_arguments": 7}},
@@ -123,7 +127,7 @@ class TestMaxArgumentsScanner:
         assert MaxArgumentsScanner.resolve_max_args(settings) == 4
 
     def test_no_configured_limit_falls_back_to_default(self, tmp_path: Path) -> None:
-        settings = _write_settings(tmp_path)  # code_style is empty
+        settings = self._write_settings(tmp_path)  # code_style is empty
         assert MaxArgumentsScanner.resolve_max_args(settings) == 5
 
     def test_missing_settings_falls_back_to_default(self, tmp_path: Path) -> None:
@@ -131,24 +135,24 @@ class TestMaxArgumentsScanner:
         assert MaxArgumentsScanner.resolve_max_args(missing) == 5
 
     def test_language_field_without_section_falls_back(self, tmp_path: Path) -> None:
-        settings = _write_settings(tmp_path, python=None)
+        settings = self._write_settings(tmp_path, python=None)
         assert MaxArgumentsScanner.resolve_max_args(settings) == 5
 
     def test_non_integer_limit_falls_back(self, tmp_path: Path) -> None:
-        settings = _write_settings(
+        settings = self._write_settings(
             tmp_path, python={"code_style": {"max_arguments": "5"}}
         )
         assert MaxArgumentsScanner.resolve_max_args(settings) == 5
 
     def test_boolean_limit_falls_back(self, tmp_path: Path) -> None:
-        settings = _write_settings(
+        settings = self._write_settings(
             tmp_path, python={"code_style": {"max_arguments": True}}
         )
         assert MaxArgumentsScanner.resolve_max_args(settings) == 5
 
     def test_disabled_language_limit_ignored(self, tmp_path: Path) -> None:
         """A disabled language's max_arguments does not lower the limit."""
-        settings = _write_settings(
+        settings = self._write_settings(
             tmp_path,
             language="python",
             python={"code_style": {"max_arguments": 7}},
@@ -164,7 +168,7 @@ class TestMaxArgumentsScanner:
         module = ModuleInfo(
             path=tmp_path / "m.py",
             language="python",
-            functions=[_function("too_many", 6, lineno=3)],
+            functions=[self._function("too_many", 6, lineno=3)],
         )
         findings = MaxArgumentsScanner.scan_module(module, max_args=5)
         assert len(findings) == 1
@@ -179,7 +183,7 @@ class TestMaxArgumentsScanner:
         module = ModuleInfo(
             path=tmp_path / "m.py",
             language="python",
-            functions=[_function("ok", 5)],
+            functions=[self._function("ok", 5)],
         )
         assert MaxArgumentsScanner.scan_module(module, max_args=5) == []
 
@@ -192,7 +196,7 @@ class TestMaxArgumentsScanner:
                     name="Foo",
                     lineno=1,
                     end_lineno=5,
-                    methods=[_function("bar", 7, lineno=2)],
+                    methods=[self._function("bar", 7, lineno=2)],
                 )
             ],
         )
@@ -209,14 +213,14 @@ class TestMaxArgumentsScanner:
     # --- Tests for MaxArgumentsScanner.scan_file(). ---
 
     def test_scan_file_python_function(self, tmp_path: Path) -> None:
-        f = _write(tmp_path / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
+        f = self._write(tmp_path / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
         findings = MaxArgumentsScanner.scan_file(f, max_args=5)
         assert len(findings) == 1
         assert findings[0].file == str(f)
         assert "too_many" in findings[0].description
 
     def test_scan_file_keyword_only_params_counted(self, tmp_path: Path) -> None:
-        f = _write(
+        f = self._write(
             tmp_path / "m.py", "def too_many(a, /, b, *, c, d, e, g):\n    pass\n"
         )
         findings = MaxArgumentsScanner.scan_file(f, max_args=5)
@@ -224,20 +228,20 @@ class TestMaxArgumentsScanner:
         assert "has 6 parameters" in findings[0].description
 
     def test_scan_file_variadic_params_not_counted(self, tmp_path: Path) -> None:
-        f = _write(tmp_path / "m.py", "def ok(a, *args, b, **kwargs):\n    pass\n")
+        f = self._write(tmp_path / "m.py", "def ok(a, *args, b, **kwargs):\n    pass\n")
         assert MaxArgumentsScanner.scan_file(f, max_args=5) == []
 
     def test_scan_file_unknown_extension_returns_empty(self, tmp_path: Path) -> None:
-        f = _write(tmp_path / "notes.txt", "def too_many(a, b, c, d, e, g): pass\n")
+        f = self._write(tmp_path / "notes.txt", "def too_many(a, b, c, d, e, g): pass\n")
         assert MaxArgumentsScanner.scan_file(f, max_args=5) == []
 
     def test_scan_file_syntax_error_returns_empty(self, tmp_path: Path) -> None:
-        f = _write(tmp_path / "broken.py", "def foo(:\n    pass\n")
+        f = self._write(tmp_path / "broken.py", "def foo(:\n    pass\n")
         assert MaxArgumentsScanner.scan_file(f, max_args=5) == []
 
     @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
     def test_scan_file_php_function(self, tmp_path: Path) -> None:
-        f = _write(
+        f = self._write(
             tmp_path / "f.php",
             "<?php\nfunction tooMany($a, $b, $c, $d, $e, $g) {}\n",
         )
@@ -247,7 +251,7 @@ class TestMaxArgumentsScanner:
 
     @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
     def test_scan_file_php_variadic_not_counted(self, tmp_path: Path) -> None:
-        f = _write(
+        f = self._write(
             tmp_path / "f.php",
             "<?php\nfunction ok($a, $b, $c, $d, $e, ...$rest) {}\n",
         )
@@ -263,7 +267,7 @@ class TestMaxArgumentsScanner:
             raise OSError("unreadable")
 
         monkeypatch.setattr(PythonEngine, "parse_module", _fail)
-        f = _write(tmp_path / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
+        f = self._write(tmp_path / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
         assert MaxArgumentsScanner.scan_file(f, max_args=5) == []
         assert "Warning: could not parse" in capsys.readouterr().err
 
@@ -279,7 +283,7 @@ class TestMaxArgumentsScanner:
             raise ImportError("tree-sitter-php is required")
 
         monkeypatch.setattr(PythonEngine, "parse_module", _fail)
-        f = _write(tmp_path / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
+        f = self._write(tmp_path / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
         assert MaxArgumentsScanner.scan_file(f, max_args=5) == []
         assert "Warning: could not parse" in capsys.readouterr().err
 
@@ -288,8 +292,8 @@ class TestMaxArgumentsScanner:
     def test_scans_only_matching_extension(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "a.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
-        _write(root / "b.php", "<?php\nfunction tooMany($a, $b, $c, $d, $e, $g) {}\n")
+        self._write(root / "a.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
+        self._write(root / "b.php", "<?php\nfunction tooMany($a, $b, $c, $d, $e, $g) {}\n")
         findings = MaxArgumentsScanner.scan_directory(
             root, max_args=5, extensions={".py"}
         )
@@ -300,7 +304,7 @@ class TestMaxArgumentsScanner:
         root = tmp_path / "src"
         sub = root / "pkg" / "sub"
         sub.mkdir(parents=True)
-        _write(sub / "deep.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
+        self._write(sub / "deep.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
         findings = MaxArgumentsScanner.scan_directory(
             root, max_args=5, extensions={".py"}
         )
@@ -308,12 +312,12 @@ class TestMaxArgumentsScanner:
         assert findings[0].file == str(sub / "deep.py")
 
     def test_gitignored_file_skipped(self, tmp_path: Path) -> None:
-        _git_init(tmp_path)
+        self._git_init(tmp_path)
         (tmp_path / ".gitignore").write_text("ignored.py\n")
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "ignored.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
-        _write(root / "real.py", "def ok(a):\n    pass\n")
+        self._write(root / "ignored.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
+        self._write(root / "real.py", "def ok(a):\n    pass\n")
         findings = MaxArgumentsScanner.scan_directory(
             root, max_args=5, extensions={".py"}
         )
@@ -323,7 +327,7 @@ class TestMaxArgumentsScanner:
         root = tmp_path / "src"
         vendor = root / "vendor"
         vendor.mkdir(parents=True)
-        _write(vendor / "dep.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
+        self._write(vendor / "dep.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
         findings = MaxArgumentsScanner.scan_directory(
             root, max_args=5, extensions={".py"}
         )
@@ -338,10 +342,10 @@ class TestMaxArgumentsScanner:
         )
 
     def test_max_args_resolved_from_settings(self, tmp_path: Path) -> None:
-        settings = _write_settings(tmp_path, python={"code_style": {"max_arguments": 2}})
+        settings = self._write_settings(tmp_path, python={"code_style": {"max_arguments": 2}})
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "m.py", "def three(a, b, c):\n    pass\n")
+        self._write(root / "m.py", "def three(a, b, c):\n    pass\n")
         findings = MaxArgumentsScanner.scan_directory(
             root, extensions={".py"}, settings_path=settings
         )
@@ -349,11 +353,11 @@ class TestMaxArgumentsScanner:
 
     def test_extensions_resolved_from_settings(self, tmp_path: Path) -> None:
         """Omitted extensions resolve from settings.json (python → .py)."""
-        settings = _write_settings(tmp_path, language="python")
+        settings = self._write_settings(tmp_path, language="python")
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
-        _write(root / "f.php", "<?php\nfunction tooMany($a, $b, $c, $d, $e, $g) {}\n")
+        self._write(root / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
+        self._write(root / "f.php", "<?php\nfunction tooMany($a, $b, $c, $d, $e, $g) {}\n")
         findings = MaxArgumentsScanner.scan_directory(root, settings_path=settings)
         assert len(findings) == 1
         assert findings[0].file == str(root / "m.py")
@@ -367,7 +371,7 @@ class TestMaxArgumentsScanner:
         monkeypatch.setattr(subprocess, "run", _no_git)
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
+        self._write(root / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
         findings = MaxArgumentsScanner.scan_directory(
             root, max_args=5, extensions={".py"}
         )
@@ -380,10 +384,10 @@ class TestMaxArgumentsScanner:
     ) -> None:
         """check_max_arguments=false for every configured language → SKIPPED."""
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path, python={"code_style": {"check_max_arguments": False}})
+        self._write_settings(tmp_path, python={"code_style": {"check_max_arguments": False}})
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
+        self._write(root / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
         monkeypatch.setattr(sys, "argv", ["prog"])
         rc = MaxArgumentsScanner.main()
         out = capsys.readouterr().out
@@ -394,7 +398,7 @@ class TestMaxArgumentsScanner:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path, python={"code_style": {"check_max_arguments": False}})
+        self._write_settings(tmp_path, python={"code_style": {"check_max_arguments": False}})
         root = tmp_path / "src"
         root.mkdir()
         monkeypatch.setattr(sys, "argv", ["prog", "--json"])
@@ -408,7 +412,7 @@ class TestMaxArgumentsScanner:
     ) -> None:
         """No configured source directory on disk → usage error."""
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path)
+        self._write_settings(tmp_path)
         monkeypatch.setattr(sys, "argv", ["prog"])
         rc = MaxArgumentsScanner.main()
         err = capsys.readouterr().err
@@ -419,10 +423,10 @@ class TestMaxArgumentsScanner:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path)
+        self._write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "ok.py", "def ok(a, b):\n    pass\n")
+        self._write(root / "ok.py", "def ok(a, b):\n    pass\n")
         monkeypatch.setattr(sys, "argv", ["prog"])
         rc = MaxArgumentsScanner.main()
         out = capsys.readouterr().out
@@ -433,10 +437,10 @@ class TestMaxArgumentsScanner:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path)
+        self._write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
+        self._write(root / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
         monkeypatch.setattr(sys, "argv", ["prog"])
         rc = MaxArgumentsScanner.main()
         out = capsys.readouterr().out
@@ -450,10 +454,10 @@ class TestMaxArgumentsScanner:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path)
+        self._write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
-        _write(
+        self._write(
             root / "m.py",
             "class Foo:\n    def bar(self, a, b, c, d, e, g):\n        pass\n",
         )
@@ -467,11 +471,11 @@ class TestMaxArgumentsScanner:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path, language="python")
+        self._write_settings(tmp_path, language="python")
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "m.php", "<?php\nfunction tooMany($a, $b, $c, $d, $e, $g) {}\n")
-        _write(root / "ok.py", "def ok(a):\n    pass\n")
+        self._write(root / "m.php", "<?php\nfunction tooMany($a, $b, $c, $d, $e, $g) {}\n")
+        self._write(root / "ok.py", "def ok(a):\n    pass\n")
         monkeypatch.setattr(sys, "argv", ["prog"])
         rc = MaxArgumentsScanner.main()
         out = capsys.readouterr().out
@@ -484,7 +488,7 @@ class TestMaxArgumentsScanner:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(tmp_path)
-        _write_settings(
+        self._write_settings(
             tmp_path,
             language="php",
             python=None,
@@ -492,8 +496,8 @@ class TestMaxArgumentsScanner:
         )
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "f.php", "<?php\nfunction tooMany($a, $b, $c, $d, $e, $g) {}\n")
-        _write(root / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
+        self._write(root / "f.php", "<?php\nfunction tooMany($a, $b, $c, $d, $e, $g) {}\n")
+        self._write(root / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
         monkeypatch.setattr(sys, "argv", ["prog"])
         rc = MaxArgumentsScanner.main()
         out = capsys.readouterr().out
@@ -506,11 +510,11 @@ class TestMaxArgumentsScanner:
     ) -> None:
         """The limit comes from settings.json max_arguments."""
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path, python={"code_style": {"max_arguments": 7}})
+        self._write_settings(tmp_path, python={"code_style": {"max_arguments": 7}})
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "m.py", "def six(a, b, c, d, e, g):\n    pass\n")
-        _write(root / "n.py", "def eight(a, b, c, d, e, g, h, i):\n    pass\n")
+        self._write(root / "m.py", "def six(a, b, c, d, e, g):\n    pass\n")
+        self._write(root / "n.py", "def eight(a, b, c, d, e, g, h, i):\n    pass\n")
         monkeypatch.setattr(sys, "argv", ["prog"])
         rc = MaxArgumentsScanner.main()
         out = capsys.readouterr().out
@@ -522,15 +526,15 @@ class TestMaxArgumentsScanner:
     def test_main_gitignored_files_not_scanned(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        _git_init(tmp_path)
+        self._git_init(tmp_path)
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path)
+        self._write_settings(tmp_path)
         (tmp_path / ".gitignore").write_text("vendor/\n")
         root = tmp_path / "src"
         vendor = root / "vendor"
         vendor.mkdir(parents=True)
-        _write(vendor / "dep.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
-        _write(root / "real.py", "def ok(a):\n    pass\n")
+        self._write(vendor / "dep.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
+        self._write(root / "real.py", "def ok(a):\n    pass\n")
         monkeypatch.setattr(sys, "argv", ["prog"])
         rc = MaxArgumentsScanner.main()
         out = capsys.readouterr().out
@@ -542,7 +546,7 @@ class TestMaxArgumentsScanner:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path)
+        self._write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
         monkeypatch.setattr(sys, "argv", ["prog"])
@@ -555,11 +559,11 @@ class TestMaxArgumentsScanner:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path)
+        self._write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
-        _write(root / "ok.py", "def ok(a):\n    pass\n")
+        self._write(root / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
+        self._write(root / "ok.py", "def ok(a):\n    pass\n")
         monkeypatch.setattr(sys, "argv", ["prog", "--json"])
         rc = MaxArgumentsScanner.main()
         out = capsys.readouterr().out
@@ -583,12 +587,12 @@ class TestMaxArgumentsScanner:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path)
+        self._write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "medium.py", "def six(a, b, c, d, e, g):\n    pass\n")
-        _write(root / "biggest.py", "def nine(a, b, c, d, e, g, h, i, j):\n    pass\n")
-        _write(root / "small_over.py", "def six2(a, b, c, d, e, g):\n    pass\n")
+        self._write(root / "medium.py", "def six(a, b, c, d, e, g):\n    pass\n")
+        self._write(root / "biggest.py", "def nine(a, b, c, d, e, g, h, i, j):\n    pass\n")
+        self._write(root / "small_over.py", "def six2(a, b, c, d, e, g):\n    pass\n")
         monkeypatch.setattr(sys, "argv", ["prog", "--json"])
         rc = MaxArgumentsScanner.main()
         report = json.loads(capsys.readouterr().out)
@@ -603,11 +607,11 @@ class TestMaxArgumentsScanner:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path)
+        self._write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "ok.py", "def five(a, b, c, d, e):\n    pass\n")
-        _write(root / "long.py", "def six(a, b, c, d, e, g):\n    pass\n")
+        self._write(root / "ok.py", "def five(a, b, c, d, e):\n    pass\n")
+        self._write(root / "long.py", "def six(a, b, c, d, e, g):\n    pass\n")
         monkeypatch.setattr(sys, "argv", ["prog"])
         rc = MaxArgumentsScanner.main()
         out = capsys.readouterr().out
@@ -620,7 +624,7 @@ class TestMaxArgumentsScanner:
     ) -> None:
         """Scan roots come from python.paths.source in settings.json."""
         monkeypatch.chdir(tmp_path)
-        _write_settings(
+        self._write_settings(
             tmp_path,
             python={
                 "paths": {"source": ["lib"], "tests": ["tests"], "package": "myproject"},
@@ -629,7 +633,7 @@ class TestMaxArgumentsScanner:
         )
         lib = tmp_path / "lib"
         lib.mkdir()
-        _write(lib / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
+        self._write(lib / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
         monkeypatch.setattr(sys, "argv", ["prog", "--json"])
         rc = MaxArgumentsScanner.main()
         report = json.loads(capsys.readouterr().out)
@@ -647,11 +651,11 @@ class TestMaxArgumentsScanner:
 
         monkeypatch.setattr(PythonEngine, "parse_module", _fail)
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path)
+        self._write_settings(tmp_path)
         root = tmp_path / "src"
         root.mkdir()
-        _write(root / "a.py", "def one(a):\n    pass\n")
-        _write(root / "b.py", "def two(a):\n    pass\n")
+        self._write(root / "a.py", "def one(a):\n    pass\n")
+        self._write(root / "b.py", "def two(a):\n    pass\n")
         monkeypatch.setattr(sys, "argv", ["prog"])
         rc = MaxArgumentsScanner.main()
         captured = capsys.readouterr()
