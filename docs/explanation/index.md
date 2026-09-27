@@ -17,6 +17,7 @@ SOLID, structural conventions, error handling, performance, and security.
 | [General principles](code/general-principles.md)               | SOLID, KISS, composition over inheritance, God class detection           |
 | [Structural conventions](code/structural-conventions.md)       | One class per file, test mirroring, naming, test splitting               |
 | [False positive prevention](code/false-positive-prevention.md) | Suppression rules to avoid noisy reports                                 |
+| [Balanced coupling](code/balanced-coupling.md)                 | Integration strength, distance, volatility, and the balance rule         |
 | [Error handling](code/error-handling.md)                       | Custom exceptions, hierarchy, specific catches, finally cleanup          |
 | [Performance](code/performance.md)                             | Lazy loading, generators for large datasets                              |
 | [Security](code/security.md)                                   | Parameterized queries, output escaping, input validation, secrets in env |
@@ -62,4 +63,6 @@ Design decisions and their rationale, captured as numbered ADRs.
 | [ADR-0011 No dependency inspector](adr/0011-skip-external-dependency-inspector.md)     | Skip external dependency inspector tool           |
 | [ADR-0012 No property-based sensor](adr/0012-skip-property-based-testing-sensor.md)    | Skip property-based testing sensor                |
 | [ADR-0013 No fuzz testing sensor](adr/0013-skip-fuzz-testing-sensor.md)                | Skip fuzz testing sensor                          |
+| [ADR-0014 Mutation testing sensor](adr/0014-add-mutation-testing-sensor.md)            | Mutation testing sensor (mutmut/Infection)        |
 | [ADR-0015 Standard script CLI](adr/0015-standard-script-cli.md)                        | settings.json as the only script config source    |
+| [ADR-0017 Balanced coupling model](adr/0017-balanced-coupling-model.md)                | Balanced Coupling model for the patterns review   |
