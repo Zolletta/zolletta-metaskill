@@ -18,40 +18,48 @@
 ### Class Metrics (top candidates)
 
 | Class          | File          | Lines     | Methods     | Attributes     | Verdict                           |
-| -------------- | ------------- | --------- | ----------- | -------------- | --------------------------------- |
+|----------------|---------------|-----------|-------------|----------------|-----------------------------------|
 | {{class_name}} | {{file_path}} | {{lines}} | {{methods}} | {{attributes}} | God class / Cohesive / Borderline |
 
 ### Structural Conventions
 
 | Check                         | Status        | Details     |
-| ----------------------------- | ------------- | ----------- |
+|-------------------------------|---------------|-------------|
 | One class per file            | {{pass_fail}} | {{details}} |
 | Test structure mirrors source | {{pass_fail}} | {{details}} |
+
+### Coupling Assessment (Balanced Coupling)
+
+| Integration (from → to) | Strength  | Distance  | Volatility | Balanced?  | Verdict                                          |
+|-------------------------|-----------|-----------|------------|------------|--------------------------------------------------|
+| {{edge}}                | {{level}} | {{level}} | {{level}}  | {{yes_no}} | Finding / tolerable debt / drift risk / balanced |
+
+Only *unbalanced AND volatile* integrations are findings — repeat them in the severity tables below with `Balanced Coupling` in the Principle column. Other imbalances are notes; mark inferred classifications as assumptions.
 
 ## Findings
 
 ### Critical
 
 | #     | File                   | Class/Symbol | Issue       | Principle     | Suggested Fix |
-| ----- | ---------------------- | ------------ | ----------- | ------------- | ------------- |
+|-------|------------------------|--------------|-------------|---------------|---------------|
 | {{n}} | {{file_path}}:{{line}} | {{symbol}}   | {{problem}} | {{principle}} | {{fix}}       |
 
 ### High
 
 | #     | File                   | Class/Symbol | Issue       | Principle     | Suggested Fix |
-| ----- | ---------------------- | ------------ | ----------- | ------------- | ------------- |
+|-------|------------------------|--------------|-------------|---------------|---------------|
 | {{n}} | {{file_path}}:{{line}} | {{symbol}}   | {{problem}} | {{principle}} | {{fix}}       |
 
 ### Medium
 
 | #     | File                   | Class/Symbol | Issue       | Principle     | Suggested Fix |
-| ----- | ---------------------- | ------------ | ----------- | ------------- | ------------- |
+|-------|------------------------|--------------|-------------|---------------|---------------|
 | {{n}} | {{file_path}}:{{line}} | {{symbol}}   | {{problem}} | {{principle}} | {{fix}}       |
 
 ### Low
 
 | #     | File                   | Class/Symbol | Issue       | Principle     | Suggested Fix |
-| ----- | ---------------------- | ------------ | ----------- | ------------- | ------------- |
+|-------|------------------------|--------------|-------------|---------------|---------------|
 | {{n}} | {{file_path}}:{{line}} | {{symbol}}   | {{problem}} | {{principle}} | {{fix}}       |
 
 ## Recommendations

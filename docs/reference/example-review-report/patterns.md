@@ -50,10 +50,10 @@ All 15 classes are suppressed per "What is NOT a God class": static helper colle
 
 ### Structural Conventions
 
-| Check | Status | Details |
-|-------|--------|---------|
-| One class per file | PASS | 0 files with 2+ classes. 10 "class name != filename" hits are false positives — the scanner converts snake_case to PascalCase without accounting for acronyms (ADR, PHP, API). Confirmed by `acronym_casing_scanner.py`: 0 violations. Class names `ADRDiscovery`, `PHPEngine`, `APIDocValidator` etc. are correct per the acronym casing convention. |
-| Test structure mirrors source | PASS | 0 misnamed tests, 0 misplaced tests, 0 orphaned tests (excluding `.pytest_cache/` cache dirs), 0 missing tests. 6 indirect references (informative only). |
+| Check                         | Status | Details                                                                                                                                                                                                                                                                                                                                               |
+|-------------------------------|--------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| One class per file            | PASS   | 0 files with 2+ classes. 10 "class name != filename" hits are false positives — the scanner converts snake_case to PascalCase without accounting for acronyms (ADR, PHP, API). Confirmed by `acronym_casing_scanner.py`: 0 violations. Class names `ADRDiscovery`, `PHPEngine`, `APIDocValidator` etc. are correct per the acronym casing convention. |
+| Test structure mirrors source | PASS   | 0 misnamed tests, 0 misplaced tests, 0 orphaned tests (excluding `.pytest_cache/` cache dirs), 0 missing tests. 6 indirect references (informative only).                                                                                                                                                                                             |
 
 ### Test Structure Scanner Output
 
@@ -82,14 +82,14 @@ All 15 classes are suppressed per "What is NOT a God class": static helper colle
 
 #### 5. Indirect references (6) — informative only
 
-| Test file | Primary source | Indirectly tested sources | Indirectly tested classes |
-|---|---|---|---|
-| `code_style/python/test_docstring_streamliner.py` | `code_style/python/docstring_streamliner.py` | `code_style/python/structs/file_report.py` | FileReport |
-| `core/engine/test_engine_registry.py` | `core/engine/engine_registry.py` | `core/engine/language_engine.py` | LanguageEngine |
-| `core/engine/test_php_engine.py` | `core/engine/php_engine.py` | `core/engine/language_engine.py` | LanguageEngine |
-| `core/engine/test_python_engine.py` | `core/engine/python_engine.py` | `core/engine/language_engine.py` | LanguageEngine |
-| `documentor/test_api_doc_validator.py` | `documentor/api_doc_validator.py` | `documentor/structs/source_signature.py` | SourceSignature |
-| `documentor/test_link_checker.py` | `documentor/link_checker.py` | `documentor/structs/link_info.py` | LinkInfo |
+| Test file                                         | Primary source                               | Indirectly tested sources                  | Indirectly tested classes |
+|---------------------------------------------------|----------------------------------------------|--------------------------------------------|---------------------------|
+| `code_style/python/test_docstring_streamliner.py` | `code_style/python/docstring_streamliner.py` | `code_style/python/structs/file_report.py` | FileReport                |
+| `core/engine/test_engine_registry.py`             | `core/engine/engine_registry.py`             | `core/engine/language_engine.py`           | LanguageEngine            |
+| `core/engine/test_php_engine.py`                  | `core/engine/php_engine.py`                  | `core/engine/language_engine.py`           | LanguageEngine            |
+| `core/engine/test_python_engine.py`               | `core/engine/python_engine.py`               | `core/engine/language_engine.py`           | LanguageEngine            |
+| `documentor/test_api_doc_validator.py`            | `documentor/api_doc_validator.py`            | `documentor/structs/source_signature.py`   | SourceSignature           |
+| `documentor/test_link_checker.py`                 | `documentor/link_checker.py`                 | `documentor/structs/link_info.py`          | LinkInfo                  |
 
 ### SOLID Scanner Results
 
@@ -99,6 +99,18 @@ All 15 classes are suppressed per "What is NOT a God class": static helper colle
 | ISP (interface_segregation_scanner.py) | 1        | Suppressed — `LanguageEngine` protocol has 6 methods but zero implementers stub any method. Both `PythonEngine` and `PHPEngine` fully implement all 6 methods. The protocol is cohesive (all methods serve language parsing/identification). Not an ISP violation.                                                                                       |
 | OCP (open_closed_scanner.py)           | 7        | All 7 suppressed — every hit is `isinstance` dispatch on `ast` node types (`ast.ClassDef`, `ast.FunctionDef`, `ast.Name`, etc.) or tree-sitter node types (`namespace_name`, `qualified_name`) inside parser code. This is the standard and correct way to traverse heterogeneous AST nodes, not type-based business logic dispatch. Not OCP violations. |
 | LSP (liskov_substitution_scanner.py)   | 0        | All clear.                                                                                                                                                                                                                                                                                                                                               |
+
+### Coupling Assessment (Balanced Coupling)
+
+`integration_graph_scanner.py` emitted 120 internal edges across 79 modules. Top fan-in modules are `core/structs` (all engines and scanners) and `core/engine` (every scanner) — the intended hub-and-spoke shape, so no intrusive couplings were found. The coupling-adjacent rows of the verdict: the `adr/* → core/engine` edges are **contract** strength (`type` usage only — importing `LanguageEngine`/`ModuleInfo` for annotations) over medium distance in a core subdomain → balanced (low strength offset by high volatility on the consumer side… contract-vs-high-volatility = the BALANCE rule's stable quadrant). Every scanner's `imports → core/project_config.py` edge is **functional** strength (`new ProjectConfig()` calls) over medium distance in a supporting subdomain → balanced for the same reason: the low-strength half of the balance rule. Scores of `import` edges between sibling scanners (`from core…`, `from typing…` shapes): **contract** strength, low distance → balanced.
+
+| Integration (from → to)                            | Strength   | Distance | Volatility             | Balanced? | Verdict                                               |
+|----------------------------------------------------|------------|----------|------------------------|-----------|-------------------------------------------------------|
+| `adr/adr_cli.py` → `adr/adr_orchestrator.py`       | intrusive  | low      | supporting *(assumed)* | yes       | tolerable debt — same subtree, likely re-set together |
+| `patterns/*` scanners → `core/project_config.py`   | functional | medium   | supporting *(assumed)* | yes       | stable — low-strength leg of the balance rule         |
+| `adr/*` → `core/engine` (`LanguageEngine` imports) | contract   | medium   | core *(assumed)*       | yes       | stable — contracts exist precisely for core modules   |
+
+No unbalanced+volatile integrations were identified; the three rows above are notes, not findings.
 
 ### Test God Classes Scanner
 

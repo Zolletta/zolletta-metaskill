@@ -158,6 +158,24 @@ python3 src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.
 
 Violations are report-only — the scanner exits 0 whether or not any are found; 1 only when no configured source directory exists on disk.
 
+### integration_graph_scanner.py
+
+Emits the project's **internal** import graph — the triage input for the Balanced Coupling assessment (`balanced-coupling.md`). Each `ImportInfo` from the language engines is resolved to a file inside the scanned tree: Python dotted modules map to `pkg/mod.py` or `pkg/mod/__init__.py` under a scan root (relative imports walk up the importer's package directories), PHP `use` clauses map to `Ns/Sub/Cls.php` (PSR-4 approximation). Imports that resolve to nothing internal (stdlib, third-party, vendor) are counted as `external_imports`, never turned into edges.
+
+Each edge carries `{from, to, line, names: [{name, usage}]}` where `usage` is the deterministic signal for strength classification — Python via `ast` (`call`, `extends`, `type`, `attribute`, `import-only`), PHP via tree-sitter (`new`, `extends`, `type`, `import-only`). A per-module `fan_in`/`fan_out` summary accompanies the edges. This is a triage artifact, not a `Finding` producer — the judgment pass applies the balance rule.
+
+Languages and scan roots come from `.zolletta-metaskill/settings.json` via the engine registry (`python.paths.source` / `php.autoload.psr-4`, `src` fallback); patterns scanners run unconditionally — no `check_*` toggle. Git-ignored files are skipped; unparseable files warn and are skipped.
+
+```bash
+python3 src/zolletta_metaskill/patterns/general/integration_graph_scanner.py [--json]
+```
+
+| Option   | Default | Description                    |
+|----------|---------|--------------------------------|
+| `--json` | off     | Output as JSON instead of text |
+
+Report-only — the scanner exits 0 whether or not the graph has edges (an empty graph is an empty edge list, not an error); 1 only when no configured source directory exists on disk.
+
 ### test_structure_scanner.py
 
 Checks that the test directory structure mirrors the source directory structure. Outputs a markdown report with five tables:
