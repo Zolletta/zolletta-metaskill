@@ -57,6 +57,10 @@ The review flags functions and methods that declare more parameters than the con
 
 The review flags functions and methods whose line span exceeds the configured `max_function_length` (default 100). The check is enforced by the language-agnostic `function_length_scanner.py` — it measures the span from the definition line to the end of the body via the language engines, so it is a line count, not a statement count. A long function serving one purpose is not necessarily a finding — the sensor flags it for review; the usual fix is extracting a collaborator.
 
+### Cyclomatic complexity
+
+The review flags functions and methods whose cyclomatic complexity exceeds the configured `max_cyclomatic_complexity` (default 10, matching ruff `C901`). The check is enforced by the language-agnostic `cyclomatic_complexity_scanner.py` — decision points are counted per function with ruff `C901` semantics for Python and the equivalent tree-sitter walk for PHP (PHPStan and Psalm have no built-in McCabe rule). Nested functions and closures are reported independently. A complex function is a strong "extract collaborator" signal; parsers, state machines, and generated code can be exempted by raising the threshold in `settings.json`.
+
 ### Dead code
 
 The review runs the project's configured dead-code detector. Findings below the confidence threshold are not reported. Each finding above the threshold is reviewed with judgment before being flagged — dead-code detectors have known false positives for dynamically-accessed methods.
@@ -65,7 +69,7 @@ The review runs the project's configured dead-code detector. Findings below the 
 
 **Always-on** (cannot be disabled): descriptive filenames, class naming convention, function/variable naming, constant naming, import grouping, private functions exempt from docs, test functions exempt from docs, type hints for public APIs.
 
-**Configurable** (toggled via `settings.json`, all default to enabled): acronym casing, absolute imports, one class per file, filename matches class, file length limit, max arguments limit, function length limit, public docstrings, no type repetition in docs, skip obvious one-liner docs, line length, dead-code confidence threshold.
+**Configurable** (toggled via `settings.json`, all default to enabled): acronym casing, absolute imports, one class per file, filename matches class, file length limit, max arguments limit, function length limit, cyclomatic complexity limit, public docstrings, no type repetition in docs, skip obvious one-liner docs, line length, dead-code confidence threshold.
 
 See the language-specific guides for the exact `settings.json` keys.
 

@@ -56,6 +56,10 @@ When `check_max_arguments` is `true`, the skill runs `src/zolletta_metaskill/cod
 
 When `check_function_length` is `true`, the skill runs `src/zolletta_metaskill/code_style/general/function_length_scanner.py` to flag functions and methods spanning more than `max_function_length` lines (default: `100`). The metric is a line span — signature through end of body, decorators excluded — not a statement count, so it is intentionally lenient. A long function serving one purpose is not necessarily a finding; the usual fix is extracting a collaborator. If the project's ruff config enables `PLR0915`, `ruff check` reports statement-count violations as well — `python.tools.ruff.max_statements` surfaces that threshold.
 
+### Cyclomatic complexity
+
+When `check_cyclomatic_complexity` is `true`, the skill runs `src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py` to flag functions and methods with more than `max_cyclomatic_complexity` decision points (default: `10`, matching ruff `C901` / `[tool.ruff.lint.mccabe] max-complexity`; setup seeds the threshold from `python.tools.ruff.max_complexity` when configured). Each `if`/`elif`, `for`/`async for`, `while`, `except` handler, non-catch-all `match` case, `try` `else` clause, and nested `def` adds one; boolean operators, ternaries, and comprehensions add none. Nested functions are reported independently and fold into the enclosing count, exactly like `C901`. A complex function is a strong "extract collaborator" signal — parsers, state machines, and generated code can be exempted by raising the threshold.
+
 ## Always-on vs configurable rules
 
 The rules above are tagged **always-on** (cannot be disabled) or **configurable** (toggled via `settings.json`, all default to enabled).
@@ -86,12 +90,14 @@ Configure rule toggles by editing the `python.code_style` object in `.zolletta-m
     "max_arguments": 5,
     "check_function_length": true,
     "max_function_length": 100,
+    "check_cyclomatic_complexity": true,
+    "max_cyclomatic_complexity": 10,
     "vulture_min_confidence": 80
   }
 }
 ```
 
-For example, to disable the one-class-per-file check and lower the vulture confidence threshold to 60, set `check_one_class_per_file` to `false` and `vulture_min_confidence` to `60`. To disable the file-length check entirely, set `check_file_length` to `false`; to keep it but allow longer files, raise `max_file_length`. The same pattern applies to the max-arguments check via `check_max_arguments` / `max_arguments` and the function-length check via `check_function_length` / `max_function_length`. The always-on rules have no corresponding keys in `settings.json` and cannot be disabled.
+For example, to disable the one-class-per-file check and lower the vulture confidence threshold to 60, set `check_one_class_per_file` to `false` and `vulture_min_confidence` to `60`. To disable the file-length check entirely, set `check_file_length` to `false`; to keep it but allow longer files, raise `max_file_length`. The same pattern applies to the max-arguments check via `check_max_arguments` / `max_arguments` and the function-length check via `check_function_length` / `max_function_length`; the cyclomatic-complexity check follows the same pattern via `check_cyclomatic_complexity` / `max_cyclomatic_complexity`. The always-on rules have no corresponding keys in `settings.json` and cannot be disabled.
 
 ## See also
 
