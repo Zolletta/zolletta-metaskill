@@ -272,7 +272,7 @@ class TestTestNamingScanner:
         assert rc == 0
         assert "SKIPPED" in capsys.readouterr().out
 
-    def test_disabled_json(
+    def test_scan_disabled_json_reports_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _write_settings(tmp_path, python={"testing": {"check_test_naming": False}})
@@ -295,7 +295,7 @@ class TestTestNamingScanner:
 
     # --- An empty or test-file-free directory reports zero functions. ---
 
-    def test_empty_directory(
+    def test_scan_empty_dir_reports_zero_functions(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _write_settings(tmp_path)
@@ -334,7 +334,7 @@ class TestTestNamingScanner:
         assert "test_init" in out
         assert "test_bad.py" in out
 
-    def test_no_violations(
+    def test_scan_compliant_names_reports_zero_violations(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _write_settings(tmp_path)

@@ -44,7 +44,7 @@ class TestProjectConfig:
         finally:
             ProjectConfig.ensure_engines()
 
-    def test_idempotent(self) -> None:
+    def test_ensure_engines_twice_registers_engines(self) -> None:
         ProjectConfig.ensure_engines()
         ProjectConfig.ensure_engines()
         assert "python" in EngineRegistry.available_languages()
@@ -64,14 +64,14 @@ class TestProjectConfig:
         arr.write_text('["a", "b"]')
         assert ProjectConfig.load_settings(arr) == {}
 
-    def test_valid_settings(self, tmp_path: Path) -> None:
+    def test_load_settings_valid_json_returns_settings(self, tmp_path: Path) -> None:
         path = _write_settings(tmp_path)
         data = ProjectConfig.load_settings(path)
         assert data["language"] == "python"
 
     # --- Setting ---
 
-    def test_returns_value(self) -> None:
+    def test_setting_existing_key_returns_value(self) -> None:
         settings = {"python": {"code_style": {"max_file_length": 500}}}
         assert ProjectConfig.setting(settings, "python.code_style.max_file_length", 800) == 500
 
@@ -106,17 +106,17 @@ class TestProjectConfig:
         settings = {"a": {"b": "42"}}
         assert ProjectConfig.setting(settings, "a.b", 0) == 0
 
-    def test_str_default(self) -> None:
+    def test_setting_str_default_returns_str_or_default(self) -> None:
         settings = {"a": {"b": "docs"}}
         assert ProjectConfig.setting(settings, "a.b", "x") == "docs"
         assert ProjectConfig.setting({"a": {"b": 5}}, "a.b", "x") == "x"
 
-    def test_list_default(self) -> None:
+    def test_setting_list_default_returns_list_or_default(self) -> None:
         settings = {"a": {"b": ["src"]}}
         assert ProjectConfig.setting(settings, "a.b", ["x"]) == ["src"]
         assert ProjectConfig.setting({"a": {"b": "src"}}, "a.b", ["x"]) == ["x"]
 
-    def test_dict_default(self) -> None:
+    def test_setting_dict_default_returns_dict_or_default(self) -> None:
         settings = {"a": {"b": {"k": 1}}}
         assert ProjectConfig.setting(settings, "a.b", {}) == {"k": 1}
         assert ProjectConfig.setting({"a": {"b": 5}}, "a.b", {"d": 1}) == {"d": 1}
@@ -134,10 +134,10 @@ class TestProjectConfig:
 
     # --- ConfiguredLanguages ---
 
-    def test_language_field(self) -> None:
+    def test_configured_languages_language_field_returns_set(self) -> None:
         assert ProjectConfig.configured_languages({"language": "python"}) == {"python"}
 
-    def test_populated_sections(self) -> None:
+    def test_configured_languages_populated_sections_returns_both(self) -> None:
         settings = {"language": "", "python": {"tools": {}}, "php": {"tools": {}}}
         assert ProjectConfig.configured_languages(settings) == {"python", "php"}
 
@@ -148,7 +148,7 @@ class TestProjectConfig:
     def test_non_string_language_ignored(self) -> None:
         assert ProjectConfig.configured_languages({"language": 5}) == set()
 
-    def test_empty_settings(self) -> None:
+    def test_configured_languages_empty_settings_returns_empty(self) -> None:
         assert ProjectConfig.configured_languages({}) == set()
 
     def test_unregistered_language_via_language_field(self) -> None:
@@ -208,7 +208,7 @@ class TestProjectConfig:
     def test_sectionless_language_uses_default(self) -> None:
         assert ProjectConfig.any_enabled({}, {"go"}, "code_style.check_x") is True
 
-    def test_empty_languages(self) -> None:
+    def test_any_enabled_empty_languages_returns_false(self) -> None:
         assert ProjectConfig.any_enabled({}, set(), "code_style.check_x") is False
 
     # --- ScanLanguages ---
@@ -226,7 +226,7 @@ class TestProjectConfig:
 
     # --- ExtensionsFor ---
 
-    def test_maps_languages(self) -> None:
+    def test_extensions_for_known_languages_returns_extensions(self) -> None:
         assert ProjectConfig.extensions_for({"python", "php"}) == {".py", ".php"}
 
     def test_unregistered_language_warns(self, capsys: pytest.CaptureFixture[str]) -> None:
@@ -251,7 +251,7 @@ class TestProjectConfig:
     def test_source_dirs_python_fallback(self) -> None:
         assert ProjectConfig.source_dirs({"python": {}}, "python") == ["src"]
 
-    def test_php_autoload(self) -> None:
+    def test_source_dirs_php_psr4_returns_autoload_dirs(self) -> None:
         settings = {"php": {"autoload": {"psr-4": {"App\\": "app/", "Lib\\": "lib/"}}}}
         assert ProjectConfig.source_dirs(settings, "php") == ["app/", "lib/"]
 
@@ -294,7 +294,7 @@ class TestProjectConfig:
 
     # --- PackageName ---
 
-    def test_python_package(self) -> None:
+    def test_package_name_python_package_returns_name(self) -> None:
         settings = {"python": {"paths": {"package": "myproject"}}}
         assert ProjectConfig.package_name(settings, "python") == "myproject"
 
@@ -316,7 +316,7 @@ class TestProjectConfig:
     def test_php_package_missing(self) -> None:
         assert ProjectConfig.package_name({"php": {}}, "php") is None
 
-    def test_unknown_language(self) -> None:
+    def test_package_name_unknown_language_returns_none(self) -> None:
         assert ProjectConfig.package_name({}, "go") is None
 
     # --- Roots ---
@@ -373,7 +373,7 @@ class TestProjectConfig:
 
     # --- IterFiles ---
 
-    def test_extension_filter(self, tmp_path: Path) -> None:
+    def test_iter_files_extension_filter_returns_matching(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
         root.mkdir()
         (root / "a.py").write_text("x")
@@ -457,11 +457,11 @@ class TestProjectConfig:
 
     # --- EmitSkipped ---
 
-    def test_json(self, capsys: pytest.CaptureFixture[str]) -> None:
+    def test_emit_skipped_json_mode_prints_json(self, capsys: pytest.CaptureFixture[str]) -> None:
         ProjectConfig.emit_skipped(True, "check_x disabled")
         report = json.loads(capsys.readouterr().out)
         assert report == {"skipped": True, "reason": "check_x disabled"}
 
-    def test_text(self, capsys: pytest.CaptureFixture[str]) -> None:
+    def test_emit_skipped_text_prints_skipped(self, capsys: pytest.CaptureFixture[str]) -> None:
         ProjectConfig.emit_skipped(False, "check_x disabled")
         assert "SKIPPED (check_x disabled)" in capsys.readouterr().out

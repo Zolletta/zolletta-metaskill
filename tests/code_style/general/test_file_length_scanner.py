@@ -56,7 +56,7 @@ class TestFileLengthScanner:
         f.write_text("x = 1")
         assert FileLengthScanner.count_lines(f) == 1
 
-    def test_multiple_lines(self, tmp_path: Path) -> None:
+    def test_count_lines_multiple_lines_returns_count(self, tmp_path: Path) -> None:
         f = tmp_path / "multi.py"
         _write_lines(f, 10)
         assert FileLengthScanner.count_lines(f) == 10
@@ -71,7 +71,7 @@ class TestFileLengthScanner:
         f.write_text("a\nb\nc")
         assert FileLengthScanner.count_lines(f) == 3
 
-    def test_only_newlines(self, tmp_path: Path) -> None:
+    def test_count_lines_only_newlines_counts_each(self, tmp_path: Path) -> None:
         f = tmp_path / "blank.py"
         f.write_text("\n\n\n")
         assert FileLengthScanner.count_lines(f) == 3

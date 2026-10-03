@@ -241,7 +241,7 @@ class TestUnusedAllExportsScanner:
         assert rc == 0  # report-only
         assert "unused_func" in out
 
-    def test_json_output(
+    def test_scan_json_flag_outputs_unused_json(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         self._write_settings(tmp_path)
@@ -280,7 +280,7 @@ class TestUnusedAllExportsScanner:
         assert rc == 0
         assert data["unused_count"] == 1  # self-import doesn't count as external
 
-    def test_empty_src(
+    def test_scan_empty_src_reports_no_unused(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         self._write_settings(tmp_path)
@@ -306,7 +306,7 @@ class TestUnusedAllExportsScanner:
         assert rc == 0
         assert data["unused_count"] == 0
 
-    def test_multiple_unused(
+    def test_scan_multiple_unused_reports_all(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         self._write_settings(tmp_path)

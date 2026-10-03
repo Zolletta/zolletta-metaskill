@@ -863,7 +863,7 @@ class TestDocStalenessScorer:
         assert rc == 0
         assert out == "0"
 
-    def test_with_docs(
+    def test_main_doc_present_prints_report(
         self,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
@@ -899,7 +899,7 @@ class TestDocStalenessScorer:
         assert rc == 0
         assert mock_score.call_count == 1
 
-    def test_threshold_fail(
+    def test_main_score_below_threshold_exits_one(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         self._write_settings(tmp_path, documentation={"staleness_threshold": 99})
@@ -923,7 +923,7 @@ class TestDocStalenessScorer:
         err = capsys.readouterr().err
         assert "FAILED" not in err
 
-    def test_threshold_pass(
+    def test_main_score_above_threshold_exits_zero(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         self._write_settings(tmp_path, documentation={"staleness_threshold": 10})
@@ -978,7 +978,7 @@ class TestDocStalenessScorer:
             rc = self._run(tmp_path, monkeypatch, ["prog"])
         assert rc == 0
 
-    def test_json_output(
+    def test_main_json_flag_outputs_score_json(
         self,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
@@ -993,7 +993,7 @@ class TestDocStalenessScorer:
         data = json.loads(out)
         assert "aggregate_score" in data
 
-    def test_quiet_output(
+    def test_main_quiet_flag_prints_score_only(
         self,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,

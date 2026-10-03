@@ -34,14 +34,14 @@ class TestPythonPathsDetector:
     def test_non_dict_returns_empty(self, tmp_path: Path) -> None:
         assert PythonPathsDetector._load_pyproject(tmp_path) == {}
 
-    def test_valid_pyproject(self, tmp_path: Path) -> None:
+    def test_load_pyproject_valid_toml_returns_data(self, tmp_path: Path) -> None:
         _write_pyproject(tmp_path, '[project]\nname = "x"\n')
         data = PythonPathsDetector._load_pyproject(tmp_path)
         assert data["project"]["name"] == "x"
 
     # --- DetectSource ---
 
-    def test_hatch_packages(self, tmp_path: Path) -> None:
+    def test_detect_source_hatch_packages_returns_src(self, tmp_path: Path) -> None:
         _write_pyproject(
             tmp_path,
             '[tool.hatch.build.targets.wheel]\npackages = ["src/mypkg"]\n',
@@ -142,7 +142,7 @@ class TestPythonPathsDetector:
 
     # --- DetectTests ---
 
-    def test_pytest_testpaths(self, tmp_path: Path) -> None:
+    def test_detect_tests_pytest_testpaths_returns_dirs(self, tmp_path: Path) -> None:
         _write_pyproject(
             tmp_path,
             '[tool.pytest.ini_options]\ntestpaths = ["tests", "spec"]\n',

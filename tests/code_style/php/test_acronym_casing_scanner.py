@@ -248,7 +248,7 @@ class TestAcronymCasingScanner:
         assert "no configured source directories" in err
 
     @_skip_no_ts
-    def test_no_violations(
+    def test_scan_clean_class_reports_zero_violations(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         self._write_settings(tmp_path)
@@ -271,7 +271,7 @@ class TestAcronymCasingScanner:
         assert "API" in out
 
     @_skip_no_ts
-    def test_json_output(
+    def test_scan_json_flag_outputs_violation_json(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         self._write_settings(tmp_path)

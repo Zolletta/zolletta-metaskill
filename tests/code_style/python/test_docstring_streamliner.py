@@ -846,7 +846,7 @@ class TestDocstringStreamliner:
         rc = self._run(tmp_path, monkeypatch, ["prog"])
         assert rc == 0
 
-    def test_json_output(
+    def test_main_json_flag_outputs_findings_json(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _write_settings(tmp_path)

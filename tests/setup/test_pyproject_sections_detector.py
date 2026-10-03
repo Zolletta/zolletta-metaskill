@@ -66,7 +66,7 @@ class TestPyprojectSectionsDetector:
         result = PyprojectSectionsDetector.detect_pyproject_sections(pyproject)
         assert result["mutmut"]["available"] is True
 
-    def test_mutmut_absent(self, tmp_path: Path) -> None:
+    def test_detect_sections_no_mutmut_reports_unavailable(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text("[project]\ndependencies = []\n", encoding="utf-8")
         result = PyprojectSectionsDetector.detect_pyproject_sections(pyproject)

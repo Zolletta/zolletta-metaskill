@@ -749,7 +749,7 @@ class TestLinkChecker:
         assert rc == 0
         assert "DUPLICATE ANCHORS" in captured.out
 
-    def test_json_output(
+    def test_main_json_flag_outputs_summary_json(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         (tmp_path / "README.md").write_text("# Title\n[link](guide.md)\n", encoding="utf-8")
