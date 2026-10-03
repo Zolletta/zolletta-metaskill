@@ -28,7 +28,7 @@ curl -fsSL https://raw.githubusercontent.com/Zolletta/zolletta-metaskill/main/in
 
 The `install.sh` script clones the latest git tag, copies the files listed in `install-manifest.txt` to `~/.agents/skills/zolletta-metaskill`, and symlinks it into every detected AI agent tool's skills directory (Claude Code, Cursor, Gemini CLI, Devin, OpenCode, Windsurf, and others). See the [install guide](https://metaskill.zolletta.org/how-to/install/) for details and manual alternatives.
 
-## Try it out
+## Usage
 
 After installation, navigate to a project and run a full review:
 

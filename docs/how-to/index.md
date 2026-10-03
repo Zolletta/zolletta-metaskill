@@ -42,6 +42,6 @@ Python-focused style and test reviews with ruff, mypy, and pytest.
 
 Audit documentation for drift, staleness, and Diátaxis structure compliance.
 
-| Document                                                              | Description                                    |
-|-----------------------------------------------------------------------|------------------------------------------------|
-| [Review documentation](code/../documentation/review-documentation.md) | Audit docs for drift, staleness, and structure |
+| Document                                                      | Description                                    |
+|---------------------------------------------------------------|------------------------------------------------|
+| [Review documentation](documentation/review-documentation.md) | Audit docs for drift, staleness, and structure |

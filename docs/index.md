@@ -34,7 +34,7 @@ cd zolletta-metaskill
 
 The `install.sh` script copies the skill to `~/.agents/skills/zolletta-metaskill` and symlinks it into every detected AI agent tool's skills directory (Claude Code, Cursor, Gemini CLI, Devin, Windsurf, and others). See the [install guide](https://metaskill.zolletta.org/how-to/install/) for details and manual alternatives.
 
-## Try it out
+## Usage
 
 After installation, navigate to a project and run a full review:
 

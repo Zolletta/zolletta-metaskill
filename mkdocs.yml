@@ -75,6 +75,7 @@ nav:
   - "Home": index.md
   - "Tutorials":
       - "Getting started": tutorials/getting-started.md
+      - "Tutorials index": tutorials/index.md
   - "How-to guides":
       - "Getting things done":
           - "Install": how-to/install.md
@@ -90,6 +91,7 @@ nav:
           - "Review Python tests": how-to/code/python/review-python-tests.md
       - "Documentation review":
           - "Review documentation": how-to/documentation/review-documentation.md
+      - "How-to index": how-to/index.md
   - "Reference":
       - "Code review tools":
           - "Scripts reference": reference/code/scripts.md
@@ -162,3 +164,4 @@ nav:
         - "Patterns in use": explanation/patterns.md
         - "Obstacles audit": explanation/obstacles.md
         - "Anti-patterns audit": explanation/anti-patterns.md
+      - "Explanation index": explanation/index.md
