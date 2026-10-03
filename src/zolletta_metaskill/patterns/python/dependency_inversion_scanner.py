@@ -44,6 +44,7 @@ import argparse
 import ast
 import json
 import sys
+from pathlib import Path
 from typing import Any
 
 from zolletta_metaskill.core.project_config import ProjectConfig
@@ -271,8 +272,34 @@ class DependencyInversionScanner:
             )
             return 1
 
-        # Entry-point patterns: union across enabled languages, falling back
-        # to the built-in defaults when nothing is configured.
+        entry_patterns = DependencyInversionScanner._entry_patterns(settings, py_langs)
+        all_violations, scanned_files, skipped_files = (
+            DependencyInversionScanner._scan_roots(roots, entry_patterns)
+        )
+
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "directories": [str(root) for root in roots],
+                        "scanned_files": scanned_files,
+                        "skipped_files": skipped_files,
+                        "violation_count": len(all_violations),
+                        "violations": all_violations,
+                    },
+                    indent=2,
+                )
+            )
+            return 0
+
+        DependencyInversionScanner._emit_text(
+            all_violations, scanned_files, skipped_files
+        )
+        return 0
+
+    @staticmethod
+    def _entry_patterns(settings: dict[str, Any], py_langs: set[str]) -> set[str]:
+        """Union configured entry-point patterns, falling back to the defaults."""
         entry_patterns: set[str] = set()
         for lang in sorted(py_langs):
             value = ProjectConfig.setting(settings, f"{lang}.patterns.dip_entry_points", None)
@@ -280,7 +307,13 @@ class DependencyInversionScanner:
                 entry_patterns.update(v for v in value if isinstance(v, str))
         if not entry_patterns:
             entry_patterns = set(DependencyInversionScanner.ENTRY_POINT_DEFAULTS)
+        return entry_patterns
 
+    @staticmethod
+    def _scan_roots(
+        roots: list[Path], entry_patterns: set[str]
+    ) -> tuple[list[dict[str, Any]], int, int]:
+        """Scan all roots; return (violations, scanned_files, skipped_files)."""
         all_violations: list[dict[str, Any]] = []
         scanned_files = 0
         skipped_files = 0
@@ -304,41 +337,43 @@ class DependencyInversionScanner:
                     continue
 
                 for node in ast.walk(tree):
-                    if not isinstance(node, ast.ClassDef):
-                        continue
-                    if DependencyInversionScanner._is_data_class(node):
-                        continue
-                    if DependencyInversionScanner._is_factory(node.name):
-                        continue
-                    if DependencyInversionScanner._is_composition_root(node):
-                        continue
+                    if isinstance(node, ast.ClassDef):
+                        all_violations.extend(
+                            DependencyInversionScanner._scan_class(node, rel_path)
+                        )
 
-                    init_params = DependencyInversionScanner._get_constructor_params(node)
-                    created = DependencyInversionScanner._extract_created_dependencies(node)
+        return all_violations, scanned_files, skipped_files
 
-                    for v in created:
-                        # If the created class is already a constructor param, it's not a violation
-                        # (it might be re-wrapped or stored differently)
-                        if v["created"] in init_params:
-                            continue
-                        v["file"] = rel_path
-                        all_violations.append(v)
+    @staticmethod
+    def _scan_class(node: ast.ClassDef, rel_path: str) -> list[dict[str, Any]]:
+        """Return DIP violations for one class, after exclusion checks."""
+        if DependencyInversionScanner._is_data_class(node):
+            return []
+        if DependencyInversionScanner._is_factory(node.name):
+            return []
+        if DependencyInversionScanner._is_composition_root(node):
+            return []
 
-        if args.json:
-            print(
-                json.dumps(
-                    {
-                        "directories": [str(root) for root in roots],
-                        "scanned_files": scanned_files,
-                        "skipped_files": skipped_files,
-                        "violation_count": len(all_violations),
-                        "violations": all_violations,
-                    },
-                    indent=2,
-                )
-            )
-            return 0
+        init_params = DependencyInversionScanner._get_constructor_params(node)
+        created = DependencyInversionScanner._extract_created_dependencies(node)
 
+        violations: list[dict[str, Any]] = []
+        for v in created:
+            # If the created class is already a constructor param, it's not a violation
+            # (it might be re-wrapped or stored differently)
+            if v["created"] in init_params:
+                continue
+            v["file"] = rel_path
+            violations.append(v)
+        return violations
+
+    @staticmethod
+    def _emit_text(
+        all_violations: list[dict[str, Any]],
+        scanned_files: int,
+        skipped_files: int,
+    ) -> None:
+        """Emit the markdown report."""
         print("=" * 70)
         print("DEPENDENCY INVERSION — VALIDATION REPORT")
         print("=" * 70)
@@ -363,7 +398,6 @@ class DependencyInversionScanner:
             print("Result: DI violations found (report-only mode)")
         else:
             print("Result: all clear")
-        return 0
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -49,6 +49,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
 from zolletta_metaskill.core.project_config import ProjectConfig
@@ -178,20 +179,7 @@ class OneClassPerFileScanner:
         settings = ProjectConfig.load_settings()
         languages = ProjectConfig.scan_languages(settings, "code_style.check_one_class_per_file")
         if not languages:
-            if args.json:
-                print(
-                    json.dumps(
-                        {
-                            "skipped": True,
-                            "reason": "check_one_class_per_file disabled in settings.json",
-                        }
-                    )
-                )
-            else:
-                print("=" * 70)
-                print("1 CLASS 1 FILE, 1 FILE 1 CLASS — VALIDATION REPORT")
-                print("=" * 70)
-                print("\nResult: SKIPPED (check_one_class_per_file disabled in settings.json)\n")
+            OneClassPerFileScanner._emit_skipped(args.json)
             return 0
 
         roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, languages))
@@ -208,21 +196,73 @@ class OneClassPerFileScanner:
             settings, languages, "code_style.check_zero_class_files"
         )
 
+        files = OneClassPerFileScanner._collect_source_files(roots, extensions)
+        test_roots = OneClassPerFileScanner._enabled_test_roots(settings, languages)
+        test_files = OneClassPerFileScanner._collect_test_files(
+            test_roots, extensions, files
+        )
+
+        all_findings = OneClassPerFileScanner._scan_all(files, test_files)
+        if not report_zero:
+            all_findings = [f for f in all_findings if f.category != "zero_class"]
+
+        scanned_dirs = [str(root) for root in roots] + [str(root) for root in test_roots]
+
+        if args.json:
+            OneClassPerFileScanner._emit_json(
+                scanned_dirs, len(files) + len(test_files), all_findings
+            )
+            return 0
+
+        OneClassPerFileScanner._emit_text(all_findings, report_zero)
+        return 0
+
+    @staticmethod
+    def _emit_skipped(json_mode: bool) -> None:
+        """Emit the SKIPPED report when the check is disabled for all languages."""
+        if json_mode:
+            print(
+                json.dumps(
+                    {
+                        "skipped": True,
+                        "reason": "check_one_class_per_file disabled in settings.json",
+                    }
+                )
+            )
+            return
+        print("=" * 70)
+        print("1 CLASS 1 FILE, 1 FILE 1 CLASS — VALIDATION REPORT")
+        print("=" * 70)
+        print("\nResult: SKIPPED (check_one_class_per_file disabled in settings.json)\n")
+
+    @staticmethod
+    def _collect_source_files(roots: list[Path], extensions: set[str]) -> list[Path]:
+        """Enumerate scannable source files, skipping __init__.py."""
         files: list[Path] = []
         for root in roots:
             for path in ProjectConfig.iter_files(root, extensions):
                 if path.name == "__init__.py":
                     continue
                 files.append(path)
+        return files
 
-        # --- Test roots (one test class per test file) ---
-        test_roots: list[Path] = []
-        if ProjectConfig.any_enabled(
+    @staticmethod
+    def _enabled_test_roots(
+        settings: dict[str, Any], languages: set[str]
+    ) -> list[Path]:
+        """Resolve test roots when the per-test-file check is enabled."""
+        if not ProjectConfig.any_enabled(
             settings, languages, "code_style.check_one_class_per_test_file"
         ):
-            test_roots = ProjectConfig.existing_roots(ProjectConfig.test_roots(settings, languages))
+            return []
+        return ProjectConfig.existing_roots(ProjectConfig.test_roots(settings, languages))
 
-        seen = {str(path) for path in files}
+    @staticmethod
+    def _collect_test_files(
+        test_roots: list[Path], extensions: set[str], source_files: list[Path]
+    ) -> list[Path]:
+        """Enumerate scannable test files not already covered by source roots."""
+        seen = {str(path) for path in source_files}
         test_files: list[Path] = []
         for root in test_roots:
             for path in ProjectConfig.iter_files(root, extensions):
@@ -231,49 +271,56 @@ class OneClassPerFileScanner:
                 if str(path) in seen:
                     continue
                 test_files.append(path)
+        return test_files
 
+    @staticmethod
+    def _scan_all(files: list[Path], test_files: list[Path]) -> list[Finding]:
+        """Scan source and test files and return all findings."""
         all_findings: list[Finding] = []
         for path in files:
             all_findings.extend(OneClassPerFileScanner.scan_file(path))
         for path in test_files:
-            all_findings.extend(OneClassPerFileScanner.scan_file(path, report_zero_class=False))
+            all_findings.extend(
+                OneClassPerFileScanner.scan_file(path, report_zero_class=False)
+            )
+        return all_findings
 
-        if not report_zero:
-            all_findings = [f for f in all_findings if f.category != "zero_class"]
+    @staticmethod
+    def _emit_json(
+        scanned_dirs: list[str], scanned: int, all_findings: list[Finding]
+    ) -> None:
+        """Emit the JSON report."""
+        print(
+            json.dumps(
+                {
+                    "directories": scanned_dirs,
+                    "scanned": scanned,
+                    "violation_count": len(all_findings),
+                    "violations": [
+                        {
+                            "file": f.file,
+                            "line": f.line,
+                            "category": f.category,
+                            "severity": f.severity,
+                            "description": f.description,
+                        }
+                        for f in all_findings
+                    ],
+                },
+                indent=2,
+            )
+        )
+
+    @staticmethod
+    def _emit_text(all_findings: list[Finding], report_zero: bool) -> None:
+        """Emit the text report, grouped by violation category."""
+        print("=" * 70)
+        print("1 CLASS 1 FILE, 1 FILE 1 CLASS — VALIDATION REPORT")
+        print("=" * 70)
 
         multi_class = [f for f in all_findings if f.category == "multi_class"]
         zero_class = [f for f in all_findings if f.category == "zero_class"]
         name_mismatch = [f for f in all_findings if f.category == "name_mismatch"]
-
-        has_violations = bool(all_findings)
-        scanned_dirs = [str(root) for root in roots] + [str(root) for root in test_roots]
-
-        if args.json:
-            print(
-                json.dumps(
-                    {
-                        "directories": scanned_dirs,
-                        "scanned": len(files) + len(test_files),
-                        "violation_count": len(all_findings),
-                        "violations": [
-                            {
-                                "file": f.file,
-                                "line": f.line,
-                                "category": f.category,
-                                "severity": f.severity,
-                                "description": f.description,
-                            }
-                            for f in all_findings
-                        ],
-                    },
-                    indent=2,
-                )
-            )
-            return 0
-
-        print("=" * 70)
-        print("1 CLASS 1 FILE, 1 FILE 1 CLASS — VALIDATION REPORT")
-        print("=" * 70)
 
         if multi_class:
             print(f"\n## Files with 2+ classes ({len(multi_class)} files)\n")
@@ -305,11 +352,10 @@ class OneClassPerFileScanner:
                 print("\n## Files with 0 classes: none")
 
         print()
-        if has_violations:
+        if all_findings:
             print("Result: violations found (report-only mode)")
         else:
             print("Result: all clear")
-        return 0
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -190,6 +190,39 @@ class TestStructureScanner:
             ProjectConfig.emit_skipped(args.json, "check_test_structure disabled in settings.json")
             return 0
 
+        src_pkgs, test_pkgs = TestStructureScanner._resolve_packages(settings, py_langs)
+        if src_pkgs is None or test_pkgs is None:
+            return 1
+
+        test_only_dirs, src_index, test_files = TestStructureScanner._collect_inputs(
+            src_pkgs, test_pkgs
+        )
+        classified = TestStructureScanner._classify_test_files(test_files, src_index)
+        indirect_refs, indirectly_covered = TestStructureScanner._find_indirect_refs(
+            classified["test_refs"],
+            classified["class_to_source"],
+            classified["directly_covered"],
+        )
+        missing = TestStructureScanner._find_missing_tests(
+            src_index, classified["directly_covered"], indirectly_covered
+        )
+        orphaned_dirs = [{"test_dir": str(d) + "/"} for d in test_only_dirs]
+
+        if args.json:
+            TestStructureScanner._emit_json(
+                src_pkgs, test_pkgs, classified, orphaned_dirs, missing, indirect_refs
+            )
+            return 0
+        TestStructureScanner._emit_text(
+            src_pkgs, test_pkgs, classified, orphaned_dirs, missing, indirect_refs
+        )
+        return 0
+
+    @staticmethod
+    def _resolve_packages(
+        settings: dict[str, Any], py_langs: set[str]
+    ) -> tuple[list[Path] | None, list[Path] | None]:
+        """Resolve the source/test package dirs, printing an error on failure."""
         src_roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, py_langs))
         test_roots = ProjectConfig.existing_roots(ProjectConfig.test_roots(settings, py_langs))
         if not src_roots:
@@ -197,20 +230,20 @@ class TestStructureScanner:
                 "Error: no configured source directories exist on disk",
                 file=sys.stderr,
             )
-            return 1
+            return None, None
         if not test_roots:
             print(
                 "Error: no configured test directories exist on disk",
                 file=sys.stderr,
             )
-            return 1
+            return None, None
 
         pkg_name = ProjectConfig.package_name(
             settings, "python"
         ) or TestStructureScanner._auto_detect_package(src_roots[0])
         if not pkg_name:
             print("Error: could not auto-detect package under src/", file=sys.stderr)
-            return 1
+            return None, None
 
         src_pkgs = [root / pkg_name for root in src_roots if (root / pkg_name).is_dir()]
         test_pkgs = [root / pkg_name for root in test_roots if (root / pkg_name).is_dir()]
@@ -220,15 +253,20 @@ class TestStructureScanner:
                 "configured source root",
                 file=sys.stderr,
             )
-            return 1
+            return None, None
         if not test_pkgs:
             print(
                 f"Error: test package '{pkg_name}' does not exist under any configured test root",
                 file=sys.stderr,
             )
-            return 1
+            return None, None
+        return src_pkgs, test_pkgs
 
-        # --- Collect directory structures (merged across package roots) ---
+    @staticmethod
+    def _collect_inputs(
+        src_pkgs: list[Path], test_pkgs: list[Path]
+    ) -> tuple[list[Path], dict[str, dict[str, Any]], dict[str, tuple[Path, str]]]:
+        """Collect test-only dirs, the source index, and test file contents."""
         src_dirs: set[Path] = set()
         for src_pkg in src_pkgs:
             src_dirs.update(TestStructureScanner._collect_dirs(src_pkg))
@@ -256,8 +294,14 @@ class TestStructureScanner:
                     test_files[rel] = (test_pkg, tp.read_text(encoding="utf-8"))
                 except (OSError, UnicodeDecodeError):
                     test_files[rel] = (test_pkg, "")
+        return test_only_dirs, src_index, test_files
 
-        # --- Classify each test file ---
+    @staticmethod
+    def _classify_test_files(
+        test_files: dict[str, tuple[Path, str]],
+        src_index: dict[str, dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Classify each test file as name-matched, misnamed, or orphaned."""
         misnamed: list[dict[str, Any]] = []
         misplaced: list[dict[str, Any]] = []
         orphaned: list[dict[str, Any]] = []
@@ -275,104 +319,127 @@ class TestStructureScanner:
         test_refs: list[dict[str, Any]] = []
 
         for test_rel, (test_pkg, content) in sorted(test_files.items()):
-            test_path = test_pkg / test_rel
-            test_name = test_path.name
-            test_dir_rel = str(test_path.relative_to(test_pkg).parent)
-
-            # Find the best source file match by name prefix (longest prefix wins,
-            # ties broken by preferring same directory)
-            name_match = TestStructureScanner._match_test_to_source(
-                test_name, src_index, test_dir_rel
+            c = TestStructureScanner._classify_one_test(
+                test_rel, test_pkg, content, src_index, class_to_source
             )
+            directly_covered.update(c["covered"])
+            if c["misnamed"]:
+                misnamed.append(c["misnamed"])
+            if c["misplaced"]:
+                misplaced.append(c["misplaced"])
+            if c["orphaned"]:
+                orphaned.append(c["orphaned"])
+            if c["test_ref"]:
+                test_refs.append(c["test_ref"])
 
-            # Find which source classes are referenced in the test content
-            referenced_classes: list[str] = []
-            for _src_rel, info in src_index.items():
-                for cls_name in info["classes"]:
-                    if cls_name in content:
-                        referenced_classes.append(cls_name)
+        return {
+            "misnamed": misnamed,
+            "misplaced": misplaced,
+            "orphaned": orphaned,
+            "directly_covered": directly_covered,
+            "test_refs": test_refs,
+            "class_to_source": class_to_source,
+        }
 
-            if name_match:
-                # Test file name matches a source file by prefix
-                directly_covered.add(name_match)
-                src_info = src_index[name_match]
+    @staticmethod
+    def _classify_one_test(
+        test_rel: str,
+        test_pkg: Path,
+        content: str,
+        src_index: dict[str, dict[str, Any]],
+        class_to_source: dict[str, str],
+    ) -> dict[str, Any]:
+        """Classify one test file — name-matched, misnamed, or orphaned."""
+        result: dict[str, Any] = {
+            "misnamed": None,
+            "misplaced": None,
+            "orphaned": None,
+            "test_ref": None,
+            "covered": set(),
+        }
+        test_path = test_pkg / test_rel
+        test_dir_rel = str(test_path.relative_to(test_pkg).parent)
 
-                # Check if it's in the right directory
-                if src_info["dir"] != test_dir_rel:
-                    misplaced.append(
-                        {
-                            "test_file": test_rel,
-                            "source_file": name_match,
-                            "test_dir": test_dir_rel,
-                            "expected_dir": src_info["dir"],
-                        }
-                    )
+        # Find the best source file match by name prefix (longest prefix wins,
+        # ties broken by preferring same directory)
+        name_match = TestStructureScanner._match_test_to_source(
+            test_path.name, src_index, test_dir_rel
+        )
+        # Find which source classes are referenced in the test content
+        referenced_classes = TestStructureScanner._referenced_classes(content, src_index)
 
-                test_refs.append(
-                    {
+        if name_match:
+            # Test file name matches a source file by prefix
+            src_info = src_index[name_match]
+            result["covered"] = {name_match}
+            if src_info["dir"] != test_dir_rel:
+                result["misplaced"] = {
+                    "test_file": test_rel,
+                    "source_file": name_match,
+                    "test_dir": test_dir_rel,
+                    "expected_dir": src_info["dir"],
+                }
+            result["test_ref"] = {
+                "test_file": test_rel,
+                "primary_source": name_match,
+                "primary_classes": set(src_info["classes"]),
+                "referenced_classes": referenced_classes,
+            }
+        elif referenced_classes:
+            # Name doesn't match but it references source classes — misnamed
+            ref_sources: dict[str, list[str]] = {}  # src_rel -> [classes]
+            for cls_name in referenced_classes:
+                src = class_to_source.get(cls_name)
+                if src:
+                    ref_sources.setdefault(src, []).append(cls_name)
+            if ref_sources:
+                # Primary source = the one with the most referenced classes
+                primary = max(ref_sources, key=lambda s: len(ref_sources[s]))
+                primary_info = src_index[primary]
+                result["covered"] = set(ref_sources)
+                result["misnamed"] = {
+                    "test_file": test_rel,
+                    "referenced_classes": ", ".join(sorted(referenced_classes)),
+                    "expected_prefix": f"test_{primary_info['stem']}*.py",
+                    "expected_dir": primary_info["dir"],
+                }
+                if primary_info["dir"] != test_dir_rel:
+                    result["misplaced"] = {
                         "test_file": test_rel,
-                        "primary_source": name_match,
-                        "primary_classes": set(src_info["classes"]),
-                        "referenced_classes": referenced_classes,
+                        "source_file": primary,
+                        "test_dir": test_dir_rel,
+                        "expected_dir": primary_info["dir"],
                     }
-                )
-            else:
-                # Test file name doesn't match any source by prefix
-                # Check if it references any source classes (misnamed or orphaned)
-                if referenced_classes:
-                    # Find the source files for the referenced classes
-                    ref_sources: dict[str, list[str]] = {}  # src_rel -> [classes]
-                    for cls_name in referenced_classes:
-                        src = class_to_source.get(cls_name)
-                        if src:
-                            ref_sources.setdefault(src, []).append(cls_name)
-                            directly_covered.add(src)
+                result["test_ref"] = {
+                    "test_file": test_rel,
+                    "primary_source": primary,
+                    "primary_classes": set(ref_sources[primary]),
+                    "referenced_classes": referenced_classes,
+                }
+        else:
+            # Orphaned — doesn't match any source by name or class reference
+            result["orphaned"] = {"test_file": test_rel}
+        return result
 
-                    if ref_sources:
-                        # Primary source = the one with the most referenced classes
-                        primary = max(ref_sources, key=lambda s: len(ref_sources[s]))
-                        primary_info = src_index[primary]
+    @staticmethod
+    def _referenced_classes(
+        content: str, src_index: dict[str, dict[str, Any]]
+    ) -> list[str]:
+        """List source class names that appear in the file content."""
+        return [
+            cls_name
+            for info in src_index.values()
+            for cls_name in info["classes"]
+            if cls_name in content
+        ]
 
-                        misnamed.append(
-                            {
-                                "test_file": test_rel,
-                                "referenced_classes": ", ".join(sorted(referenced_classes)),
-                                "expected_prefix": f"test_{primary_info['stem']}*.py",
-                                "expected_dir": primary_info["dir"],
-                            }
-                        )
-
-                        # Check if it's also misplaced
-                        if primary_info["dir"] != test_dir_rel:
-                            misplaced.append(
-                                {
-                                    "test_file": test_rel,
-                                    "source_file": primary,
-                                    "test_dir": test_dir_rel,
-                                    "expected_dir": primary_info["dir"],
-                                }
-                            )
-
-                        test_refs.append(
-                            {
-                                "test_file": test_rel,
-                                "primary_source": primary,
-                                "primary_classes": set(ref_sources[primary]),
-                                "referenced_classes": referenced_classes,
-                            }
-                        )
-                else:
-                    # Orphaned — doesn't match any source by name or class reference
-                    orphaned.append(
-                        {
-                            "test_file": test_rel,
-                        }
-                    )
-
-        # --- Build indirect references table ---
-        # For each test file, find classes it references from source files that
-        # have NO direct test coverage. These are indirect references — the test
-        # file is providing coverage for a source file it doesn't directly test.
+    @staticmethod
+    def _find_indirect_refs(
+        test_refs: list[dict[str, Any]],
+        class_to_source: dict[str, str],
+        directly_covered: set[str],
+    ) -> tuple[list[dict[str, Any]], set[str]]:
+        """Find classes a test covers for sources with no direct test coverage."""
         indirect_refs: list[dict[str, Any]] = []
         indirectly_covered: set[str] = set()
 
@@ -398,8 +465,15 @@ class TestStructureScanner:
                         "indirectly_tested_classes": ", ".join(sorted(other_classes)),
                     }
                 )
+        return indirect_refs, indirectly_covered
 
-        # --- Find missing tests (source files not covered directly or indirectly) ---
+    @staticmethod
+    def _find_missing_tests(
+        src_index: dict[str, dict[str, Any]],
+        directly_covered: set[str],
+        indirectly_covered: set[str],
+    ) -> list[dict[str, Any]]:
+        """Find source files covered neither directly nor indirectly."""
         missing: list[dict[str, Any]] = []
         for src_rel, info in sorted(src_index.items()):
             if src_rel in directly_covered or src_rel in indirectly_covered:
@@ -412,39 +486,76 @@ class TestStructureScanner:
                     "expected_dir": info["dir"],
                 }
             )
+        return missing
 
-        # --- Orphaned test directories ---
-        orphaned_dirs = [{"test_dir": str(d) + "/"} for d in test_only_dirs]
+    @staticmethod
+    def _emit_json(
+        src_pkgs: list[Path],
+        test_pkgs: list[Path],
+        classified: dict[str, Any],
+        orphaned_dirs: list[dict[str, Any]],
+        missing: list[dict[str, Any]],
+        indirect_refs: list[dict[str, Any]],
+    ) -> None:
+        """Emit the JSON report."""
+        has_issues = bool(
+            classified["misnamed"]
+            or classified["misplaced"]
+            or classified["orphaned"]
+            or orphaned_dirs
+            or missing
+            or indirect_refs
+        )
+        print(
+            json.dumps(
+                {
+                    "source_packages": [str(p) for p in src_pkgs],
+                    "test_packages": [str(p) for p in test_pkgs],
+                    "misnamed": classified["misnamed"],
+                    "misplaced": classified["misplaced"],
+                    "orphaned": classified["orphaned"],
+                    "orphaned_dirs": orphaned_dirs,
+                    "missing": missing,
+                    "indirect_refs": indirect_refs,
+                    "has_issues": has_issues,
+                },
+                indent=2,
+            )
+        )
 
-        # --- Report ---
+    @staticmethod
+    def _emit_text(
+        src_pkgs: list[Path],
+        test_pkgs: list[Path],
+        classified: dict[str, Any],
+        orphaned_dirs: list[dict[str, Any]],
+        missing: list[dict[str, Any]],
+        indirect_refs: list[dict[str, Any]],
+    ) -> None:
+        """Emit the markdown report."""
+        misnamed = classified["misnamed"]
+        misplaced = classified["misplaced"]
+        orphaned = classified["orphaned"]
         has_issues = bool(
             misnamed or misplaced or orphaned or orphaned_dirs or missing or indirect_refs
         )
-
-        if args.json:
-            print(
-                json.dumps(
-                    {
-                        "source_packages": [str(p) for p in src_pkgs],
-                        "test_packages": [str(p) for p in test_pkgs],
-                        "misnamed": misnamed,
-                        "misplaced": misplaced,
-                        "orphaned": orphaned,
-                        "orphaned_dirs": orphaned_dirs,
-                        "missing": missing,
-                        "indirect_refs": indirect_refs,
-                        "has_issues": has_issues,
-                    },
-                    indent=2,
-                )
-            )
-            return 0
 
         print("# Test Structure — Validation Report\n")
         print(f"**Source packages:** {', '.join(f'`{p}`' for p in src_pkgs)}")
         print(f"**Test packages:** {', '.join(f'`{p}`' for p in test_pkgs)}\n")
 
-        # 1. Misnamed tests
+        TestStructureScanner._emit_misnamed(misnamed)
+        TestStructureScanner._emit_misplaced(misplaced)
+        TestStructureScanner._emit_orphaned(orphaned, orphaned_dirs)
+        TestStructureScanner._emit_missing(missing)
+        TestStructureScanner._emit_indirect(indirect_refs)
+        TestStructureScanner._emit_summary(
+            misnamed, misplaced, orphaned, orphaned_dirs, missing, indirect_refs, has_issues
+        )
+
+    @staticmethod
+    def _emit_misnamed(misnamed: list[dict[str, Any]]) -> None:
+        """Emit the misnamed-tests section."""
         print(f"## 1. Misnamed tests ({len(misnamed)})\n")
         if misnamed:
             print("| Test file | Referenced classes | Expected prefix | Expected dir |")
@@ -458,7 +569,9 @@ class TestStructureScanner:
             print("*None — all test file names match their source stem or class name.*")
         print()
 
-        # 2. Misplaced tests
+    @staticmethod
+    def _emit_misplaced(misplaced: list[dict[str, Any]]) -> None:
+        """Emit the misplaced-tests section."""
         print(f"## 2. Misplaced tests ({len(misplaced)})\n")
         if misplaced:
             print("| Test file | Source file | Current dir | Expected dir |")
@@ -472,7 +585,11 @@ class TestStructureScanner:
             print("*None — all test files are in the correct mirrored directory.*")
         print()
 
-        # 3. Orphaned tests
+    @staticmethod
+    def _emit_orphaned(
+        orphaned: list[dict[str, Any]], orphaned_dirs: list[dict[str, Any]]
+    ) -> None:
+        """Emit the orphaned tests section (dirs first, then files)."""
         total_orphaned = len(orphaned) + len(orphaned_dirs)
         print(f"## 3. Orphaned tests ({total_orphaned})\n")
         if orphaned_dirs:
@@ -492,7 +609,9 @@ class TestStructureScanner:
             print("*None — all test files and directories match a source counterpart.*")
         print()
 
-        # 4. Missing tests
+    @staticmethod
+    def _emit_missing(missing: list[dict[str, Any]]) -> None:
+        """Emit the missing-tests section."""
         print(f"## 4. Missing tests ({len(missing)})\n")
         if missing:
             print("| Source file | Classes | Expected prefix | Expected dir |")
@@ -506,7 +625,9 @@ class TestStructureScanner:
             print("*None — all source files with classes have direct or indirect tests.*")
         print()
 
-        # 5. Indirect references (informative, last)
+    @staticmethod
+    def _emit_indirect(indirect_refs: list[dict[str, Any]]) -> None:
+        """Emit the indirect-references section (informative only)."""
         print(f"## 5. Indirect references ({len(indirect_refs)}) — informative only\n")
         if indirect_refs:
             print(
@@ -524,7 +645,18 @@ class TestStructureScanner:
             print("*None — no test file provides indirect coverage for uncovered source files.*")
         print()
 
-        # Summary
+    @staticmethod
+    def _emit_summary(
+        misnamed: list[dict[str, Any]],
+        misplaced: list[dict[str, Any]],
+        orphaned: list[dict[str, Any]],
+        orphaned_dirs: list[dict[str, Any]],
+        missing: list[dict[str, Any]],
+        indirect_refs: list[dict[str, Any]],
+        has_issues: bool,
+    ) -> None:
+        """Emit the summary table and result line."""
+        total_orphaned = len(orphaned) + len(orphaned_dirs)
         print("---\n")
         print("## Summary\n")
         print("| Category | Count | Action |")
@@ -540,7 +672,6 @@ class TestStructureScanner:
             print("**Result:** STRUCTURAL MISMATCHES FOUND\n")
         else:
             print("**Result:** all clear\n")
-        return 0
 
 
 if __name__ == "__main__":  # pragma: no cover

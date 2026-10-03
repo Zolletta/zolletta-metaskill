@@ -33,6 +33,7 @@ import argparse
 import ast
 import json
 import sys
+from pathlib import Path
 from typing import Any
 
 from zolletta_metaskill.core.project_config import ProjectConfig
@@ -140,15 +141,41 @@ class InterfaceSegregationScanner:
             )
             return 1
 
+        min_methods = InterfaceSegregationScanner._min_methods(settings, py_langs)
+
+        all_classes = InterfaceSegregationScanner._collect_classes(roots)
+        implementers = InterfaceSegregationScanner._index_implementers(all_classes)
+        fat_interfaces, stub_violations = (
+            InterfaceSegregationScanner._detect_violations(
+                all_classes, implementers, min_methods
+            )
+        )
+
+        if args.json:
+            InterfaceSegregationScanner._emit_json(
+                roots, min_methods, fat_interfaces, stub_violations
+            )
+            return 0
+
+        InterfaceSegregationScanner._emit_text(
+            min_methods, fat_interfaces, stub_violations, implementers
+        )
+        return 0
+
+    @staticmethod
+    def _min_methods(settings: dict[str, Any], py_langs: set[str]) -> int:
+        """Resolve the fat-interface method threshold (lowest configured wins)."""
         limits: list[int] = []
         for lang in sorted(py_langs):
             value = ProjectConfig.setting(settings, f"{lang}.patterns.isp_min_methods", None)
             if isinstance(value, int) and not isinstance(value, bool):
                 limits.append(value)
-        min_methods = min(limits) if limits else 5
+        return min(limits) if limits else 5
 
-        # Collect all classes across all roots
-        all_classes: dict[str, dict[str, Any]] = {}  # name -> class_info
+    @staticmethod
+    def _collect_classes(roots: list[Path]) -> dict[str, dict[str, Any]]:
+        """Collect class info across all roots, keyed by class name."""
+        all_classes: dict[str, dict[str, Any]] = {}
         for root in roots:
             for py in ProjectConfig.iter_files(root, {".py"}):
                 try:
@@ -160,23 +187,40 @@ class InterfaceSegregationScanner:
                         info = InterfaceSegregationScanner._get_class_info(node)
                         info["file"] = str(py.relative_to(root))
                         all_classes.setdefault(info["name"], info)
+        return all_classes
 
-        # Find protocols/ABCs
+    @staticmethod
+    def _index_implementers(
+        all_classes: dict[str, dict[str, Any]],
+    ) -> dict[str, list[str]]:
+        """Map each protocol/ABC name to the classes that implement it."""
+        protocols = {
+            name
+            for name, info in all_classes.items()
+            if InterfaceSegregationScanner._is_protocol_or_abc(info)
+        }
+        implementers: dict[str, list[str]] = {}
+        for name, info in all_classes.items():
+            for base in info["bases"]:
+                if base in protocols:
+                    implementers.setdefault(base, []).append(name)
+        return implementers
+
+    @staticmethod
+    def _detect_violations(
+        all_classes: dict[str, dict[str, Any]],
+        implementers: dict[str, list[str]],
+        min_methods: int,
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        """Detect fat interfaces and implementers stubbing interface methods."""
+        fat_interfaces: list[dict[str, Any]] = []
+        stub_violations: list[dict[str, Any]] = []
+
         protocols = {
             name: info
             for name, info in all_classes.items()
             if InterfaceSegregationScanner._is_protocol_or_abc(info)
         }
-
-        # Find implementers of each protocol/ABC
-        implementers: dict[str, list[str]] = {}  # protocol_name -> [impl_class_names]
-        for name, info in all_classes.items():
-            for base in info["bases"]:
-                if base in protocols:
-                    implementers.setdefault(base, []).append(name)
-
-        fat_interfaces: list[dict[str, Any]] = []
-        stub_violations: list[dict[str, Any]] = []
 
         for proto_name, proto_info in protocols.items():
             method_names = [m["name"] for m in proto_info["methods"]]
@@ -191,83 +235,125 @@ class InterfaceSegregationScanner:
                     }
                 )
 
-            # Check implementers for stubs
-            for impl_name in implementers.get(proto_name, []):
-                impl_info = all_classes[impl_name]
-                impl_methods = {m["name"]: m for m in impl_info["methods"]}
-                for proto_method in proto_info["methods"]:
-                    mname = proto_method["name"]
-                    if mname in impl_methods:
-                        im = impl_methods[mname]
-                        if im["raises_not_implemented"] or im["returns_none"]:
-                            stub_violations.append(
-                                {
-                                    "protocol": proto_name,
-                                    "implementer": impl_name,
-                                    "method": mname,
-                                    "file": impl_info["file"],
-                                    "line": im["line"],
-                                    "issue": (
-                                        "raises NotImplementedError"
-                                        if im["raises_not_implemented"]
-                                        else "stub (pass/return None)"
-                                    ),
-                                }
-                            )
-
-        has_violations = bool(fat_interfaces or stub_violations)
-
-        if args.json:
-            print(
-                json.dumps(
-                    {
-                        "directories": [str(root) for root in roots],
-                        "min_methods": min_methods,
-                        "fat_interfaces": fat_interfaces,
-                        "stub_violations": stub_violations,
-                        "violation_count": len(fat_interfaces) + len(stub_violations),
-                    },
-                    indent=2,
+            stub_violations.extend(
+                InterfaceSegregationScanner._stubs_for_protocol(
+                    proto_name, proto_info, implementers, all_classes
                 )
             )
-            return 0
+        return fat_interfaces, stub_violations
 
+    @staticmethod
+    def _stubs_for_protocol(
+        proto_name: str,
+        proto_info: dict[str, Any],
+        implementers: dict[str, list[str]],
+        all_classes: dict[str, dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Find stub implementations of one protocol's methods."""
+        violations: list[dict[str, Any]] = []
+        for impl_name in implementers.get(proto_name, []):
+            impl_info = all_classes[impl_name]
+            impl_methods = {m["name"]: m for m in impl_info["methods"]}
+            for proto_method in proto_info["methods"]:
+                mname = proto_method["name"]
+                if mname in impl_methods:
+                    im = impl_methods[mname]
+                    if im["raises_not_implemented"] or im["returns_none"]:
+                        violations.append(
+                            {
+                                "protocol": proto_name,
+                                "implementer": impl_name,
+                                "method": mname,
+                                "file": impl_info["file"],
+                                "line": im["line"],
+                                "issue": (
+                                    "raises NotImplementedError"
+                                    if im["raises_not_implemented"]
+                                    else "stub (pass/return None)"
+                                ),
+                            }
+                        )
+        return violations
+
+    @staticmethod
+    def _emit_json(
+        roots: list[Path],
+        min_methods: int,
+        fat_interfaces: list[dict[str, Any]],
+        stub_violations: list[dict[str, Any]],
+    ) -> None:
+        """Emit the JSON report."""
+        print(
+            json.dumps(
+                {
+                    "directories": [str(root) for root in roots],
+                    "min_methods": min_methods,
+                    "fat_interfaces": fat_interfaces,
+                    "stub_violations": stub_violations,
+                    "violation_count": len(fat_interfaces) + len(stub_violations),
+                },
+                indent=2,
+            )
+        )
+
+    @staticmethod
+    def _emit_text(
+        min_methods: int,
+        fat_interfaces: list[dict[str, Any]],
+        stub_violations: list[dict[str, Any]],
+        implementers: dict[str, list[str]],
+    ) -> None:
+        """Emit the markdown report."""
         print("=" * 70)
         print("INTERFACE SEGREGATION (ISP) — VALIDATION REPORT")
         print("=" * 70)
 
-        if fat_interfaces:
-            print(f"\n## Fat interfaces ({len(fat_interfaces)} found, >= {min_methods} methods)\n")
-            for item in fat_interfaces:
-                print(f"  {item['name']} ({item['method_count']} methods)")
-                print(f"    -> {item['file']}:{item['line']}")
-                print(f"    Methods: {', '.join(item['methods'])}")
-                impls = implementers.get(item["name"], [])
-                if impls:
-                    print(f"    Implementers: {', '.join(impls)}")
-                print("    Fix: split into smaller, focused protocols")
-        else:
-            print(f"\n## Fat interfaces: none (threshold: {min_methods} methods)")
-
-        if stub_violations:
-            print(f"\n## Implementers stubbing interface methods ({len(stub_violations)} found)\n")
-            for item in stub_violations:
-                print(f"  {item['implementer']}.{item['method']}() — {item['issue']}")
-                print(f"    Protocol: {item['protocol']}")
-                print(f"    -> {item['file']}:{item['line']}")
-                print(
-                    f"    Fix: split {item['protocol']} so {item['implementer']} "
-                    "only depends on what it needs"
-                )
-        else:
-            print("\n## Implementers stubbing interface methods: none")
+        InterfaceSegregationScanner._emit_fat_interfaces(
+            fat_interfaces, min_methods, implementers
+        )
+        InterfaceSegregationScanner._emit_stub_violations(stub_violations)
 
         print()
-        if has_violations:
+        if fat_interfaces or stub_violations:
             print("Result: ISP violations found (report-only mode)")
         else:
             print("Result: all clear")
-        return 0
+
+    @staticmethod
+    def _emit_fat_interfaces(
+        fat_interfaces: list[dict[str, Any]],
+        min_methods: int,
+        implementers: dict[str, list[str]],
+    ) -> None:
+        """Emit the fat-interface section of the markdown report."""
+        if not fat_interfaces:
+            print(f"\n## Fat interfaces: none (threshold: {min_methods} methods)")
+            return
+        print(f"\n## Fat interfaces ({len(fat_interfaces)} found, >= {min_methods} methods)\n")
+        for item in fat_interfaces:
+            print(f"  {item['name']} ({item['method_count']} methods)")
+            print(f"    -> {item['file']}:{item['line']}")
+            print(f"    Methods: {', '.join(item['methods'])}")
+            impls = implementers.get(item["name"], [])
+            if impls:
+                print(f"    Implementers: {', '.join(impls)}")
+            print("    Fix: split into smaller, focused protocols")
+
+    @staticmethod
+    def _emit_stub_violations(stub_violations: list[dict[str, Any]]) -> None:
+        """Emit the stub-violation section of the markdown report."""
+        if not stub_violations:
+            print("\n## Implementers stubbing interface methods: none")
+            return
+        print(f"\n## Implementers stubbing interface methods ({len(stub_violations)} found)\n")
+        for item in stub_violations:
+            print(f"  {item['implementer']}.{item['method']}() — {item['issue']}")
+            print(f"    Protocol: {item['protocol']}")
+            print(f"    -> {item['file']}:{item['line']}")
+            print(
+                f"    Fix: split {item['protocol']} so {item['implementer']} "
+                "only depends on what it needs"
+            )
 
 
 if __name__ == "__main__":  # pragma: no cover

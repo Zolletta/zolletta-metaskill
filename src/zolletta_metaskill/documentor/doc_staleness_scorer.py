@@ -538,43 +538,21 @@ class DocStalenessScorer:
             return 0.0, details
 
         # Extract headings
-        headings_lower: set[str] = set()
-        for line in content.splitlines():
-            match = re.match(r"^#{1,4}\s+(.+)", line)
-            if match:
-                headings_lower.add(match.group(1).strip().lower())
-
-        # Also check heading words
+        headings_lower = DocStalenessScorer._collect_heading_text(content)
         heading_words: set[str] = set()
         for h in headings_lower:
             heading_words.update(h.split())
 
-        found = []
-        missing = []
-        for section in required_sections:
-            section_lower = section.lower()
-            if (
-                section_lower in headings_lower
-                or section_lower in heading_words
-                or any(section_lower in h for h in headings_lower)
-            ):
-                found.append(section)
-            else:
-                missing.append(section)
+        found, missing = DocStalenessScorer._match_sections(
+            required_sections, headings_lower, heading_words
+        )
 
         # Handle "any_of" groups (e.g. how-to needs "Prerequisites" OR "Before
         # Starting"). Each group counts as one requirement; satisfied if at
         # least one heading in the group is present.
-        groups_found = 0
-        groups_missing = []
-        for group in any_of_groups:
-            group_lower = [g.lower() for g in group]
-            if any(g in headings_lower or g in heading_words for g in group_lower) or any(
-                any(g in h for h in headings_lower) for g in group_lower
-            ):
-                groups_found += 1
-            else:
-                groups_missing.append(group)
+        groups_found, groups_missing = DocStalenessScorer._match_any_of_groups(
+            any_of_groups, headings_lower, heading_words
+        )
 
         details["found_sections"] = found
         details["missing_sections"] = missing
@@ -615,6 +593,56 @@ class DocStalenessScorer:
         return max(0.0, section_score - length_penalty), details
 
     @staticmethod
+    def _collect_heading_text(content: str) -> set[str]:
+        """Collect the lowercase text of every markdown heading (levels 1-4)."""
+        headings_lower: set[str] = set()
+        for line in content.splitlines():
+            match = re.match(r"^#{1,4}\s+(.+)", line)
+            if match:
+                headings_lower.add(match.group(1).strip().lower())
+        return headings_lower
+
+    @staticmethod
+    def _match_sections(
+        required_sections: list[str],
+        headings_lower: set[str],
+        heading_words: set[str],
+    ) -> tuple[list[str], list[str]]:
+        """Split required sections into (found, missing) against the headings."""
+        found = []
+        missing = []
+        for section in required_sections:
+            section_lower = section.lower()
+            if (
+                section_lower in headings_lower
+                or section_lower in heading_words
+                or any(section_lower in h for h in headings_lower)
+            ):
+                found.append(section)
+            else:
+                missing.append(section)
+        return found, missing
+
+    @staticmethod
+    def _match_any_of_groups(
+        any_of_groups: list[list[str]],
+        headings_lower: set[str],
+        heading_words: set[str],
+    ) -> tuple[int, list[list[str]]]:
+        """Count satisfied any-of groups; return (found_count, missing_groups)."""
+        groups_found = 0
+        groups_missing = []
+        for group in any_of_groups:
+            group_lower = [g.lower() for g in group]
+            if any(g in headings_lower or g in heading_words for g in group_lower) or any(
+                any(g in h for h in headings_lower) for g in group_lower
+            ):
+                groups_found += 1
+            else:
+                groups_missing.append(group)
+        return groups_found, groups_missing
+
+    @staticmethod
     def score_accuracy(repo_path: str, doc_path: str) -> tuple[float, dict[str, Any]]:
         """Score based on accuracy of verifiable facts (versions, dates, paths). 0-100."""
         full_path = os.path.join(repo_path, doc_path)
@@ -630,102 +658,144 @@ class DocStalenessScorer:
         checks_total = 0
 
         # Check 1: Version strings match latest tag
-        git_version = DocStalenessScorer.get_latest_tag(repo_path)
-        if git_version:
-            version_refs = re.findall(
-                r"(?:v|version[:\s]*)(\d+\.\d+(?:\.\d+)?)", content, re.IGNORECASE
-            )
-            if version_refs:
-                checks_total += 1
-                if any(v == git_version for v in version_refs):
-                    checks_passed += 1
-                    details["checks"].append("version_match: PASS")
-                else:
-                    details["checks"].append(
-                        f"version_match: FAIL (doc has {version_refs}, git has {git_version})"
-                    )
-                    details["issues"].append(
-                        f"Version mismatch: doc={version_refs}, git={git_version}"
-                    )
+        passed, total = DocStalenessScorer._check_version_match(
+            repo_path, content, details
+        )
+        checks_passed += passed
+        checks_total += total
 
         # Check 2: Package version from manifests
-        for manifest in ["package.json", "pyproject.toml", "setup.py", "Cargo.toml"]:
-            manifest_path = os.path.join(repo_path, manifest)
-            if os.path.exists(manifest_path):
-                manifest_version = DocStalenessScorer._extract_version_from_manifest(
-                    manifest_path, manifest
-                )
-                if manifest_version:
-                    version_refs = re.findall(
-                        r"(?:v|version[:\s]*)(\d+\.\d+(?:\.\d+)?)",
-                        content,
-                        re.IGNORECASE,
-                    )
-                    if version_refs:
-                        checks_total += 1
-                        if manifest_version in version_refs:
-                            checks_passed += 1
-                            details["checks"].append(f"manifest_version ({manifest}): PASS")
-                        else:
-                            details["checks"].append(
-                                f"manifest_version ({manifest}): FAIL "
-                                f"(doc={version_refs}, manifest={manifest_version})"
-                            )
-                            details["issues"].append(
-                                f"Manifest version mismatch: {manifest} has {manifest_version}"
-                            )
+        passed, total = DocStalenessScorer._check_manifest_versions(
+            repo_path, content, details
+        )
+        checks_passed += passed
+        checks_total += total
 
         # Check 3: Referenced file paths exist
-        file_refs = re.findall(r"`([^\s`]+/[^\s`]+\.\w{1,5})`", content)
-        if file_refs:
-            doc_dir = os.path.dirname(doc_path)
-            existing_count = 0
-            for ref in file_refs:
-                resolved = os.path.normpath(os.path.join(repo_path, doc_dir, ref))
-                if os.path.exists(resolved):
-                    existing_count += 1
-                else:
-                    resolved_root = os.path.normpath(os.path.join(repo_path, ref))
-                    if os.path.exists(resolved_root):
-                        existing_count += 1
-            checks_total += 1
-            if len(file_refs) > 0 and existing_count == len(file_refs):
-                checks_passed += 1
-                details["checks"].append(f"file_paths: PASS ({existing_count}/{len(file_refs)})")
-            else:
-                ratio = existing_count / len(file_refs) if file_refs else 0
-                # Partial credit
-                checks_passed += ratio
-                details["checks"].append(f"file_paths: PARTIAL ({existing_count}/{len(file_refs)})")
-                details["issues"].append(
-                    f"{len(file_refs) - existing_count} referenced file paths not found"
-                )
+        passed, total = DocStalenessScorer._check_file_paths(
+            repo_path, doc_path, content, details
+        )
+        checks_passed += passed
+        checks_total += total
 
         # Check 4: Dates are not in the future and not suspiciously old
-        date_pattern = re.compile(r"(\d{4}-\d{2}-\d{2})")
-        dates_found = date_pattern.findall(content)
-        if dates_found:
-            checks_total += 1
-            now = datetime.now(UTC)
-            all_ok = True
-            for date_str in dates_found:
-                try:
-                    d = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=UTC)
-                    if d > now:
-                        details["issues"].append(f"Future date found: {date_str}")
-                        all_ok = False
-                except ValueError:  # pragma: no cover
-                    pass
-            if all_ok:
-                checks_passed += 1
-                details["checks"].append("dates: PASS")
-            else:
-                details["checks"].append("dates: FAIL")
+        passed, total = DocStalenessScorer._check_dates(content, details)
+        checks_passed += passed
+        checks_total += total
 
         if checks_total == 0:
             return 75.0, details  # No verifiable facts found, assume reasonable
 
         return (checks_passed / checks_total) * 100.0, details
+
+    @staticmethod
+    def _version_refs(content: str) -> list[str]:
+        """Extract version-like strings (``v1.2.3``, ``version: 1.2``) from content."""
+        return re.findall(
+            r"(?:v|version[:\s]*)(\d+\.\d+(?:\.\d+)?)", content, re.IGNORECASE
+        )
+
+    @staticmethod
+    def _check_version_match(
+        repo_path: str, content: str, details: dict[str, Any]
+    ) -> tuple[float, int]:
+        """Check that documented versions match the latest git tag."""
+        git_version = DocStalenessScorer.get_latest_tag(repo_path)
+        version_refs = DocStalenessScorer._version_refs(content)
+        if not git_version or not version_refs:
+            return 0.0, 0
+        if any(v == git_version for v in version_refs):
+            details["checks"].append("version_match: PASS")
+            return 1.0, 1
+        details["checks"].append(
+            f"version_match: FAIL (doc has {version_refs}, git has {git_version})"
+        )
+        details["issues"].append(
+            f"Version mismatch: doc={version_refs}, git={git_version}"
+        )
+        return 0.0, 1
+
+    @staticmethod
+    def _check_manifest_versions(
+        repo_path: str, content: str, details: dict[str, Any]
+    ) -> tuple[float, int]:
+        """Check that documented versions match package manifests."""
+        checks_passed = 0.0
+        checks_total = 0
+        for manifest in ["package.json", "pyproject.toml", "setup.py", "Cargo.toml"]:
+            manifest_path = os.path.join(repo_path, manifest)
+            if not os.path.exists(manifest_path):
+                continue
+            manifest_version = DocStalenessScorer._extract_version_from_manifest(
+                manifest_path, manifest
+            )
+            version_refs = DocStalenessScorer._version_refs(content)
+            if manifest_version and version_refs:
+                checks_total += 1
+                if manifest_version in version_refs:
+                    checks_passed += 1
+                    details["checks"].append(f"manifest_version ({manifest}): PASS")
+                else:
+                    details["checks"].append(
+                        f"manifest_version ({manifest}): FAIL "
+                        f"(doc={version_refs}, manifest={manifest_version})"
+                    )
+                    details["issues"].append(
+                        f"Manifest version mismatch: {manifest} has {manifest_version}"
+                    )
+        return checks_passed, checks_total
+
+    @staticmethod
+    def _check_file_paths(
+        repo_path: str, doc_path: str, content: str, details: dict[str, Any]
+    ) -> tuple[float, int]:
+        """Check that referenced file paths exist (partial credit)."""
+        file_refs = re.findall(r"`([^\s`]+/[^\s`]+\.\w{1,5})`", content)
+        if not file_refs:
+            return 0.0, 0
+        doc_dir = os.path.dirname(doc_path)
+        existing_count = 0
+        for ref in file_refs:
+            resolved = os.path.normpath(os.path.join(repo_path, doc_dir, ref))
+            if os.path.exists(resolved):
+                existing_count += 1
+            else:
+                resolved_root = os.path.normpath(os.path.join(repo_path, ref))
+                if os.path.exists(resolved_root):
+                    existing_count += 1
+        if existing_count == len(file_refs):
+            details["checks"].append(f"file_paths: PASS ({existing_count}/{len(file_refs)})")
+            return 1.0, 1
+        ratio = existing_count / len(file_refs)
+        # Partial credit
+        details["checks"].append(f"file_paths: PARTIAL ({existing_count}/{len(file_refs)})")
+        details["issues"].append(
+            f"{len(file_refs) - existing_count} referenced file paths not found"
+        )
+        return ratio, 1
+
+    @staticmethod
+    def _check_dates(content: str, details: dict[str, Any]) -> tuple[float, int]:
+        """Check that documented dates are not in the future."""
+        date_pattern = re.compile(r"(\d{4}-\d{2}-\d{2})")
+        dates_found = date_pattern.findall(content)
+        if not dates_found:
+            return 0.0, 0
+        now = datetime.now(UTC)
+        all_ok = True
+        for date_str in dates_found:
+            try:
+                d = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=UTC)
+                if d > now:
+                    details["issues"].append(f"Future date found: {date_str}")
+                    all_ok = False
+            except ValueError:  # pragma: no cover
+                pass
+        if all_ok:
+            details["checks"].append("dates: PASS")
+            return 1.0, 1
+        details["checks"].append("dates: FAIL")
+        return 0.0, 1
 
     # --- Helpers ---
 

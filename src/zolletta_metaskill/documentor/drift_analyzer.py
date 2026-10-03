@@ -409,10 +409,44 @@ class DriftAnalyzer:
 
         # Extract references from the doc to identify specific source files it documents
         refs = DriftAnalyzer.extract_references_from_doc(repo_path, doc_path)
-
-        # --- Factual drift (per-file): only flag if specific referenced source files changed ---
-        # Resolve which referenced files actually exist in the repo
         doc_dir = os.path.dirname(doc_path)
+
+        issues.extend(
+            DriftAnalyzer._check_factual_drift(
+                repo_path, doc_path, doc_dir, refs, since_date, associated_code_dirs
+            )
+        )
+        issues.extend(
+            DriftAnalyzer._check_rename_drift(
+                repo_path, doc_path, doc_dir, refs, renames, include_referential
+            )
+        )
+        if include_referential:
+            issues.extend(
+                DriftAnalyzer._check_broken_refs(repo_path, doc_path, doc_dir, refs)
+            )
+        issues.extend(
+            DriftAnalyzer._check_version_drift(doc_path, refs, current_version)
+        )
+        issues.extend(
+            DriftAnalyzer._check_temporal_drift(doc_path, doc_modified, since_date)
+        )
+
+        # Check structural completeness for README files.
+        # Only check actual README files (repo root or source directories),
+        # not documentation files about READMEs (e.g. docs/explanation/readme.md).
+        basename = os.path.basename(doc_path).lower()
+        if basename.startswith("readme") and not doc_path.startswith("docs"):
+            structural_issues = DriftAnalyzer.check_readme_structure(repo_path, doc_path)
+            issues.extend(structural_issues)
+
+        return issues
+
+    @staticmethod
+    def _resolve_referenced_files(
+        repo_path: str, doc_dir: str, refs: dict[str, Any]
+    ) -> list[str]:
+        """Resolve the code files a doc references to repo-relative paths."""
         referenced_source_files: list[str] = []
         for ref_file in refs["files"]:
             if Path(ref_file).suffix.lower() not in DriftAnalyzer.CODE_EXTENSIONS:
@@ -423,7 +457,21 @@ class DriftAnalyzer:
                 referenced_source_files.append(os.path.relpath(resolved_doc, repo_path))
             elif os.path.exists(resolved_root):
                 referenced_source_files.append(os.path.relpath(resolved_root, repo_path))
+        return referenced_source_files
 
+    @staticmethod
+    def _check_factual_drift(
+        repo_path: str,
+        doc_path: str,
+        doc_dir: str,
+        refs: dict[str, Any],
+        since_date: str,
+        associated_code_dirs: list[str],
+    ) -> list[dict[str, Any]]:
+        """Flag referenced source files that changed since the doc was updated."""
+        referenced_source_files = DriftAnalyzer._resolve_referenced_files(
+            repo_path, doc_dir, refs
+        )
         if referenced_source_files:
             # Check which of these specific files changed since the doc was last updated
             changed_referenced: list[str] = []
@@ -440,7 +488,7 @@ class DriftAnalyzer:
                     severity = "medium"
                 else:
                     severity = "low"
-                issues.append(
+                return [
                     {
                         "file": doc_path,
                         "severity": severity,
@@ -453,47 +501,70 @@ class DriftAnalyzer:
                         "fix_type": "semi",
                         "details": {"changed_files": changed_referenced, "change_count": count},
                     }
-                )
-        else:
-            # Fallback: no specific source files referenced — check associated code dirs
-            # but only flag as "needs review", not as confirmed drift
-            total_code_changes = 0
-            changed_dirs = set()
-            for code_dir in associated_code_dirs:
-                changes = DriftAnalyzer.get_files_changed_since(repo_path, since_date, code_dir)
-                code_changes = [
-                    c
-                    for c in changes
-                    if Path(c["file"]).suffix.lower() in DriftAnalyzer.CODE_EXTENSIONS
                 ]
-                total_code_changes += len(code_changes)
-                if code_changes:
-                    changed_dirs.add(code_dir)
+            return []
+        return DriftAnalyzer._check_factual_fallback(
+            repo_path, doc_path, since_date, associated_code_dirs
+        )
 
-            if total_code_changes > 20:
-                issues.append(
-                    {
-                        "file": doc_path,
-                        "severity": "low",
-                        "category": "factual",
-                        "description": (
-                            f"{total_code_changes} code files changed in "
-                            f"associated directories since doc was last "
-                            f"updated (no specific source files referenced "
-                            f"in doc — needs review)"
-                        ),
-                        "fix_type": "manual",
-                        "details": {
-                            "changed_dirs": list(changed_dirs),
-                            "change_count": total_code_changes,
-                        },
-                    }
-                )
+    @staticmethod
+    def _check_factual_fallback(
+        repo_path: str,
+        doc_path: str,
+        since_date: str,
+        associated_code_dirs: list[str],
+    ) -> list[dict[str, Any]]:
+        """Fallback factual check: flag heavy change in associated code dirs."""
+        # No specific source files referenced — flag as "needs review",
+        # not as confirmed drift
+        total_code_changes = 0
+        changed_dirs = set()
+        for code_dir in associated_code_dirs:
+            changes = DriftAnalyzer.get_files_changed_since(repo_path, since_date, code_dir)
+            code_changes = [
+                c
+                for c in changes
+                if Path(c["file"]).suffix.lower() in DriftAnalyzer.CODE_EXTENSIONS
+            ]
+            total_code_changes += len(code_changes)
+            if code_changes:
+                changed_dirs.add(code_dir)
 
-        # --- Referential drift: renamed files ---
+        if total_code_changes > 20:
+            return [
+                {
+                    "file": doc_path,
+                    "severity": "low",
+                    "category": "factual",
+                    "description": (
+                        f"{total_code_changes} code files changed in "
+                        f"associated directories since doc was last "
+                        f"updated (no specific source files referenced "
+                        f"in doc — needs review)"
+                    ),
+                    "fix_type": "manual",
+                    "details": {
+                        "changed_dirs": list(changed_dirs),
+                        "change_count": total_code_changes,
+                    },
+                }
+            ]
+        return []
+
+    @staticmethod
+    def _check_rename_drift(
+        repo_path: str,
+        doc_path: str,
+        doc_dir: str,
+        refs: dict[str, Any],
+        renames: list[tuple[str, str]],
+        include_referential: bool,
+    ) -> list[dict[str, Any]]:
+        """Flag references to renamed files (stale-name edge case, or broad rename)."""
         # Edge case: doc references old-name.md, file was renamed to new-name.md,
         # but old-name.md still exists as a different file. This is always reported.
         # The broad rename detection is only reported when --include-referential is set.
+        issues: list[dict[str, Any]] = []
         for old_name, new_name in renames:
             old_base = os.path.basename(old_name)
             new_base = os.path.basename(new_name)
@@ -534,26 +605,36 @@ class DriftAnalyzer:
                             "details": {"old_path": old_name, "new_path": new_name},
                         }
                     )
+        return issues
 
-        # --- Referential drift: broken file references ---
-        # Only report when --include-referential is set (link_checker.py covers this better)
-        if include_referential:
-            for ref_file in refs["files"]:
-                resolved = os.path.normpath(os.path.join(repo_path, doc_dir, ref_file))
-                if not os.path.exists(resolved):
-                    resolved_root = os.path.normpath(os.path.join(repo_path, ref_file))
-                    if not os.path.exists(resolved_root):
-                        issues.append(
-                            {
-                                "file": doc_path,
-                                "severity": "medium",
-                                "category": "referential",
-                                "description": f"References non-existent file: {ref_file}",
-                                "fix_type": "auto",
-                            }
-                        )
+    @staticmethod
+    def _check_broken_refs(
+        repo_path: str, doc_path: str, doc_dir: str, refs: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        """Flag references to files that no longer exist (referential mode only)."""
+        issues: list[dict[str, Any]] = []
+        for ref_file in refs["files"]:
+            resolved = os.path.normpath(os.path.join(repo_path, doc_dir, ref_file))
+            if not os.path.exists(resolved):
+                resolved_root = os.path.normpath(os.path.join(repo_path, ref_file))
+                if not os.path.exists(resolved_root):
+                    issues.append(
+                        {
+                            "file": doc_path,
+                            "severity": "medium",
+                            "category": "referential",
+                            "description": f"References non-existent file: {ref_file}",
+                            "fix_type": "auto",
+                        }
+                    )
+        return issues
 
-        # Check version string drift
+    @staticmethod
+    def _check_version_drift(
+        doc_path: str, refs: dict[str, Any], current_version: str | None
+    ) -> list[dict[str, Any]]:
+        """Flag version strings older than the current project version."""
+        issues: list[dict[str, Any]] = []
         if current_version and refs["versions"]:
             for doc_version in refs["versions"]:
                 if doc_version != current_version and DriftAnalyzer._version_is_older(
@@ -574,8 +655,13 @@ class DriftAnalyzer:
                             },
                         }
                     )
+        return issues
 
-        # Check temporal staleness (days since update)
+    @staticmethod
+    def _check_temporal_drift(
+        doc_path: str, doc_modified: datetime, since_date: str
+    ) -> list[dict[str, Any]]:
+        """Flag docs untouched for a long time."""
         now = datetime.now(UTC)
         # Normalize both datetimes to UTC-aware for safe comparison
         if doc_modified.tzinfo is None:
@@ -584,7 +670,7 @@ class DriftAnalyzer:
             doc_modified_utc = doc_modified.astimezone(UTC)
         days_since = (now - doc_modified_utc).days
         if days_since > 180:
-            issues.append(
+            return [
                 {
                     "file": doc_path,
                     "severity": "medium",
@@ -593,9 +679,9 @@ class DriftAnalyzer:
                     "fix_type": "manual",
                     "details": {"days_since_update": days_since, "last_updated": since_date},
                 }
-            )
-        elif days_since > 365:  # pragma: no cover
-            issues.append(
+            ]
+        if days_since > 365:  # pragma: no cover
+            return [
                 {
                     "file": doc_path,
                     "severity": "high",
@@ -604,17 +690,8 @@ class DriftAnalyzer:
                     "fix_type": "manual",
                     "details": {"days_since_update": days_since, "last_updated": since_date},
                 }
-            )
-
-        # Check structural completeness for README files.
-        # Only check actual README files (repo root or source directories),
-        # not documentation files about READMEs (e.g. docs/explanation/readme.md).
-        basename = os.path.basename(doc_path).lower()
-        if basename.startswith("readme") and not doc_path.startswith("docs"):
-            structural_issues = DriftAnalyzer.check_readme_structure(repo_path, doc_path)
-            issues.extend(structural_issues)
-
-        return issues
+            ]
+        return []
 
     @staticmethod
     def check_readme_structure(repo_path: str, doc_path: str) -> list[dict[str, Any]]:

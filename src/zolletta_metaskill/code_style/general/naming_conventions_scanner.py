@@ -170,6 +170,27 @@ class NamingConventionsScanner:
             return 0
 
         python_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
+        resolved = NamingConventionsScanner._resolve_packages(settings, python_langs)
+        if resolved is None:
+            return 1
+        src_roots, test_roots, pkg_name, src_pkgs, test_pkgs = resolved
+
+        name_mismatch = NamingConventionsScanner._check_name_mismatches(src_pkgs)
+        orphan_tests = NamingConventionsScanner._check_orphan_tests(test_pkgs, src_pkgs)
+
+        if args.json:
+            NamingConventionsScanner._emit_json(
+                src_roots, test_roots, pkg_name, name_mismatch, orphan_tests
+            )
+            return 0
+        NamingConventionsScanner._emit_text(src_pkgs, test_pkgs, name_mismatch, orphan_tests)
+        return 0
+
+    @staticmethod
+    def _resolve_packages(
+        settings: dict[str, Any], python_langs: set[str]
+    ) -> tuple[list[Path], list[Path], str, list[Path], list[Path]] | None:
+        """Resolve source/test roots and the package dir, printing an error on failure."""
         src_roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, python_langs))
         test_roots = ProjectConfig.existing_roots(ProjectConfig.test_roots(settings, python_langs))
         if not src_roots:
@@ -177,20 +198,20 @@ class NamingConventionsScanner:
                 "Error: no configured source directories exist on disk",
                 file=sys.stderr,
             )
-            return 1
+            return None
         if not test_roots:
             print(
                 "Error: no configured test directories exist on disk",
                 file=sys.stderr,
             )
-            return 1
+            return None
 
         pkg_name = ProjectConfig.package_name(
             settings, "python"
         ) or NamingConventionsScanner._auto_detect_package(src_roots[0])
         if not pkg_name:
             print("Error: could not auto-detect package under src/", file=sys.stderr)
-            return 1
+            return None
 
         src_pkgs = [root / pkg_name for root in src_roots if (root / pkg_name).is_dir()]
         test_pkgs = [root / pkg_name for root in test_roots if (root / pkg_name).is_dir()]
@@ -200,15 +221,18 @@ class NamingConventionsScanner:
                 "configured source root",
                 file=sys.stderr,
             )
-            return 1
+            return None
         if not test_pkgs:
             print(
                 f"Error: test package '{pkg_name}' does not exist under any configured test root",
                 file=sys.stderr,
             )
-            return 1
+            return None
+        return src_roots, test_roots, pkg_name, src_pkgs, test_pkgs
 
-        # --- Check 1: source file name == class name ---
+    @staticmethod
+    def _check_name_mismatches(src_pkgs: list[Path]) -> list[dict[str, Any]]:
+        """Check 1: source file name == class name."""
         name_mismatch: list[dict[str, Any]] = []
         for src_pkg in src_pkgs:
             for py in ProjectConfig.iter_files(src_pkg, {".py"}):
@@ -229,8 +253,13 @@ class NamingConventionsScanner:
                             "expected": expected_pascal,
                         }
                     )
+        return name_mismatch
 
-        # --- Check 2: test file naming convention ---
+    @staticmethod
+    def _check_orphan_tests(
+        test_pkgs: list[Path], src_pkgs: list[Path]
+    ) -> list[dict[str, Any]]:
+        """Check 2: test file naming convention against the source index."""
         source_index: dict[Path, set[str]] = {}
         for src_pkg in src_pkgs:
             for rel_dir, prefixes in NamingConventionsScanner._build_source_index(src_pkg).items():
@@ -239,64 +268,85 @@ class NamingConventionsScanner:
 
         for test_pkg in test_pkgs:
             for test_py in ProjectConfig.iter_files(test_pkg, {".py"}):
-                if not test_py.name.startswith("test_"):
-                    continue
-                if test_py.name == "conftest.py":  # pragma: no cover
-                    continue
-
-                rel_dir = test_py.relative_to(test_pkg).parent
-                stem = test_py.stem  # e.g. "test_cache_operations"
-
-                # Skip test files that don't start with "test_" (shouldn't happen)
-                if not stem.startswith("test_"):  # pragma: no cover
-                    continue
-
-                test_stem_rest = stem[5:]  # e.g. "cache_operations"
-
-                # Skip common non-SUT test files
-                if test_stem_rest in {"", "conftest"}:
-                    continue
-
-                prefixes = source_index.get(rel_dir, set())
-                if not prefixes:
-                    orphan_tests.append(
-                        {
-                            "file": str(test_py.relative_to(test_pkg)),
-                            "reason": f"no source directory at {rel_dir}/",
-                        }
-                    )
-                    continue
-
-                match = NamingConventionsScanner._matches_prefix(test_stem_rest, prefixes)
-                if match is None:
-                    orphan_tests.append(
-                        {
-                            "file": str(test_py.relative_to(test_pkg)),
-                            "reason": f"no source file or class matching '{test_stem_rest}' "
-                            f"in {rel_dir}/",
-                        }
-                    )
-
-        has_violations = bool(name_mismatch or orphan_tests)
-
-        if args.json:
-            print(
-                json.dumps(
-                    {
-                        "directories": {
-                            "source": [str(root) for root in src_roots],
-                            "tests": [str(root) for root in test_roots],
-                        },
-                        "package": pkg_name,
-                        "name_mismatch": name_mismatch,
-                        "orphan_tests": orphan_tests,
-                        "violation_count": len(name_mismatch) + len(orphan_tests),
-                    },
-                    indent=2,
+                entry = NamingConventionsScanner._check_one_test_file(
+                    test_py, test_pkg, source_index
                 )
-            )
-            return 0
+                if entry:
+                    orphan_tests.append(entry)
+        return orphan_tests
 
+    @staticmethod
+    def _check_one_test_file(
+        test_py: Path, test_pkg: Path, source_index: dict[Path, set[str]]
+    ) -> dict[str, Any] | None:
+        """Check one test file's naming; return an orphan entry or None."""
+        if not test_py.name.startswith("test_"):
+            return None
+        if test_py.name == "conftest.py":  # pragma: no cover
+            return None
+
+        rel_dir = test_py.relative_to(test_pkg).parent
+        stem = test_py.stem  # e.g. "test_cache_operations"
+
+        # Skip test files that don't start with "test_" (shouldn't happen)
+        if not stem.startswith("test_"):  # pragma: no cover
+            return None
+
+        test_stem_rest = stem[5:]  # e.g. "cache_operations"
+
+        # Skip common non-SUT test files
+        if test_stem_rest in {"", "conftest"}:
+            return None
+
+        prefixes = source_index.get(rel_dir, set())
+        if not prefixes:
+            return {
+                "file": str(test_py.relative_to(test_pkg)),
+                "reason": f"no source directory at {rel_dir}/",
+            }
+
+        match = NamingConventionsScanner._matches_prefix(test_stem_rest, prefixes)
+        if match is None:
+            return {
+                "file": str(test_py.relative_to(test_pkg)),
+                "reason": f"no source file or class matching '{test_stem_rest}' "
+                f"in {rel_dir}/",
+            }
+        return None
+
+    @staticmethod
+    def _emit_json(
+        src_roots: list[Path],
+        test_roots: list[Path],
+        pkg_name: str,
+        name_mismatch: list[dict[str, Any]],
+        orphan_tests: list[dict[str, Any]],
+    ) -> None:
+        """Emit the JSON report."""
+        print(
+            json.dumps(
+                {
+                    "directories": {
+                        "source": [str(root) for root in src_roots],
+                        "tests": [str(root) for root in test_roots],
+                    },
+                    "package": pkg_name,
+                    "name_mismatch": name_mismatch,
+                    "orphan_tests": orphan_tests,
+                    "violation_count": len(name_mismatch) + len(orphan_tests),
+                },
+                indent=2,
+            )
+        )
+
+    @staticmethod
+    def _emit_text(
+        src_pkgs: list[Path],
+        test_pkgs: list[Path],
+        name_mismatch: list[dict[str, Any]],
+        orphan_tests: list[dict[str, Any]],
+    ) -> None:
+        """Emit the text report."""
         print("=" * 70)
         print("NAMING CONVENTIONS — VALIDATION REPORT")
         print("=" * 70)
@@ -322,11 +372,10 @@ class NamingConventionsScanner:
             print("\n## Test files not matching naming convention: none")
 
         print()
-        if has_violations:
+        if name_mismatch or orphan_tests:
             print("Result: violations found (report-only mode)")
         else:
             print("Result: all clear")
-        return 0
 
 
 if __name__ == "__main__":  # pragma: no cover

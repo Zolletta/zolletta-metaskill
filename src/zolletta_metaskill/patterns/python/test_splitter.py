@@ -209,6 +209,109 @@ class TestSplitter:
     @staticmethod
     def main() -> int:
         """Entry point for the test splitter CLI."""
+        args = TestSplitter._build_parser().parse_args()
+
+        test_file = Path(args.test_file)
+        if not test_file.exists():
+            print(f"Error: test file '{test_file}' does not exist", file=sys.stderr)
+            return 1
+
+        source = test_file.read_text(encoding="utf-8")
+        try:
+            tree = ast.parse(source)
+        except SyntaxError as e:
+            print(f"Error: failed to parse {test_file}: {e}", file=sys.stderr)
+            return 1
+
+        class_node = TestSplitter._find_target_class(tree, args.class_name)
+        if not class_node:
+            cls_desc = f" '{args.class_name}'" if args.class_name else ""
+            print(f"Error: no test class{cls_desc} found in {test_file}", file=sys.stderr)
+            return 1
+
+        test_methods = TestSplitter._get_test_methods(class_node)
+        shared_methods = TestSplitter._get_shared_methods(class_node)
+
+        if not test_methods:
+            print(f"Error: class {class_node.name} has no test methods", file=sys.stderr)
+            return 1
+
+        result: dict[str, Any] = {
+            "test_file": str(test_file),
+            "class": class_node.name,
+            "test_methods": len(test_methods),
+            "shared_methods": len(shared_methods),
+        }
+
+        # Load or auto-derive mapping
+        mapping = TestSplitter._load_mapping(args.mapping)
+
+        if not mapping:
+            TestSplitter._emit_auto_mapping(
+                args.json, test_file, class_node, test_methods, shared_methods, result
+            )
+            return 0
+
+        # Group methods by SUT
+        groups = TestSplitter._group_methods(test_methods, mapping)
+
+        result["groups"] = {
+            sut: [m.name for m in methods] for sut, methods in sorted(groups.items())
+        }
+
+        if args.json:
+            if args.dry_run:
+                result["dry_run"] = True
+                print(json.dumps(result, indent=2))
+                return 0
+        else:
+            TestSplitter._emit_proposed_split(
+                test_file, class_node, test_methods, shared_methods, groups
+            )
+            if args.dry_run:
+                print("\n--dry-run: no files written.")
+                return 0
+
+        # Output directory: <runs_dir>/test_split/<test_file stem>
+        settings = ProjectConfig.load_settings()
+        out_dir = ProjectConfig.runs_dir(settings) / "test_split" / test_file.stem
+
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        written = TestSplitter._write_split_files(
+            tree, class_node, groups, shared_methods, out_dir
+        )
+
+        TestSplitter._emit_written(
+            args.json, test_file, out_dir, written, result
+        )
+        return 0
+
+    @staticmethod
+    def _emit_written(
+        json_mode: bool,
+        test_file: Path,
+        out_dir: Path,
+        written: list[str],
+        result: dict[str, Any],
+    ) -> None:
+        """Emit the final report after split files have been written."""
+        if json_mode:
+            result["out_dir"] = str(out_dir)
+            result["written"] = written
+            print(json.dumps(result, indent=2))
+            return
+
+        print(f"\nWriting split files to: {out_dir}/")
+        for filename in written:
+            print(f"  {filename}")
+        print(f"\nDone. {len(written)} files written to {out_dir}/")
+        print("Review the split files, then move them to replace the original.")
+        print(f"Original file {test_file} was NOT modified.")
+
+    @staticmethod
+    def _build_parser() -> argparse.ArgumentParser:
+        """Build the CLI argument parser."""
         parser = argparse.ArgumentParser(
             description="Split a God test class into per-SUT test files."
         )
@@ -233,128 +336,95 @@ class TestSplitter:
             help="Show the proposed split without writing any files",
         )
         parser.add_argument("--json", action="store_true", help="Output as JSON")
-        args = parser.parse_args()
+        return parser
 
-        test_file = Path(args.test_file)
-        if not test_file.exists():
-            print(f"Error: test file '{test_file}' does not exist", file=sys.stderr)
-            return 1
-
-        source = test_file.read_text(encoding="utf-8")
-        try:
-            tree = ast.parse(source)
-        except SyntaxError as e:
-            print(f"Error: failed to parse {test_file}: {e}", file=sys.stderr)
-            return 1
-
-        # Find the target test class
-        class_node = None
+    @staticmethod
+    def _find_target_class(tree: ast.Module, class_name: str | None) -> ast.ClassDef | None:
+        """Find the target test class — the named one, or the first with tests."""
         for node in ast.walk(tree):
             if not isinstance(node, ast.ClassDef):
                 continue
-            if args.class_name and node.name == args.class_name:
-                class_node = node
-                break
-            if not args.class_name:
-                test_methods = TestSplitter._get_test_methods(node)
-                if test_methods:
-                    class_node = node
-                    break
+            if class_name and node.name == class_name:
+                return node
+            if not class_name and TestSplitter._get_test_methods(node):
+                return node
+        return None
 
-        if not class_node:
-            cls_desc = f" '{args.class_name}'" if args.class_name else ""
-            print(f"Error: no test class{cls_desc} found in {test_file}", file=sys.stderr)
-            return 1
+    @staticmethod
+    def _emit_auto_mapping(
+        json_mode: bool,
+        test_file: Path,
+        class_node: ast.ClassDef,
+        test_methods: list[ast.FunctionDef | ast.AsyncFunctionDef],
+        shared_methods: list[ast.FunctionDef | ast.AsyncFunctionDef],
+        result: dict[str, Any],
+    ) -> None:
+        """Emit the auto-derived prefix proposal when no --mapping was given."""
+        auto = TestSplitter._auto_derive_prefixes(test_methods)
+        proposed = {p: TestSplitter._snake_to_pascal(p) for p in auto}
+        if json_mode:
+            result["auto_prefixes"] = auto
+            result["proposed_mapping"] = proposed
+            print(json.dumps(result, indent=2))
+            return
+        print("=" * 70)
+        print(f"TEST SPLITTER — {test_file.name}")
+        print("=" * 70)
+        print(f"\nClass: {class_node.name}")
+        print(f"Test methods: {len(test_methods)}")
+        print(f"Shared methods (fixtures/helpers): {len(shared_methods)}")
+        print("\nNo --mapping provided. Auto-deriving prefixes from method names:")
+        for prefix, names in sorted(auto.items()):
+            print(
+                f"  {prefix}: {len(names)} methods -> "
+                f"{names[:3]}{'...' if len(names) > 3 else ''}"
+            )
+        print('\nUse --mapping \'{"prefix": "SutClass", ...}\' to specify SUT names.')
+        print("Example:")
+        print(f"  --mapping '{json.dumps(proposed)}'")
+        print("\nRe-run with --mapping to split. Use --dry-run to preview first.")
 
-        test_methods = TestSplitter._get_test_methods(class_node)
-        shared_methods = TestSplitter._get_shared_methods(class_node)
+    @staticmethod
+    def _emit_proposed_split(
+        test_file: Path,
+        class_node: ast.ClassDef,
+        test_methods: list[ast.FunctionDef | ast.AsyncFunctionDef],
+        shared_methods: list[ast.FunctionDef | ast.AsyncFunctionDef],
+        groups: dict[str, list[ast.FunctionDef | ast.AsyncFunctionDef]],
+    ) -> None:
+        """Emit the text preview of the proposed per-SUT split."""
+        print("=" * 70)
+        print(f"TEST SPLITTER — {test_file.name}")
+        print("=" * 70)
+        print(f"\nClass: {class_node.name}")
+        print(f"Test methods: {len(test_methods)}")
+        print(f"Shared methods (fixtures/helpers): {len(shared_methods)}")
+        print(f"\nProposed split ({len(groups)} groups):")
+        for sut, methods in sorted(groups.items()):
+            if sut == "_unmatched":
+                print(f"\n  _unmatched ({len(methods)} methods):")
+                for m in methods:
+                    print(f"    {m.name}")
+                print("    (No prefix matched — review and add to mapping)")
+            else:
+                print(f"\n  {sut} -> Test{sut} ({len(methods)} methods):")
+                for m in methods:
+                    print(f"    {m.name}")
 
-        if not test_methods:
-            print(f"Error: class {class_node.name} has no test methods", file=sys.stderr)
-            return 1
+        if "_unmatched" in groups:
+            unmatched = groups["_unmatched"]
+            print(f"\n⚠  {len(unmatched)} methods unmatched. Add their prefixes to --mapping")
+            print("   or they will be placed in a separate _unmatched test file.")
 
-        result: dict[str, Any] = {
-            "test_file": str(test_file),
-            "class": class_node.name,
-            "test_methods": len(test_methods),
-            "shared_methods": len(shared_methods),
-        }
-
-        # Load or auto-derive mapping
-        mapping = TestSplitter._load_mapping(args.mapping)
-
-        if not mapping:
-            auto = TestSplitter._auto_derive_prefixes(test_methods)
-            proposed = {p: TestSplitter._snake_to_pascal(p) for p in auto}
-            if args.json:
-                result["auto_prefixes"] = auto
-                result["proposed_mapping"] = proposed
-                print(json.dumps(result, indent=2))
-                return 0
-            print("=" * 70)
-            print(f"TEST SPLITTER — {test_file.name}")
-            print("=" * 70)
-            print(f"\nClass: {class_node.name}")
-            print(f"Test methods: {len(test_methods)}")
-            print(f"Shared methods (fixtures/helpers): {len(shared_methods)}")
-            print("\nNo --mapping provided. Auto-deriving prefixes from method names:")
-            for prefix, names in sorted(auto.items()):
-                print(
-                    f"  {prefix}: {len(names)} methods -> "
-                    f"{names[:3]}{'...' if len(names) > 3 else ''}"
-                )
-            print('\nUse --mapping \'{"prefix": "SutClass", ...}\' to specify SUT names.')
-            print("Example:")
-            print(f"  --mapping '{json.dumps(proposed)}'")
-            print("\nRe-run with --mapping to split. Use --dry-run to preview first.")
-            return 0
-
-        # Group methods by SUT
-        groups = TestSplitter._group_methods(test_methods, mapping)
-
-        result["groups"] = {
-            sut: [m.name for m in methods] for sut, methods in sorted(groups.items())
-        }
-
-        if args.json:
-            if args.dry_run:
-                result["dry_run"] = True
-                print(json.dumps(result, indent=2))
-                return 0
-        else:
-            print("=" * 70)
-            print(f"TEST SPLITTER — {test_file.name}")
-            print("=" * 70)
-            print(f"\nClass: {class_node.name}")
-            print(f"Test methods: {len(test_methods)}")
-            print(f"Shared methods (fixtures/helpers): {len(shared_methods)}")
-            print(f"\nProposed split ({len(groups)} groups):")
-            for sut, methods in sorted(groups.items()):
-                if sut == "_unmatched":
-                    print(f"\n  _unmatched ({len(methods)} methods):")
-                    for m in methods:
-                        print(f"    {m.name}")
-                    print("    (No prefix matched — review and add to mapping)")
-                else:
-                    print(f"\n  {sut} -> Test{sut} ({len(methods)} methods):")
-                    for m in methods:
-                        print(f"    {m.name}")
-
-            if "_unmatched" in groups:
-                unmatched = groups["_unmatched"]
-                print(f"\n⚠  {len(unmatched)} methods unmatched. Add their prefixes to --mapping")
-                print("   or they will be placed in a separate _unmatched test file.")
-
-            if args.dry_run:
-                print("\n--dry-run: no files written.")
-                return 0
-
-        # Output directory: <runs_dir>/test_split/<test_file stem>
-        settings = ProjectConfig.load_settings()
-        out_dir = ProjectConfig.runs_dir(settings) / "test_split" / test_file.stem
-
-        out_dir.mkdir(parents=True, exist_ok=True)
-
+    @staticmethod
+    def _write_split_files(
+        tree: ast.Module,
+        class_node: ast.ClassDef,
+        groups: dict[str, list[ast.FunctionDef | ast.AsyncFunctionDef]],
+        shared_methods: list[ast.FunctionDef | ast.AsyncFunctionDef],
+        out_dir: Path,
+    ) -> list[str]:
+        """Write one split test file per SUT group; return filenames written."""
         written: list[str] = []
         for sut, methods in sorted(groups.items()):
             if sut == "_unmatched" and not methods:  # pragma: no cover
@@ -366,20 +436,7 @@ class TestSplitter:
             )
             filepath.write_text(content, encoding="utf-8")
             written.append(filename)
-
-        if args.json:
-            result["out_dir"] = str(out_dir)
-            result["written"] = written
-            print(json.dumps(result, indent=2))
-            return 0
-
-        print(f"\nWriting split files to: {out_dir}/")
-        for filename in written:
-            print(f"  {filename}")
-        print(f"\nDone. {len(written)} files written to {out_dir}/")
-        print("Review the split files, then move them to replace the original.")
-        print(f"Original file {test_file} was NOT modified.")
-        return 0
+        return written
 
 
 if __name__ == "__main__":  # pragma: no cover

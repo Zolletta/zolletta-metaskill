@@ -70,6 +70,56 @@ class ADROrchestrator:
         old_cache = cache.load()
 
         # Build new cache and classify changes
+        current_keys, new_directives, new_cache = self._classify_records(
+            records, old_cache, report
+        )
+
+        # Detect removed ADRs and drop them from the cache
+        for key in old_cache:
+            if key not in current_keys:
+                report.removed.append(key)
+        for key in report.removed:
+            new_cache.pop(key, None)
+
+        # Read existing distilled file (lives in the ADR directory, not docs root)
+        distilled_path = self._distilled_path()
+        existing_content = self._read_existing(distilled_path)
+
+        # Build the final list of directive lines (sorted by ADR number)
+        if existing_content is not None:
+            existing_directives = ADRDistiller.parse_directives(existing_content)
+        else:
+            existing_directives = {}
+
+        merged = self._merge_directives(
+            existing_directives, new_directives, report.removed
+        )
+
+        # Sort by ADR number for deterministic output
+        sorted_keys = sorted(merged, key=lambda k: int(k.split("-")[1]))
+        directive_lines = [merged[k] for k in sorted_keys]
+
+        self._write_distilled(
+            distilled_path,
+            existing_content,
+            existing_directives,
+            new_directives,
+            directive_lines,
+            report,
+        )
+
+        # Save cache
+        cache.save(new_cache)
+
+        return report
+
+    def _classify_records(
+        self,
+        records: list[ADRRecord],
+        old_cache: dict[str, dict[str, object]],
+        report: DistillReport,
+    ) -> tuple[set[str], dict[str, str], dict[str, dict[str, object]]]:
+        """Classify records as new/stale, distill them, and build the new cache."""
         current_keys: set[str] = set()
         new_directives: dict[str, str] = {}
         new_cache: dict[str, dict[str, object]] = {}
@@ -102,33 +152,32 @@ class ADROrchestrator:
                 "status": record.status,
             }
 
-        # Detect removed ADRs
-        for key in old_cache:
-            if key not in current_keys:
-                report.removed.append(key)
+        return current_keys, new_directives, new_cache
 
-        # Remove deleted entries from cache
-        for key in report.removed:
-            new_cache.pop(key, None)
-
-        # Read existing distilled file (lives in the ADR directory, not docs root)
+    def _distilled_path(self) -> Path:
+        """Resolve the adr-distilled.md path inside the ADR directory."""
         adr_dir = self.docs_dir / self.adrs_path if self.adrs_path else self.docs_dir
-        distilled_path = adr_dir / ADRDistiller.filename()
+        return adr_dir / ADRDistiller.filename()
+
+    @staticmethod
+    def _read_existing(distilled_path: Path) -> str | None:
+        """Read the existing distilled file, or None if absent/unreadable."""
         existing_content: str | None = None
         if distilled_path.exists():
             with contextlib.suppress(OSError):
                 existing_content = distilled_path.read_text(encoding="utf-8")
+        return existing_content
 
-        # Build the final list of directive lines (sorted by ADR number)
-        if existing_content is not None:
-            existing_directives = ADRDistiller.parse_directives(existing_content)
-        else:
-            existing_directives = {}
-
-        # Merge: start with existing, apply new/stale, remove removed
+    @staticmethod
+    def _merge_directives(
+        existing_directives: dict[str, str],
+        new_directives: dict[str, str],
+        removed: list[str],
+    ) -> dict[str, str]:
+        """Merge existing and freshly distilled directives, dropping removed ADRs."""
         merged: dict[str, str] = {}
         for key, directive in existing_directives.items():
-            if key in report.removed:
+            if key in removed:
                 continue
             merged[key] = new_directives.get(key, directive)
 
@@ -136,37 +185,39 @@ class ADROrchestrator:
         for key, directive in new_directives.items():
             if key not in merged:
                 merged[key] = directive
+        return merged
 
-        # Sort by ADR number for deterministic output
-        sorted_keys = sorted(merged, key=lambda k: int(k.split("-")[1]))
-        directive_lines = [merged[k] for k in sorted_keys]
-
-        # Write distilled file
-        if report.has_adrs and directive_lines:
-            # Check if we can do an in-place update (preserve category headings).
-            # This works when the existing file has directives (not a placeholder)
-            # and every new directive replaces an existing line — the in-place
-            # updater doesn't support inserting lines (brand-new ADRs, or stale
-            # ADRs whose directive was previously absent from the file).
-            existing_has_directives = bool(
-                existing_content is not None and ADRDistiller.parse_directives(existing_content)
-            )
-            can_update_in_place = existing_has_directives and all(
-                key in existing_directives for key in new_directives
-            )
-            if can_update_in_place and existing_content is not None:
-                ADRDistiller.update_in_place(
-                    distilled_path, existing_content, new_directives, report.removed
-                )
-            else:
-                ADRDistiller.write(distilled_path, directive_lines)
-        else:
+    @staticmethod
+    def _write_distilled(
+        distilled_path: Path,
+        existing_content: str | None,
+        existing_directives: dict[str, str],
+        new_directives: dict[str, str],
+        directive_lines: list[str],
+        report: DistillReport,
+    ) -> None:
+        """Write the distilled file — in-place when possible, else full rewrite."""
+        if not (report.has_adrs and directive_lines):
             ADRDistiller.write_placeholder(distilled_path)
+            return
 
-        # Save cache
-        cache.save(new_cache)
-
-        return report
+        # Check if we can do an in-place update (preserve category headings).
+        # This works when the existing file has directives (not a placeholder)
+        # and every new directive replaces an existing line — the in-place
+        # updater doesn't support inserting lines (brand-new ADRs, or stale
+        # ADRs whose directive was previously absent from the file).
+        existing_has_directives = bool(
+            existing_content is not None and ADRDistiller.parse_directives(existing_content)
+        )
+        can_update_in_place = existing_has_directives and all(
+            key in existing_directives for key in new_directives
+        )
+        if can_update_in_place and existing_content is not None:
+            ADRDistiller.update_in_place(
+                distilled_path, existing_content, new_directives, report.removed
+            )
+        else:
+            ADRDistiller.write(distilled_path, directive_lines)
 
     @staticmethod
     def _is_accepted(status: str) -> bool:

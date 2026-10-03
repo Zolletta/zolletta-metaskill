@@ -390,9 +390,6 @@ class APIDocValidator:
             might be worth documenting, prioritized by heuristics.
 
         """
-        issues = []
-        suggestions = []
-
         # Build lookup of all source signatures by name and qualified name
         source_by_name: dict[str, SourceSignature] = {}
         for file_sigs in source_sigs.values():
@@ -402,8 +399,27 @@ class APIDocValidator:
 
         documented_names = set(documented_items.keys())
         source_names = set(source_by_name.keys())
+        shared = documented_names & source_names
 
-        # 1. Documented but not in source (removed or renamed) — real drift
+        issues = APIDocValidator._phantom_doc_issues(
+            documented_names, source_names, documented_items
+        )
+        issues += APIDocValidator._param_mismatch_issues(
+            shared, source_by_name, documented_items
+        )
+        issues += APIDocValidator._deprecated_doc_issues(shared, source_by_name)
+        suggestions = APIDocValidator._undocumented_suggestions(source_by_name, documented_names)
+
+        return issues, suggestions
+
+    @staticmethod
+    def _phantom_doc_issues(
+        documented_names: set[str],
+        source_names: set[str],
+        documented_items: dict[str, dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Documented but not in source (removed or renamed) — real drift."""
+        issues = []
         for name in documented_names:
             if name not in source_names:
                 doc_item = documented_items[name]
@@ -420,8 +436,15 @@ class APIDocValidator:
                         ),
                     }
                 )
+        return issues
 
-        # 2. In source but not documented — suggestions, not issues
+    @staticmethod
+    def _undocumented_suggestions(
+        source_by_name: dict[str, SourceSignature],
+        documented_names: set[str],
+    ) -> list[dict[str, Any]]:
+        """In source but not documented — suggestions, not issues."""
+        suggestions = []
         for name, sig in source_by_name.items():
             # Skip qualified names that are also present as simple names
             if "." in name and name.split(".")[-1] in source_by_name:
@@ -445,9 +468,17 @@ class APIDocValidator:
                         "reason": reason,
                     }
                 )
+        return suggestions
 
-        # 3. Parameter mismatches for items in both source and docs
-        for name in documented_names & source_names:
+    @staticmethod
+    def _param_mismatch_issues(
+        shared: set[str],
+        source_by_name: dict[str, SourceSignature],
+        documented_items: dict[str, dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Parameter mismatches for items in both source and docs."""
+        issues = []
+        for name in shared:
             sig = source_by_name[name]
             doc_item = documented_items[name]
             doc_params = {p["name"] for p in doc_item.get("parameters", [])}
@@ -490,9 +521,16 @@ class APIDocValidator:
                         ),
                     }
                 )
+        return issues
 
-        # 4. Deprecated items still documented without deprecation notice
-        for name in documented_names & source_names:
+    @staticmethod
+    def _deprecated_doc_issues(
+        shared: set[str],
+        source_by_name: dict[str, SourceSignature],
+    ) -> list[dict[str, Any]]:
+        """Flag deprecated items still documented without a deprecation notice."""
+        issues = []
+        for name in shared:
             sig = source_by_name[name]
             if sig.is_deprecated:
                 issues.append(
@@ -508,8 +546,7 @@ class APIDocValidator:
                         ),
                     }
                 )
-
-        return issues, suggestions
+        return issues
 
     @staticmethod
     def _classify_undocumented(sig: SourceSignature) -> tuple[str, str]:
@@ -585,12 +622,46 @@ class APIDocValidator:
                 in the report. If False, only show a summary count of undocumented items.
 
         """
-        # Count suggestions by priority
-        sug_by_priority: dict[str, int] = {}
+        sug_by_priority = APIDocValidator._count_by_priority(suggestions)
+        report_data = APIDocValidator._build_report_data(
+            issues, suggestions, source_count, doc_count, sug_by_priority
+        )
+
+        if suggest_coverage:
+            report_data["suggestions"] = suggestions
+
+        if as_json:
+            return json.dumps(report_data, indent=2, default=str)
+
+        lines = APIDocValidator._report_header(
+            source_count, doc_count, issues, suggestions, sug_by_priority
+        )
+        APIDocValidator._report_issue_sections(lines, issues)
+        if suggest_coverage and suggestions:
+            APIDocValidator._report_suggestions(lines, suggestions)
+        APIDocValidator._report_type_summary(lines, report_data["summary"]["by_type"])
+        APIDocValidator._report_footer(lines, suggestions, sug_by_priority)
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def _count_by_priority(suggestions: list[dict[str, Any]]) -> dict[str, int]:
+        """Count suggestions grouped by their priority classification."""
+        by_priority: dict[str, int] = {}
         for s in suggestions:
             p = s.get("priority", "low")
-            sug_by_priority[p] = sug_by_priority.get(p, 0) + 1
+            by_priority[p] = by_priority.get(p, 0) + 1
+        return by_priority
 
+    @staticmethod
+    def _build_report_data(
+        issues: list[dict[str, Any]],
+        suggestions: list[dict[str, Any]],
+        source_count: int,
+        doc_count: int,
+        sug_by_priority: dict[str, int],
+    ) -> dict[str, Any]:
+        """Build the report data structure used by both output formats."""
         report_data: dict[str, Any] = {
             "summary": {
                 "source_signatures": source_count,
@@ -613,13 +684,17 @@ class APIDocValidator:
             report_data["summary"]["by_severity"][sev] = (
                 report_data["summary"]["by_severity"].get(sev, 0) + 1
             )
+        return report_data
 
-        if suggest_coverage:
-            report_data["suggestions"] = suggestions
-
-        if as_json:
-            return json.dumps(report_data, indent=2, default=str)
-
+    @staticmethod
+    def _report_header(
+        source_count: int,
+        doc_count: int,
+        issues: list[dict[str, Any]],
+        suggestions: list[dict[str, Any]],
+        sug_by_priority: dict[str, int],
+    ) -> list[str]:
+        """Build the report header lines."""
         lines = []
         lines.append("API Documentation Validation Report")
         lines.append("=" * 60)
@@ -635,8 +710,11 @@ class APIDocValidator:
         if not issues:
             lines.append("No drift issues found. API documentation matches source code.")
             lines.append("")
+        return lines
 
-        # Group issues by severity
+    @staticmethod
+    def _report_issue_sections(lines: list[str], issues: list[dict[str, Any]]) -> None:
+        """Append per-severity issue sections to the report lines."""
         severity_order = ["high", "medium", "low"]
         for severity in severity_order:
             sev_issues = [i for i in issues if i.get("severity") == severity]
@@ -655,48 +733,57 @@ class APIDocValidator:
                 lines.append("")
             lines.append("")
 
-        # Suggestions section
-        if suggest_coverage and suggestions:
-            lines.append("DOCUMENTATION SUGGESTIONS:")
-            lines.append("-" * 40)
-            priority_order = ["high", "medium", "low", "skip"]
-            for priority in priority_order:
-                pri_sugs = [s for s in suggestions if s.get("priority") == priority]
-                if not pri_sugs:
-                    continue
-                lines.append(f"  [{priority.upper()}] ({len(pri_sugs)} items):")
-                for s in pri_sugs[:20]:  # Cap at 20 per priority
-                    lines.append(f"    {s['name']} ({s['kind']}) — {s['reason']}")
-                    lines.append(
-                        f"      Source: {s.get('source_file', '?')}:{s.get('source_line', '?')}"
-                    )
-                if len(pri_sugs) > 20:
-                    lines.append(f"    ... and {len(pri_sugs) - 20} more")
-                lines.append("")
+    @staticmethod
+    def _report_suggestions(lines: list[str], suggestions: list[dict[str, Any]]) -> None:
+        """Append the prioritized documentation-suggestions section."""
+        lines.append("DOCUMENTATION SUGGESTIONS:")
+        lines.append("-" * 40)
+        priority_order = ["high", "medium", "low", "skip"]
+        for priority in priority_order:
+            pri_sugs = [s for s in suggestions if s.get("priority") == priority]
+            if not pri_sugs:
+                continue
+            lines.append(f"  [{priority.upper()}] ({len(pri_sugs)} items):")
+            for s in pri_sugs[:20]:  # Cap at 20 per priority
+                lines.append(f"    {s['name']} ({s['kind']}) — {s['reason']}")
+                lines.append(
+                    f"      Source: {s.get('source_file', '?')}:{s.get('source_line', '?')}"
+                )
+            if len(pri_sugs) > 20:
+                lines.append(f"    ... and {len(pri_sugs) - 20} more")
             lines.append("")
+        lines.append("")
 
-        # Summary by type
-        if report_data["summary"]["by_type"]:
-            lines.append("ISSUES BY TYPE:")
-            lines.append("-" * 40)
-            type_labels = {
-                "documented_not_in_source": "Documented but not in source",
-                "missing_param_in_docs": "Missing parameters in docs",
-                "extra_param_in_docs": "Extra parameters in docs",
-                "deprecated_still_documented": "Deprecated items still documented",
-            }
-            for itype, count in sorted(report_data["summary"]["by_type"].items()):
-                label = type_labels.get(itype, itype)
-                lines.append(f"  {label}: {count}")
-            lines.append("")
+    @staticmethod
+    def _report_type_summary(lines: list[str], by_type: dict[str, int]) -> None:
+        """Append the issues-by-type summary section."""
+        if not by_type:
+            return
+        lines.append("ISSUES BY TYPE:")
+        lines.append("-" * 40)
+        type_labels = {
+            "documented_not_in_source": "Documented but not in source",
+            "missing_param_in_docs": "Missing parameters in docs",
+            "extra_param_in_docs": "Extra parameters in docs",
+            "deprecated_still_documented": "Deprecated items still documented",
+        }
+        for itype, count in sorted(by_type.items()):
+            label = type_labels.get(itype, itype)
+            lines.append(f"  {label}: {count}")
+        lines.append("")
 
+    @staticmethod
+    def _report_footer(
+        lines: list[str],
+        suggestions: list[dict[str, Any]],
+        sug_by_priority: dict[str, int],
+    ) -> None:
+        """Append the undocumented-items summary footer."""
         lines.append(f"Undocumented items: {len(suggestions)} (not counted as issues)")
         if sug_by_priority:
             parts = [f"{p}={c}" for p, c in sorted(sug_by_priority.items())]
             lines.append(f"  by priority: {', '.join(parts)}")
         lines.append("  Use --suggest-coverage to see prioritized documentation suggestions.")
-
-        return "\n".join(lines)
 
     # --- Main ---
 
