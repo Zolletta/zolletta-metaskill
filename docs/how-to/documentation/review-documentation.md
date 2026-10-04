@@ -23,39 +23,40 @@ Review project documentation for [Diátaxis](https://diataxis.fr/) compliance, d
 
 ## Steps
 
-### Step 1 — Run the staleness scorer
+### Step 1 — Run the documentor CLI
 
 ```bash
-python3 src/zolletta_metaskill/documentor/doc_staleness_scorer.py
+python3 src/zolletta_metaskill/documentor/documentor_cli.py
 ```
 
-This produces a freshness score; when `documentation.staleness_threshold` is set in settings it exits non-zero below it and lists stale files.
+This runs all three documentor tools and prints one aggregated report. Each tool also writes its own JSON cache under `documentation.cache_dir` (default `.zolletta-metaskill/cache/`):
 
-### Step 2 — Run the drift analyzer
+- `quality.json` — unified drift + staleness review (freshness score 0-100 plus drift issues); when `documentation.staleness_threshold` is set the CLI exits non-zero below it
+- `api_doc_validator.json` — API documentation validated against actual code signatures
+- `link_checker.json` — all internal links in the documentation directory checked
+
+Use `--json` for machine-readable output:
 
 ```bash
-python3 src/zolletta_metaskill/documentor/drift_analyzer.py --json > drift-report.json
+python3 src/zolletta_metaskill/documentor/documentor_cli.py --json > drift-report.json
 ```
 
-This produces a full drift analysis between code and docs.
+### Step 2 — (Optional) Run individual tools
 
-### Step 3 — Run the link checker
+Run a single tool when you only need one category of findings:
 
 ```bash
-python3 src/zolletta_metaskill/documentor/link_checker.py
+# Unified drift + staleness quality review (writes cache/quality.json)
+python3 src/zolletta_metaskill/documentor/quality/quality_review.py
+
+# API doc validator (writes cache/api_doc_validator.json)
+python3 src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py
+
+# Link checker (writes cache/link_checker.json)
+python3 src/zolletta_metaskill/documentor/links/link_checker.py
 ```
 
-This checks all internal links in the documentation directory.
-
-### Step 4 — Run the API doc validator
-
-```bash
-python3 src/zolletta_metaskill/documentor/api_doc_validator.py
-```
-
-This validates API documentation against the actual code signatures.
-
-### Step 5 — Review findings
+### Step 3 — Review findings
 
 Classify each finding by severity:
 

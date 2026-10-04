@@ -121,12 +121,14 @@ For PHP projects, run the PHP equivalents from `src/zolletta_metaskill/patterns/
 
 ### `documentor`
 
-| Script                           | Cache file                        | Condition |
-|----------------------------------|-----------------------------------|-----------|
-| `link_checker.py --json`         | `cache/link_checker.json`         | always    |
-| `api_doc_validator.py --json`    | `cache/api_doc_validator.json`    | always    |
-| `drift_analyzer.py --json`       | `cache/drift_analyzer.json`       | always    |
-| `doc_staleness_scorer.py --json` | `cache/doc_staleness_scorer.json` | always    |
+`documentor_cli.py` runs all three tools and prints the aggregated report; each tool writes its own cache file:
+
+| Script                         | Cache file                     | Condition |
+|--------------------------------|--------------------------------|-----------|
+| `documentor_cli.py --json`     | (aggregates all caches)        | always    |
+| `quality/quality_review.py`    | `cache/quality.json`           | always    |
+| `api_doc/api_doc_validator.py` | `cache/api_doc_validator.json` | always    |
+| `links/link_checker.py`        | `cache/link_checker.json`      | always    |
 
 See [`documentation/operational-rules.md`](../documentation/operational-rules.md) for tool invocation conventions (run from the project root, `documentation.include_referential` suppression, etc.).
 

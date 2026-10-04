@@ -19,12 +19,12 @@
 
 | Class                      | File                                             | Lines | Methods | Pub | Attrs | Verdict                                                            |
 |----------------------------|--------------------------------------------------|-------|---------|-----|-------|--------------------------------------------------------------------|
-| DocStalenessScorer         | documentor/doc_staleness_scorer.py               | 978   | 22      | 14  | 0     | Cohesive — static helpers, single domain (doc staleness scoring)   |
-| DriftAnalyzer              | documentor/drift_analyzer.py                     | 843   | 16      | 13  | 0     | Cohesive — static helpers, single domain (doc drift analysis)      |
-| APIDocValidator            | documentor/api_doc_validator.py                  | 737   | 11      | 7   | 0     | Cohesive — static helpers, single domain (API doc validation)      |
+| QualityScorer              | documentor/quality/quality_scorer.py             | 978   | 22      | 14  | 0     | Cohesive — static helpers, single domain (doc staleness scoring)   |
+| DriftDetector              | documentor/quality/drift_detector.py             | 843   | 16      | 13  | 0     | Cohesive — static helpers, single domain (doc drift detection)     |
+| APIDocValidator            | documentor/api_doc/api_doc_validator.py          | 737   | 11      | 7   | 0     | Cohesive — static helpers, single domain (API doc validation)      |
 | DocstringStreamliner       | code_style/python/docstring_streamliner.py       | 725   | 26      | 11  | 0     | Cohesive — static helpers, single domain (docstring streamlining)  |
 | PHPEngine                  | core/engine/php_engine.py                        | 513   | 26      | 11  | 2     | Cohesive — parser/adapter, single domain (PHP parsing)             |
-| LinkChecker                | documentor/link_checker.py                       | 508   | 12      | 10  | 0     | Cohesive — static helpers, single domain (link checking)           |
+| LinkChecker                | documentor/links/link_checker.py                 | 508   | 12      | 10  | 0     | Cohesive — static helpers, single domain (link checking)           |
 | TestStructureScanner       | testing_style/general/test_structure_scanner.py  | 462   | 7       | 1   | 0     | Cohesive — static helpers, single domain (test structure scanning) |
 | DependencyInversionScanner | patterns/php/dependency_inversion_scanner.py     | 331   | 12      | 3   | 0     | Cohesive — scanner, single domain (PHP DIP detection)              |
 | AcronymCasingScanner       | code_style/php/acronym_casing_scanner.py         | 313   | 6       | 1   | 0     | Cohesive — scanner, single domain (PHP acronym casing)             |
@@ -37,8 +37,8 @@
 
 **"Reason to change" test applied to all 15 candidates.** Every class has methods that serve a single domain:
 
-- **DocStalenessScorer**: all changes stem from the documentation staleness scoring domain (scoring dimensions, git helpers, report generation). Single reason to change: the scoring algorithm changes.
-- **DriftAnalyzer**: all changes stem from the documentation drift analysis domain (git history, doc-to-code mapping, drift detection, report generation). Single reason to change: the drift detection logic changes.
+- **QualityScorer**: all changes stem from the documentation staleness scoring domain (scoring dimensions, git helpers, report generation). Single reason to change: the scoring algorithm changes.
+- **DriftDetector**: all changes stem from the documentation drift detection domain (git history, doc-to-code mapping, drift detection). Single reason to change: the drift detection logic changes.
 - **APIDocValidator**: all changes stem from the API documentation validation domain (AST extraction, doc parsing, validation, classification, reporting). Single reason to change: the validation rules change.
 - **DocstringStreamliner**: all changes stem from the docstring streamlining domain (parsing, analysis, rendering, file processing). Single reason to change: the streamlining rules change.
 - **PHPEngine**: all changes stem from the PHP parsing domain (tree-sitter AST walking, node extraction). Single reason to change: the PHP grammar or ModuleInfo mapping changes.
@@ -88,8 +88,8 @@ All 15 classes are suppressed per "What is NOT a God class": static helper colle
 | `core/engine/test_engine_registry.py`             | `core/engine/engine_registry.py`             | `core/engine/language_engine.py`           | LanguageEngine            |
 | `core/engine/test_php_engine.py`                  | `core/engine/php_engine.py`                  | `core/engine/language_engine.py`           | LanguageEngine            |
 | `core/engine/test_python_engine.py`               | `core/engine/python_engine.py`               | `core/engine/language_engine.py`           | LanguageEngine            |
-| `documentor/test_api_doc_validator.py`            | `documentor/api_doc_validator.py`            | `documentor/structs/source_signature.py`   | SourceSignature           |
-| `documentor/test_link_checker.py`                 | `documentor/link_checker.py`                 | `documentor/structs/link_info.py`          | LinkInfo                  |
+| `documentor/api_doc/test_api_doc_validator.py`    | `documentor/api_doc/api_doc_validator.py`    | `documentor/structs/source_signature.py`   | SourceSignature           |
+| `documentor/links/test_link_checker.py`           | `documentor/links/link_checker.py`           | `documentor/structs/link_info.py`          | LinkInfo                  |
 
 ### SOLID Scanner Results
 

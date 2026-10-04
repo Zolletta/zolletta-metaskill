@@ -1,0 +1,1 @@
+"""Markdown link checking."""

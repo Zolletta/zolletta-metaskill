@@ -17,7 +17,7 @@ Derived from the [Diátaxis Documentation Expert](https://github.com/github/awes
 
 > This file narrows down any eventual general rule about code exploration and documentation, i.e. `code-exploration-rules.md`, `tokensave-rules.md`, `documentation-rules.md`. If you maintain rules as part of your agent configuration, those are the single source of truth for their domain.
 
-> **Execution protocol**: when running a review, follow [`../../docs/reference/code/scripts-first-protocol.md`](../../docs/reference/code/scripts-first-protocol.md) — batch-run the 4 drift scripts (link_checker, api_doc_validator, drift_analyzer, doc_staleness_scorer), persist their output to `cache/`, assemble deterministic report sections from cached output, then run only the judgment pass items (false-positive filtering for known FP patterns — only open source files for FP candidates). Write your report to `reports/documentor.md`. Do not re-read source files the drift tools already validated.
+> **Execution protocol**: when running a review, follow [`../../docs/reference/code/scripts-first-protocol.md`](../../docs/reference/code/scripts-first-protocol.md) — run `documentor_cli.py`, which executes the quality review (drift + staleness), API doc validation, and link checking, persisting each tool's output to `cache/` (`quality.json`, `api_doc_validator.json`, `link_checker.json`) and printing an aggregated report. Assemble deterministic report sections from cached output, then run only the judgment pass items (false-positive filtering for known FP patterns — only open source files for FP candidates). Write your report to `reports/documentor.md`. Do not re-read source files the drift tools already validated.
 
 ## Shared resources
 
@@ -115,33 +115,34 @@ When checking accuracy, the agent MUST:
 
 ### Core capabilities
 
-- **Full drift analysis** — map docs to code, compare git histories, detect renamed files, version drift, and structural gaps; classify each issue by category, severity, and fix type. Per-file factual drift (only flags when specific referenced source files changed). Referential drift suppressed by default (`documentation.include_referential`); `link_checker.py` covers broken links more reliably.
+- **Unified quality review** — drift detection and staleness scoring in a single pass: map docs to code, compare git histories, detect renamed files, version drift, and structural gaps; classify each issue by category, severity, and fix type. Per-file factual drift (only flags when specific referenced source files changed). Referential drift suppressed by default (`documentation.include_referential`); `links/link_checker.py` covers broken links more reliably.
 - **API doc validation** — AST-based extraction of Python signatures/classes compared against markdown API docs. Reports real drift (phantom docs, parameter mismatches, deprecations) as issues. Undocumented items are separated as prioritized suggestions (high/medium/low/skip) using heuristics — enable `documentation.suggest_coverage` to see them. Undocumented items do not affect the exit code or issue count.
 - **Staleness scoring** — weighted 0-100 freshness score across five dimensions with an optional `documentation.staleness_threshold` CI gate and README-focused mode. Respects `.gitignore`.
 - **Link integrity audit** — validate local files, anchors, cross-document anchors, images, case-sensitivity, and duplicate anchors; optional external URL checks (`documentation.check_external`).
 - **Drift classification** — structural, factual, referential, temporal categories (semantic removed as unreliable), each tagged `[AUTO]`/`[SEMI]`/`[MANUAL]` for fix routing.
+- **Aggregated reporting** — `documentor_cli.py` runs all three tools, each of which writes its own JSON cache file (`quality.json`, `api_doc_validator.json`, `link_checker.json`), then merges them into a single review report via `report_aggregator.py`.
 - **CI/CD integration** — JSON output, optional staleness threshold gate, GitHub Actions and pre-commit recipes for ongoing monitoring.
 
 ### Tools
 
-| Tool                      | Purpose                                       | Command                                                                     |
-|---------------------------|-----------------------------------------------|-----------------------------------------------------------------------------|
-| `drift_analyzer.py`       | Full drift analysis between code and docs     | `python src/zolletta_metaskill/documentor/drift_analyzer.py [--json]`        |
-| `doc_staleness_scorer.py` | Score documentation freshness 0-100           | `python src/zolletta_metaskill/documentor/doc_staleness_scorer.py [--json]`  |
-| `api_doc_validator.py`    | Validate API docs against Python source (AST) | `python src/zolletta_metaskill/documentor/api_doc_validator.py [--json]`     |
-| `link_checker.py`         | Audit all markdown links and anchors          | `python src/zolletta_metaskill/documentor/link_checker.py [--broken-only]`   |
+| Tool                           | Purpose                                                  | Command                                                                          |
+|--------------------------------|----------------------------------------------------------|----------------------------------------------------------------------------------|
+| `documentor_cli.py`            | Run all documentor tools and aggregate into one report   | `python src/zolletta_metaskill/documentor/documentor_cli.py [--json]`            |
+| `quality/quality_review.py`    | Unified drift + staleness review (writes `quality.json`) | `python src/zolletta_metaskill/documentor/quality/quality_review.py [--json]`    |
+| `api_doc/api_doc_validator.py` | Validate API docs against Python source (AST)            | `python src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py [--json]` |
+| `links/link_checker.py`        | Audit all markdown links and anchors                     | `python src/zolletta_metaskill/documentor/links/link_checker.py [--broken-only]` |
 
-All tools: Python 3.8+ stdlib only, run from the repository root, `[--json]` and `--help`, any OS. Paths and thresholds come from `documentation.*` in `.zolletta-metaskill/settings.json` — see [settings-schema.md](../../docs/reference/settings-schema.md).
+All tools: Python 3.8+ stdlib only, run from the repository root, `[--json]` and `--help`, any OS. Paths and thresholds come from `documentation.*` in `.zolletta-metaskill/settings.json` — see [settings-schema.md](../../docs/reference/settings-schema.md). Each tool writes its JSON cache under the configured cache dir (`documentation.cache_dir`, default `.zolletta-metaskill/cache/`).
 
 ### False positive filtering
 
 When running automated tools, filter out these known false positive patterns:
 
-- **Duplicate anchors inside code blocks** — `link_checker.py` does not respect code fences; headings inside `markdown`/`yaml`/`text` code blocks are not real anchors.
-- **Phantom docs for class methods** — `api_doc_validator.py` uses top-level AST extraction; class methods, stdlib imports, and protocol methods are invisible to it. Verify with grep before reporting.
+- **Duplicate anchors inside code blocks** — `links/link_checker.py` does not respect code fences; headings inside `markdown`/`yaml`/`text` code blocks are not real anchors.
+- **Phantom docs for class methods** — `api_doc/api_doc_validator.py` uses top-level AST extraction; class methods, stdlib imports, and protocol methods are invisible to it. Verify with grep before reporting.
 - **Parameter mismatches from name collisions** — e.g., `Cache.cache(scenario)` vs `BranchCache.cache(templates_by_project, gitlab_manager)`. Verify which class the doc references.
 - **Temporal drift on docs updated after source** — if the doc was committed after the source file, the temporal signal is a false positive.
-- **Completeness=0 for Diátaxis docs** — `doc_staleness_scorer.py` detects Diátaxis quadrant directories and applies quadrant-specific completeness checks. If a doc scores 0 on completeness despite being in a quadrant directory, verify the directory name matches the expected signposts (see `--diataxis-translations` for non-English docs).
+- **Completeness=0 for Diátaxis docs** — `quality/quality_scorer.py` detects Diátaxis quadrant directories and applies quadrant-specific completeness checks. If a doc scores 0 on completeness despite being in a quadrant directory, verify the directory name matches the expected signposts (see `documentation.diataxis_translations` for non-English docs).
 - **Illustrative paths in docs** — template placeholders (`<verifier_name>_result.py`), example file names, and glob patterns are intentional, not missing files.
 - **adr-distilled.md** — auto-generated by the ADR distiller during review, lives in the ADR directory. Do not flag it for drift or staleness.
 
@@ -169,12 +170,11 @@ Load on demand — keep this file lean:
 ### Phase 1: Automated tools (fast — run first)
 
 1. **Read project rules:** `AGENTS.md` and any documentation rules in your agent configuration.
-2. **Run the 4 scripts** from `scripts/` — these are fast (seconds), find most issues, and require no graph index:
-   - `link_checker.py` — broken links and duplicate anchors
-   - `api_doc_validator.py` — API doc accuracy against source (AST)
-   - `drift_analyzer.py` — full drift analysis
-   - `doc_staleness_scorer.py` — freshness score
-   - **Non-English documentation**: if `documentation.language` in `settings.json` is not `"en"`, translate the English signpost headings and directory names before running the staleness scorer. Write a JSON file (see `--diataxis-translations` in `docs/reference/code/scripts.md` for the format) with the translated equivalents and pass it via `--diataxis-translations <path>`. The English signposts (e.g. `"tutorials"`, `"prerequisites"`, `"what we will learn"`) are the keys — translate each to the documentation language. Also translate the README section defaults (`installation`, `usage`, `api`, `contributing`, `license`) and include them as `readme_sections` in the JSON.
+2. **Run `documentor_cli.py`** — fast (seconds), finds most issues, requires no graph index. It runs all three tools, each writing its own `cache/` artifact, and prints the aggregated report:
+   - `quality/quality_review.py` — unified drift analysis + freshness score (`cache/quality.json`)
+   - `api_doc/api_doc_validator.py` — API doc accuracy against source (AST) (`cache/api_doc_validator.json`)
+   - `links/link_checker.py` — broken links and duplicate anchors (`cache/link_checker.json`)
+   - **Non-English documentation**: if `documentation.language` in `settings.json` is not `"en"`, translate the English signpost headings and directory names before running the quality review. Write a JSON file (see `documentation.diataxis_translations` in `docs/reference/code/scripts.md` for the format) with the translated equivalents and set it via `documentation.diataxis_translations` in `settings.json`. The English signposts (e.g. `"tutorials"`, `"prerequisites"`, `"what we will learn"`) are the keys — translate each to the documentation language. Also translate the README section defaults (`installation`, `usage`, `api`, `contributing`, `license`) and include them as `readme_sections` in the JSON.
 3. **Filter false positives** using the rules above.
 4. **Inventory docs:** List all `.md` files in the documentation directory (`documentation.dir` from `settings.json`, default `docs/`) and classify by Diátaxis quadrant.
 5. **Review each document** against the Diátaxis compliance checklist (this is a doc-internal check — no source reading needed).

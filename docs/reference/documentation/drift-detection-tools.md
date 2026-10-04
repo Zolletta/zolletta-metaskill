@@ -6,66 +6,72 @@ skills: [documentor]
 
 # Drift Detection Tools Reference
 
-The `documentor` skill includes four drift detection tools. All are Python 3.8+ stdlib only — no external dependencies required.
+The `documentor` skill includes a top-level orchestrator plus three domain tools. All are Python 3.8+ stdlib only — no external dependencies required.
 
 ## Tools
 
-| Tool                      | Purpose                                       | Command                                                                     |
-|---------------------------|-----------------------------------------------|-----------------------------------------------------------------------------|
-| `drift_analyzer.py`       | Full drift analysis between code and docs     | `python src/zolletta_metaskill/documentor/drift_analyzer.py [--json]`       |
-| `doc_staleness_scorer.py` | Score documentation freshness 0-100           | `python src/zolletta_metaskill/documentor/doc_staleness_scorer.py [--json]` |
-| `api_doc_validator.py`    | Validate API docs against Python source (AST) | `python src/zolletta_metaskill/documentor/api_doc_validator.py [--json]`    |
-| `link_checker.py`         | Audit all markdown links and anchors          | `python src/zolletta_metaskill/documentor/link_checker.py [--broken-only]`  |
+| Tool                           | Purpose                                                  | Command                                                                          |
+|--------------------------------|----------------------------------------------------------|----------------------------------------------------------------------------------|
+| `documentor_cli.py`            | Run all tools and aggregate into one report              | `python src/zolletta_metaskill/documentor/documentor_cli.py [--json]`            |
+| `quality/quality_review.py`    | Unified drift + staleness review (writes `quality.json`) | `python src/zolletta_metaskill/documentor/quality/quality_review.py [--json]`    |
+| `api_doc/api_doc_validator.py` | Validate API docs against Python source (AST)            | `python src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py [--json]` |
+| `links/link_checker.py`        | Audit all markdown links and anchors                     | `python src/zolletta_metaskill/documentor/links/link_checker.py [--broken-only]` |
 
 All tools: Python 3.8+ stdlib only, `[--json]`, run from the repository root, any OS. All configuration — docs directory, source roots, thresholds — comes from `.zolletta-metaskill/settings.json` under `documentation.*`.
 
-## drift_analyzer.py
+Each tool writes its own JSON cache artifact under the configured cache dir (`documentation.cache_dir`, default `.zolletta-metaskill/cache/`):
 
-Full drift analysis between code and documentation. Maps docs to code, compares git histories, detects renamed files, version drift, and structural gaps. Classifies each issue by category, severity, and fix type. Analyzes the repository at the current working directory.
+| Tool cache file          | Produced by                    |
+|--------------------------|--------------------------------|
+| `quality.json`           | `quality/quality_review.py`    |
+| `api_doc_validator.json` | `api_doc/api_doc_validator.py` |
+| `link_checker.json`      | `links/link_checker.py`        |
 
-```bash
-python src/zolletta_metaskill/documentor/drift_analyzer.py [--json]
-```
+## documentor_cli.py
 
-| Setting                            | Default            | Description                                       |
-| ---------------------------------- | ------------------ | ------------------------------------------------- |
-| `documentation.dir`                | `docs`             | Documentation directory                           |
-| `documentation.doc_patterns`       | `*.md,*.rst,*.txt` | Comma-separated doc file patterns                 |
-| `<lang>.paths.source`              | `src`/`src/`       | Code analysis scope = union of source roots       |
-| `documentation.min_severity`       | `low`              | Minimum severity to report (high, medium, low)    |
-| `documentation.include_referential` | false             | Include referential drift (suppressed by default) |
-
-**Per-file factual drift**: only flags when specific referenced source files changed. Referential drift suppressed by default (`include_referential`); `link_checker.py` covers broken links more reliably.
-
-## doc_staleness_scorer.py
-
-Scores documentation freshness on a 0-100 scale across five dimensions. Respects `.gitignore`.
+Top-level orchestrator. Runs the quality review, API doc validation, and link checking, then merges their cache files into a single report via `report_aggregator.py`. Prints Markdown by default, JSON with `--json`. Respects settings and skips gracefully when a tool has no applicable work (the tool still writes a skip cache record so the aggregate report includes the section).
 
 ```bash
-python src/zolletta_metaskill/documentor/doc_staleness_scorer.py [--json] [--quiet]
+python src/zolletta_metaskill/documentor/documentor_cli.py [--json]
 ```
 
-| Option / Setting                      | Default    | Description                             |
-|---------------------------------------|------------|-----------------------------------------|
-| `--quiet`                             | off        | Output only the score number            |
-| `documentation.staleness_threshold`   | (none)     | Fail if score drops below this value    |
-| `documentation.readme_focus`          | false      | Focus on README-style docs              |
-| `documentation.readme_sections`       | (auto)     | Comma-separated required section names  |
-| `documentation.staleness_weights`     | (defaults) | Scoring weights for the five dimensions |
-| `documentation.diataxis_translations` | (none)     | Translated README section names         |
+The aggregated report has named sections — `quality`, `api_doc`, `links` — plus a high-level summary (aggregate quality score/label, totals for documents, drift issues, API-doc issues/suggestions, links checked, broken links, duplicate anchors, and any missing cache sections). Enforces `documentation.staleness_threshold` on the aggregate quality score.
+
+## quality/quality_review.py
+
+Unified documentation quality review: combines drift detection (`quality/drift_detector.py`) and multi-dimensional staleness scoring (`quality/quality_scorer.py`) in a single pass, writes `quality.json`. Maps docs to code, compares git histories, detects renamed files, version drift, and structural gaps; classifies each drift issue by category, severity, and fix type; scores freshness 0-100 across five dimensions. Respects `.gitignore`.
+
+```bash
+python src/zolletta_metaskill/documentor/quality/quality_review.py [--json]
+```
+
+| Setting                               | Default            | Description                                       |
+|---------------------------------------|--------------------|---------------------------------------------------|
+| `documentation.dir`                   | `docs`             | Documentation directory                           |
+| `documentation.doc_patterns`          | `*.md,*.rst,*.txt` | Comma-separated doc file patterns                 |
+| `<lang>.paths.source`                 | `src`/`src/`       | Code analysis scope = union of source roots       |
+| `documentation.min_severity`          | `low`              | Minimum severity to report (high, medium, low)    |
+| `documentation.include_referential`   | false              | Include referential drift (suppressed by default) |
+| `documentation.staleness_threshold`   | (none)             | Fail if score drops below this value              |
+| `documentation.readme_focus`          | false              | Focus on README-style docs                        |
+| `documentation.readme_sections`       | (auto)             | Comma-separated required section names            |
+| `documentation.staleness_weights`     | (defaults)         | Scoring weights for the five dimensions           |
+| `documentation.diataxis_translations` | (none)             | Translated README section names                   |
 
 `staleness_weights` is a mapping over `updated`, `alignment`, `links`, `completeness`, `accuracy`.
 
-## api_doc_validator.py
+**Per-file factual drift**: only flags when specific referenced source files changed. Referential drift suppressed by default (`include_referential`); `links/link_checker.py` covers broken links more reliably.
 
-AST-based extraction of Python signatures/classes compared against markdown API docs. Reports real drift (phantom docs, parameter mismatches, deprecations) as issues. Undocumented items are separated as prioritized suggestions.
+## api_doc/api_doc_validator.py
+
+AST-based extraction of Python signatures/classes compared against markdown API docs. Reports real drift (phantom docs, parameter mismatches, deprecations) as issues. Undocumented items are separated as prioritized suggestions. Writes `api_doc_validator.json`.
 
 ```bash
-python src/zolletta_metaskill/documentor/api_doc_validator.py [--json]
+python src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py [--json]
 ```
 
 | Setting                            | Default | Description                                        |
-| ---------------------------------- | ------- | -------------------------------------------------- |
+|------------------------------------|---------|----------------------------------------------------|
 | `python.paths.source`              | `[src]` | Source roots to extract signatures from            |
 | `documentation.dir`                | `docs`  | Docs file or directory                             |
 | `documentation.api_docs_recursive` | false   | Scan docs directory recursively                    |
@@ -74,19 +80,19 @@ python src/zolletta_metaskill/documentor/api_doc_validator.py [--json]
 
 Undocumented items do not affect the exit code or issue count.
 
-## link_checker.py
+## links/link_checker.py
 
-Validates all markdown links: local files, anchors, cross-document anchors, images, case-sensitivity, and duplicate anchors. Optional external URL checks. Audits the repository at the current working directory.
+Validates all markdown links: local files, anchors, cross-document anchors, images, case-sensitivity, and duplicate anchors. Optional external URL checks. Audits the repository at the current working directory. Writes `link_checker.json`.
 
 ```bash
-python src/zolletta_metaskill/documentor/link_checker.py [--broken-only] [--json]
+python src/zolletta_metaskill/documentor/links/link_checker.py [--broken-only] [--json]
 ```
 
-| Option / Setting                | Default | Description                               |
-| ------------------------------- | ------- | ----------------------------------------- |
-| `--broken-only`                 | off     | Only show broken links                    |
-| `documentation.check_external`  | false   | Check external URLs (makes HTTP requests) |
+| Option / Setting               | Default | Description                               |
+|--------------------------------|---------|-------------------------------------------|
+| `--broken-only`                | off     | Only show broken links                    |
+| `documentation.check_external` | false   | Check external URLs (makes HTTP requests) |
 
 ## Exit codes
 
-All tools are report-only and exit 0 on findings; exit 1 is reserved for usage errors (e.g. no configured docs/source directories on disk). The one exception is `doc_staleness_scorer.py`: when `documentation.staleness_threshold` is set it exits 1 if the score drops below the threshold, preserving the CI gate.
+All tools are report-only and exit 0 on findings; exit 1 is reserved for usage errors (e.g. no configured docs/source directories on disk). The one exception is the quality review (`quality/quality_review.py` and `documentor_cli.py`): when `documentation.staleness_threshold` is set it exits 1 if the aggregate score drops below the threshold, preserving the CI gate.

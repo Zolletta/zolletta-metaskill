@@ -33,17 +33,18 @@ class APIDocReportWriter:
                 in the report. If False, only show a summary count of undocumented items.
 
         """
-        sug_by_priority = APIDocReportWriter._count_by_priority(suggestions)
-        report_data = APIDocReportWriter._build_report_data(
-            issues, suggestions, source_count, doc_count, sug_by_priority
+        report_data = APIDocReportWriter.generate_report_data(
+            issues,
+            suggestions,
+            source_count,
+            doc_count,
+            suggest_coverage=suggest_coverage,
         )
-
-        if suggest_coverage:
-            report_data["suggestions"] = suggestions
 
         if as_json:
             return json.dumps(report_data, indent=2, default=str)
 
+        sug_by_priority = APIDocReportWriter._count_by_priority(suggestions)
         lines = APIDocReportWriter._report_header(
             source_count, doc_count, issues, suggestions, sug_by_priority
         )
@@ -54,6 +55,23 @@ class APIDocReportWriter:
         APIDocReportWriter._report_footer(lines, suggestions, sug_by_priority)
 
         return "\n".join(lines)
+
+    @staticmethod
+    def generate_report_data(
+        issues: list[dict[str, Any]],
+        suggestions: list[dict[str, Any]],
+        source_count: int,
+        doc_count: int,
+        suggest_coverage: bool = False,
+    ) -> dict[str, Any]:
+        """Return the JSON-serializable report data structure."""
+        sug_by_priority = APIDocReportWriter._count_by_priority(suggestions)
+        report_data = APIDocReportWriter._build_report_data(
+            issues, suggestions, source_count, doc_count, sug_by_priority
+        )
+        if suggest_coverage:
+            report_data["suggestions"] = suggestions
+        return report_data
 
     @staticmethod
     def _count_by_priority(suggestions: list[dict[str, Any]]) -> dict[str, int]:

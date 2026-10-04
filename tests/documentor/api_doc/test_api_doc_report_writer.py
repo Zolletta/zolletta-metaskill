@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from zolletta_metaskill.documentor.api_doc_report_writer import APIDocReportWriter
+from zolletta_metaskill.documentor.api_doc.api_doc_report_writer import APIDocReportWriter
 
 
 class TestAPIDocReportWriter:

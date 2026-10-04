@@ -30,14 +30,18 @@ documentation directory is missing on disk.
 
 import argparse
 import ast
+import json
 import os
 import re
 import sys
+from pathlib import Path
 from typing import Any
 
 from zolletta_metaskill.core.project_config import ProjectConfig
-from zolletta_metaskill.documentor.api_doc_report_writer import APIDocReportWriter
 from zolletta_metaskill.documentor.structs.source_signature import SourceSignature
+from zolletta_metaskill.documentor.utils.documentor_settings import DocumentorSettings
+
+from .api_doc_report_writer import APIDocReportWriter
 
 
 class APIDocValidator:
@@ -613,19 +617,13 @@ class APIDocValidator:
     # --- Main ---
 
     @staticmethod
-    def main() -> int:
-        """Entry point for the API documentation validator CLI."""
-        parser = argparse.ArgumentParser(
-            description="Validate API documentation against Python source code. "
-            "Source roots come from <lang>.paths.source and docs from "
-            "documentation.dir in .zolletta-metaskill/settings.json.",
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-        )
-        parser.add_argument("--json", action="store_true", help="Output as JSON")
+    def run(settings: dict[str, Any], cache_dir: Path, as_json: bool = False) -> tuple[str, bool]:
+        """Run the API doc validator and write the JSON cache file.
 
-        args = parser.parse_args()
-
-        settings = ProjectConfig.load_settings()
+        Returns ``(report, success)`` where *report* is the report string
+        (Markdown or JSON depending on *as_json*) and *success* is False when
+        the run could not proceed (missing source roots or docs dir).
+        """
         languages = ProjectConfig.languages_for_extensions(
             ProjectConfig.configured_languages(settings), {".py"}
         )
@@ -639,21 +637,20 @@ class APIDocValidator:
 
         source_roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, languages))
         if not source_roots:
-            print(
-                "Error: no configured source directories exist on disk",
-                file=sys.stderr,
+            error_report = "Error: no configured source directories exist on disk"
+            APIDocValidator._write_cache(
+                cache_dir, {"error": error_report, "summary": {}, "issues": [], "suggestions": []}
             )
-            return 1
+            return error_report, False
 
         doc_path = ProjectConfig.docs_dir(settings)
         if not doc_path.exists():
-            print(
-                f"Error: documentation directory '{doc_path}' does not exist",
-                file=sys.stderr,
+            error_report = f"Error: documentation directory '{doc_path}' does not exist"
+            APIDocValidator._write_cache(
+                cache_dir, {"error": error_report, "summary": {}, "issues": [], "suggestions": []}
             )
-            return 1
+            return error_report, False
 
-        # Extract source signatures across all configured source roots
         source_sigs: dict[str, list[SourceSignature]] = {}
         for root in source_roots:
             for rel, sigs in APIDocValidator.extract_all_signatures(
@@ -662,30 +659,60 @@ class APIDocValidator:
                 key = str(root / rel)
                 source_sigs[key] = sigs
 
-        # Extract documented items
         documented_items = APIDocValidator.extract_all_documented_items(
             str(doc_path), recursive=recursive
         )
 
-        # Count totals
         source_count = sum(len(sigs) for sigs in source_sigs.values())
         doc_count = len(documented_items)
 
-        # Validate
         issues, suggestions = APIDocValidator.validate_api_docs(source_sigs, documented_items)
 
-        # Report
         report = APIDocReportWriter.generate_report(
             issues,
             suggestions,
             source_count,
             doc_count,
-            as_json=args.json,
+            as_json=as_json,
             suggest_coverage=suggest_coverage,
         )
-        print(report)
 
-        return 0
+        cache_data = APIDocReportWriter.generate_report_data(
+            issues,
+            suggestions,
+            source_count,
+            doc_count,
+            suggest_coverage=suggest_coverage,
+        )
+        APIDocValidator._write_cache(cache_dir, cache_data)
+
+        return report, True
+
+    @staticmethod
+    def _write_cache(cache_dir: Path, cache_data: dict[str, Any]) -> None:
+        """Write *cache_data* to the API doc validator cache file."""
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_path = cache_dir / "api_doc_validator.json"
+        cache_path.write_text(json.dumps(cache_data, indent=2, default=str) + "\n")
+
+    @staticmethod
+    def main() -> int:
+        """Entry point for the API documentation validator CLI."""
+        parser = argparse.ArgumentParser(
+            description="Validate API documentation against Python source code. "
+            "Source roots come from <lang>.paths.source and docs from "
+            "documentation.dir in .zolletta-metaskill/settings.json.",
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
+
+        args = parser.parse_args()
+
+        settings = ProjectConfig.load_settings()
+        cache_dir = DocumentorSettings.resolve_cache_dir(settings)
+        report, success = APIDocValidator.run(settings, cache_dir, as_json=args.json)
+        print(report, file=sys.stderr if not success else sys.stdout)
+        return 0 if success else 1
 
 
 if __name__ == "__main__":  # pragma: no cover

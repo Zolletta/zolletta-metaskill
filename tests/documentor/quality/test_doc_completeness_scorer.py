@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from zolletta_metaskill.documentor.doc_completeness_scorer import DocCompletenessScorer
+from zolletta_metaskill.documentor.quality.doc_completeness_scorer import DocCompletenessScorer
 
 
 class TestDocCompletenessScorer:

@@ -9,8 +9,8 @@ from typing import Any
 
 import pytest
 
-from zolletta_metaskill.documentor.api_doc_report_writer import APIDocReportWriter
-from zolletta_metaskill.documentor.api_doc_validator import APIDocValidator
+from zolletta_metaskill.documentor.api_doc.api_doc_report_writer import APIDocReportWriter
+from zolletta_metaskill.documentor.api_doc.api_doc_validator import APIDocValidator
 from zolletta_metaskill.documentor.structs.source_signature import SourceSignature
 
 

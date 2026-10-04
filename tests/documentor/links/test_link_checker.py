@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-from zolletta_metaskill.documentor.link_checker import LinkChecker
+from zolletta_metaskill.documentor.links.link_checker import LinkChecker
 from zolletta_metaskill.documentor.structs.link_info import LinkInfo
 
 
@@ -289,7 +289,7 @@ class TestLinkChecker:
     def test_external_check_success(self) -> None:
         link = LinkInfo("README.md", 1, "text", "https://example.com", "external")
         with patch(
-            "zolletta_metaskill.documentor.link_checker.LinkChecker.validate_external_url",
+            "zolletta_metaskill.documentor.links.link_checker.LinkChecker.validate_external_url",
             return_value=(True, None),
         ):
             LinkChecker.validate_link(link, "/repo", {}, check_external=True)
@@ -298,7 +298,7 @@ class TestLinkChecker:
     def test_external_check_failure(self) -> None:
         link = LinkInfo("README.md", 1, "text", "https://example.com", "external")
         with patch(
-            "zolletta_metaskill.documentor.link_checker.LinkChecker.validate_external_url",
+            "zolletta_metaskill.documentor.links.link_checker.LinkChecker.validate_external_url",
             return_value=(False, "HTTP 404"),
         ):
             LinkChecker.validate_link(link, "/repo", {}, check_external=True)
@@ -600,86 +600,6 @@ class TestLinkChecker:
         result = LinkChecker.find_markdown_files(str(tmp_path))
         assert result == sorted(result)
 
-    # --- generate_report ---
-
-    def test_empty_report_json(self) -> None:
-        report = LinkChecker.generate_report([], {}, as_json=True)
-        import json
-
-        data = json.loads(report)
-        assert data["summary"]["total_links"] == 0
-        assert data["summary"]["broken"] == 0
-
-    def test_with_broken_links_json(self) -> None:
-        link = LinkInfo("README.md", 5, "text", "missing.md", "local_file")
-        link.is_valid = False
-        link.error = "File not found"
-        report = LinkChecker.generate_report([link], {}, as_json=True)
-        import json
-
-        data = json.loads(report)
-        assert data["summary"]["broken"] == 1
-        assert len(data["broken_links"]) == 1
-
-    def test_linkinfo_human_readable_contains_missing_md(self) -> None:
-        link = LinkInfo("README.md", 5, "text", "missing.md", "local_file")
-        link.is_valid = False
-        link.error = "File not found"
-        report = LinkChecker.generate_report([link], {}, as_json=False)
-        assert "Link Check Report" in report
-        assert "BROKEN LINKS" in report
-        assert "missing.md" in report
-
-    def test_no_issues_human_readable(self) -> None:
-        link = LinkInfo("README.md", 5, "text", "guide.md", "local_file")
-        link.is_valid = True
-        report = LinkChecker.generate_report([link], {}, as_json=False)
-        assert "No issues found" in report
-
-    def test_broken_only_json(self) -> None:
-        valid_link = LinkInfo("README.md", 1, "text", "guide.md", "local_file")
-        valid_link.is_valid = True
-        broken_link = LinkInfo("README.md", 5, "text", "missing.md", "local_file")
-        broken_link.is_valid = False
-        broken_link.error = "File not found"
-        report = LinkChecker.generate_report(
-            [valid_link, broken_link], {}, broken_only=True, as_json=True
-        )
-        import json
-
-        data = json.loads(report)
-        assert "all_links" not in data
-        assert len(data["broken_links"]) == 1
-
-    def test_duplicate_anchors_in_report(self) -> None:
-        report = LinkChecker.generate_report([], {"README.md": [("dup-anchor", 10)]}, as_json=False)
-        assert "DUPLICATE ANCHORS" in report
-        assert "dup-anchor" in report
-
-    def test_duplicate_anchors_json(self) -> None:
-        report = LinkChecker.generate_report([], {"README.md": [("dup-anchor", 10)]}, as_json=True)
-        import json
-
-        data = json.loads(report)
-        assert data["summary"]["duplicate_anchors"] == 1
-
-    def test_linkinfo_type_breakdown_contains_link_type_breakdown(self) -> None:
-        link1 = LinkInfo("README.md", 1, "text", "guide.md", "local_file")
-        link1.is_valid = True
-        link2 = LinkInfo("README.md", 2, "text", "https://example.com", "external")
-        link2.is_valid = True
-        report = LinkChecker.generate_report([link1, link2], {}, as_json=False)
-        assert "LINK TYPE BREAKDOWN" in report
-
-    def test_linkinfo_skipped_links_returns_1(self) -> None:
-        link = LinkInfo("README.md", 1, "text", "https://example.com", "external")
-        # is_valid is None (skipped)
-        report = LinkChecker.generate_report([link], {}, as_json=True)
-        import json
-
-        data = json.loads(report)
-        assert data["summary"]["skipped"] == 1
-
     # --- main ---
 
     def _write_settings(self, tmp_path: Path, **overrides: object) -> Path:
@@ -779,7 +699,7 @@ class TestLinkChecker:
             "# Title\n[link](https://example.com)\n", encoding="utf-8"
         )
         with patch(
-            "zolletta_metaskill.documentor.link_checker.LinkChecker.validate_external_url",
+            "zolletta_metaskill.documentor.links.link_checker.LinkChecker.validate_external_url",
             return_value=(True, None),
         ) as mock_validate:
             rc = self._run(tmp_path, monkeypatch, ["prog"])
@@ -793,7 +713,7 @@ class TestLinkChecker:
             "# Title\n[link](https://example.com)\n", encoding="utf-8"
         )
         with patch(
-            "zolletta_metaskill.documentor.link_checker.LinkChecker.validate_external_url",
+            "zolletta_metaskill.documentor.links.link_checker.LinkChecker.validate_external_url",
             return_value=(True, None),
         ) as mock_validate:
             rc = self._run(tmp_path, monkeypatch, ["prog"])

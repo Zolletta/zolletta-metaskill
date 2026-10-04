@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from zolletta_metaskill.documentor.doc_code_mapper import DocCodeMapper
+from zolletta_metaskill.documentor.utils.doc_code_mapper import DocCodeMapper
 
 
 class TestDocCodeMapper:

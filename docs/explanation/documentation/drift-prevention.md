@@ -76,7 +76,7 @@ Team processes that ensure docs are updated alongside code changes.
 
 ```yaml
 - name: Check documentation links
-  run: python link_checker.py --broken-only
+  run: python src/zolletta_metaskill/documentor/links/link_checker.py --broken-only
   # Report-only: surfaces broken internal links
 ```
 
@@ -84,7 +84,7 @@ Team processes that ensure docs are updated alongside code changes.
 
 ```yaml
 - name: Check doc freshness
-  run: python doc_staleness_scorer.py
+  run: python src/zolletta_metaskill/documentor/quality/quality_review.py
   # Fails if documentation score drops below documentation.staleness_threshold
 ```
 
@@ -92,7 +92,7 @@ Team processes that ensure docs are updated alongside code changes.
 
 ```yaml
 - name: Validate API docs
-  run: python api_doc_validator.py
+  run: python src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py
   # Report-only: surfaces divergence between docs and source
 ```
 
@@ -100,8 +100,8 @@ Team processes that ensure docs are updated alongside code changes.
 
 ```yaml
 - name: Full drift analysis
-  run: python drift_analyzer.py --json > drift-report.json
-  # Generates report as release artifact
+  run: python src/zolletta_metaskill/documentor/documentor_cli.py --json > drift-report.json
+  # Generates aggregated report as release artifact
 ```
 
 ### Recommended Pipeline
@@ -139,14 +139,14 @@ Team processes that ensure docs are updated alongside code changes.
 
 ## Common Drift Patterns and Prevention
 
-| Pattern           | Drift                          | Prevention                                         |
-|-------------------|--------------------------------|----------------------------------------------------|
-| Renamed function  | API docs reference old name    | Run `api_doc_validator.py` after refactors         |
-| Moved file        | Links point to old path        | Run `link_checker.py` after file moves             |
-| Removed parameter | Docs list removed params       | Run `api_doc_validator.py` after signature changes |
-| New module        | No docs for new code           | Add docs in same PR as new code                    |
-| Version bump      | Docs reference old version     | Run `doc_staleness_scorer.py` before release       |
-| Refactored class  | Docs describe old structure    | Update architecture docs after refactors           |
-| Deleted feature   | Docs reference removed feature | Delete docs when removing features                 |
+| Pattern           | Drift                          | Prevention                                                 |
+|-------------------|--------------------------------|------------------------------------------------------------|
+| Renamed function  | API docs reference old name    | Run `api_doc/api_doc_validator.py` after refactors         |
+| Moved file        | Links point to old path        | Run `links/link_checker.py` after file moves               |
+| Removed parameter | Docs list removed params       | Run `api_doc/api_doc_validator.py` after signature changes |
+| New module        | No docs for new code           | Add docs in same PR as new code                            |
+| Version bump      | Docs reference old version     | Run `quality/quality_review.py` before release             |
+| Refactored class  | Docs describe old structure    | Update architecture docs after refactors                   |
+| Deleted feature   | Docs reference removed feature | Delete docs when removing features                         |
 
 ---

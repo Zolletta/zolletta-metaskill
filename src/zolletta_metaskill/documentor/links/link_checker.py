@@ -26,9 +26,13 @@ import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.documentor.structs.link_info import LinkInfo
+from zolletta_metaskill.documentor.utils.documentor_settings import DocumentorSettings
+
+from .link_report_writer import LinkReportWriter
 
 
 class LinkChecker:
@@ -388,109 +392,67 @@ class LinkChecker:
             if not any(part in LinkChecker.SKIP_DIRS for part in f.parts)
         ]
 
-    # --- Report ---
+    # --- Main ---
 
     @staticmethod
-    def _report_broken(lines: list[str], broken: list[LinkInfo]) -> None:
-        """Append broken links section grouped by file."""
-        lines.append("BROKEN LINKS:")
-        lines.append("-" * 60)
-        by_file: dict[str, list[LinkInfo]] = {}
-        for link in broken:
-            by_file.setdefault(link.source_file, []).append(link)
-
-        for source_file, file_links in sorted(by_file.items()):
-            lines.append(f"\n  {source_file}:")
-            for link in sorted(file_links, key=lambda lnk: lnk.line_number):
-                lines.append(f"    Line {link.line_number}: [{link.link_text}]({link.link_target})")
-                lines.append(f"      Error: {link.error}")
-        lines.append("")
-
-    @staticmethod
-    def _report_dups(lines: list[str], duplicate_anchors: dict[str, list[tuple[str, int]]]) -> None:
-        """Append duplicate anchors section."""
-        lines.append("DUPLICATE ANCHORS:")
-        lines.append("-" * 60)
-        for file, dups in sorted(duplicate_anchors.items()):
-            lines.append(f"\n  {file}:")
-            for anchor, line_num in dups:
-                lines.append(f"    Line {line_num}: duplicate anchor '#{anchor}'")
-        lines.append("")
-
-    @staticmethod
-    def _report_type_breakdown(
-        lines: list[str], all_links: list[LinkInfo], broken: list[LinkInfo]
-    ) -> None:
-        """Append link type breakdown section."""
-        type_counts: dict[str, int] = {}
-        broken_type_counts: dict[str, int] = {}
-        for link in all_links:
-            type_counts[link.link_type] = type_counts.get(link.link_type, 0) + 1
-        for link in broken:
-            broken_type_counts[link.link_type] = broken_type_counts.get(link.link_type, 0) + 1
-
-        lines.append("LINK TYPE BREAKDOWN:")
-        lines.append("-" * 40)
-        for ltype in sorted(type_counts.keys()):
-            broken_count = broken_type_counts.get(ltype, 0)
-            total = type_counts[ltype]
-            lines.append(f"  {ltype:<25} {total:>4} total, {broken_count:>4} broken")
-
-    @staticmethod
-    def generate_report(
-        all_links: list[LinkInfo],
-        duplicate_anchors: dict[str, list[tuple[str, int]]],
+    def run(
+        repo_path: str,
+        settings: dict[str, Any],
+        cache_dir: Path,
         broken_only: bool = False,
         as_json: bool = False,
     ) -> str:
-        """Generate a link check report."""
-        broken = [lnk for lnk in all_links if lnk.is_valid is False]
-        valid = [lnk for lnk in all_links if lnk.is_valid is True]
-        skipped = [lnk for lnk in all_links if lnk.is_valid is None]
+        """Run the link checker and write the JSON cache file.
 
-        report_data = {
-            "summary": {
-                "total_links": len(all_links),
-                "valid": len(valid),
-                "broken": len(broken),
-                "skipped": len(skipped),
-                "duplicate_anchors": sum(len(v) for v in duplicate_anchors.values()),
-            },
-            "broken_links": [lnk.to_dict() for lnk in broken],
-            "duplicate_anchors": {
-                file: [{"anchor": anchor, "line": line} for anchor, line in dups]
-                for file, dups in duplicate_anchors.items()
-            },
-        }
+        Returns the report string (Markdown or JSON depending on *as_json*).
+        """
+        check_external = bool(
+            ProjectConfig.setting(settings, "documentation.check_external", False)
+        )
 
-        if not broken_only:
-            report_data["all_links"] = [lnk.to_dict() for lnk in all_links]
+        md_files = LinkChecker.find_markdown_files(repo_path)
+        if not md_files:
+            empty_data: dict[str, Any] = {"error": "No markdown files found", "summary": {}}
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            cache_path = cache_dir / "link_checker.json"
+            cache_path.write_text(json.dumps(empty_data, indent=2, default=str) + "\n")
+            if as_json:
+                return json.dumps(empty_data, indent=2)
+            return "No markdown files found."
 
-        if as_json:
-            return json.dumps(report_data, indent=2, default=str)
+        all_links: list[LinkInfo] = []
+        heading_cache: dict[str, set[str]] = {}
+        duplicate_anchors: dict[str, list[tuple[str, int]]] = {}
 
-        lines: list[str] = [
-            "Link Check Report",
-            "=" * 60,
-            f"Total links:      {len(all_links)}",
-            f"Valid:            {len(valid)}",
-            f"Broken:           {len(broken)}",
-            f"Skipped:          {len(skipped)}",
-            f"Duplicate anchors: {sum(len(v) for v in duplicate_anchors.values())}",
-            "",
-        ]
+        for md_file in md_files:
+            rel_path = os.path.relpath(md_file, repo_path)
+            links = LinkChecker.extract_links(md_file, rel_path)
+            all_links.extend(links)
 
-        if broken:
-            LinkChecker._report_broken(lines, broken)
-        if duplicate_anchors:
-            LinkChecker._report_dups(lines, duplicate_anchors)
-        if not broken and not duplicate_anchors:
-            lines.append("No issues found. All links are valid.")
+            dups = LinkChecker.find_duplicate_anchors(md_file)
+            if dups:
+                duplicate_anchors[rel_path] = dups
 
-        LinkChecker._report_type_breakdown(lines, all_links, broken)
-        return "\n".join(lines)
+        for link in all_links:
+            LinkChecker.validate_link(link, repo_path, heading_cache, check_external=check_external)
 
-    # --- Main ---
+        report = LinkReportWriter.generate_report(
+            all_links,
+            duplicate_anchors,
+            broken_only=broken_only,
+            as_json=as_json,
+        )
+
+        cache_data = LinkReportWriter.generate_report_data(
+            all_links,
+            duplicate_anchors,
+            broken_only=broken_only,
+        )
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_path = cache_dir / "link_checker.json"
+        cache_path.write_text(json.dumps(cache_data, indent=2, default=str) + "\n")
+
+        return report
 
     @staticmethod
     def main() -> int:
@@ -506,47 +468,17 @@ class LinkChecker:
         args = parser.parse_args()
 
         settings = ProjectConfig.load_settings()
-        check_external = bool(
-            ProjectConfig.setting(settings, "documentation.check_external", False)
-        )
         repo_path = os.path.abspath(".")
-
-        # Find markdown files
-        md_files = LinkChecker.find_markdown_files(repo_path)
-        if not md_files:
-            if args.json:
-                print(json.dumps({"error": "No markdown files found"}, indent=2))
-            else:
-                print("No markdown files found.")
-            return 0
-
-        # Extract and validate links
-        all_links: list[LinkInfo] = []
-        heading_cache: dict[str, set[str]] = {}
-        duplicate_anchors: dict[str, list[tuple[str, int]]] = {}
-
-        for md_file in md_files:
-            rel_path = os.path.relpath(md_file, repo_path)
-            links = LinkChecker.extract_links(md_file, rel_path)
-            all_links.extend(links)
-
-            # Check for duplicate anchors
-            dups = LinkChecker.find_duplicate_anchors(md_file)
-            if dups:
-                duplicate_anchors[rel_path] = dups
-
-        # Validate all links
-        for link in all_links:
-            LinkChecker.validate_link(link, repo_path, heading_cache, check_external=check_external)
-
-        # Report
-        report = LinkChecker.generate_report(
-            all_links,
-            duplicate_anchors,
-            broken_only=args.broken_only,
-            as_json=args.json,
+        cache_dir = DocumentorSettings.resolve_cache_dir(settings)
+        print(
+            LinkChecker.run(
+                repo_path,
+                settings,
+                cache_dir,
+                broken_only=args.broken_only,
+                as_json=args.json,
+            )
         )
-        print(report)
         return 0
 
 

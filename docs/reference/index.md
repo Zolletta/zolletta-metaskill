@@ -25,12 +25,12 @@ Scanners, review conventions, and language-specific style rules.
 
 Drift detection, staleness scoring, and operational conventions.
 
-| Document                                                        | Description                                                   |
-|-----------------------------------------------------------------|---------------------------------------------------------------|
-| [Drift detection tools](documentation/drift-detection-tools.md) | drift_analyzer, staleness scorer, API validator, link checker |
-| [Workflows & tools](documentation/workflows-and-tools.md)       | Quick start, 5 core workflows, CI recipes                     |
-| [Scoring & categories](documentation/scoring-and-categories.md) | Staleness scoring model, drift categories, troubleshooting    |
-| [Operational rules](documentation/operational-rules.md)         | Tool invocation conventions and drift report format           |
+| Document                                                        | Description                                                 |
+|-----------------------------------------------------------------|-------------------------------------------------------------|
+| [Drift detection tools](documentation/drift-detection-tools.md) | documentor_cli, quality review, API validator, link checker |
+| [Workflows & tools](documentation/workflows-and-tools.md)       | Quick start, 5 core workflows, CI recipes                   |
+| [Scoring & categories](documentation/scoring-and-categories.md) | Staleness scoring model, drift categories, troubleshooting  |
+| [Operational rules](documentation/operational-rules.md)         | Tool invocation conventions and drift report format         |
 
 ## Project configuration
 
