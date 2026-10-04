@@ -273,8 +273,8 @@ class DependencyInversionScanner:
             return 1
 
         entry_patterns = DependencyInversionScanner._entry_patterns(settings, py_langs)
-        all_violations, scanned_files, skipped_files = (
-            DependencyInversionScanner._scan_roots(roots, entry_patterns)
+        all_violations, scanned_files, skipped_files = DependencyInversionScanner._scan_roots(
+            roots, entry_patterns
         )
 
         if args.json:
@@ -292,9 +292,7 @@ class DependencyInversionScanner:
             )
             return 0
 
-        DependencyInversionScanner._emit_text(
-            all_violations, scanned_files, skipped_files
-        )
+        DependencyInversionScanner._emit_text(all_violations, scanned_files, skipped_files)
         return 0
 
     @staticmethod

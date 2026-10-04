@@ -70,9 +70,7 @@ class ADROrchestrator:
         old_cache = cache.load()
 
         # Build new cache and classify changes
-        current_keys, new_directives, new_cache = self._classify_records(
-            records, old_cache, report
-        )
+        current_keys, new_directives, new_cache = self._classify_records(records, old_cache, report)
 
         # Detect removed ADRs and drop them from the cache
         for key in old_cache:
@@ -91,9 +89,7 @@ class ADROrchestrator:
         else:
             existing_directives = {}
 
-        merged = self._merge_directives(
-            existing_directives, new_directives, report.removed
-        )
+        merged = self._merge_directives(existing_directives, new_directives, report.removed)
 
         # Sort by ADR number for deterministic output
         sorted_keys = sorted(merged, key=lambda k: int(k.split("-")[1]))

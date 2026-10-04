@@ -30,13 +30,13 @@ documentation directory is missing on disk.
 
 import argparse
 import ast
-import json
 import os
 import re
 import sys
 from typing import Any
 
 from zolletta_metaskill.core.project_config import ProjectConfig
+from zolletta_metaskill.documentor.api_doc_report_writer import APIDocReportWriter
 from zolletta_metaskill.documentor.structs.source_signature import SourceSignature
 
 
@@ -158,6 +158,67 @@ class APIDocValidator:
         return params
 
     @staticmethod
+    def _extract_function_signature(
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        tree: ast.AST,
+        rel_path: str,
+        include_private: bool,
+    ) -> SourceSignature | None:
+        """Extract a single function or method signature."""
+        is_private = node.name.startswith("_")
+        if is_private and not include_private:
+            return None
+
+        parent_class = None
+        kind = "function"
+        for parent in ast.walk(tree):
+            if isinstance(parent, ast.ClassDef):
+                for item in parent.body:
+                    if item is node:
+                        parent_class = parent.name
+                        kind = "method"
+                        break
+
+        return SourceSignature(
+            name=node.name,
+            kind=kind,
+            file_path=rel_path,
+            line_number=node.lineno,
+            parameters=APIDocValidator._extract_parameters(node),
+            return_annotation=APIDocValidator._annotation_to_str(node.returns),
+            decorators=APIDocValidator._extract_decorator_names(node.decorator_list),
+            docstring=ast.get_docstring(node),
+            is_private=is_private,
+            parent_class=parent_class,
+        )
+
+    @staticmethod
+    def _extract_class_signature(
+        node: ast.ClassDef, rel_path: str, include_private: bool
+    ) -> SourceSignature | None:
+        """Extract a single class signature."""
+        is_private = node.name.startswith("_")
+        if is_private and not include_private:
+            return None
+
+        init_params: list[dict[str, Any]] = []
+        for item in node.body:
+            if isinstance(item, ast.FunctionDef) and item.name == "__init__":
+                init_params = APIDocValidator._extract_parameters(item)
+                break
+
+        return SourceSignature(
+            name=node.name,
+            kind="class",
+            file_path=rel_path,
+            line_number=node.lineno,
+            parameters=init_params,
+            decorators=APIDocValidator._extract_decorator_names(node.decorator_list),
+            docstring=ast.get_docstring(node),
+            is_private=is_private,
+        )
+
+    @staticmethod
     def extract_signatures(
         source_path: str, include_private: bool = False
     ) -> list[SourceSignature]:
@@ -170,70 +231,19 @@ class APIDocValidator:
         except (SyntaxError, OSError):
             return signatures
 
-        rel_path = source_path  # Will be made relative by caller
-
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                is_private = node.name.startswith("_")
-                if is_private and not include_private:
-                    continue
-
-                # Determine if it's a method (inside a class)
-                parent_class = None
-                kind = "function"
-                for parent in ast.walk(tree):
-                    if isinstance(parent, ast.ClassDef):
-                        for item in parent.body:
-                            if item is node:
-                                parent_class = parent.name
-                                kind = "method"
-                                break
-
-                docstring = ast.get_docstring(node)
-                decorators = APIDocValidator._extract_decorator_names(node.decorator_list)
-                parameters = APIDocValidator._extract_parameters(node)
-                return_annotation = APIDocValidator._annotation_to_str(node.returns)
-
-                sig = SourceSignature(
-                    name=node.name,
-                    kind=kind,
-                    file_path=rel_path,
-                    line_number=node.lineno,
-                    parameters=parameters,
-                    return_annotation=return_annotation,
-                    decorators=decorators,
-                    docstring=docstring,
-                    is_private=is_private,
-                    parent_class=parent_class,
+                sig = APIDocValidator._extract_function_signature(
+                    node, tree, source_path, include_private
                 )
-                signatures.append(sig)
-
+                if sig:
+                    signatures.append(sig)
             elif isinstance(node, ast.ClassDef):
-                is_private = node.name.startswith("_")
-                if is_private and not include_private:
-                    continue
-
-                docstring = ast.get_docstring(node)
-                decorators = APIDocValidator._extract_decorator_names(node.decorator_list)
-
-                # Extract __init__ params as the class params
-                init_params = []
-                for item in node.body:
-                    if isinstance(item, ast.FunctionDef) and item.name == "__init__":
-                        init_params = APIDocValidator._extract_parameters(item)
-                        break
-
-                sig = SourceSignature(
-                    name=node.name,
-                    kind="class",
-                    file_path=rel_path,
-                    line_number=node.lineno,
-                    parameters=init_params,
-                    decorators=decorators,
-                    docstring=docstring,
-                    is_private=is_private,
+                cls_sig = APIDocValidator._extract_class_signature(
+                    node, source_path, include_private
                 )
-                signatures.append(sig)
+                if cls_sig:
+                    signatures.append(cls_sig)
 
         return signatures
 
@@ -263,6 +273,39 @@ class APIDocValidator:
     # --- Documentation Parsing ---
 
     @staticmethod
+    def _parse_inline_param_list(param_str: str) -> list[dict[str, Any]]:
+        """Parse parameter names from an inline function signature string."""
+        params: list[dict[str, Any]] = []
+        if not param_str:
+            return params
+        for p in param_str.split(","):
+            p = p.strip()
+            if p and p not in ("self", "cls", "..."):
+                parts = p.split(":")
+                param_name = parts[0].strip().split("=")[0].strip()
+                if param_name and param_name.replace("*", "").isidentifier():
+                    params.append({"name": param_name})
+        return params
+
+    @staticmethod
+    def _collect_inline_funcs(
+        line: str, line_no: int, doc_path: str, items: dict[str, dict[str, Any]]
+    ) -> None:
+        """Find inline function references like `func(param1, param2)` in line."""
+        inline_func = re.compile(r"`(\w+(?:\.\w+)*)\(([^)]*)\)`")
+        for match in inline_func.finditer(line):
+            func_name = match.group(1)
+            if func_name not in items:
+                params = APIDocValidator._parse_inline_param_list(match.group(2))
+                items[func_name] = {
+                    "name": func_name,
+                    "line": line_no,
+                    "kind": "function",
+                    "file": doc_path,
+                    "parameters": params,
+                }
+
+    @staticmethod
     def extract_documented_items(doc_path: str) -> dict[str, dict[str, Any]]:
         """Extract function/class references from markdown documentation."""
         items: dict[str, dict[str, Any]] = {}
@@ -275,20 +318,13 @@ class APIDocValidator:
 
         lines = content.splitlines()
 
-        # Pattern 1: Function headings like ### `function_name()` or ### function_name
         heading_func = re.compile(r"^#{1,6}\s+`?(\w+(?:\.\w+)*)\(`?.*\)?`?\s*$")
-        # Pattern 2: Function in backticks with params like `function_name(param1, param2)`
-        inline_func = re.compile(r"`(\w+(?:\.\w+)*)\(([^)]*)\)`")
-        # Pattern 3: Class headings like ### class ClassName or ### ClassName
-        re.compile(r"^#{1,6}\s+(?:class\s+)?`?(\w+)`?\s*$")
-        # Pattern 4: Parameter lists like - `param_name` (type): description
         param_pattern = re.compile(r"^\s*[-*]\s+`(\w+)`\s*(?:\(([^)]+)\))?\s*(?::|--)?\s*(.*)")
 
         current_item = None
         current_params: list[dict[str, Any]] = []
 
         for i, line in enumerate(lines):
-            # Check for function heading
             match = heading_func.match(line)
             if match:
                 if current_item and current_item in items:
@@ -306,30 +342,8 @@ class APIDocValidator:
                 current_params = []
                 continue
 
-            # Check for inline function definitions
-            for match in inline_func.finditer(line):
-                func_name = match.group(1)
-                param_str = match.group(2)
-                if func_name not in items:
-                    params = []
-                    if param_str:
-                        for p in param_str.split(","):
-                            p = p.strip()
-                            if p and p not in ("self", "cls", "..."):
-                                # Handle type annotations like param: type
-                                parts = p.split(":")
-                                param_name = parts[0].strip().split("=")[0].strip()
-                                if param_name and param_name.replace("*", "").isidentifier():
-                                    params.append({"name": param_name})
-                    items[func_name] = {
-                        "name": func_name,
-                        "line": i + 1,
-                        "kind": "function",
-                        "file": doc_path,
-                        "parameters": params,
-                    }
+            APIDocValidator._collect_inline_funcs(line, i + 1, doc_path, items)
 
-            # Check for parameter list items
             param_match = param_pattern.match(line)
             if param_match and current_item:
                 param_name = param_match.group(1)
@@ -341,7 +355,6 @@ class APIDocValidator:
                     }
                 )
 
-        # Finalize last item
         if current_item and current_item in items:
             items[current_item]["parameters"] = current_params
 
@@ -404,9 +417,7 @@ class APIDocValidator:
         issues = APIDocValidator._phantom_doc_issues(
             documented_names, source_names, documented_items
         )
-        issues += APIDocValidator._param_mismatch_issues(
-            shared, source_by_name, documented_items
-        )
+        issues += APIDocValidator._param_mismatch_issues(shared, source_by_name, documented_items)
         issues += APIDocValidator._deprecated_doc_issues(shared, source_by_name)
         suggestions = APIDocValidator._undocumented_suggestions(source_by_name, documented_names)
 
@@ -599,192 +610,6 @@ class APIDocValidator:
         # Default
         return "low", "undocumented item"
 
-    # --- Report ---
-
-    @staticmethod
-    def generate_report(
-        issues: list[dict[str, Any]],
-        suggestions: list[dict[str, Any]],
-        source_count: int,
-        doc_count: int,
-        as_json: bool = False,
-        suggest_coverage: bool = False,
-    ) -> str:
-        """Generate a validation report.
-
-        Args:
-            issues: Real drift issues (phantom docs, param mismatches, deprecations).
-            suggestions: Undocumented items with priority classification.
-            source_count: Total number of source items discovered.
-            doc_count: Total number of documented items found.
-            as_json: If True, return the report as a JSON string; otherwise return Markdown.
-            suggest_coverage: If True, include prioritized documentation suggestions
-                in the report. If False, only show a summary count of undocumented items.
-
-        """
-        sug_by_priority = APIDocValidator._count_by_priority(suggestions)
-        report_data = APIDocValidator._build_report_data(
-            issues, suggestions, source_count, doc_count, sug_by_priority
-        )
-
-        if suggest_coverage:
-            report_data["suggestions"] = suggestions
-
-        if as_json:
-            return json.dumps(report_data, indent=2, default=str)
-
-        lines = APIDocValidator._report_header(
-            source_count, doc_count, issues, suggestions, sug_by_priority
-        )
-        APIDocValidator._report_issue_sections(lines, issues)
-        if suggest_coverage and suggestions:
-            APIDocValidator._report_suggestions(lines, suggestions)
-        APIDocValidator._report_type_summary(lines, report_data["summary"]["by_type"])
-        APIDocValidator._report_footer(lines, suggestions, sug_by_priority)
-
-        return "\n".join(lines)
-
-    @staticmethod
-    def _count_by_priority(suggestions: list[dict[str, Any]]) -> dict[str, int]:
-        """Count suggestions grouped by their priority classification."""
-        by_priority: dict[str, int] = {}
-        for s in suggestions:
-            p = s.get("priority", "low")
-            by_priority[p] = by_priority.get(p, 0) + 1
-        return by_priority
-
-    @staticmethod
-    def _build_report_data(
-        issues: list[dict[str, Any]],
-        suggestions: list[dict[str, Any]],
-        source_count: int,
-        doc_count: int,
-        sug_by_priority: dict[str, int],
-    ) -> dict[str, Any]:
-        """Build the report data structure used by both output formats."""
-        report_data: dict[str, Any] = {
-            "summary": {
-                "source_signatures": source_count,
-                "documented_items": doc_count,
-                "total_issues": len(issues),
-                "undocumented_count": len(suggestions),
-                "undocumented_by_priority": sug_by_priority,
-                "by_type": {},
-                "by_severity": {},
-            },
-            "issues": issues,
-        }
-
-        for issue in issues:
-            itype = issue.get("type", "unknown")
-            sev = issue.get("severity", "unknown")
-            report_data["summary"]["by_type"][itype] = (
-                report_data["summary"]["by_type"].get(itype, 0) + 1
-            )
-            report_data["summary"]["by_severity"][sev] = (
-                report_data["summary"]["by_severity"].get(sev, 0) + 1
-            )
-        return report_data
-
-    @staticmethod
-    def _report_header(
-        source_count: int,
-        doc_count: int,
-        issues: list[dict[str, Any]],
-        suggestions: list[dict[str, Any]],
-        sug_by_priority: dict[str, int],
-    ) -> list[str]:
-        """Build the report header lines."""
-        lines = []
-        lines.append("API Documentation Validation Report")
-        lines.append("=" * 60)
-        lines.append(f"Source signatures found: {source_count}")
-        lines.append(f"Documented items found:  {doc_count}")
-        lines.append(f"Issues found:            {len(issues)}")
-        lines.append(f"Undocumented items:      {len(suggestions)}")
-        if sug_by_priority:
-            parts = [f"{p}={c}" for p, c in sorted(sug_by_priority.items())]
-            lines.append(f"  by priority:           {', '.join(parts)}")
-        lines.append("")
-
-        if not issues:
-            lines.append("No drift issues found. API documentation matches source code.")
-            lines.append("")
-        return lines
-
-    @staticmethod
-    def _report_issue_sections(lines: list[str], issues: list[dict[str, Any]]) -> None:
-        """Append per-severity issue sections to the report lines."""
-        severity_order = ["high", "medium", "low"]
-        for severity in severity_order:
-            sev_issues = [i for i in issues if i.get("severity") == severity]
-            if not sev_issues:
-                continue
-            lines.append(f"{severity.upper()} ({len(sev_issues)} issues):")
-            lines.append("-" * 40)
-            for issue in sev_issues:
-                lines.append(f"  [{issue.get('type', 'unknown')}] {issue['description']}")
-                if "source_file" in issue:
-                    lines.append(
-                        f"    Source: {issue['source_file']}:{issue.get('source_line', '?')}"
-                    )
-                if "doc_file" in issue:
-                    lines.append(f"    Doc:    {issue['doc_file']}:{issue.get('doc_line', '?')}")
-                lines.append("")
-            lines.append("")
-
-    @staticmethod
-    def _report_suggestions(lines: list[str], suggestions: list[dict[str, Any]]) -> None:
-        """Append the prioritized documentation-suggestions section."""
-        lines.append("DOCUMENTATION SUGGESTIONS:")
-        lines.append("-" * 40)
-        priority_order = ["high", "medium", "low", "skip"]
-        for priority in priority_order:
-            pri_sugs = [s for s in suggestions if s.get("priority") == priority]
-            if not pri_sugs:
-                continue
-            lines.append(f"  [{priority.upper()}] ({len(pri_sugs)} items):")
-            for s in pri_sugs[:20]:  # Cap at 20 per priority
-                lines.append(f"    {s['name']} ({s['kind']}) — {s['reason']}")
-                lines.append(
-                    f"      Source: {s.get('source_file', '?')}:{s.get('source_line', '?')}"
-                )
-            if len(pri_sugs) > 20:
-                lines.append(f"    ... and {len(pri_sugs) - 20} more")
-            lines.append("")
-        lines.append("")
-
-    @staticmethod
-    def _report_type_summary(lines: list[str], by_type: dict[str, int]) -> None:
-        """Append the issues-by-type summary section."""
-        if not by_type:
-            return
-        lines.append("ISSUES BY TYPE:")
-        lines.append("-" * 40)
-        type_labels = {
-            "documented_not_in_source": "Documented but not in source",
-            "missing_param_in_docs": "Missing parameters in docs",
-            "extra_param_in_docs": "Extra parameters in docs",
-            "deprecated_still_documented": "Deprecated items still documented",
-        }
-        for itype, count in sorted(by_type.items()):
-            label = type_labels.get(itype, itype)
-            lines.append(f"  {label}: {count}")
-        lines.append("")
-
-    @staticmethod
-    def _report_footer(
-        lines: list[str],
-        suggestions: list[dict[str, Any]],
-        sug_by_priority: dict[str, int],
-    ) -> None:
-        """Append the undocumented-items summary footer."""
-        lines.append(f"Undocumented items: {len(suggestions)} (not counted as issues)")
-        if sug_by_priority:
-            parts = [f"{p}={c}" for p, c in sorted(sug_by_priority.items())]
-            lines.append(f"  by priority: {', '.join(parts)}")
-        lines.append("  Use --suggest-coverage to see prioritized documentation suggestions.")
-
     # --- Main ---
 
     @staticmethod
@@ -850,7 +675,7 @@ class APIDocValidator:
         issues, suggestions = APIDocValidator.validate_api_docs(source_sigs, documented_items)
 
         # Report
-        report = APIDocValidator.generate_report(
+        report = APIDocReportWriter.generate_report(
             issues,
             suggestions,
             source_count,

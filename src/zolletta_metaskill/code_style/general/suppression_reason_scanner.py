@@ -71,9 +71,7 @@ class SuppressionReasonScanner:
     PHP_EXT = ".php"
     SUPPORTED_EXTENSIONS = {PY_EXT, PHP_EXT}
 
-    _PY_IGNORE = re.compile(
-        r"type:\s*ignore\b(?:\s*\[(?P<codes>[^\]]*)\])?(?P<rest>.*)"
-    )
+    _PY_IGNORE = re.compile(r"type:\s*ignore\b(?:\s*\[(?P<codes>[^\]]*)\])?(?P<rest>.*)")
     _PHP_ANNOTATION = re.compile(
         r"@(?P<anno>phpstan-ignore-next-line|phpstan-ignore-line"
         r"|phpstan-ignore|psalm-suppress)\b(?P<rest>.*)"
@@ -131,9 +129,7 @@ class SuppressionReasonScanner:
             codes = match.group("codes")
             if codes is None or not codes.strip():
                 missing.append("error code")
-            if not SuppressionReasonScanner._has_python_reason(
-                match.group("rest"), lines, lineno
-            ):
+            if not SuppressionReasonScanner._has_python_reason(match.group("rest"), lines, lineno):
                 missing.append("reason")
             if missing:
                 violations.append(
@@ -245,8 +241,7 @@ class SuppressionReasonScanner:
             ProjectConfig.ensure_engines()
             languages = set(EngineRegistry.available_languages())
         extensions = (
-            ProjectConfig.extensions_for(languages)
-            & SuppressionReasonScanner.SUPPORTED_EXTENSIONS
+            ProjectConfig.extensions_for(languages) & SuppressionReasonScanner.SUPPORTED_EXTENSIONS
         )
         if not extensions:
             ProjectConfig.emit_skipped(
@@ -254,9 +249,7 @@ class SuppressionReasonScanner:
             )
             return 0
 
-        roots = ProjectConfig.existing_roots(
-            ProjectConfig.source_roots(settings, languages)
-        )
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, languages))
         if not roots:
             print(
                 "Error: no configured source directories exist on disk "
@@ -294,15 +287,10 @@ class SuppressionReasonScanner:
             print("=" * 70)
             roots_str = ", ".join(str(root) for root in roots)
             print(f"\nScanned {len(files)} files under {roots_str}")
-            print(
-                "Suppressions must carry the checker code/identifier "
-                "and a reason."
-            )
+            print("Suppressions must carry the checker code/identifier and a reason.")
 
             if violations:
-                print(
-                    f"\n## Suppressions missing code/reason ({len(violations)})\n"
-                )
+                print(f"\n## Suppressions missing code/reason ({len(violations)})\n")
                 for violation in violations:
                     print(
                         f"  {violation['file']}:{violation['line']}  "

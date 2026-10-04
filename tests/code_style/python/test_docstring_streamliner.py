@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from zolletta_metaskill.code_style.python.docstring_report_writer import DocstringReportWriter
 from zolletta_metaskill.code_style.python.docstring_streamliner import DocstringStreamliner
 from zolletta_metaskill.code_style.python.structs import FileReport
 
@@ -703,20 +704,20 @@ class TestDocstringStreamliner:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(tmp_path)
-        assert DocstringStreamliner._rel(Path("src/foo.py").resolve()) == "src/foo.py"
+        assert DocstringReportWriter._rel(Path("src/foo.py").resolve()) == "src/foo.py"
 
     def test_rel_not_relative_returns_other_foo_py(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(tmp_path)
-        assert DocstringStreamliner._rel(Path("/other/foo.py")) == "/other/foo.py"
+        assert DocstringReportWriter._rel(Path("/other/foo.py")) == "/other/foo.py"
 
     # --- print_report ---
 
     def test_print_report_no_findings_contains_all_clear(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        total = DocstringStreamliner.print_report([], apply_mode=False)
+        total = DocstringReportWriter.print_report([], apply_mode=False)
         captured = capsys.readouterr()
         assert total == 0
         assert "all clear" in captured.out
@@ -735,7 +736,7 @@ class TestDocstringStreamliner:
         )
         assert finding is not None
         report = FileReport(path=Path("src/mod.py"), findings=[finding])
-        total = DocstringStreamliner.print_report([report], apply_mode=False)
+        total = DocstringReportWriter.print_report([report], apply_mode=False)
         captured = capsys.readouterr()
         assert total == 1
         assert "Redundant" in captured.out
@@ -754,7 +755,7 @@ class TestDocstringStreamliner:
         )
         assert finding is not None
         report = FileReport(path=Path("src/mod.py"), findings=[finding])
-        total = DocstringStreamliner.print_report([report], apply_mode=True)
+        total = DocstringReportWriter.print_report([report], apply_mode=True)
         captured = capsys.readouterr()
         assert total == 1
         assert "apply mode" in captured.out

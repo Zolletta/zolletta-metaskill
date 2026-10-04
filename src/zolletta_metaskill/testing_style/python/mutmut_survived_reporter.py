@@ -210,9 +210,7 @@ class MutmutSurvivedReporter:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _survivor_entry(
-        name: str, status: str, source_dirs: list[str]
-    ) -> dict[str, Any] | None:
+    def _survivor_entry(name: str, status: str, source_dirs: list[str]) -> dict[str, Any] | None:
         """Build one survivor record; ``None`` when the mutant is out of scope."""
         module, function = MutmutSurvivedReporter._split_mutant_name(name)
         file = MutmutSurvivedReporter._resolve_file(module, source_dirs)
@@ -263,7 +261,8 @@ class MutmutSurvivedReporter:
         score = round(100.0 * killed / evaluated, 1) if evaluated else 100.0
 
         survivor_names = sorted(
-            name for name, status in statuses.items()
+            name
+            for name, status in statuses.items()
             if status in MutmutSurvivedReporter.SURVIVOR_STATUSES
         )
         survivors: list[dict[str, Any]] = []
@@ -298,8 +297,7 @@ class MutmutSurvivedReporter:
         print()
         score = report["mutation_score"]
         print(
-            f"Mutation score: {score:g}% (threshold: {report['threshold']}%)"
-            f" — {report['status']}"
+            f"Mutation score: {score:g}% (threshold: {report['threshold']}%) — {report['status']}"
         )
         print()
         shown = report["survivors"]
@@ -316,10 +314,7 @@ class MutmutSurvivedReporter:
             file = survivor["file"] or "-"
             line = survivor["line"] if survivor["line"] is not None else "-"
             mutation = survivor["mutation"] or "-"
-            print(
-                f"| {file} | {line} | {survivor['name']} "
-                f"| {survivor['status']} | {mutation} |"
-            )
+            print(f"| {file} | {line} | {survivor['name']} | {survivor['status']} | {mutation} |")
         diffs = [s for s in shown if s["diff"]]
         if diffs:
             print()
@@ -351,21 +346,14 @@ class MutmutSurvivedReporter:
         if ProjectConfig.setting(settings, "python.tools.mutmut.available", False) is not True:
             ProjectConfig.emit_skipped(args.json, "python.tools.mutmut is not available")
             return 0
-        if (
-            ProjectConfig.setting(settings, "python.testing.check_mutation_testing", True)
-            is False
-        ):
+        if ProjectConfig.setting(settings, "python.testing.check_mutation_testing", True) is False:
             ProjectConfig.emit_skipped(
                 args.json, "python.testing.check_mutation_testing is disabled in settings.json"
             )
             return 0
 
-        threshold = ProjectConfig.setting(
-            settings, "python.testing.mutation_score_threshold", 80
-        )
-        max_mutants = ProjectConfig.setting(
-            settings, "python.testing.mutation_max_mutants", 50
-        )
+        threshold = ProjectConfig.setting(settings, "python.testing.mutation_score_threshold", 80)
+        max_mutants = ProjectConfig.setting(settings, "python.testing.mutation_max_mutants", 50)
         source_dirs = ProjectConfig.source_dirs(settings, "python")
 
         stdout = MutmutSurvivedReporter._results_stdout()

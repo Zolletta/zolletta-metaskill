@@ -64,12 +64,12 @@ from __future__ import annotations
 
 import argparse
 import ast
-import json
 import re
 import sys
 from pathlib import Path
 from typing import Any, cast
 
+from zolletta_metaskill.code_style.python.docstring_report_writer import DocstringReportWriter
 from zolletta_metaskill.code_style.python.structs import FileReport, Finding
 from zolletta_metaskill.core.project_config import ProjectConfig
 
@@ -647,90 +647,6 @@ class DocstringStreamliner:
         return "".join(lines)
 
     # ---------------------------------------------------------------------------
-    # Reporting
-    # ---------------------------------------------------------------------------
-
-    @staticmethod
-    def _rel(path: Path) -> str:
-        try:
-            return str(path.relative_to(Path(".").resolve()))
-        except ValueError:
-            return str(path)
-
-    @staticmethod
-    def _findings_payload(reports: list[FileReport]) -> list[dict[str, Any]]:
-        findings: list[dict[str, Any]] = []
-        for report in reports:
-            for f in report.findings:
-                findings.append(
-                    {
-                        "file": DocstringStreamliner._rel(f.file),
-                        "line": f.line,
-                        "kind": f.kind,
-                        "detail": f.detail,
-                    }
-                )
-        return findings
-
-    @staticmethod
-    def json_report(reports: list[FileReport], directories: list[str], apply_mode: bool) -> int:
-        """Print a JSON report.  Return the total finding count."""
-        findings = DocstringStreamliner._findings_payload(reports)
-        result = {
-            "directories": directories,
-            "apply_mode": apply_mode,
-            "findings": findings,
-            "total": len(findings),
-        }
-        print(json.dumps(result, indent=2))
-        return len(findings)
-
-    @staticmethod
-    def print_report(reports: list[FileReport], apply_mode: bool) -> int:
-        """Print a human-readable report.  Return the total finding count."""
-        all_findings: list[Finding] = []
-        for report in reports:
-            all_findings.extend(report.findings)
-
-        print("=" * 70)
-        print("DOCSTRING STREAMLINE — REPORT")
-        print("=" * 70)
-
-        if not all_findings:
-            print("\nResult: all clear\n")
-            return 0
-
-        # Group by kind.
-        by_kind: dict[str, list[Finding]] = {}
-        for f in all_findings:
-            by_kind.setdefault(f.kind, []).append(f)
-
-        kind_labels: dict[str, str] = {
-            "redundant": "Redundant Args/Returns sections",
-            "private": "Private function docstrings (docstring_strip_private)",
-            "test": "Test function docstrings (docstring_strip_tests)",
-            "nested": "Nested function docstrings (docstring_strip_nested)",
-            "obvious_init": "Obvious __init__ docstrings (docstring_strip_obvious_init)",
-        }
-
-        for kind, label in kind_labels.items():
-            items = by_kind.get(kind, [])
-            if not items:
-                continue
-            print(f"\n## {label} ({len(items)} finding{'s' if len(items) != 1 else ''})\n")
-            for f in items:
-                print(f"  {DocstringStreamliner._rel(f.file)}:{f.line}")
-                print(f"    {f.detail}")
-
-        total = len(all_findings)
-        print()
-        if apply_mode:
-            print(f"Result: {total} docstring(s) streamlined (apply mode)")
-        else:
-            print(f"Result: {total} finding(s) (dry-run mode). Use --apply to fix.")
-        return total
-
-    # ---------------------------------------------------------------------------
     # Main
     # ---------------------------------------------------------------------------
 
@@ -800,9 +716,9 @@ class DocstringStreamliner:
 
         directories = [str(root) for root in roots]
         if args.json:
-            DocstringStreamliner.json_report(reports, directories, apply_mode=args.apply)
+            DocstringReportWriter.json_report(reports, directories, apply_mode=args.apply)
         else:
-            DocstringStreamliner.print_report(reports, apply_mode=args.apply)
+            DocstringReportWriter.print_report(reports, apply_mode=args.apply)
 
         if args.apply:
             for report in reports:

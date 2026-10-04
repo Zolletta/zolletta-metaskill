@@ -36,12 +36,13 @@ import os
 import re
 import subprocess
 import sys
-from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from zolletta_metaskill.core.project_config import ProjectConfig
+from zolletta_metaskill.documentor.doc_code_mapper import DocCodeMapper
+from zolletta_metaskill.documentor.drift_report_writer import DriftReportWriter
 
 
 class DriftAnalyzer:
@@ -238,134 +239,7 @@ class DriftAnalyzer:
                     doc_files.append(rel_path)
         return sorted(doc_files)
 
-    @staticmethod
-    def find_code_files(repo_path: str, scope: str = "") -> list[str]:
-        """Find all code files in the repository."""
-        code_files: list[str] = []
-        search_path = os.path.join(repo_path, scope) if scope else repo_path
-        skip_dirs = {
-            ".git",
-            "node_modules",
-            "__pycache__",
-            ".venv",
-            "venv",
-            ".tox",
-            "dist",
-            "build",
-            ".zolletta-metaskill",
-        }
-        skip_dirs |= DriftAnalyzer._load_gitignore_patterns(repo_path)
-
-        if not os.path.isdir(search_path):
-            return code_files
-
-        for root, dirs, files in os.walk(search_path):
-            dirs[:] = [d for d in dirs if d not in skip_dirs]
-            for f in files:
-                if Path(f).suffix.lower() in DriftAnalyzer.CODE_EXTENSIONS:
-                    rel_path = os.path.relpath(os.path.join(root, f), repo_path)
-                    code_files.append(rel_path)
-        return sorted(code_files)
-
-    # --- Code-to-Doc Mapping ---
-
-    @staticmethod
-    def map_docs_to_code(
-        repo_path: str, doc_files: list[str], code_files: list[str]
-    ) -> dict[str, list[str]]:
-        """Map documentation files to the code directories they likely describe."""
-        mapping = defaultdict(list)
-
-        # Strategy 1: Directory proximity -- docs describe code in same or parent directory
-        doc_dirs = {}
-        for doc in doc_files:
-            doc_dir = os.path.dirname(doc)
-            doc_dirs[doc] = doc_dir
-
-        code_dirs = set()
-        for code in code_files:
-            code_dirs.add(os.path.dirname(code))
-
-        for doc, doc_dir in doc_dirs.items():
-            # Check if there are code files in the same directory
-            if doc_dir in code_dirs:
-                mapping[doc].append(doc_dir)
-            # Check parent directory
-            parent = os.path.dirname(doc_dir)
-            if parent in code_dirs:
-                mapping[doc].append(parent)
-
-        # Strategy 2: Content references -- docs that reference code file paths
-        for doc in doc_files:
-            doc_full = os.path.join(repo_path, doc)
-            try:
-                with open(doc_full, encoding="utf-8", errors="ignore") as f:
-                    content = f.read()
-            except OSError:
-                continue
-
-            for code in code_files:
-                # Check if the code file path is mentioned in the doc
-                code_basename = os.path.basename(code)
-                if code_basename in content:
-                    code_dir = os.path.dirname(code)
-                    if code_dir and code_dir not in mapping[doc]:
-                        mapping[doc].append(code_dir)
-
-        # Strategy 3: Naming convention -- README in src/auth/ describes src/auth/
-        for doc in doc_files:
-            doc_lower = os.path.basename(doc).lower()
-            if doc_lower in ("readme.md", "readme.rst", "readme.txt", "index.md"):
-                doc_dir = os.path.dirname(doc)
-                if doc_dir not in mapping[doc]:
-                    mapping[doc].append(doc_dir)
-
-        return dict(mapping)
-
     # --- Drift Detection ---
-
-    @staticmethod
-    def extract_references_from_doc(repo_path: str, doc_path: str) -> dict[str, set[str]]:
-        """Extract file references, function names, and version strings from a doc."""
-        full_path = os.path.join(repo_path, doc_path)
-        refs: dict[str, set[str]] = {
-            "files": set(),
-            "functions": set(),
-            "versions": set(),
-            "links": set(),
-        }
-        try:
-            with open(full_path, encoding="utf-8", errors="ignore") as f:
-                content = f.read()
-        except OSError:
-            return refs
-
-        # File references in markdown links
-        link_pattern = re.compile(r"\[([^\]]*)\]\(([^)]+)\)")
-        for match in link_pattern.finditer(content):
-            target = match.group(2)
-            if not target.startswith(("http://", "https://", "mailto:", "#")):
-                refs["files"].add(target.split("#")[0])
-            refs["links"].add(target)
-
-        # Function/method references in backticks
-        func_pattern = re.compile(r"`(\w+(?:\.\w+)*)\(`")
-        for match in func_pattern.finditer(content):
-            refs["functions"].add(match.group(1))
-
-        # Version strings
-        version_pattern = re.compile(r"(?:v|version[:\s]*)(\d+\.\d+(?:\.\d+)?)", re.IGNORECASE)
-        for match in version_pattern.finditer(content):
-            refs["versions"].add(match.group(1))
-
-        # Code block file references
-        code_ref_pattern = re.compile(r"`([^\s`]+\.\w{1,5})`")
-        for match in code_ref_pattern.finditer(content):
-            candidate = match.group(1)
-            if Path(candidate).suffix.lower() in DriftAnalyzer.CODE_EXTENSIONS:
-                refs["files"].add(candidate)
-
-        return refs
 
     @staticmethod
     def detect_drift_for_doc(
@@ -408,7 +282,7 @@ class DriftAnalyzer:
         since_date = doc_modified.strftime("%Y-%m-%d")
 
         # Extract references from the doc to identify specific source files it documents
-        refs = DriftAnalyzer.extract_references_from_doc(repo_path, doc_path)
+        refs = DocCodeMapper.extract_references_from_doc(repo_path, doc_path)
         doc_dir = os.path.dirname(doc_path)
 
         issues.extend(
@@ -422,15 +296,9 @@ class DriftAnalyzer:
             )
         )
         if include_referential:
-            issues.extend(
-                DriftAnalyzer._check_broken_refs(repo_path, doc_path, doc_dir, refs)
-            )
-        issues.extend(
-            DriftAnalyzer._check_version_drift(doc_path, refs, current_version)
-        )
-        issues.extend(
-            DriftAnalyzer._check_temporal_drift(doc_path, doc_modified, since_date)
-        )
+            issues.extend(DriftAnalyzer._check_broken_refs(repo_path, doc_path, doc_dir, refs))
+        issues.extend(DriftAnalyzer._check_version_drift(doc_path, refs, current_version))
+        issues.extend(DriftAnalyzer._check_temporal_drift(doc_path, doc_modified, since_date))
 
         # Check structural completeness for README files.
         # Only check actual README files (repo root or source directories),
@@ -443,9 +311,7 @@ class DriftAnalyzer:
         return issues
 
     @staticmethod
-    def _resolve_referenced_files(
-        repo_path: str, doc_dir: str, refs: dict[str, Any]
-    ) -> list[str]:
+    def _resolve_referenced_files(repo_path: str, doc_dir: str, refs: dict[str, Any]) -> list[str]:
         """Resolve the code files a doc references to repo-relative paths."""
         referenced_source_files: list[str] = []
         for ref_file in refs["files"]:
@@ -469,9 +335,7 @@ class DriftAnalyzer:
         associated_code_dirs: list[str],
     ) -> list[dict[str, Any]]:
         """Flag referenced source files that changed since the doc was updated."""
-        referenced_source_files = DriftAnalyzer._resolve_referenced_files(
-            repo_path, doc_dir, refs
-        )
+        referenced_source_files = DriftAnalyzer._resolve_referenced_files(repo_path, doc_dir, refs)
         if referenced_source_files:
             # Check which of these specific files changed since the doc was last updated
             changed_referenced: list[str] = []
@@ -761,102 +625,6 @@ class DriftAnalyzer:
         except (ValueError, AttributeError, TypeError):  # pragma: no cover
             return False
 
-    # --- Report Generation ---
-
-    @staticmethod
-    def generate_report(
-        repo_path: str,
-        all_issues: list[dict[str, Any]],
-        doc_files: list[str],
-        as_json: bool = False,
-    ) -> str:
-        """Generate a drift report."""
-        # Sort by severity
-        all_issues.sort(
-            key=lambda x: DriftAnalyzer.SEVERITY_ORDER.get(x.get("severity", "info"), 99)
-        )
-
-        drifted_files = {i["file"] for i in all_issues if i["severity"] != "info"}
-
-        report_data: dict[str, Any] = {
-            "repository": os.path.abspath(repo_path),
-            "scan_date": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "summary": {
-                "total_docs": len(doc_files),
-                "drifted_docs": len(drifted_files),
-                "total_issues": len(all_issues),
-                "by_severity": {},
-                "by_category": {},
-                "by_fix_type": {},
-            },
-            "issues": all_issues,
-        }
-
-        for issue in all_issues:
-            sev = issue.get("severity", "info")
-            cat = issue.get("category", "unknown")
-            fix = issue.get("fix_type", "manual")
-            report_data["summary"]["by_severity"][sev] = (
-                report_data["summary"]["by_severity"].get(sev, 0) + 1
-            )
-            report_data["summary"]["by_category"][cat] = (
-                report_data["summary"]["by_category"].get(cat, 0) + 1
-            )
-            report_data["summary"]["by_fix_type"][fix] = (
-                report_data["summary"]["by_fix_type"].get(fix, 0) + 1
-            )
-
-        if as_json:
-            return json.dumps(report_data, indent=2, default=str)
-
-        # Human-readable report
-        lines = []
-        lines.append("Documentation Drift Report")
-        lines.append("=" * 60)
-        lines.append(f"Repository: {os.path.abspath(repo_path)}")
-        lines.append(f"Scan date:  {report_data['scan_date']}")
-        lines.append(f"Docs found: {len(doc_files)}")
-        lines.append(f"Drifted:    {len(drifted_files)}")
-        lines.append(f"Issues:     {len(all_issues)}")
-        lines.append("")
-
-        severity_groups = defaultdict(list)
-        for issue in all_issues:
-            severity_groups[issue["severity"]].append(issue)
-
-        for severity in ["critical", "high", "medium", "low", "info"]:
-            group = severity_groups.get(severity, [])
-            if not group:
-                continue
-            lines.append(f"{severity.upper()} SEVERITY ({len(group)} issues):")
-            lines.append("-" * 40)
-            for issue in group:
-                fix_tag = {"auto": "[AUTO]", "semi": "[SEMI]", "manual": "[MANUAL]"}.get(
-                    issue.get("fix_type", "manual"), "[MANUAL]"
-                )
-                lines.append(f"  {issue['file']}")
-                lines.append(f"    {fix_tag} {issue['description']}")
-                lines.append(f"    Category: {issue.get('category', 'unknown')}")
-                lines.append("")
-            lines.append("")
-
-        # Summary
-        lines.append("FIX TYPE SUMMARY:")
-        lines.append("-" * 40)
-        for fix_type, count in sorted(report_data["summary"]["by_fix_type"].items()):
-            label = {
-                "auto": "Auto-fixable",
-                "semi": "Semi-automated",
-                "manual": "Manual review",
-            }.get(fix_type, fix_type)
-            lines.append(f"  {label}: {count}")
-        lines.append("")
-
-        if not all_issues:
-            lines.append("No documentation drift detected. All docs appear current.")
-
-        return "\n".join(lines)
-
     # --- Main ---
 
     @staticmethod
@@ -909,7 +677,7 @@ class DriftAnalyzer:
         code_files: list[str] = []
         seen: set[str] = set()
         for scope in scopes:
-            for f in DriftAnalyzer.find_code_files(repo_path, scope):
+            for f in DocCodeMapper.find_code_files(repo_path, scope):
                 if f not in seen:
                     seen.add(f)
                     code_files.append(f)
@@ -923,7 +691,7 @@ class DriftAnalyzer:
             return 0
 
         # Map docs to code
-        doc_code_map = DriftAnalyzer.map_docs_to_code(repo_path, doc_files, code_files)
+        doc_code_map = DocCodeMapper.map_docs_to_code(repo_path, doc_files, code_files)
 
         # Get renames from last 90 days
         renames = DriftAnalyzer.get_renamed_files(repo_path, "90 days ago")
@@ -958,7 +726,9 @@ class DriftAnalyzer:
         ]
 
         # Report
-        report = DriftAnalyzer.generate_report(repo_path, filtered, doc_files, as_json=args.json)
+        report = DriftReportWriter.generate_report(
+            repo_path, filtered, doc_files, as_json=args.json
+        )
         print(report)
 
         return 0

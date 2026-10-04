@@ -139,15 +139,11 @@ class TestMaxArgumentsScanner:
         assert MaxArgumentsScanner.resolve_max_args(settings) == 5
 
     def test_non_integer_limit_falls_back(self, tmp_path: Path) -> None:
-        settings = self._write_settings(
-            tmp_path, python={"code_style": {"max_arguments": "5"}}
-        )
+        settings = self._write_settings(tmp_path, python={"code_style": {"max_arguments": "5"}})
         assert MaxArgumentsScanner.resolve_max_args(settings) == 5
 
     def test_boolean_limit_falls_back(self, tmp_path: Path) -> None:
-        settings = self._write_settings(
-            tmp_path, python={"code_style": {"max_arguments": True}}
-        )
+        settings = self._write_settings(tmp_path, python={"code_style": {"max_arguments": True}})
         assert MaxArgumentsScanner.resolve_max_args(settings) == 5
 
     def test_disabled_language_limit_ignored(self, tmp_path: Path) -> None:
@@ -156,9 +152,7 @@ class TestMaxArgumentsScanner:
             tmp_path,
             language="python",
             python={"code_style": {"max_arguments": 7}},
-            php={
-                "code_style": {"check_max_arguments": False, "max_arguments": 1}
-            },
+            php={"code_style": {"check_max_arguments": False, "max_arguments": 1}},
         )
         assert MaxArgumentsScanner.resolve_max_args(settings) == 7
 
@@ -205,9 +199,7 @@ class TestMaxArgumentsScanner:
         assert "Method 'Foo.bar' has 7 parameters (max 5)" in findings[0].description
 
     def test_scan_module_syntax_error_returns_empty(self, tmp_path: Path) -> None:
-        module = ModuleInfo(
-            path=tmp_path / "m.py", language="python", has_syntax_error=True
-        )
+        module = ModuleInfo(path=tmp_path / "m.py", language="python", has_syntax_error=True)
         assert MaxArgumentsScanner.scan_module(module, max_args=5) == []
 
     # --- Tests for MaxArgumentsScanner.scan_file(). ---
@@ -220,9 +212,7 @@ class TestMaxArgumentsScanner:
         assert "too_many" in findings[0].description
 
     def test_scan_file_keyword_only_params_counted(self, tmp_path: Path) -> None:
-        f = self._write(
-            tmp_path / "m.py", "def too_many(a, /, b, *, c, d, e, g):\n    pass\n"
-        )
+        f = self._write(tmp_path / "m.py", "def too_many(a, /, b, *, c, d, e, g):\n    pass\n")
         findings = MaxArgumentsScanner.scan_file(f, max_args=5)
         assert len(findings) == 1
         assert "has 6 parameters" in findings[0].description
@@ -294,9 +284,7 @@ class TestMaxArgumentsScanner:
         root.mkdir()
         self._write(root / "a.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
         self._write(root / "b.php", "<?php\nfunction tooMany($a, $b, $c, $d, $e, $g) {}\n")
-        findings = MaxArgumentsScanner.scan_directory(
-            root, max_args=5, extensions={".py"}
-        )
+        findings = MaxArgumentsScanner.scan_directory(root, max_args=5, extensions={".py"})
         assert len(findings) == 1
         assert findings[0].file == str(root / "a.py")
 
@@ -305,9 +293,7 @@ class TestMaxArgumentsScanner:
         sub = root / "pkg" / "sub"
         sub.mkdir(parents=True)
         self._write(sub / "deep.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
-        findings = MaxArgumentsScanner.scan_directory(
-            root, max_args=5, extensions={".py"}
-        )
+        findings = MaxArgumentsScanner.scan_directory(root, max_args=5, extensions={".py"})
         assert len(findings) == 1
         assert findings[0].file == str(sub / "deep.py")
 
@@ -318,9 +304,7 @@ class TestMaxArgumentsScanner:
         root.mkdir()
         self._write(root / "ignored.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
         self._write(root / "real.py", "def ok(a):\n    pass\n")
-        findings = MaxArgumentsScanner.scan_directory(
-            root, max_args=5, extensions={".py"}
-        )
+        findings = MaxArgumentsScanner.scan_directory(root, max_args=5, extensions={".py"})
         assert findings == []
 
     def test_outside_git_repo_scans_everything(self, tmp_path: Path) -> None:
@@ -328,18 +312,13 @@ class TestMaxArgumentsScanner:
         vendor = root / "vendor"
         vendor.mkdir(parents=True)
         self._write(vendor / "dep.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
-        findings = MaxArgumentsScanner.scan_directory(
-            root, max_args=5, extensions={".py"}
-        )
+        findings = MaxArgumentsScanner.scan_directory(root, max_args=5, extensions={".py"})
         assert len(findings) == 1
 
     def test_empty_directory_returns_empty(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
         root.mkdir()
-        assert (
-            MaxArgumentsScanner.scan_directory(root, max_args=5, extensions={".py"})
-            == []
-        )
+        assert MaxArgumentsScanner.scan_directory(root, max_args=5, extensions={".py"}) == []
 
     def test_max_args_resolved_from_settings(self, tmp_path: Path) -> None:
         settings = self._write_settings(tmp_path, python={"code_style": {"max_arguments": 2}})
@@ -372,9 +351,7 @@ class TestMaxArgumentsScanner:
         root = tmp_path / "src"
         root.mkdir()
         self._write(root / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
-        findings = MaxArgumentsScanner.scan_directory(
-            root, max_args=5, extensions={".py"}
-        )
+        findings = MaxArgumentsScanner.scan_directory(root, max_args=5, extensions={".py"})
         assert len(findings) == 1
 
     # --- Tests for MaxArgumentsScanner.main(). ---

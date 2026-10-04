@@ -30,6 +30,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 from tree_sitter import Node
 
@@ -199,6 +200,40 @@ class DependencyInversionScanner:
         return ""  # pragma: no cover
 
     @staticmethod
+    def _scan_class_methods(
+        child: Any, class_name: str, source: bytes, file_path: str, findings: list[Finding]
+    ) -> None:
+        """Scan methods inside a class declaration for direct instantiations."""
+        body = None
+        for c in child.children:
+            if c.type == "declaration_list":
+                body = c
+                break
+        if body is None:  # pragma: no cover
+            return  # pragma: no cover
+
+        for member in body.children:
+            if member.type != "method_declaration":
+                continue
+            method_name = DependencyInversionScanner._find_method_name(member, source)
+            new_calls = DependencyInversionScanner._find_new_in_method(member, source)
+            for created_class, line in new_calls:
+                findings.append(
+                    Finding(
+                        file=file_path,
+                        line=line,
+                        category="dip",
+                        severity="medium",
+                        description=(
+                            f"{class_name}::{method_name}() instantiates "
+                            f"'{created_class}' directly — depend on an "
+                            f"abstraction instead (inject via constructor)"
+                        ),
+                        fix_type="manual",
+                    )
+                )
+
+    @staticmethod
     def _scan_tree(path: Path) -> list[Finding]:
         """Parse *path* with PHPEngine and walk the raw AST for DIP violations.
 
@@ -227,36 +262,9 @@ class DependencyInversionScanner:
             class_name = DependencyInversionScanner._find_class_name(child, source)
             if not class_name or DependencyInversionScanner._is_factory(class_name):
                 continue
-
-            # Find the declaration_list (class body)
-            body = None
-            for c in child.children:
-                if c.type == "declaration_list":
-                    body = c
-                    break
-            if body is None:  # pragma: no cover
-                continue  # pragma: no cover
-
-            for member in body.children:
-                if member.type != "method_declaration":
-                    continue
-                method_name = DependencyInversionScanner._find_method_name(member, source)
-                new_calls = DependencyInversionScanner._find_new_in_method(member, source)
-                for created_class, line in new_calls:
-                    findings.append(
-                        Finding(
-                            file=file_path,
-                            line=line,
-                            category="dip",
-                            severity="medium",
-                            description=(
-                                f"{class_name}::{method_name}() instantiates "
-                                f"'{created_class}' directly — depend on an "
-                                f"abstraction instead (inject via constructor)"
-                            ),
-                            fix_type="manual",
-                        )
-                    )
+            DependencyInversionScanner._scan_class_methods(
+                child, class_name, source, file_path, findings
+            )
 
         return findings
 

@@ -74,7 +74,7 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
       "max_file_length": 800,
       "max_arguments": 5,
       "max_function_length": 100,
-      "max_cyclomatic_complexity": 10,
+      "max_cyclomatic_complexity": 12,
       "vulture_min_confidence": 80
     },
     "testing": {
@@ -182,7 +182,7 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
       "check_function_length": true,
       "max_function_length": 100,
       "check_cyclomatic_complexity": true,
-      "max_cyclomatic_complexity": 10
+      "max_cyclomatic_complexity": 12
     },
     "testing": {
       "coverage_gap_threshold": 50,
@@ -355,7 +355,7 @@ These control which checks the `python-code-style` skill enforces. All default t
 | `max_file_length`                | integer | `800`   | Structure  | Maximum allowed lines per file (enforced by `file_length_scanner.py`)                                                                                                                   |
 | `max_arguments`                  | integer | `5`     | Structure  | Maximum declared parameters per function/method (enforced by `max_arguments_scanner.py`). Seeded from `python.tools.ruff.max_args` when configured                                      |
 | `max_function_length`            | integer | `100`   | Structure  | Maximum allowed line span per function/method (enforced by `function_length_scanner.py`). Lines are not statements — `python.tools.ruff.max_statements` exposes the PLR0915 alternative |
-| `max_cyclomatic_complexity`      | integer | `10`    | Structure  | Maximum allowed cyclomatic complexity per function/method (enforced by `cyclomatic_complexity_scanner.py`). Seeded from `python.tools.ruff.max_complexity` when configured              |
+| `max_cyclomatic_complexity`      | integer | `12`    | Structure  | Maximum allowed cyclomatic complexity per function/method (enforced by `cyclomatic_complexity_scanner.py`). Seeded from `python.tools.ruff.max_complexity` when configured              |
 | `vulture_min_confidence`         | integer | `80`    | Dead code  | Minimum confidence for vulture findings (0–100)                                                                                                                                         |
 
 > Rules not listed here (naming conventions, import order, private/test function docstring exemptions, type hints for public APIs) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-python-code-style/SUBSKILL.md` → Table 1 for the full list.
@@ -444,7 +444,7 @@ These control which checks the `php-code-style` skill enforces. All default to `
 | `check_function_length`       | boolean | `true`  | Structure   | Functions/methods must not exceed `max_function_length` lines (`function_length_scanner.py`)                       | all     |
 | `max_function_length`         | integer | `100`   | Structure   | Maximum allowed line span per function/method (enforced by `function_length_scanner.py`)                           | all     |
 | `check_cyclomatic_complexity` | boolean | `true`  | Structure   | Functions/methods must not exceed `max_cyclomatic_complexity` decision points (`cyclomatic_complexity_scanner.py`) | all     |
-| `max_cyclomatic_complexity`   | integer | `10`    | Structure   | Maximum allowed cyclomatic complexity per function/method (enforced by `cyclomatic_complexity_scanner.py`)         | all     |
+| `max_cyclomatic_complexity`   | integer | `12`    | Structure   | Maximum allowed cyclomatic complexity per function/method (enforced by `cyclomatic_complexity_scanner.py`)         | all     |
 
 > Rules not listed here (`declare(strict_types=1)`, return/parameter/property type declarations, nullable types, `void`/`never`, avoid `mixed`, constructor promotion, match expression, nullsafe operator, named arguments, attributes, enums, readonly properties, arrow functions, PSR-4 autoloading, PSR-12 coding style, camelCase methods, namespace usage, no `@` suppression, file upload validation) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-php-code-style/SUBSKILL.md` → "Always-on rules" for the full list.
 

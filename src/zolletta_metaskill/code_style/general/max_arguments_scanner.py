@@ -79,14 +79,10 @@ class MaxArgumentsScanner:
         """
         ProjectConfig.ensure_engines()
         settings = ProjectConfig.load_settings(settings_path)
-        languages = ProjectConfig.scan_languages(
-            settings, "code_style.check_max_arguments"
-        )
+        languages = ProjectConfig.scan_languages(settings, "code_style.check_max_arguments")
         extensions = ProjectConfig.extensions_for(languages)
         if not extensions and languages:
-            extensions = ProjectConfig.extensions_for(
-                set(EngineRegistry.available_languages())
-            )
+            extensions = ProjectConfig.extensions_for(set(EngineRegistry.available_languages()))
         return extensions
 
     @staticmethod
@@ -98,14 +94,10 @@ class MaxArgumentsScanner:
         ``DEFAULT_MAX_ARGS`` when nothing is configured.
         """
         settings = ProjectConfig.load_settings(settings_path)
-        langs = ProjectConfig.enabled_languages(
-            settings, "code_style.check_max_arguments"
-        )
+        langs = ProjectConfig.enabled_languages(settings, "code_style.check_max_arguments")
         limits = []
         for lang in sorted(langs):
-            value = ProjectConfig.setting(
-                settings, f"{lang}.code_style.max_arguments", None
-            )
+            value = ProjectConfig.setting(settings, f"{lang}.code_style.max_arguments", None)
             if isinstance(value, int) and not isinstance(value, bool):
                 limits.append(value)
         return min(limits) if limits else MaxArgumentsScanner.DEFAULT_MAX_ARGS
@@ -340,18 +332,12 @@ class MaxArgumentsScanner:
 
         settings_path = MaxArgumentsScanner.DEFAULT_SETTINGS_PATH
         settings = ProjectConfig.load_settings(settings_path)
-        languages = ProjectConfig.scan_languages(
-            settings, "code_style.check_max_arguments"
-        )
+        languages = ProjectConfig.scan_languages(settings, "code_style.check_max_arguments")
         if not languages:
-            ProjectConfig.emit_skipped(
-                args.json, "check_max_arguments disabled in settings.json"
-            )
+            ProjectConfig.emit_skipped(args.json, "check_max_arguments disabled in settings.json")
             return 0
 
-        roots = ProjectConfig.existing_roots(
-            ProjectConfig.source_roots(settings, languages)
-        )
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, languages))
         if not roots:
             print(
                 "Error: no configured source directories exist on disk "
@@ -362,9 +348,7 @@ class MaxArgumentsScanner:
 
         extensions = ProjectConfig.extensions_for(languages)
         max_args = MaxArgumentsScanner.resolve_max_args(settings_path)
-        scanned, violations = MaxArgumentsScanner._scan_roots(
-            roots, extensions, max_args
-        )
+        scanned, violations = MaxArgumentsScanner._scan_roots(roots, extensions, max_args)
         if args.json:
             MaxArgumentsScanner._emit_json(roots, scanned, max_args, violations)
         else:

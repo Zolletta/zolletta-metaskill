@@ -422,9 +422,7 @@ class TestStructureScanner:
         return result
 
     @staticmethod
-    def _referenced_classes(
-        content: str, src_index: dict[str, dict[str, Any]]
-    ) -> list[str]:
+    def _referenced_classes(content: str, src_index: dict[str, dict[str, Any]]) -> list[str]:
         """List source class names that appear in the file content."""
         return [
             cls_name
@@ -586,9 +584,7 @@ class TestStructureScanner:
         print()
 
     @staticmethod
-    def _emit_orphaned(
-        orphaned: list[dict[str, Any]], orphaned_dirs: list[dict[str, Any]]
-    ) -> None:
+    def _emit_orphaned(orphaned: list[dict[str, Any]], orphaned_dirs: list[dict[str, Any]]) -> None:
         """Emit the orphaned tests section (dirs first, then files)."""
         total_orphaned = len(orphaned) + len(orphaned_dirs)
         print(f"## 3. Orphaned tests ({total_orphaned})\n")

@@ -64,86 +64,81 @@ class LinkChecker:
         return "local_file"
 
     @staticmethod
+    def _extract_images(line: str, i: int, rel_path: str, links: list[LinkInfo]) -> None:
+        """Extract image links from markdown line."""
+        img_link = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
+        for match in img_link.finditer(line):
+            alt_text = match.group(1)
+            target = match.group(2).strip()
+            link_type = LinkChecker.classify_link(target)
+            if link_type == "external":
+                links.append(LinkInfo(rel_path, i, alt_text, target, "external"))
+            else:
+                links.append(LinkInfo(rel_path, i, alt_text, target, "image"))
+
+    @staticmethod
+    def _extract_markdown_links(line: str, i: int, rel_path: str, links: list[LinkInfo]) -> None:
+        """Extract standard markdown links from line, excluding code spans."""
+        md_link = re.compile(r"\[([^\]]*)\]\(([^)]+)\)")
+        line_for_links = re.sub(r"``.+?``", "", line)
+        line_for_links = re.sub(r"`[^`]+`", "", line_for_links)
+        for match in md_link.finditer(line_for_links):
+            start = match.start()
+            if start > 0 and line_for_links[start - 1] == "!":
+                continue
+            text = match.group(1)
+            target = match.group(2).strip()
+            link_type = LinkChecker.classify_link(target)
+            links.append(LinkInfo(rel_path, i, text, target, link_type))
+
+    @staticmethod
+    def _extract_html_and_refs(
+        line: str, stripped: str, i: int, rel_path: str, links: list[LinkInfo]
+    ) -> None:
+        """Extract reference-style definitions and HTML links/images."""
+        ref_def = re.compile(r"^\[([^\]]+)\]:\s+(.+)$")
+        html_link = re.compile(r'<a\s+[^>]*href=["\']([^"\']+)["\']', re.IGNORECASE)
+        html_img = re.compile(r'<img\s+[^>]*src=["\']([^"\']+)["\']', re.IGNORECASE)
+
+        ref_match = ref_def.match(stripped)
+        if ref_match:
+            ref_name = ref_match.group(1)
+            target = ref_match.group(2).strip()
+            link_type = LinkChecker.classify_link(target)
+            links.append(LinkInfo(rel_path, i, ref_name, target, link_type))
+
+        for match in html_link.finditer(line):
+            target = match.group(1).strip()
+            link_type = LinkChecker.classify_link(target)
+            links.append(LinkInfo(rel_path, i, "", target, link_type))
+
+        for match in html_img.finditer(line):
+            target = match.group(1).strip()
+            if not target.startswith(("http://", "https://")):
+                links.append(LinkInfo(rel_path, i, "", target, "image"))
+
+    @staticmethod
     def extract_links(file_path: str, rel_path: str) -> list[LinkInfo]:
         """Extract all links from a markdown file."""
         links: list[LinkInfo] = []
-
         try:
             with open(file_path, encoding="utf-8", errors="ignore") as f:
                 lines = f.readlines()
         except OSError:
             return links
 
-        # Patterns
-        # Standard markdown links: [text](target)
-        md_link = re.compile(r"\[([^\]]*)\]\(([^)]+)\)")
-        # Reference-style links: [text][ref] and [ref]: url
-        ref_def = re.compile(r"^\[([^\]]+)\]:\s+(.+)$")
-        # HTML links: <a href="target">
-        html_link = re.compile(r'<a\s+[^>]*href=["\']([^"\']+)["\']', re.IGNORECASE)
-        # Image links: ![alt](src)
-        img_link = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
-        # HTML images: <img src="target">
-        html_img = re.compile(r'<img\s+[^>]*src=["\']([^"\']+)["\']', re.IGNORECASE)
-
         in_code_block = False
-
         for i, line in enumerate(lines, 1):
             stripped = line.strip()
-
-            # Skip code blocks
             if stripped.startswith("```"):
                 in_code_block = not in_code_block
                 continue
             if in_code_block:
                 continue
 
-            # Image links (check before regular links to avoid double-counting)
-            for match in img_link.finditer(line):
-                alt_text = match.group(1)
-                target = match.group(2).strip()
-                link_type = LinkChecker.classify_link(target)
-                if link_type == "external":
-                    links.append(LinkInfo(rel_path, i, alt_text, target, "external"))
-                else:
-                    links.append(LinkInfo(rel_path, i, alt_text, target, "image"))
-
-            # Standard markdown links (exclude images already captured)
-            # Remove inline code spans first so links inside backticks
-            # (e.g. `` `[foo](bar.md)` ``) are not parsed as real links.
-            # Handle double backtick spans (``...``) which may contain single backticks,
-            # then single backtick spans (`...`).
-            line_for_links = re.sub(r"``.+?``", "", line)
-            line_for_links = re.sub(r"`[^`]+`", "", line_for_links)
-            for match in md_link.finditer(line_for_links):
-                # Skip if this is part of an image link
-                start = match.start()
-                if start > 0 and line_for_links[start - 1] == "!":
-                    continue
-                text = match.group(1)
-                target = match.group(2).strip()
-                link_type = LinkChecker.classify_link(target)
-                links.append(LinkInfo(rel_path, i, text, target, link_type))
-
-            # Reference-style link definitions
-            ref_match = ref_def.match(stripped)
-            if ref_match:
-                ref_name = ref_match.group(1)
-                target = ref_match.group(2).strip()
-                link_type = LinkChecker.classify_link(target)
-                links.append(LinkInfo(rel_path, i, ref_name, target, link_type))
-
-            # HTML links
-            for match in html_link.finditer(line):
-                target = match.group(1).strip()
-                link_type = LinkChecker.classify_link(target)
-                links.append(LinkInfo(rel_path, i, "", target, link_type))
-
-            # HTML images
-            for match in html_img.finditer(line):
-                target = match.group(1).strip()
-                if not target.startswith(("http://", "https://")):
-                    links.append(LinkInfo(rel_path, i, "", target, "image"))
+            LinkChecker._extract_images(line, i, rel_path, links)
+            LinkChecker._extract_markdown_links(line, i, rel_path, links)
+            LinkChecker._extract_html_and_refs(line, stripped, i, rel_path, links)
 
         return links
 
@@ -216,6 +211,50 @@ class LinkChecker:
     # --- Validation ---
 
     @staticmethod
+    def _resolve_target_file(
+        repo_path: str, source_file: str, file_part: str
+    ) -> tuple[str | None, str | None]:
+        """Resolve target file path, checking doc dir, repo root, and case mismatch."""
+        source_dir = os.path.dirname(source_file)
+        resolved = os.path.normpath(os.path.join(repo_path, source_dir, file_part))
+        if os.path.exists(resolved):
+            return resolved, None
+
+        resolved_root = os.path.normpath(os.path.join(repo_path, file_part))
+        if os.path.exists(resolved_root):
+            return resolved_root, None
+
+        case_match = LinkChecker._check_case_insensitive(resolved)
+        if case_match:
+            error = (
+                f"File not found at '{file_part}' (case mismatch? "
+                f"found '{os.path.relpath(case_match, repo_path)}')"
+            )
+            return None, error
+        return None, f"File not found: '{file_part}'"
+
+    @staticmethod
+    def _validate_target_anchor(
+        link: LinkInfo,
+        resolved: str,
+        anchor_ref: str,
+        file_part: str,
+        heading_cache: dict[str, set[str]],
+    ) -> None:
+        """Validate anchor inside an existing resolved target file."""
+        if not resolved.endswith(tuple(LinkChecker.MARKDOWN_EXTENSIONS)):
+            link.is_valid = True
+            return
+
+        headings = LinkChecker._get_headings(resolved, heading_cache)
+        slug = LinkChecker.slugify_heading(anchor_ref)
+        if slug in headings:
+            link.is_valid = True
+        else:
+            link.is_valid = False
+            link.error = f"File exists but anchor '#{anchor_ref}' not found in '{file_part}'"
+
+    @staticmethod
     def validate_link(
         link: LinkInfo,
         repo_path: str,
@@ -223,9 +262,6 @@ class LinkChecker:
         check_external: bool = False,
     ) -> None:
         """Validate a single link and set is_valid and error."""
-        # Report templates (*_template.md) contain links that only resolve in
-        # the instantiated output folder, and {{var}} placeholder targets —
-        # skip both rather than report false positives.
         if link.link_type != "external" and (
             "{{" in link.link_target or link.source_file.endswith("_template.md")
         ):
@@ -236,11 +272,10 @@ class LinkChecker:
             if check_external:
                 link.is_valid, link.error = LinkChecker.validate_external_url(link.link_target)
             else:
-                link.is_valid = True  # Skip external by default
+                link.is_valid = True
             return
 
         if link.link_type == "anchor":
-            # Anchor within same document
             anchor = link.link_target.lstrip("#")
             source_full = os.path.join(repo_path, link.source_file)
             headings = LinkChecker._get_headings(source_full, heading_cache)
@@ -252,7 +287,6 @@ class LinkChecker:
                 link.error = f"Anchor '#{anchor}' not found in {link.source_file}"
             return
 
-        # For local_file, image, cross_doc_anchor
         target = link.link_target
         anchor_ref: str | None = None
         if "#" in target:
@@ -261,7 +295,6 @@ class LinkChecker:
             file_part = target
 
         if not file_part and anchor_ref:
-            # This is actually just an anchor link
             source_full = os.path.join(repo_path, link.source_file)
             headings = LinkChecker._get_headings(source_full, heading_cache)
             slug = LinkChecker.slugify_heading(anchor_ref)
@@ -272,45 +305,16 @@ class LinkChecker:
                 link.error = f"Anchor '#{anchor_ref}' not found"
             return
 
-        # Resolve file path
-        source_dir = os.path.dirname(link.source_file)
-        resolved = os.path.normpath(os.path.join(repo_path, source_dir, file_part))
+        resolved, err = LinkChecker._resolve_target_file(repo_path, link.source_file, file_part)
+        if not resolved:
+            link.is_valid = False
+            link.error = err
+            return
 
-        if not os.path.exists(resolved):
-            # Try from repo root
-            resolved_root = os.path.normpath(os.path.join(repo_path, file_part))
-            if os.path.exists(resolved_root):
-                resolved = resolved_root
-            else:
-                # Case sensitivity check
-                case_match = LinkChecker._check_case_insensitive(resolved)
-                if case_match:
-                    link.is_valid = False
-                    link.error = (
-                        f"File not found at '{file_part}' (case mismatch? "
-                        f"found '{os.path.relpath(case_match, repo_path)}')"
-                    )
-                else:
-                    link.is_valid = False
-                    link.error = f"File not found: '{file_part}'"
-                return
-
-        # File exists
         if anchor_ref:
-            # Validate anchor in target file
-            if resolved.endswith(tuple(LinkChecker.MARKDOWN_EXTENSIONS)):
-                headings = LinkChecker._get_headings(resolved, heading_cache)
-                slug = LinkChecker.slugify_heading(anchor_ref)
-                if slug in headings:
-                    link.is_valid = True
-                else:
-                    link.is_valid = False
-                    link.error = (
-                        f"File exists but anchor '#{anchor_ref}' not found in '{file_part}'"
-                    )
-            else:
-                # Non-markdown file with anchor -- can't validate anchor
-                link.is_valid = True
+            LinkChecker._validate_target_anchor(
+                link, resolved, anchor_ref, file_part, heading_cache
+            )
         else:
             link.is_valid = True
 
@@ -387,6 +391,52 @@ class LinkChecker:
     # --- Report ---
 
     @staticmethod
+    def _report_broken(lines: list[str], broken: list[LinkInfo]) -> None:
+        """Append broken links section grouped by file."""
+        lines.append("BROKEN LINKS:")
+        lines.append("-" * 60)
+        by_file: dict[str, list[LinkInfo]] = {}
+        for link in broken:
+            by_file.setdefault(link.source_file, []).append(link)
+
+        for source_file, file_links in sorted(by_file.items()):
+            lines.append(f"\n  {source_file}:")
+            for link in sorted(file_links, key=lambda lnk: lnk.line_number):
+                lines.append(f"    Line {link.line_number}: [{link.link_text}]({link.link_target})")
+                lines.append(f"      Error: {link.error}")
+        lines.append("")
+
+    @staticmethod
+    def _report_dups(lines: list[str], duplicate_anchors: dict[str, list[tuple[str, int]]]) -> None:
+        """Append duplicate anchors section."""
+        lines.append("DUPLICATE ANCHORS:")
+        lines.append("-" * 60)
+        for file, dups in sorted(duplicate_anchors.items()):
+            lines.append(f"\n  {file}:")
+            for anchor, line_num in dups:
+                lines.append(f"    Line {line_num}: duplicate anchor '#{anchor}'")
+        lines.append("")
+
+    @staticmethod
+    def _report_type_breakdown(
+        lines: list[str], all_links: list[LinkInfo], broken: list[LinkInfo]
+    ) -> None:
+        """Append link type breakdown section."""
+        type_counts: dict[str, int] = {}
+        broken_type_counts: dict[str, int] = {}
+        for link in all_links:
+            type_counts[link.link_type] = type_counts.get(link.link_type, 0) + 1
+        for link in broken:
+            broken_type_counts[link.link_type] = broken_type_counts.get(link.link_type, 0) + 1
+
+        lines.append("LINK TYPE BREAKDOWN:")
+        lines.append("-" * 40)
+        for ltype in sorted(type_counts.keys()):
+            broken_count = broken_type_counts.get(ltype, 0)
+            total = type_counts[ltype]
+            lines.append(f"  {ltype:<25} {total:>4} total, {broken_count:>4} broken")
+
+    @staticmethod
     def generate_report(
         all_links: list[LinkInfo],
         duplicate_anchors: dict[str, list[tuple[str, int]]],
@@ -419,62 +469,25 @@ class LinkChecker:
         if as_json:
             return json.dumps(report_data, indent=2, default=str)
 
-        # Human-readable
-        lines = []
-        lines.append("Link Check Report")
-        lines.append("=" * 60)
-        lines.append(f"Total links:      {len(all_links)}")
-        lines.append(f"Valid:            {len(valid)}")
-        lines.append(f"Broken:           {len(broken)}")
-        lines.append(f"Skipped:          {len(skipped)}")
-        lines.append(f"Duplicate anchors: {sum(len(v) for v in duplicate_anchors.values())}")
-        lines.append("")
+        lines: list[str] = [
+            "Link Check Report",
+            "=" * 60,
+            f"Total links:      {len(all_links)}",
+            f"Valid:            {len(valid)}",
+            f"Broken:           {len(broken)}",
+            f"Skipped:          {len(skipped)}",
+            f"Duplicate anchors: {sum(len(v) for v in duplicate_anchors.values())}",
+            "",
+        ]
 
         if broken:
-            lines.append("BROKEN LINKS:")
-            lines.append("-" * 60)
-
-            # Group by source file
-            by_file: dict[str, list[LinkInfo]] = {}
-            for link in broken:
-                by_file.setdefault(link.source_file, []).append(link)
-
-            for source_file, file_links in sorted(by_file.items()):
-                lines.append(f"\n  {source_file}:")
-                for link in sorted(file_links, key=lambda lnk: lnk.line_number):
-                    lines.append(
-                        f"    Line {link.line_number}: [{link.link_text}]({link.link_target})"
-                    )
-                    lines.append(f"      Error: {link.error}")
-            lines.append("")
-
+            LinkChecker._report_broken(lines, broken)
         if duplicate_anchors:
-            lines.append("DUPLICATE ANCHORS:")
-            lines.append("-" * 60)
-            for file, dups in sorted(duplicate_anchors.items()):
-                lines.append(f"\n  {file}:")
-                for anchor, line_num in dups:
-                    lines.append(f"    Line {line_num}: duplicate anchor '#{anchor}'")
-            lines.append("")
-
+            LinkChecker._report_dups(lines, duplicate_anchors)
         if not broken and not duplicate_anchors:
             lines.append("No issues found. All links are valid.")
 
-        # Type breakdown
-        type_counts: dict[str, int] = {}
-        broken_type_counts: dict[str, int] = {}
-        for link in all_links:
-            type_counts[link.link_type] = type_counts.get(link.link_type, 0) + 1
-        for link in broken:
-            broken_type_counts[link.link_type] = broken_type_counts.get(link.link_type, 0) + 1
-
-        lines.append("LINK TYPE BREAKDOWN:")
-        lines.append("-" * 40)
-        for ltype in sorted(type_counts.keys()):
-            broken_count = broken_type_counts.get(ltype, 0)
-            total = type_counts[ltype]
-            lines.append(f"  {ltype:<25} {total:>4} total, {broken_count:>4} broken")
-
+        LinkChecker._report_type_breakdown(lines, all_links, broken)
         return "\n".join(lines)
 
     # --- Main ---

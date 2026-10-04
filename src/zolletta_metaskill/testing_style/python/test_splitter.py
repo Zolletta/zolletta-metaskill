@@ -278,13 +278,9 @@ class TestSplitter:
 
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        written = TestSplitter._write_split_files(
-            tree, class_node, groups, shared_methods, out_dir
-        )
+        written = TestSplitter._write_split_files(tree, class_node, groups, shared_methods, out_dir)
 
-        TestSplitter._emit_written(
-            args.json, test_file, out_dir, written, result
-        )
+        TestSplitter._emit_written(args.json, test_file, out_dir, written, result)
         return 0
 
     @staticmethod
@@ -376,8 +372,7 @@ class TestSplitter:
         print("\nNo --mapping provided. Auto-deriving prefixes from method names:")
         for prefix, names in sorted(auto.items()):
             print(
-                f"  {prefix}: {len(names)} methods -> "
-                f"{names[:3]}{'...' if len(names) > 3 else ''}"
+                f"  {prefix}: {len(names)} methods -> {names[:3]}{'...' if len(names) > 3 else ''}"
             )
         print('\nUse --mapping \'{"prefix": "SutClass", ...}\' to specify SUT names.')
         print("Example:")

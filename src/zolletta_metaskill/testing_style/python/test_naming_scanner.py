@@ -188,6 +188,97 @@ class TestNamingScanner:
         return TestNamingScanner.scan_module(module, min_segments)
 
     @staticmethod
+    def _resolve_min_segments(settings: dict[str, Any], py_langs: set[str]) -> int:
+        """Resolve minimum segments from settings."""
+        limits: list[int] = []
+        for lang in sorted(py_langs):
+            value = ProjectConfig.setting(
+                settings, f"{lang}.testing.test_naming_min_segments", None
+            )
+            if isinstance(value, int) and not isinstance(value, bool):
+                limits.append(value)
+        return min(limits) if limits else 3
+
+    @staticmethod
+    def _scan_test_roots(roots: list[Path], min_segments: int) -> tuple[int, list[dict[str, Any]]]:
+        """Scan test roots for naming violations."""
+        violations: list[dict[str, Any]] = []
+        total_test_functions = 0
+        for test_root in roots:
+            for py in ProjectConfig.iter_files(test_root, {".py"}):
+                if not (py.name.startswith("test_") or py.name.endswith("_test.py")):
+                    continue
+                test_funcs = TestNamingScanner._find_test_functions(py)
+                for func_name, line_no in test_funcs:
+                    total_test_functions += 1
+                    segments = TestNamingScanner._count_segments(func_name)
+                    if segments < min_segments:
+                        violations.append(
+                            {
+                                "file": str(py.relative_to(test_root)),
+                                "line": line_no,
+                                "function": func_name,
+                                "segments": segments,
+                                "min_required": min_segments,
+                            }
+                        )
+        return total_test_functions, violations
+
+    @staticmethod
+    def _emit_json(
+        directories: list[str],
+        total_test_functions: int,
+        min_segments: int,
+        violations: list[dict[str, Any]],
+    ) -> None:
+        """Emit JSON formatted report."""
+        print(
+            json.dumps(
+                {
+                    "directories": directories,
+                    "total_test_functions": total_test_functions,
+                    "violation_count": len(violations),
+                    "min_segments": min_segments,
+                    "violations": violations,
+                },
+                indent=2,
+            )
+        )
+
+    @staticmethod
+    def _emit_text(
+        directories: list[str],
+        total_test_functions: int,
+        min_segments: int,
+        violations: list[dict[str, Any]],
+    ) -> None:
+        """Emit human-readable formatted report."""
+        print("=" * 70)
+        print("TEST FUNCTION NAMING — VALIDATION REPORT")
+        print("=" * 70)
+        print(f"\nTest directories: {', '.join(directories)}")
+        print(f"Minimum segments after test_: {min_segments}")
+        print(f"Total test functions scanned: {total_test_functions}")
+        print(f"Violations: {len(violations)}")
+        if total_test_functions > 0:
+            pct = (len(violations) / total_test_functions) * 100
+            print(f"Violation rate: {pct:.1f}%")
+        print()
+
+        if violations:
+            print(f"{'File':<55} {'Line':>5} {'Function':<45} {'Segs':>5}")
+            print("-" * 115)
+            for v in violations:
+                print(f"{v['file']:<55} {v['line']:>5} {v['function']:<45} {v['segments']:>5}")
+            print()
+            print(f"These test functions have fewer than {min_segments} segments")
+            print("after the test_ prefix. The convention expects:")
+            print("  test_<unit>_<scenario>_<expected_outcome>")
+            print("Rename to include the scenario and expected outcome.")
+        else:
+            print("All test functions meet the naming convention.\n")
+
+    @staticmethod
     def main() -> int:
         """Entry point for the test naming convention checker CLI."""
         parser = argparse.ArgumentParser(
@@ -215,78 +306,18 @@ class TestNamingScanner:
             )
             return 1
 
-        limits: list[int] = []
-        for lang in sorted(py_langs):
-            value = ProjectConfig.setting(
-                settings, f"{lang}.testing.test_naming_min_segments", None
-            )
-            if isinstance(value, int) and not isinstance(value, bool):
-                limits.append(value)
-        min_segments = min(limits) if limits else 3
-
-        violations: list[dict[str, Any]] = []
-        total_test_functions = 0
-
-        for test_root in roots:
-            for py in ProjectConfig.iter_files(test_root, {".py"}):
-                # Only scan test files (test_*.py or *_test.py)
-                if not (py.name.startswith("test_") or py.name.endswith("_test.py")):
-                    continue
-
-                test_funcs = TestNamingScanner._find_test_functions(py)
-                for func_name, line_no in test_funcs:
-                    total_test_functions += 1
-                    segments = TestNamingScanner._count_segments(func_name)
-                    if segments < min_segments:
-                        violations.append(
-                            {
-                                "file": str(py.relative_to(test_root)),
-                                "line": line_no,
-                                "function": func_name,
-                                "segments": segments,
-                                "min_required": min_segments,
-                            }
-                        )
-
+        min_segments = TestNamingScanner._resolve_min_segments(settings, py_langs)
+        total_test_functions, violations = TestNamingScanner._scan_test_roots(roots, min_segments)
         directories = [str(root) for root in roots]
+
         if args.json:
-            print(
-                json.dumps(
-                    {
-                        "directories": directories,
-                        "total_test_functions": total_test_functions,
-                        "violation_count": len(violations),
-                        "min_segments": min_segments,
-                        "violations": violations,
-                    },
-                    indent=2,
-                )
+            TestNamingScanner._emit_json(
+                directories, total_test_functions, min_segments, violations
             )
         else:
-            print("=" * 70)
-            print("TEST FUNCTION NAMING — VALIDATION REPORT")
-            print("=" * 70)
-            print(f"\nTest directories: {', '.join(directories)}")
-            print(f"Minimum segments after test_: {min_segments}")
-            print(f"Total test functions scanned: {total_test_functions}")
-            print(f"Violations: {len(violations)}")
-            if total_test_functions > 0:
-                pct = (len(violations) / total_test_functions) * 100
-                print(f"Violation rate: {pct:.1f}%")
-            print()
-
-            if violations:
-                print(f"{'File':<55} {'Line':>5} {'Function':<45} {'Segs':>5}")
-                print("-" * 115)
-                for v in violations:
-                    print(f"{v['file']:<55} {v['line']:>5} {v['function']:<45} {v['segments']:>5}")
-                print()
-                print(f"These test functions have fewer than {min_segments} segments")
-                print("after the test_ prefix. The convention expects:")
-                print("  test_<unit>_<scenario>_<expected_outcome>")
-                print("Rename to include the scenario and expected outcome.")
-            else:
-                print("All test functions meet the naming convention.\n")
+            TestNamingScanner._emit_text(
+                directories, total_test_functions, min_segments, violations
+            )
 
         return 0
 

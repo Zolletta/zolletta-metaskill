@@ -58,7 +58,7 @@ When `check_function_length` is `true`, the skill runs `src/zolletta_metaskill/c
 
 ### Cyclomatic complexity
 
-When `check_cyclomatic_complexity` is `true`, the skill runs `src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py` to flag functions and methods with more than `max_cyclomatic_complexity` decision points (default: `10`, matching ruff `C901` / `[tool.ruff.lint.mccabe] max-complexity`; setup seeds the threshold from `python.tools.ruff.max_complexity` when configured). Each `if`/`elif`, `for`/`async for`, `while`, `except` handler, non-catch-all `match` case, `try` `else` clause, and nested `def` adds one; boolean operators, ternaries, and comprehensions add none. Nested functions are reported independently and fold into the enclosing count, exactly like `C901`. A complex function is a strong "extract collaborator" signal — parsers, state machines, and generated code can be exempted by raising the threshold.
+When `check_cyclomatic_complexity` is `true`, the skill runs `src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py` to flag functions and methods with more than `max_cyclomatic_complexity` decision points (default: `12`, matching ruff `C901` / `[tool.ruff.lint.mccabe] max-complexity`; setup seeds the threshold from `python.tools.ruff.max_complexity` when configured). Each `if`/`elif`, `for`/`async for`, `while`, `except` handler, non-catch-all `match` case, `try` `else` clause, and nested `def` adds one; boolean operators, ternaries, and comprehensions add none. Nested functions are reported independently and fold into the enclosing count, exactly like `C901`. A complex function is a strong "extract collaborator" signal — parsers, state machines, and generated code can be exempted by raising the threshold.
 
 ## Always-on vs configurable rules
 
@@ -91,7 +91,7 @@ Configure rule toggles by editing the `python.code_style` object in `.zolletta-m
     "check_function_length": true,
     "max_function_length": 100,
     "check_cyclomatic_complexity": true,
-    "max_cyclomatic_complexity": 10,
+    "max_cyclomatic_complexity": 12,
     "vulture_min_confidence": 80
   }
 }

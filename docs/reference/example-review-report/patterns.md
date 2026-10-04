@@ -29,7 +29,7 @@
 | DependencyInversionScanner | patterns/php/dependency_inversion_scanner.py     | 331   | 12      | 3   | 0     | Cohesive — scanner, single domain (PHP DIP detection)              |
 | AcronymCasingScanner       | code_style/php/acronym_casing_scanner.py         | 313   | 6       | 1   | 0     | Cohesive — scanner, single domain (PHP acronym casing)             |
 | DependencyInversionScanner | patterns/python/dependency_inversion_scanner.py  | 308   | 9       | 1   | 0     | Cohesive — scanner, single domain (Python DIP detection)           |
-| TestSplitter               | patterns/python/test_splitter.py                 | 303   | 11      | 1   | 0     | Cohesive — utility, single domain (test class splitting)           |
+| TestSplitter               | testing_style/python/test_splitter.py            | 303   | 11      | 1   | 0     | Cohesive — utility, single domain (test class splitting)           |
 | LiskovSubstitutionScanner  | patterns/general/liskov_substitution_scanner.py  | 295   | 6       | 3   | 0     | Cohesive — scanner, single domain (LSP detection)                  |
 | PythonEngine               | core/engine/python_engine.py                     | 280   | 12      | 6   | 0     | Cohesive — parser/adapter, single domain (Python parsing)          |
 | NamingConventionsScanner   | code_style/general/naming_conventions_scanner.py | 264   | 8       | 1   | 0     | Cohesive — scanner, single domain (naming conventions)             |

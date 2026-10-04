@@ -117,17 +117,13 @@ SHOW_STDOUT = """\
 class TestMutmutSurvivedReporter:
     # --- ``_run_mutmut`` wraps subprocess with timeout/missing-tool safety. ---
 
-    def test_run_mutmut_with_success_returns_process(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_run_mutmut_with_success_returns_process(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _install_mutmut(monkeypatch, {RESULTS_PLAIN: _proc("ok")})
         proc = MutmutSurvivedReporter._run_mutmut(["results"])
         assert proc is not None
         assert proc.returncode == 0
 
-    def test_run_mutmut_with_timeout_returns_none(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_run_mutmut_with_timeout_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _install_mutmut(
             monkeypatch,
             {RESULTS_PLAIN: subprocess.TimeoutExpired(cmd="mutmut", timeout=600)},
@@ -170,9 +166,7 @@ class TestMutmutSurvivedReporter:
         )
         assert MutmutSurvivedReporter._results_stdout() == RESULTS_STDOUT
 
-    def test_results_stdout_all_fail_returns_none(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_results_stdout_all_fail_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _install_mutmut(
             monkeypatch,
             {
@@ -202,9 +196,7 @@ class TestMutmutSurvivedReporter:
     def test_show_stdout_process_cannot_run_returns_none(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        _install_mutmut(
-            monkeypatch, {("show", "m.x_f__mutmut_1"): FileNotFoundError("mutmut")}
-        )
+        _install_mutmut(monkeypatch, {("show", "m.x_f__mutmut_1"): FileNotFoundError("mutmut")})
         assert MutmutSurvivedReporter._show_stdout("m.x_f__mutmut_1") is None
 
     # --- ``_parse_results`` maps ``    <name>: <status>`` lines. ---
@@ -336,9 +328,7 @@ class TestMutmutSurvivedReporter:
     ) -> None:
         monkeypatch.chdir(tmp_path)
         _install_mutmut(monkeypatch, {})
-        entry = MutmutSurvivedReporter._survivor_entry(
-            "pkg.x_f__mutmut_1", "survived", ["src"]
-        )
+        entry = MutmutSurvivedReporter._survivor_entry("pkg.x_f__mutmut_1", "survived", ["src"])
         assert entry is not None
         assert entry["file"] == "src/pkg.py"
         assert entry["line"] is None
@@ -393,9 +383,7 @@ class TestMutmutSurvivedReporter:
         assert report["mutation_score"] == 80.0
         assert report["status"] == "PASS"
 
-    def test_report_empty_statuses_scores_100(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_report_empty_statuses_scores_100(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _install_mutmut(monkeypatch, {})
         report = MutmutSurvivedReporter._report({}, 80, 50, [])
         assert report["mutation_score"] == 100.0

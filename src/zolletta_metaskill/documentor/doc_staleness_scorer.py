@@ -40,6 +40,9 @@ from pathlib import Path
 from typing import Any
 
 from zolletta_metaskill.core.project_config import ProjectConfig
+from zolletta_metaskill.documentor.doc_accuracy_scorer import DocAccuracyScorer
+from zolletta_metaskill.documentor.doc_completeness_scorer import DocCompletenessScorer
+from zolletta_metaskill.documentor.doc_staleness_report_writer import DocStalenessReportWriter
 
 
 class DocStalenessScorer:
@@ -92,43 +95,6 @@ class DocStalenessScorer:
         "license",
     ]
 
-    # Diátaxis quadrant directories (lowercase, matched against path components).
-    # When a doc file lives under one of these directories, the completeness
-    # dimension uses the quadrant-specific required sections instead of the
-    # README defaults. This prevents Diátaxis docs from always scoring 0.
-    #
-    # The English strings below act as **signposts**: when the documentation
-    # language is not English (``--diataxis-translations`` flag), the agent
-    # provides translated equivalents via a JSON file. Translations are merged
-    # additively into ``dir_names`` and replace ``required_sections`` /
-    # ``any_of_groups`` so that non-English docs are matched correctly.
-    DIATAXIS_QUADRANTS: dict[str, dict[str, Any]] = {
-        "tutorials": {
-            "dir_names": {"tutorials", "tutorial"},
-            "required_sections": ["what we will learn", "prerequisites"],
-        },
-        "how-to": {
-            "dir_names": {"how-to", "howto", "how_to", "guides"},
-            # Diátaxis how-to guides need "Prerequisites" OR "Before Starting" —
-            # either heading satisfies the convention. Stored as an "any_of"
-            # group: at least one heading in the group must be present.
-            "any_of_groups": [["prerequisites", "before starting"]],
-            "required_sections": [],
-        },
-        "reference": {
-            "dir_names": {"reference", "api"},
-            # Reference docs are dictionaries — no mandatory sections beyond
-            # having content. An empty required list means "no structural
-            # requirement" → score 100 (minus length penalty).
-            "required_sections": [],
-        },
-        "explanation": {
-            "dir_names": {"explanation", "design", "architecture", "rationale"},
-            # Explanation docs are discussions — no mandatory sections.
-            "required_sections": [],
-        },
-    }
-
     SCORE_LABELS = {
         (90, 100): "excellent",
         (70, 90): "good",
@@ -168,73 +134,6 @@ class DocStalenessScorer:
         except OSError:
             pass
         return patterns
-
-    @staticmethod
-    def _load_diataxis_translations(path: str) -> dict[str, Any]:
-        """Load translated Diátaxis headings and directory names from a JSON file.
-
-        The JSON format mirrors ``DIATAXIS_QUADRANTS`` but with translated strings.
-        Only non-English languages need this — English signposts are built in.
-
-        Expected format::
-
-            {
-              "readme_sections": ["installazione", "utilizzo", "api", "contribuire", "licenza"],
-              "quadrants": {
-                "tutorials": {
-                  "dir_names": ["tutorials", "tutorial", "guide"],
-                  "required_sections": ["cosa impareremo", "prerequisiti"]
-                },
-                "how-to": {
-                  "dir_names": ["come-fare", "guide-pratiche"],
-                  "any_of_groups": [["prerequisiti", "prima di iniziare"]]
-                },
-                "reference": {
-                  "dir_names": ["riferimento", "api"]
-                },
-                "explanation": {
-                  "dir_names": ["spiegazione", "design", "architettura"]
-                }
-              }
-            }
-
-        Returns a dict with ``readme_sections`` (list or None) and ``quadrants``
-        (dict keyed by quadrant name with translated fields).
-        """
-        try:
-            with open(path, encoding="utf-8") as f:
-                data = json.load(f)
-        except (OSError, json.JSONDecodeError) as exc:
-            print(
-                f"Warning: could not load Diátaxis translations from {path}: {exc}", file=sys.stderr
-            )
-            return {"readme_sections": None, "quadrants": {}}
-
-        readme_sections = data.get("readme_sections")
-        quadrants = data.get("quadrants", {})
-        return {"readme_sections": readme_sections, "quadrants": quadrants}
-
-    @staticmethod
-    def _merge_translations(translations: dict[str, Any]) -> None:
-        """Merge translated headings/dir names into the global ``DIATAXIS_QUADRANTS``.
-
-        - ``dir_names`` are merged additively (English + translated).
-        - ``required_sections`` and ``any_of_groups`` are replaced if present in
-          the translation (the translated version is authoritative for that
-          language).
-        """
-        for quad_name, quad_trans in translations.get("quadrants", {}).items():
-            if quad_name not in DocStalenessScorer.DIATAXIS_QUADRANTS:
-                continue
-            quad = DocStalenessScorer.DIATAXIS_QUADRANTS[quad_name]
-            if "dir_names" in quad_trans:
-                quad["dir_names"] = quad["dir_names"] | {n.lower() for n in quad_trans["dir_names"]}
-            if "required_sections" in quad_trans:
-                quad["required_sections"] = [s.lower() for s in quad_trans["required_sections"]]
-            if "any_of_groups" in quad_trans:
-                quad["any_of_groups"] = [
-                    [s.lower() for s in group] for group in quad_trans["any_of_groups"]
-                ]
 
     @staticmethod
     def get_label(score: float) -> str:
@@ -339,6 +238,41 @@ class DocStalenessScorer:
         return max(0.0, min(100.0, score)), details
 
     @staticmethod
+    def _extract_alignment_refs(content: str) -> set[str]:
+        """Extract markdown link and backtick file references."""
+        file_refs: set[str] = set()
+        for match in re.finditer(r"\[([^\]]*)\]\(([^)]+)\)", content):
+            target = match.group(2).split("#")[0]
+            if not target.startswith(("http://", "https://", "mailto:")) and target:
+                file_refs.add(target)
+        for match in re.finditer(r"`([^\s`]+\.\w{1,5})`", content):
+            candidate = match.group(1)
+            if (
+                Path(candidate).suffix.lower()
+                in DocStalenessScorer.CODE_EXTENSIONS | DocStalenessScorer.DOC_EXTENSIONS
+            ):
+                file_refs.add(candidate)
+        return file_refs
+
+    @staticmethod
+    def _score_fallback_alignment(repo_path: str, doc_path: str, details: dict[str, Any]) -> float:
+        """Score alignment based on code changes in the doc directory."""
+        doc_dir = os.path.dirname(doc_path)
+        last_mod = DocStalenessScorer.get_file_last_commit_date(repo_path, doc_path)
+        if not last_mod:
+            return 70.0
+        since = last_mod.strftime("%Y-%m-%d")
+        changes = DocStalenessScorer.get_code_changes_since(repo_path, since, doc_dir)
+        details["code_changes_since_update"] = changes
+        if changes == 0:
+            return 100.0
+        if changes < 5:
+            return 80.0
+        if changes < 20:
+            return 60.0
+        return 40.0
+
+    @staticmethod
     def score_code_doc_alignment(repo_path: str, doc_path: str) -> tuple[float, dict[str, Any]]:
         """Score based on whether documented items still exist in code. 0-100."""
         full_path = os.path.join(repo_path, doc_path)
@@ -350,50 +284,18 @@ class DocStalenessScorer:
         except OSError:
             return 50.0, details
 
-        # Extract file references
-        file_refs = set()
-        # Markdown links
-        for match in re.finditer(r"\[([^\]]*)\]\(([^)]+)\)", content):
-            target = match.group(2).split("#")[0]
-            if not target.startswith(("http://", "https://", "mailto:")) and target:
-                file_refs.add(target)
-        # Backtick file references
-        for match in re.finditer(r"`([^\s`]+\.\w{1,5})`", content):
-            candidate = match.group(1)
-            if (
-                Path(candidate).suffix.lower()
-                in DocStalenessScorer.CODE_EXTENSIONS | DocStalenessScorer.DOC_EXTENSIONS
-            ):
-                file_refs.add(candidate)
-
+        file_refs = DocStalenessScorer._extract_alignment_refs(content)
         if not file_refs:
-            # No explicit references; check if associated code dir has changed
-            doc_dir = os.path.dirname(doc_path)
-            last_mod = DocStalenessScorer.get_file_last_commit_date(repo_path, doc_path)
-            if last_mod:
-                since = last_mod.strftime("%Y-%m-%d")
-                changes = DocStalenessScorer.get_code_changes_since(repo_path, since, doc_dir)
-                details["code_changes_since_update"] = changes
-                if changes == 0:
-                    return 100.0, details
-                elif changes < 5:
-                    return 80.0, details
-                elif changes < 20:
-                    return 60.0, details
-                else:
-                    return 40.0, details
-            return 70.0, details
+            fallback = DocStalenessScorer._score_fallback_alignment(repo_path, doc_path, details)
+            return fallback, details
 
-        # Check which referenced files exist
         doc_dir = os.path.dirname(doc_path)
         existing = 0
         for ref in file_refs:
-            # Try relative to doc location
             resolved = os.path.normpath(os.path.join(repo_path, doc_dir, ref))
             if os.path.exists(resolved):
                 existing += 1
                 continue
-            # Try relative to repo root
             resolved_root = os.path.normpath(os.path.join(repo_path, ref))
             if os.path.exists(resolved_root):
                 existing += 1
@@ -401,11 +303,53 @@ class DocStalenessScorer:
         details["referenced_files"] = len(file_refs)
         details["existing_files"] = existing
 
-        if len(file_refs) == 0:  # pragma: no cover
-            return 70.0, details
-
         ratio = existing / len(file_refs)
         return ratio * 100.0, details
+
+    @staticmethod
+    def _validate_one_link(
+        repo_path: str,
+        doc_dir: str,
+        content: str,
+        link: str,
+        details: dict[str, Any],
+    ) -> bool:
+        """Validate a single internal markdown link target."""
+        anchor = None
+        if "#" in link:
+            file_part, anchor = link.split("#", 1)
+        else:
+            file_part = link
+
+        if not file_part:
+            if anchor:
+                headings = DocStalenessScorer._extract_headings(content)
+                if DocStalenessScorer._slugify(anchor) in headings:
+                    return True
+                details["broken_links"].append(f"#{anchor}")
+                return False
+            return True
+
+        resolved = os.path.normpath(os.path.join(repo_path, doc_dir, file_part))
+        if not os.path.exists(resolved):
+            resolved = os.path.normpath(os.path.join(repo_path, file_part))
+
+        if not os.path.exists(resolved):
+            details["broken_links"].append(link)
+            return False
+
+        if anchor and resolved.endswith((".md", ".rst")):
+            try:
+                with open(resolved, encoding="utf-8", errors="ignore") as f:
+                    target_content = f.read()
+                headings = DocStalenessScorer._extract_headings(target_content)
+                if DocStalenessScorer._slugify(anchor) in headings:
+                    return True
+                details["broken_links"].append(link)
+                return False
+            except OSError:  # pragma: no cover
+                return True
+        return True
 
     @staticmethod
     def score_link_health(repo_path: str, doc_path: str) -> tuple[float, dict[str, Any]]:
@@ -420,382 +364,24 @@ class DocStalenessScorer:
             return 100.0, details
 
         doc_dir = os.path.dirname(doc_path)
-
-        # Extract markdown links
-        links = []
-        for match in re.finditer(r"\[([^\]]*)\]\(([^)]+)\)", content):
-            target = match.group(2)
-            if not target.startswith(("http://", "https://", "mailto:")):
-                links.append(target)
+        links = [
+            match.group(2)
+            for match in re.finditer(r"\[([^\]]*)\]\(([^)]+)\)", content)
+            if not match.group(2).startswith(("http://", "https://", "mailto:"))
+        ]
 
         if not links:
             return 100.0, details
 
         details["total_links"] = len(links)
-        valid = 0
-
-        for link in links:
-            anchor = None
-            if "#" in link:
-                file_part, anchor = link.split("#", 1)
-            else:
-                file_part = link
-
-            if not file_part:
-                # Anchor-only link within same doc
-                if anchor:
-                    headings = DocStalenessScorer._extract_headings(content)
-                    slug = DocStalenessScorer._slugify(anchor)
-                    if slug in headings:
-                        valid += 1
-                    else:
-                        details["broken_links"].append(f"#{anchor}")
-                else:
-                    valid += 1
-                continue
-
-            # Check file existence
-            resolved = os.path.normpath(os.path.join(repo_path, doc_dir, file_part))
-            if not os.path.exists(resolved):
-                resolved = os.path.normpath(os.path.join(repo_path, file_part))
-
-            if os.path.exists(resolved):
-                if anchor and resolved.endswith((".md", ".rst")):
-                    # Validate anchor in target file
-                    try:
-                        with open(resolved, encoding="utf-8", errors="ignore") as f:
-                            target_content = f.read()
-                        headings = DocStalenessScorer._extract_headings(target_content)
-                        if DocStalenessScorer._slugify(anchor) in headings:
-                            valid += 1
-                        else:
-                            details["broken_links"].append(link)
-                    except OSError:  # pragma: no cover
-                        valid += 1  # Give benefit of doubt
-                else:
-                    valid += 1
-            else:
-                details["broken_links"].append(link)
+        valid = sum(
+            1
+            for link in links
+            if DocStalenessScorer._validate_one_link(repo_path, doc_dir, content, link, details)
+        )
 
         details["valid_links"] = valid
-        if len(links) == 0:  # pragma: no cover
-            return 100.0, details
         return (valid / len(links)) * 100.0, details
-
-    @staticmethod
-    def _detect_diataxis_quadrant(
-        doc_path: str,
-    ) -> dict[str, Any] | None:
-        """Return the Diátaxis quadrant config if the doc is inside a quadrant directory.
-
-        Returns ``None`` if the doc is not inside a known quadrant directory.
-
-        Checks each path component of ``doc_path`` against the known quadrant
-        directory names (case-insensitive). This works for both flat layouts
-        (``docs/tutorials/quick-start.md``) and nested ones
-        (``docs/v1.x/how-to/configure-x.md``).
-        """
-        parts_lower = [p.lower() for p in Path(doc_path).parts]
-        for quadrant in DocStalenessScorer.DIATAXIS_QUADRANTS.values():
-            if any(part in quadrant["dir_names"] for part in parts_lower):
-                return quadrant
-        return None
-
-    @staticmethod
-    def score_completeness(
-        repo_path: str, doc_path: str, required_sections: list[str]
-    ) -> tuple[float, dict[str, Any]]:
-        """Score based on whether expected sections are present. 0-100.
-
-        If the doc lives under a Diátaxis quadrant directory (tutorials/,
-        how-to/, reference/, explanation/), the quadrant-specific required
-        sections are used instead of the caller-provided ``required_sections``.
-        This prevents Diátaxis docs from always scoring 0 when the caller
-        passes README-style sections (installation, usage, etc.).
-        """
-        full_path = os.path.join(repo_path, doc_path)
-        details: dict[str, Any] = {
-            "expected_sections": required_sections,
-            "found_sections": [],
-            "missing_sections": [],
-        }
-
-        # Detect Diátaxis quadrant from the doc's directory path. If found,
-        # override the required sections with the quadrant-appropriate set.
-        any_of_groups: list[list[str]] = []
-        quadrant = DocStalenessScorer._detect_diataxis_quadrant(doc_path)
-        if quadrant is not None:
-            required_sections = quadrant.get("required_sections", [])
-            any_of_groups = quadrant.get("any_of_groups", [])
-            details["expected_sections"] = required_sections
-            details["doc_structure"] = "diataxis"
-            details["any_of_groups"] = any_of_groups
-
-        try:
-            with open(full_path, encoding="utf-8", errors="ignore") as f:
-                content = f.read()
-        except OSError:
-            return 0.0, details
-
-        # Extract headings
-        headings_lower = DocStalenessScorer._collect_heading_text(content)
-        heading_words: set[str] = set()
-        for h in headings_lower:
-            heading_words.update(h.split())
-
-        found, missing = DocStalenessScorer._match_sections(
-            required_sections, headings_lower, heading_words
-        )
-
-        # Handle "any_of" groups (e.g. how-to needs "Prerequisites" OR "Before
-        # Starting"). Each group counts as one requirement; satisfied if at
-        # least one heading in the group is present.
-        groups_found, groups_missing = DocStalenessScorer._match_any_of_groups(
-            any_of_groups, headings_lower, heading_words
-        )
-
-        details["found_sections"] = found
-        details["missing_sections"] = missing
-        details["any_of_groups_found"] = groups_found
-        details["any_of_groups_missing"] = groups_missing
-
-        # Also score based on content length (very short docs are incomplete).
-        # The length penalty is skipped for Diátaxis docs (their quadrant-specific
-        # structure is the primary completeness check) and for non-Diátaxis docs
-        # where all required sections are found and there is more than one
-        # requirement (a structurally rich doc is considered complete even if
-        # individual sections have little body content).
-        is_diataxis = quadrant is not None
-        content_lines = len([line for line in content.splitlines() if line.strip()])
-        length_penalty = 0
-        if not is_diataxis:
-            if content_lines < 10:
-                length_penalty = 30
-            elif content_lines < 30:
-                length_penalty = 15
-
-        total_requirements = len(required_sections) + len(any_of_groups)
-        if total_requirements == 0:
-            # No mandatory sections (e.g. Diátaxis reference/explanation docs) —
-            # base score is 100, only the length penalty can reduce it.
-            return max(0.0, 100.0 - length_penalty), details
-
-        satisfied = len(found) + groups_found
-        section_score = (satisfied / total_requirements) * 100.0
-
-        # Waive the length penalty when every requirement is satisfied and the
-        # doc has more than one requirement — the structural completeness
-        # outweighs brevity. Docs with a single requirement are still penalised
-        # for being too thin.
-        if section_score >= 100.0 and total_requirements > 1:
-            length_penalty = 0
-
-        return max(0.0, section_score - length_penalty), details
-
-    @staticmethod
-    def _collect_heading_text(content: str) -> set[str]:
-        """Collect the lowercase text of every markdown heading (levels 1-4)."""
-        headings_lower: set[str] = set()
-        for line in content.splitlines():
-            match = re.match(r"^#{1,4}\s+(.+)", line)
-            if match:
-                headings_lower.add(match.group(1).strip().lower())
-        return headings_lower
-
-    @staticmethod
-    def _match_sections(
-        required_sections: list[str],
-        headings_lower: set[str],
-        heading_words: set[str],
-    ) -> tuple[list[str], list[str]]:
-        """Split required sections into (found, missing) against the headings."""
-        found = []
-        missing = []
-        for section in required_sections:
-            section_lower = section.lower()
-            if (
-                section_lower in headings_lower
-                or section_lower in heading_words
-                or any(section_lower in h for h in headings_lower)
-            ):
-                found.append(section)
-            else:
-                missing.append(section)
-        return found, missing
-
-    @staticmethod
-    def _match_any_of_groups(
-        any_of_groups: list[list[str]],
-        headings_lower: set[str],
-        heading_words: set[str],
-    ) -> tuple[int, list[list[str]]]:
-        """Count satisfied any-of groups; return (found_count, missing_groups)."""
-        groups_found = 0
-        groups_missing = []
-        for group in any_of_groups:
-            group_lower = [g.lower() for g in group]
-            if any(g in headings_lower or g in heading_words for g in group_lower) or any(
-                any(g in h for h in headings_lower) for g in group_lower
-            ):
-                groups_found += 1
-            else:
-                groups_missing.append(group)
-        return groups_found, groups_missing
-
-    @staticmethod
-    def score_accuracy(repo_path: str, doc_path: str) -> tuple[float, dict[str, Any]]:
-        """Score based on accuracy of verifiable facts (versions, dates, paths). 0-100."""
-        full_path = os.path.join(repo_path, doc_path)
-        details: dict[str, Any] = {"checks": [], "issues": []}
-
-        try:
-            with open(full_path, encoding="utf-8", errors="ignore") as f:
-                content = f.read()
-        except OSError:
-            return 50.0, details
-
-        checks_passed = 0.0
-        checks_total = 0
-
-        # Check 1: Version strings match latest tag
-        passed, total = DocStalenessScorer._check_version_match(
-            repo_path, content, details
-        )
-        checks_passed += passed
-        checks_total += total
-
-        # Check 2: Package version from manifests
-        passed, total = DocStalenessScorer._check_manifest_versions(
-            repo_path, content, details
-        )
-        checks_passed += passed
-        checks_total += total
-
-        # Check 3: Referenced file paths exist
-        passed, total = DocStalenessScorer._check_file_paths(
-            repo_path, doc_path, content, details
-        )
-        checks_passed += passed
-        checks_total += total
-
-        # Check 4: Dates are not in the future and not suspiciously old
-        passed, total = DocStalenessScorer._check_dates(content, details)
-        checks_passed += passed
-        checks_total += total
-
-        if checks_total == 0:
-            return 75.0, details  # No verifiable facts found, assume reasonable
-
-        return (checks_passed / checks_total) * 100.0, details
-
-    @staticmethod
-    def _version_refs(content: str) -> list[str]:
-        """Extract version-like strings (``v1.2.3``, ``version: 1.2``) from content."""
-        return re.findall(
-            r"(?:v|version[:\s]*)(\d+\.\d+(?:\.\d+)?)", content, re.IGNORECASE
-        )
-
-    @staticmethod
-    def _check_version_match(
-        repo_path: str, content: str, details: dict[str, Any]
-    ) -> tuple[float, int]:
-        """Check that documented versions match the latest git tag."""
-        git_version = DocStalenessScorer.get_latest_tag(repo_path)
-        version_refs = DocStalenessScorer._version_refs(content)
-        if not git_version or not version_refs:
-            return 0.0, 0
-        if any(v == git_version for v in version_refs):
-            details["checks"].append("version_match: PASS")
-            return 1.0, 1
-        details["checks"].append(
-            f"version_match: FAIL (doc has {version_refs}, git has {git_version})"
-        )
-        details["issues"].append(
-            f"Version mismatch: doc={version_refs}, git={git_version}"
-        )
-        return 0.0, 1
-
-    @staticmethod
-    def _check_manifest_versions(
-        repo_path: str, content: str, details: dict[str, Any]
-    ) -> tuple[float, int]:
-        """Check that documented versions match package manifests."""
-        checks_passed = 0.0
-        checks_total = 0
-        for manifest in ["package.json", "pyproject.toml", "setup.py", "Cargo.toml"]:
-            manifest_path = os.path.join(repo_path, manifest)
-            if not os.path.exists(manifest_path):
-                continue
-            manifest_version = DocStalenessScorer._extract_version_from_manifest(
-                manifest_path, manifest
-            )
-            version_refs = DocStalenessScorer._version_refs(content)
-            if manifest_version and version_refs:
-                checks_total += 1
-                if manifest_version in version_refs:
-                    checks_passed += 1
-                    details["checks"].append(f"manifest_version ({manifest}): PASS")
-                else:
-                    details["checks"].append(
-                        f"manifest_version ({manifest}): FAIL "
-                        f"(doc={version_refs}, manifest={manifest_version})"
-                    )
-                    details["issues"].append(
-                        f"Manifest version mismatch: {manifest} has {manifest_version}"
-                    )
-        return checks_passed, checks_total
-
-    @staticmethod
-    def _check_file_paths(
-        repo_path: str, doc_path: str, content: str, details: dict[str, Any]
-    ) -> tuple[float, int]:
-        """Check that referenced file paths exist (partial credit)."""
-        file_refs = re.findall(r"`([^\s`]+/[^\s`]+\.\w{1,5})`", content)
-        if not file_refs:
-            return 0.0, 0
-        doc_dir = os.path.dirname(doc_path)
-        existing_count = 0
-        for ref in file_refs:
-            resolved = os.path.normpath(os.path.join(repo_path, doc_dir, ref))
-            if os.path.exists(resolved):
-                existing_count += 1
-            else:
-                resolved_root = os.path.normpath(os.path.join(repo_path, ref))
-                if os.path.exists(resolved_root):
-                    existing_count += 1
-        if existing_count == len(file_refs):
-            details["checks"].append(f"file_paths: PASS ({existing_count}/{len(file_refs)})")
-            return 1.0, 1
-        ratio = existing_count / len(file_refs)
-        # Partial credit
-        details["checks"].append(f"file_paths: PARTIAL ({existing_count}/{len(file_refs)})")
-        details["issues"].append(
-            f"{len(file_refs) - existing_count} referenced file paths not found"
-        )
-        return ratio, 1
-
-    @staticmethod
-    def _check_dates(content: str, details: dict[str, Any]) -> tuple[float, int]:
-        """Check that documented dates are not in the future."""
-        date_pattern = re.compile(r"(\d{4}-\d{2}-\d{2})")
-        dates_found = date_pattern.findall(content)
-        if not dates_found:
-            return 0.0, 0
-        now = datetime.now(UTC)
-        all_ok = True
-        for date_str in dates_found:
-            try:
-                d = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=UTC)
-                if d > now:
-                    details["issues"].append(f"Future date found: {date_str}")
-                    all_ok = False
-            except ValueError:  # pragma: no cover
-                pass
-        if all_ok:
-            details["checks"].append("dates: PASS")
-            return 1.0, 1
-        details["checks"].append("dates: FAIL")
-        return 0.0, 1
 
     # --- Helpers ---
 
@@ -818,29 +404,6 @@ class DocStalenessScorer:
         text = text.strip("-")
         return text
 
-    @staticmethod
-    def _extract_version_from_manifest(path: str, filename: str) -> str | None:
-        """Extract version string from a package manifest."""
-        try:
-            with open(path, encoding="utf-8", errors="ignore") as f:
-                content = f.read()
-        except OSError:
-            return None
-
-        if filename == "package.json":
-            match = re.search(r'"version"\s*:\s*"([^"]+)"', content)
-            return match.group(1) if match else None
-        elif filename == "pyproject.toml":
-            match = re.search(r'version\s*=\s*"([^"]+)"', content)
-            return match.group(1) if match else None
-        elif filename == "setup.py":
-            match = re.search(r'version\s*=\s*["\']([^"\']+)["\']', content)
-            return match.group(1) if match else None
-        elif filename == "Cargo.toml":
-            match = re.search(r'version\s*=\s*"([^"]+)"', content)
-            return match.group(1) if match else None
-        return None
-
     # --- Scoring Engine ---
 
     @staticmethod
@@ -856,10 +419,12 @@ class DocStalenessScorer:
             repo_path, doc_path
         )
         link_score, link_details = DocStalenessScorer.score_link_health(repo_path, doc_path)
-        completeness_score, completeness_details = DocStalenessScorer.score_completeness(
+        completeness_score, completeness_details = DocCompletenessScorer.score_completeness(
             repo_path, doc_path, required_sections
         )
-        accuracy_score, accuracy_details = DocStalenessScorer.score_accuracy(repo_path, doc_path)
+        accuracy_score, accuracy_details = DocAccuracyScorer.score_accuracy(
+            repo_path, doc_path, latest_tag=DocStalenessScorer.get_latest_tag(repo_path)
+        )
 
         weighted_total = (
             updated_score * weights["last_updated"]
@@ -907,70 +472,40 @@ class DocStalenessScorer:
             },
         }
 
-    # --- Report ---
-
-    @staticmethod
-    def generate_report(scores: list[dict[str, Any]], as_json: bool = False) -> str:
-        """Generate a staleness report from scored documents."""
-        if not scores:
-            if as_json:
-                return json.dumps({"documents": [], "aggregate_score": 0}, indent=2)
-            return "No documentation files found to score."
-
-        aggregate = sum(s["total_score"] for s in scores) / len(scores)
-
-        report_data = {
-            "aggregate_score": round(aggregate, 1),
-            "aggregate_label": DocStalenessScorer.get_label(aggregate),
-            "total_documents": len(scores),
-            "documents": scores,
-        }
-
-        if as_json:
-            return json.dumps(report_data, indent=2, default=str)
-
-        # Human-readable
-        lines = []
-        lines.append("Documentation Staleness Report")
-        lines.append("=" * 60)
-        lines.append(
-            f"Aggregate Score: {aggregate:.1f}/100 ({DocStalenessScorer.get_label(aggregate)})"
-        )
-        lines.append(f"Documents Scored: {len(scores)}")
-        lines.append("")
-
-        # Sort by score ascending (worst first)
-        sorted_scores = sorted(scores, key=lambda s: s["total_score"])
-
-        lines.append(f"{'File':<45} {'Score':>6} {'Label':>12}")
-        lines.append("-" * 65)
-        for s in sorted_scores:
-            lines.append(f"{s['file']:<45} {s['total_score']:>5.1f} {s['label']:>12}")
-
-        lines.append("")
-        lines.append("DIMENSION BREAKDOWN (worst scoring files):")
-        lines.append("-" * 60)
-
-        # Show detailed breakdown for bottom 5
-        for s in sorted_scores[:5]:
-            lines.append(f"\n  {s['file']} (score: {s['total_score']:.1f})")
-            for dim_name, dim_data in s["dimensions"].items():
-                bar = DocStalenessScorer._score_bar(dim_data["score"])
-                lines.append(
-                    f"    {dim_name:<25} {dim_data['score']:>5.1f} "
-                    f"(x{dim_data['weight']:.2f} = {dim_data['weighted']:>5.1f}) {bar}"
-                )
-
-        lines.append("")
-        return "\n".join(lines)
-
-    @staticmethod
-    def _score_bar(score: float, width: int = 20) -> str:
-        """Generate a simple ASCII bar for a score."""
-        filled = int(score / 100 * width)
-        return "[" + "#" * filled + "." * (width - filled) + "]"
-
     # --- Main ---
+
+    @staticmethod
+    def _resolve_weights(settings: dict[str, Any]) -> dict[str, float]:
+        """Build and normalize staleness dimension weights from settings."""
+        weights = dict(DocStalenessScorer.DEFAULT_WEIGHTS)
+        raw_weights = ProjectConfig.setting(settings, "documentation.staleness_weights", None)
+        if isinstance(raw_weights, dict):
+            for key in weights:
+                value = raw_weights.get(key)
+                if isinstance(value, (int, float)):
+                    weights[key] = float(value)
+        total_weight = sum(weights.values())
+        if total_weight > 0:
+            return {k: v / total_weight for k, v in weights.items()}
+        return weights
+
+    @staticmethod
+    def _resolve_required_sections(settings: dict[str, Any]) -> list[str]:
+        """Resolve required sections from settings or Diátaxis translations."""
+        raw_sections = ProjectConfig.setting(settings, "documentation.readme_sections", None)
+        if isinstance(raw_sections, list):
+            return [s.strip() for s in raw_sections if isinstance(s, str)]
+
+        translations_path = ProjectConfig.setting(
+            settings, "documentation.diataxis_translations", None
+        )
+        if isinstance(translations_path, str) and translations_path:
+            translations = DocCompletenessScorer.load_diataxis_translations(translations_path)
+            DocCompletenessScorer.merge_translations(translations)
+            translated_readme = translations.get("readme_sections")
+            if translated_readme:
+                return [s.strip() for s in translated_readme]
+        return DocStalenessScorer.DEFAULT_README_SECTIONS
 
     @staticmethod
     def main() -> int:
@@ -983,57 +518,14 @@ class DocStalenessScorer:
         )
         parser.add_argument("--json", action="store_true", help="Output as JSON")
         parser.add_argument("--quiet", action="store_true", help="Only output score number")
-
         args = parser.parse_args()
 
         repo_path = os.path.abspath(".")
         settings = ProjectConfig.load_settings()
-
-        # Build weights (documentation.staleness_weights overrides defaults)
-        weights = dict(DocStalenessScorer.DEFAULT_WEIGHTS)
-        raw_weights = ProjectConfig.setting(settings, "documentation.staleness_weights", None)
-        if isinstance(raw_weights, dict):
-            for key in weights:
-                value = raw_weights.get(key)
-                if isinstance(value, (int, float)):
-                    weights[key] = float(value)
-
-        # Normalize weights to sum to 1.0
-        total_weight = sum(weights.values())
-        if total_weight > 0:
-            weights = {k: v / total_weight for k, v in weights.items()}
-
-        # Required sections (documentation.readme_sections overrides; the
-        # translations file can supply them when readme_sections is unset).
-        raw_sections = ProjectConfig.setting(settings, "documentation.readme_sections", None)
-        cli_sections = (
-            [s.strip() for s in raw_sections if isinstance(s, str)]
-            if isinstance(raw_sections, list)
-            else None
-        )
-
-        # Load Diátaxis translations (non-English documentation)
-        translations_path = ProjectConfig.setting(
-            settings, "documentation.diataxis_translations", None
-        )
-        if isinstance(translations_path, str) and translations_path:
-            translations = DocStalenessScorer._load_diataxis_translations(translations_path)
-            DocStalenessScorer._merge_translations(translations)
-            translated_readme = translations.get("readme_sections")
-            if translated_readme and not cli_sections:
-                required_sections = [s.strip() for s in translated_readme]
-            else:
-                required_sections = DocStalenessScorer.DEFAULT_README_SECTIONS
-        else:
-            required_sections = DocStalenessScorer.DEFAULT_README_SECTIONS
-
-        # readme_sections from settings takes precedence
-        if cli_sections:
-            required_sections = cli_sections
+        weights = DocStalenessScorer._resolve_weights(settings)
+        required_sections = DocStalenessScorer._resolve_required_sections(settings)
 
         readme_focus = bool(ProjectConfig.setting(settings, "documentation.readme_focus", False))
-
-        # Find docs
         doc_files = DocStalenessScorer.find_doc_files(repo_path)
         if readme_focus:
             doc_files = [d for d in doc_files if os.path.basename(d).lower().startswith("readme")]
@@ -1047,21 +539,18 @@ class DocStalenessScorer:
                 print("No documentation files found.")
             return 0
 
-        # Score each document
-        scores = []
-        for doc in doc_files:
-            score = DocStalenessScorer.score_document(repo_path, doc, weights, required_sections)
-            scores.append(score)
-
+        scores = [
+            DocStalenessScorer.score_document(repo_path, doc, weights, required_sections)
+            for doc in doc_files
+        ]
         aggregate = sum(s["total_score"] for s in scores) / len(scores) if scores else 0
 
         if args.quiet:
             print(f"{aggregate:.1f}")
         else:
-            report = DocStalenessScorer.generate_report(scores, as_json=args.json)
+            report = DocStalenessReportWriter.generate_report(scores, as_json=args.json)
             print(report)
 
-        # Threshold check (gate-keeping exception: exit 1 below configured score)
         raw_threshold = ProjectConfig.setting(settings, "documentation.staleness_threshold", None)
         threshold = float(raw_threshold) if isinstance(raw_threshold, (int, float)) else None
         if threshold is not None and aggregate < threshold:
@@ -1071,7 +560,6 @@ class DocStalenessScorer:
                     file=sys.stderr,
                 )
             return 1
-
         return 0
 
 

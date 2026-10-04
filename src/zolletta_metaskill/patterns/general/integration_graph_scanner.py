@@ -92,15 +92,11 @@ class IntegrationGraphScanner:
         languages = ProjectConfig.configured_languages(settings)
         extensions = ProjectConfig.extensions_for(languages)
         if not extensions:
-            extensions = ProjectConfig.extensions_for(
-                set(EngineRegistry.available_languages())
-            )
+            extensions = ProjectConfig.extensions_for(set(EngineRegistry.available_languages()))
         return extensions
 
     @staticmethod
-    def _iter_project_files(
-        roots: list[Path], extensions: set[str]
-    ) -> list[Path]:
+    def _iter_project_files(roots: list[Path], extensions: set[str]) -> list[Path]:
         """Return all matching files under *roots* (git-ignore aware)."""
         files: list[Path] = []
         for root in roots:
@@ -139,17 +135,13 @@ class IntegrationGraphScanner:
             # importer's package first, then each ancestor directory up
             # to (and including) the scan roots.
             search_dirs = [
-                d
-                for d in importer.parents
-                if any(d == r or r in d.parents for r in roots)
+                d for d in importer.parents if any(d == r or r in d.parents for r in roots)
             ]
         else:
             search_dirs = list(roots)
         for base in search_dirs:
             module_hits: dict[Path, list[str]] = defaultdict(list)
-            candidates = IntegrationGraphScanner._python_candidates(
-                base, imp.module
-            )
+            candidates = IntegrationGraphScanner._python_candidates(base, imp.module)
             if not imp.module:
                 candidates.append(base / "__init__.py")
             for candidate in candidates:
@@ -158,9 +150,7 @@ class IntegrationGraphScanner:
                         module_hits[candidate].append(name)
             for name in imp.names:
                 dotted = f"{imp.module}.{name}" if imp.module else name
-                for candidate in IntegrationGraphScanner._python_candidates(
-                    base, dotted
-                ):
+                for candidate in IntegrationGraphScanner._python_candidates(base, dotted):
                     if candidate.is_file():
                         # The name is a submodule — attribute it to the
                         # submodule edge, not the package edge.
@@ -216,6 +206,43 @@ class IntegrationGraphScanner:
         return ".".join(reversed(parts))
 
     @staticmethod
+    def _record_call_usage(node: ast.Call, kinds: dict[str, set[str]]) -> None:
+        """Record usage from an ``ast.Call`` node."""
+        func = node.func
+        if isinstance(func, ast.Name):
+            kinds["call"].add(func.id)
+        elif isinstance(func, ast.Attribute):
+            kinds["call"].add(func.attr)
+            kinds["call"].add(IntegrationGraphScanner._dotted(func))
+            root: ast.expr = func
+            while isinstance(root, ast.Attribute):
+                root = root.value
+            if isinstance(root, ast.Name):
+                kinds["attribute"].add(root.id)
+
+    @staticmethod
+    def _record_class_usage(node: ast.ClassDef, kinds: dict[str, set[str]]) -> None:
+        """Record inheritance usage from an ``ast.ClassDef`` node."""
+        for base in list(node.bases) + [kw.value for kw in node.keywords]:
+            for sub in ast.walk(base):
+                if isinstance(sub, ast.Name):
+                    kinds["extends"].add(sub.id)
+                elif isinstance(sub, ast.Attribute):
+                    kinds["extends"].add(IntegrationGraphScanner._dotted(sub))
+                    kinds["extends"].add(sub.attr)
+
+    @staticmethod
+    def _record_type_usages(tree: ast.AST, kinds: dict[str, set[str]]) -> None:
+        """Record type annotations observed across the AST."""
+        for node in ast.walk(tree):
+            if isinstance(node, ast.AnnAssign):
+                IntegrationGraphScanner._annotation_names(node.annotation, kinds["type"])
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                IntegrationGraphScanner._annotation_names(node.returns, kinds["type"])
+                for arg in node.args.posonlyargs + node.args.args + node.args.kwonlyargs:
+                    IntegrationGraphScanner._annotation_names(arg.annotation, kinds["type"])
+
+    @staticmethod
     def _python_usages(path: Path) -> dict[str, set[str]]:
         """Return ``{usage_kind: {name, ...}}`` observed in a ``.py`` file."""
         kinds: dict[str, set[str]] = {
@@ -230,51 +257,15 @@ class IntegrationGraphScanner:
             return kinds
         for node in ast.walk(tree):
             if isinstance(node, ast.Call):
-                func = node.func
-                if isinstance(func, ast.Name):
-                    kinds["call"].add(func.id)
-                elif isinstance(func, ast.Attribute):
-                    kinds["call"].add(func.attr)
-                    kinds["call"].add(IntegrationGraphScanner._dotted(func))
-                    root: ast.expr = func
-                    while isinstance(root, ast.Attribute):
-                        root = root.value
-                    if isinstance(root, ast.Name):
-                        kinds["attribute"].add(root.id)
+                IntegrationGraphScanner._record_call_usage(node, kinds)
             elif isinstance(node, ast.ClassDef):
-                for base in list(node.bases) + [
-                    kw.value for kw in node.keywords
-                ]:
-                    for sub in ast.walk(base):
-                        if isinstance(sub, ast.Name):
-                            kinds["extends"].add(sub.id)
-                        elif isinstance(sub, ast.Attribute):
-                            kinds["extends"].add(
-                                IntegrationGraphScanner._dotted(sub)
-                            )
-                            kinds["extends"].add(sub.attr)
+                IntegrationGraphScanner._record_class_usage(node, kinds)
             elif isinstance(node, ast.Attribute):
                 kinds["attribute"].add(node.attr)
                 kinds["attribute"].add(IntegrationGraphScanner._dotted(node))
             elif isinstance(node, ast.Name):
                 kinds["attribute"].add(node.id)
-        for node in ast.walk(tree):
-            if isinstance(node, ast.AnnAssign):
-                IntegrationGraphScanner._annotation_names(
-                    node.annotation, kinds["type"]
-                )
-            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                IntegrationGraphScanner._annotation_names(
-                    node.returns, kinds["type"]
-                )
-                for arg in (
-                    node.args.posonlyargs
-                    + node.args.args
-                    + node.args.kwonlyargs
-                ):
-                    IntegrationGraphScanner._annotation_names(
-                        arg.annotation, kinds["type"]
-                    )
+        IntegrationGraphScanner._record_type_usages(tree, kinds)
         return kinds
 
     @staticmethod
@@ -295,9 +286,7 @@ class IntegrationGraphScanner:
             return kinds
 
         def _text(node: Any) -> str:
-            return source[node.start_byte : node.end_byte].decode(
-                "utf-8", errors="replace"
-            )
+            return source[node.start_byte : node.end_byte].decode("utf-8", errors="replace")
 
         stack = [tree.root_node]
         while stack:
@@ -322,11 +311,10 @@ class IntegrationGraphScanner:
         A name matches a collected string when it is the whole string or
         a dotted segment boundary (``pkg.mod`` matches ``pkg.mod.Cls``).
         """
+
         def _matches(collected: set[str]) -> bool:
             return any(
-                item == name
-                or item.startswith(name + ".")
-                or item.endswith("." + name)
+                item == name or item.startswith(name + ".") or item.endswith("." + name)
                 for item in collected
             )
 
@@ -357,9 +345,7 @@ class IntegrationGraphScanner:
             if path.suffix == ".php":
                 resolved = IntegrationGraphScanner._resolve_php(imp, roots)
             else:
-                resolved = IntegrationGraphScanner._resolve_python(
-                    imp, path, roots
-                )
+                resolved = IntegrationGraphScanner._resolve_python(imp, path, roots)
             if not resolved:
                 external += 1
                 continue
@@ -372,9 +358,7 @@ class IntegrationGraphScanner:
                         "names": [
                             {
                                 "name": name,
-                                "usage": IntegrationGraphScanner._usage_for(
-                                    name, kinds
-                                ),
+                                "usage": IntegrationGraphScanner._usage_for(name, kinds),
                             }
                             for name in names
                         ],
@@ -402,24 +386,18 @@ class IntegrationGraphScanner:
         edges: list[dict[str, Any]] = []
         external = 0
         scanned = 0
-        for file_path in IntegrationGraphScanner._iter_project_files(
-            roots, extensions
-        ):
+        for file_path in IntegrationGraphScanner._iter_project_files(roots, extensions):
             engine = EngineRegistry.get_for_file(file_path)
             if engine is None:
                 continue
             try:
                 module = engine.parse_module(file_path)
             except (OSError, ImportError):
-                print(
-                    f"Warning: could not parse '{file_path}'", file=sys.stderr
-                )
+                print(f"Warning: could not parse '{file_path}'", file=sys.stderr)
                 continue
             scanned += 1
-            file_edges, file_external = (
-                IntegrationGraphScanner._edges_for_file(
-                    module, file_path, roots
-                )
+            file_edges, file_external = IntegrationGraphScanner._edges_for_file(
+                module, file_path, roots
             )
             edges.extend(file_edges)
             external += file_external
@@ -474,9 +452,7 @@ class IntegrationGraphScanner:
     def _emit_text(result: dict[str, Any], roots: list[Path]) -> None:
         """Print the text report."""
         edges = result["edges"]
-        modules = sorted(
-            result["modules"], key=lambda m: m["fan_out"], reverse=True
-        )
+        modules = sorted(result["modules"], key=lambda m: m["fan_out"], reverse=True)
         print("=" * 70)
         print("INTEGRATION GRAPH — INTERNAL DEPENDENCY EDGES")
         print("=" * 70)
@@ -495,9 +471,7 @@ class IntegrationGraphScanner:
         if edges:
             print("\n## Edges\n")
             for e in edges:
-                names = ", ".join(
-                    f"{n['name']}({n['usage']})" for n in e["names"]
-                )
+                names = ", ".join(f"{n['name']}({n['usage']})" for n in e["names"])
                 print(f"  {e['from']}:{e['line']} -> {e['to']}  [{names}]")
         else:
             print("\n## Edges: none")
@@ -518,16 +492,12 @@ class IntegrationGraphScanner:
         )
         args = parser.parse_args()
 
-        settings = ProjectConfig.load_settings(
-            IntegrationGraphScanner.DEFAULT_SETTINGS_PATH
-        )
+        settings = ProjectConfig.load_settings(IntegrationGraphScanner.DEFAULT_SETTINGS_PATH)
         languages = ProjectConfig.configured_languages(settings)
         if not languages:
             languages = set(EngineRegistry.available_languages())
 
-        roots = ProjectConfig.existing_roots(
-            ProjectConfig.source_roots(settings, languages)
-        )
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, languages))
         if not roots:
             print(
                 "Error: no configured source directories exist on disk "
@@ -537,9 +507,7 @@ class IntegrationGraphScanner:
             return 1
 
         extensions = ProjectConfig.extensions_for(languages)
-        result = IntegrationGraphScanner.scan_directory(
-            roots, extensions=extensions
-        )
+        result = IntegrationGraphScanner.scan_directory(roots, extensions=extensions)
         if args.json:
             IntegrationGraphScanner._emit_json(result, roots)
         else:

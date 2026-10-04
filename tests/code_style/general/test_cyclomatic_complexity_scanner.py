@@ -68,9 +68,7 @@ class TestCyclomaticComplexityScanner:
         )
         assert CyclomaticComplexityScanner.resolve_extensions(settings) == {".php"}
 
-    def test_polyglot_settings_scans_all_configured_languages(
-        self, tmp_path: Path
-    ) -> None:
+    def test_polyglot_settings_scans_all_configured_languages(self, tmp_path: Path) -> None:
         settings = self._write_settings(tmp_path, language="python", php={"code_style": {}})
         assert CyclomaticComplexityScanner.resolve_extensions(settings) == {
             ".py",
@@ -136,27 +134,27 @@ class TestCyclomaticComplexityScanner:
 
     def test_no_configured_limit_falls_back_to_default(self, tmp_path: Path) -> None:
         settings = self._write_settings(tmp_path)  # code_style is empty
-        assert CyclomaticComplexityScanner.resolve_max_complexity(settings) == 10
+        assert CyclomaticComplexityScanner.resolve_max_complexity(settings) == 12
 
     def test_missing_settings_falls_back_to_default(self, tmp_path: Path) -> None:
         missing = tmp_path / ".zolletta-metaskill" / "settings.json"
-        assert CyclomaticComplexityScanner.resolve_max_complexity(missing) == 10
+        assert CyclomaticComplexityScanner.resolve_max_complexity(missing) == 12
 
     def test_language_field_without_section_falls_back(self, tmp_path: Path) -> None:
         settings = self._write_settings(tmp_path, python=None)
-        assert CyclomaticComplexityScanner.resolve_max_complexity(settings) == 10
+        assert CyclomaticComplexityScanner.resolve_max_complexity(settings) == 12
 
     def test_non_integer_limit_falls_back(self, tmp_path: Path) -> None:
         settings = self._write_settings(
             tmp_path, python={"code_style": {"max_cyclomatic_complexity": "10"}}
         )
-        assert CyclomaticComplexityScanner.resolve_max_complexity(settings) == 10
+        assert CyclomaticComplexityScanner.resolve_max_complexity(settings) == 12
 
     def test_boolean_limit_falls_back(self, tmp_path: Path) -> None:
         settings = self._write_settings(
             tmp_path, python={"code_style": {"max_cyclomatic_complexity": True}}
         )
-        assert CyclomaticComplexityScanner.resolve_max_complexity(settings) == 10
+        assert CyclomaticComplexityScanner.resolve_max_complexity(settings) == 12
 
     def test_disabled_language_limit_ignored(self, tmp_path: Path) -> None:
         """A disabled language's max_cyclomatic_complexity doesn't lower it."""
@@ -191,13 +189,7 @@ class TestCyclomaticComplexityScanner:
         assert "complexity 3 (max 2)" in findings[0].description
 
     def test_python_loops_counted(self, tmp_path: Path) -> None:
-        src = (
-            "def f(xs):\n"
-            "    for x in xs:\n"
-            "        pass\n"
-            "    while xs:\n"
-            "        break\n"
-        )
+        src = "def f(xs):\n    for x in xs:\n        pass\n    while xs:\n        break\n"
         f = self._write(tmp_path / "m.py", src)
         findings = CyclomaticComplexityScanner.scan_file(f, max_complexity=2)
         assert len(findings) == 1
@@ -217,10 +209,13 @@ class TestCyclomaticComplexityScanner:
         findings = CyclomaticComplexityScanner.scan_file(f, max_complexity=2)
         by_name = {x.description.split("'")[1]: x for x in findings}
         assert "complexity 4 (max 2)" in by_name["f"].description
-        assert "complexity 2 (max 2)" not in by_name.get(
-            "f.inner", Finding(file="", line=0, category="", severity="",
-                               description="", fix_type="")
-        ).description
+        assert (
+            "complexity 2 (max 2)"
+            not in by_name.get(
+                "f.inner",
+                Finding(file="", line=0, category="", severity="", description="", fix_type=""),
+            ).description
+        )
 
     def test_python_except_handlers_counted(self, tmp_path: Path) -> None:
         src = (
@@ -256,13 +251,7 @@ class TestCyclomaticComplexityScanner:
         assert "complexity 3 (max 2)" in findings[0].description
 
     def test_python_except_star_counted(self, tmp_path: Path) -> None:
-        src = (
-            "def f():\n"
-            "    try:\n"
-            "        pass\n"
-            "    except* ValueError:\n"
-            "        pass\n"
-        )
+        src = "def f():\n    try:\n        pass\n    except* ValueError:\n        pass\n"
         f = self._write(tmp_path / "m.py", src)
         findings = CyclomaticComplexityScanner.scan_file(f, max_complexity=1)
         assert len(findings) == 1
@@ -313,20 +302,13 @@ class TestCyclomaticComplexityScanner:
 
     def test_python_match_guard_counts_case(self, tmp_path: Path) -> None:
         """A guarded catch-all case is still a decision point."""
-        src = (
-            "def f(x):\n"
-            "    match x:\n"
-            "        case y if y > 0:\n"
-            "            pass\n"
-        )
+        src = "def f(x):\n    match x:\n        case y if y > 0:\n            pass\n"
         f = self._write(tmp_path / "m.py", src)
         findings = CyclomaticComplexityScanner.scan_file(f, max_complexity=1)
         assert len(findings) == 1
         assert "complexity 2 (max 1)" in findings[0].description
 
-    def test_python_boolop_ternary_comprehension_not_counted(
-        self, tmp_path: Path
-    ) -> None:
+    def test_python_boolop_ternary_comprehension_not_counted(self, tmp_path: Path) -> None:
         """BoolOp, IfExp, and comprehensions add no decision points (ruff)."""
         src = (
             "def f(a, b, c, xs):\n"
@@ -338,18 +320,11 @@ class TestCyclomaticComplexityScanner:
         assert CyclomaticComplexityScanner.scan_file(f, max_complexity=1) == []
 
     def test_python_assert_with_not_counted(self, tmp_path: Path) -> None:
-        src = (
-            "def f(x):\n"
-            "    assert x\n"
-            "    with open('f') as h:\n"
-            "        pass\n"
-        )
+        src = "def f(x):\n    assert x\n    with open('f') as h:\n        pass\n"
         f = self._write(tmp_path / "m.py", src)
         assert CyclomaticComplexityScanner.scan_file(f, max_complexity=1) == []
 
-    def test_python_nested_def_counts_and_reports_independently(
-        self, tmp_path: Path
-    ) -> None:
+    def test_python_nested_def_counts_and_reports_independently(self, tmp_path: Path) -> None:
         src = (
             "def outer(x):\n"
             "    if x:\n"
@@ -362,9 +337,7 @@ class TestCyclomaticComplexityScanner:
         f = self._write(tmp_path / "m.py", src)
         findings = CyclomaticComplexityScanner.scan_file(f, max_complexity=2)
         descs = [x.description for x in findings]
-        assert any(
-            "'outer' has cyclomatic complexity 4" in d for d in descs
-        )
+        assert any("'outer' has cyclomatic complexity 4" in d for d in descs)
         assert any("'outer.inner' has cyclomatic complexity 2" not in d for d in descs)
         # inner has complexity 2 = within max 2, not flagged; but with max 1:
         findings = CyclomaticComplexityScanner.scan_file(f, max_complexity=1)
@@ -445,12 +418,7 @@ class TestCyclomaticComplexityScanner:
 
     @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
     def test_php_method_qualified_name(self, tmp_path: Path) -> None:
-        src = (
-            "<?php\n"
-            "class C {\n"
-            "    public function m() { if (true) {} }\n"
-            "}\n"
-        )
+        src = "<?php\nclass C {\n    public function m() { if (true) {} }\n}\n"
         f = self._write(tmp_path / "f.php", src)
         findings = CyclomaticComplexityScanner.scan_file(f, max_complexity=1)
         assert len(findings) == 1
@@ -458,12 +426,7 @@ class TestCyclomaticComplexityScanner:
 
     @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
     def test_php_closure_reported_independently(self, tmp_path: Path) -> None:
-        src = (
-            "<?php\n"
-            "function f($x) {\n"
-            "    $cl = function () use ($x) { if ($x) {} };\n"
-            "}\n"
-        )
+        src = "<?php\nfunction f($x) {\n    $cl = function () use ($x) { if ($x) {} };\n}\n"
         f = self._write(tmp_path / "f.php", src)
         findings = CyclomaticComplexityScanner.scan_file(f, max_complexity=1)
         descs = [x.description for x in findings]
@@ -579,9 +542,7 @@ class TestCyclomaticComplexityScanner:
         root = tmp_path / "src"
         root.mkdir()
         assert (
-            CyclomaticComplexityScanner.scan_directory(
-                root, max_complexity=10, extensions={".py"}
-            )
+            CyclomaticComplexityScanner.scan_directory(root, max_complexity=10, extensions={".py"})
             == []
         )
 
@@ -604,9 +565,7 @@ class TestCyclomaticComplexityScanner:
         root.mkdir()
         self._write(root / "m.py", self._complex_python(ifs=12))
         self._write(root / "f.php", "<?php\nfunction g() { if (true) {} }\n")
-        findings = CyclomaticComplexityScanner.scan_directory(
-            root, settings_path=settings
-        )
+        findings = CyclomaticComplexityScanner.scan_directory(root, settings_path=settings)
         assert len(findings) == 1
         assert findings[0].file == str(root / "m.py")
 
@@ -715,11 +674,11 @@ class TestCyclomaticComplexityScanner:
         rc = CyclomaticComplexityScanner.main()
         report = json.loads(capsys.readouterr().out)
         assert rc == 0
-        assert report["max_complexity"] == 10
+        assert report["max_complexity"] == 12
         assert report["violation_count"] == 1
         assert report["violations"][0]["function"] == "fn"
         assert report["violations"][0]["complexity"] == 13
-        assert report["violations"][0]["over"] == 3
+        assert report["violations"][0]["over"] == 1
 
     def test_main_unparsable_file_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch

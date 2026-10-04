@@ -188,6 +188,130 @@ class AcronymCasingScanner:
     # ------------------------------------------------------------------
 
     @staticmethod
+    def _check_skipped_tree_sitter(json_mode: bool) -> bool:
+        """Check if tree-sitter-php is missing and emit skipped message if so."""
+        if PHPEngine._have_tree_sitter_php():
+            return False
+        if json_mode:
+            print(
+                json.dumps(
+                    {
+                        "total_classes": 0,
+                        "violation_count": 0,
+                        "acronyms_checked": [],
+                        "violations": [],
+                        "skipped": "tree-sitter-php not installed",
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            print("=" * 70)
+            print("PHP ACRONYM CASING — VALIDATION REPORT")
+            print("=" * 70)
+            print(
+                "\nResult: SKIPPED (tree-sitter-php not installed. "
+                "Install with: uv add tree-sitter tree-sitter-php)\n"
+            )
+        return True
+
+    @staticmethod
+    def _check_class(
+        class_name: str, line_no: int, rel_path: str, acronym_lower_map: dict[str, str]
+    ) -> list[dict[str, Any]]:
+        """Check words in a class name against known acronyms."""
+        violations = []
+        words = AcronymCasingScanner._split_pascal_case(class_name)
+        for word in words:
+            word_lower = word.lower()
+            if word_lower in acronym_lower_map:
+                expected = acronym_lower_map[word_lower]
+                if word != expected:
+                    violations.append(
+                        {
+                            "file": rel_path,
+                            "line": line_no,
+                            "class": class_name,
+                            "word": word,
+                            "expected": expected,
+                        }
+                    )
+        return violations
+
+    @staticmethod
+    def _scan_classes(
+        roots: list[Path], acronym_lower_map: dict[str, str]
+    ) -> tuple[int, list[dict[str, Any]]]:
+        """Scan all PHP classes across roots for acronym casing violations."""
+        violations: list[dict[str, Any]] = []
+        total_classes = 0
+        for root in roots:
+            for php_file in ProjectConfig.iter_files(root, {".php"}):
+                classes = AcronymCasingScanner._get_class_names(php_file)
+                for class_name, line_no in classes:
+                    total_classes += 1
+                    rel_path = str(php_file.relative_to(root))
+                    violations.extend(
+                        AcronymCasingScanner._check_class(
+                            class_name, line_no, rel_path, acronym_lower_map
+                        )
+                    )
+        return total_classes, violations
+
+    @staticmethod
+    def _emit_json(
+        total_classes: int,
+        violations: list[dict[str, Any]],
+        acronyms: list[str],
+        roots: list[Path],
+    ) -> None:
+        """Emit JSON formatted acronym casing report."""
+        print(
+            json.dumps(
+                {
+                    "total_classes": total_classes,
+                    "violation_count": len(violations),
+                    "acronyms_checked": acronyms,
+                    "directories": [str(r) for r in roots],
+                    "violations": violations,
+                },
+                indent=2,
+            )
+        )
+
+    @staticmethod
+    def _emit_text(
+        total_classes: int,
+        violations: list[dict[str, Any]],
+        acronyms: list[str],
+        roots: list[Path],
+    ) -> None:
+        """Emit text formatted acronym casing report."""
+        print("=" * 70)
+        print("PHP ACRONYM CASING — VALIDATION REPORT")
+        print("=" * 70)
+        print(f"\nSource directories: {', '.join(str(r) for r in roots)}")
+        print(f"Acronyms checked: {', '.join(acronyms)}")
+        print(f"Total classes scanned: {total_classes}")
+        print(f"Violations: {len(violations)}")
+        print()
+
+        if violations:
+            print(f"{'File':<55} {'Line':>5} {'Class':<35} {'Word':<10} {'Expected':<10}")
+            print("-" * 120)
+            for v in violations:
+                print(
+                    f"{v['file']:<55} {v['line']:>5} {v['class']:<35} "
+                    f"{v['word']:<10} {v['expected']:<10}"
+                )
+            print()
+            print("These class names contain an acronym in mixed case or lowercase.")
+            print("The convention requires acronyms to stay fully uppercase.")
+            print("Rename the class to use the uppercase acronym form.")
+        else:
+            print("All class names use acronyms in the correct uppercase form.\n")
+
+    @staticmethod
     def main() -> int:
         """Entry point for the PHP acronym casing checker CLI."""
         parser = argparse.ArgumentParser(
@@ -199,29 +323,7 @@ class AcronymCasingScanner:
         parser.add_argument("--json", action="store_true", help="Output as JSON")
         args = parser.parse_args()
 
-        # If tree-sitter-php is not installed, skip with a message.
-        if not PHPEngine._have_tree_sitter_php():
-            if args.json:
-                print(
-                    json.dumps(
-                        {
-                            "total_classes": 0,
-                            "violation_count": 0,
-                            "acronyms_checked": [],
-                            "violations": [],
-                            "skipped": "tree-sitter-php not installed",
-                        },
-                        indent=2,
-                    )
-                )
-            else:
-                print("=" * 70)
-                print("PHP ACRONYM CASING — VALIDATION REPORT")
-                print("=" * 70)
-                print(
-                    "\nResult: SKIPPED (tree-sitter-php not installed. "
-                    "Install with: uv add tree-sitter tree-sitter-php)\n"
-                )
+        if AcronymCasingScanner._check_skipped_tree_sitter(args.json):
             return 0
 
         settings = ProjectConfig.load_settings()
@@ -240,73 +342,17 @@ class AcronymCasingScanner:
             )
             return 1
 
-        # Shipped acronyms.json merged with project-specific settings acronyms.
         combined = set(AcronymCasingScanner._load_default_acronyms())
         combined.update(AcronymCasingScanner._project_acronyms(settings))
         acronyms = sorted(combined)
         acronym_lower_map = {a.lower(): a for a in acronyms}
 
-        violations: list[dict[str, Any]] = []
-        total_classes = 0
-
-        for root in roots:
-            for php_file in ProjectConfig.iter_files(root, {".php"}):
-                classes = AcronymCasingScanner._get_class_names(php_file)
-                for class_name, line_no in classes:
-                    total_classes += 1
-                    words = AcronymCasingScanner._split_pascal_case(class_name)
-                    for word in words:
-                        word_lower = word.lower()
-                        if word_lower in acronym_lower_map:
-                            expected = acronym_lower_map[word_lower]
-                            if word != expected:
-                                violations.append(
-                                    {
-                                        "file": str(php_file.relative_to(root)),
-                                        "line": line_no,
-                                        "class": class_name,
-                                        "word": word,
-                                        "expected": expected,
-                                    }
-                                )
+        total_classes, violations = AcronymCasingScanner._scan_classes(roots, acronym_lower_map)
 
         if args.json:
-            print(
-                json.dumps(
-                    {
-                        "total_classes": total_classes,
-                        "violation_count": len(violations),
-                        "acronyms_checked": acronyms,
-                        "directories": [str(r) for r in roots],
-                        "violations": violations,
-                    },
-                    indent=2,
-                )
-            )
+            AcronymCasingScanner._emit_json(total_classes, violations, acronyms, roots)
         else:
-            print("=" * 70)
-            print("PHP ACRONYM CASING — VALIDATION REPORT")
-            print("=" * 70)
-            print(f"\nSource directories: {', '.join(str(r) for r in roots)}")
-            print(f"Acronyms checked: {', '.join(acronyms)}")
-            print(f"Total classes scanned: {total_classes}")
-            print(f"Violations: {len(violations)}")
-            print()
-
-            if violations:
-                print(f"{'File':<55} {'Line':>5} {'Class':<35} {'Word':<10} {'Expected':<10}")
-                print("-" * 120)
-                for v in violations:
-                    print(
-                        f"{v['file']:<55} {v['line']:>5} {v['class']:<35} "
-                        f"{v['word']:<10} {v['expected']:<10}"
-                    )
-                print()
-                print("These class names contain an acronym in mixed case or lowercase.")
-                print("The convention requires acronyms to stay fully uppercase.")
-                print("Rename the class to use the uppercase acronym form.")
-            else:
-                print("All class names use acronyms in the correct uppercase form.\n")
+            AcronymCasingScanner._emit_text(total_classes, violations, acronyms, roots)
 
         return 0
 

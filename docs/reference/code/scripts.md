@@ -146,7 +146,7 @@ Flags functions and methods whose cyclomatic complexity exceeds the configured t
 
 Counting matches ruff `C901` (`[tool.ruff.lint.mccabe] max-complexity`) for Python — each `if`/`elif`, `for`/`async for`, `while`, `except` handler, non-catch-all `match` case, `try` `else` clause, and nested `def` adds one decision point; boolean operators, ternaries, and comprehensions add none, and nested functions are reported independently while folding into the enclosing count. For PHP (via tree-sitter) each `if`/`elseif`, `for`, `foreach`, `while`, `do`, `case`, `match` arm, `catch`, ternary, and `&&`/`||`/`??` operator adds one; closures count independently. PHPStan and Psalm have no built-in McCabe rule, so the scanner is the deterministic check for `.php` files.
 
-Languages and extensions resolve from `.zolletta-metaskill/settings.json` via the engine registry — only configured languages are scanned. Each language's `code_style.check_cyclomatic_complexity` toggles the check (if it is off for every configured language the run reports SKIPPED), and `code_style.max_cyclomatic_complexity` sets the threshold (smallest across enabled languages wins, default 10 — seeded from `python.tools.ruff.max_complexity` when configured). Scan roots come from `python.paths.source` / `php.autoload.psr-4` (`src` fallback); git-ignored files are skipped. Unparseable files warn and are skipped (PHP files on hosts without the optional `tree-sitter-php` dependency degrade the same way).
+Languages and extensions resolve from `.zolletta-metaskill/settings.json` via the engine registry — only configured languages are scanned. Each language's `code_style.check_cyclomatic_complexity` toggles the check (if it is off for every configured language the run reports SKIPPED), and `code_style.max_cyclomatic_complexity` sets the threshold (smallest across enabled languages wins, default 12 — seeded from `python.tools.ruff.max_complexity` when configured). Scan roots come from `python.paths.source` / `php.autoload.psr-4` (`src` fallback); git-ignored files are skipped. Unparseable files warn and are skipped (PHP files on hosts without the optional `tree-sitter-php` dependency degrade the same way).
 
 ```bash
 python3 src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py [--json]
@@ -447,7 +447,7 @@ Report-only — exits 0 whether or not mutants survive; exits 1 only when the `m
 Automates splitting a test God class that tests multiple SUTs into per-SUT test files. Unlike the scanners this is a *transformer*, so it keeps its operational arguments.
 
 ```bash
-python3 src/zolletta_metaskill/patterns/python/test_splitter.py <test_file> [--mapping <m>] [--class <name>] [--dry-run] [--json]
+python3 src/zolletta_metaskill/testing_style/python/test_splitter.py <test_file> [--mapping <m>] [--class <name>] [--dry-run] [--json]
 ```
 
 | Option        | Default                        | Description                                    |

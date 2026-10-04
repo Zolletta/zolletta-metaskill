@@ -145,10 +145,8 @@ class InterfaceSegregationScanner:
 
         all_classes = InterfaceSegregationScanner._collect_classes(roots)
         implementers = InterfaceSegregationScanner._index_implementers(all_classes)
-        fat_interfaces, stub_violations = (
-            InterfaceSegregationScanner._detect_violations(
-                all_classes, implementers, min_methods
-            )
+        fat_interfaces, stub_violations = InterfaceSegregationScanner._detect_violations(
+            all_classes, implementers, min_methods
         )
 
         if args.json:
@@ -308,9 +306,7 @@ class InterfaceSegregationScanner:
         print("INTERFACE SEGREGATION (ISP) — VALIDATION REPORT")
         print("=" * 70)
 
-        InterfaceSegregationScanner._emit_fat_interfaces(
-            fat_interfaces, min_methods, implementers
-        )
+        InterfaceSegregationScanner._emit_fat_interfaces(fat_interfaces, min_methods, implementers)
         InterfaceSegregationScanner._emit_stub_violations(stub_violations)
 
         print()

@@ -45,9 +45,7 @@ class TestPHPToolsDetector:
 
     def test_infection_via_composer(self, tmp_path: Path) -> None:
         composer = tmp_path / "composer.json"
-        composer.write_text(
-            '{"require-dev": {"infection/infection": "^0.29"}}', encoding="utf-8"
-        )
+        composer.write_text('{"require-dev": {"infection/infection": "^0.29"}}', encoding="utf-8")
         result = PHPToolsDetector.detect_php_tools_from_composer(composer)
         assert result["infection"] is True
 

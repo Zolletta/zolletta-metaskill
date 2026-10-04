@@ -198,9 +198,7 @@ class OneClassPerFileScanner:
 
         files = OneClassPerFileScanner._collect_source_files(roots, extensions)
         test_roots = OneClassPerFileScanner._enabled_test_roots(settings, languages)
-        test_files = OneClassPerFileScanner._collect_test_files(
-            test_roots, extensions, files
-        )
+        test_files = OneClassPerFileScanner._collect_test_files(test_roots, extensions, files)
 
         all_findings = OneClassPerFileScanner._scan_all(files, test_files)
         if not report_zero:
@@ -247,9 +245,7 @@ class OneClassPerFileScanner:
         return files
 
     @staticmethod
-    def _enabled_test_roots(
-        settings: dict[str, Any], languages: set[str]
-    ) -> list[Path]:
+    def _enabled_test_roots(settings: dict[str, Any], languages: set[str]) -> list[Path]:
         """Resolve test roots when the per-test-file check is enabled."""
         if not ProjectConfig.any_enabled(
             settings, languages, "code_style.check_one_class_per_test_file"
@@ -280,15 +276,11 @@ class OneClassPerFileScanner:
         for path in files:
             all_findings.extend(OneClassPerFileScanner.scan_file(path))
         for path in test_files:
-            all_findings.extend(
-                OneClassPerFileScanner.scan_file(path, report_zero_class=False)
-            )
+            all_findings.extend(OneClassPerFileScanner.scan_file(path, report_zero_class=False))
         return all_findings
 
     @staticmethod
-    def _emit_json(
-        scanned_dirs: list[str], scanned: int, all_findings: list[Finding]
-    ) -> None:
+    def _emit_json(scanned_dirs: list[str], scanned: int, all_findings: list[Finding]) -> None:
         """Emit the JSON report."""
         print(
             json.dumps(

@@ -256,9 +256,7 @@ class NamingConventionsScanner:
         return name_mismatch
 
     @staticmethod
-    def _check_orphan_tests(
-        test_pkgs: list[Path], src_pkgs: list[Path]
-    ) -> list[dict[str, Any]]:
+    def _check_orphan_tests(test_pkgs: list[Path], src_pkgs: list[Path]) -> list[dict[str, Any]]:
         """Check 2: test file naming convention against the source index."""
         source_index: dict[Path, set[str]] = {}
         for src_pkg in src_pkgs:
@@ -309,8 +307,7 @@ class NamingConventionsScanner:
         if match is None:
             return {
                 "file": str(test_py.relative_to(test_pkg)),
-                "reason": f"no source file or class matching '{test_stem_rest}' "
-                f"in {rel_dir}/",
+                "reason": f"no source file or class matching '{test_stem_rest}' in {rel_dir}/",
             }
         return None
 

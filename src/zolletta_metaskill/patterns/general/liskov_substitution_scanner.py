@@ -247,32 +247,8 @@ class LiskovSubstitutionScanner:
         return LiskovSubstitutionScanner.scan_module(module)
 
     @staticmethod
-    def main() -> int:
-        """Entry point for the Liskov Substitution Principle validator CLI."""
-        parser = argparse.ArgumentParser(
-            description="Liskov Substitution Principle (LSP) validator. "
-            "Roots come from .zolletta-metaskill/settings.json."
-        )
-        parser.add_argument("--json", action="store_true", help="Output as JSON")
-        args = parser.parse_args()
-
-        LiskovSubstitutionScanner._ensure_python_engine()
-        settings = ProjectConfig.load_settings()
-        languages = ProjectConfig.scan_languages(settings, "patterns.check_lsp")
-        py_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
-        if not py_langs:
-            ProjectConfig.emit_skipped(args.json, "check_lsp disabled in settings.json")
-            return 0
-
-        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, py_langs))
-        if not roots:
-            print(
-                "Error: no configured source directories exist on disk",
-                file=sys.stderr,
-            )
-            return 1
-
-        # Collect all classes across all files and all roots
+    def _collect_all_classes(roots: list[Path]) -> dict[str, dict[str, Any]]:
+        """Collect all classes across all files and all roots."""
         all_classes: dict[str, dict[str, Any]] = {}
         for root in roots:
             for py in ProjectConfig.iter_files(root, {".py"}):
@@ -286,8 +262,11 @@ class LiskovSubstitutionScanner:
                     info = LiskovSubstitutionScanner._build_class_info(cls)
                     info["file"] = str(py.relative_to(root))
                     all_classes.setdefault(cls.name, info)
+        return all_classes
 
-        # Check each child against its parent
+    @staticmethod
+    def _check_all_violations(all_classes: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+        """Check each child class against its parent in the class index."""
         violations: list[dict[str, Any]] = []
         for _name, info in all_classes.items():
             for base_name in info["bases"]:
@@ -298,21 +277,26 @@ class LiskovSubstitutionScanner:
                         v["parent"] = base_name
                         v["file"] = info["file"]
                         violations.append(v)
+        return violations
 
-        if args.json:
-            print(
-                json.dumps(
-                    {
-                        "directories": [str(root) for root in roots],
-                        "violation_count": len(violations),
-                        "violations": violations,
-                    },
-                    indent=2,
-                    default=str,
-                )
+    @staticmethod
+    def _emit_json(roots: list[Path], violations: list[dict[str, Any]]) -> None:
+        """Emit JSON formatted LSP violations report."""
+        print(
+            json.dumps(
+                {
+                    "directories": [str(root) for root in roots],
+                    "violation_count": len(violations),
+                    "violations": violations,
+                },
+                indent=2,
+                default=str,
             )
-            return 0
+        )
 
+    @staticmethod
+    def _emit_text(violations: list[dict[str, Any]]) -> None:
+        """Emit text formatted LSP violations report."""
         print("=" * 70)
         print("LISKOV SUBSTITUTION (LSP) — VALIDATION REPORT")
         print("=" * 70)
@@ -343,6 +327,41 @@ class LiskovSubstitutionScanner:
             print("Result: LSP violations found (report-only mode)")
         else:
             print("Result: all clear")
+
+    @staticmethod
+    def main() -> int:
+        """Entry point for the Liskov Substitution Principle validator CLI."""
+        parser = argparse.ArgumentParser(
+            description="Liskov Substitution Principle (LSP) validator. "
+            "Roots come from .zolletta-metaskill/settings.json."
+        )
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        args = parser.parse_args()
+
+        LiskovSubstitutionScanner._ensure_python_engine()
+        settings = ProjectConfig.load_settings()
+        languages = ProjectConfig.scan_languages(settings, "patterns.check_lsp")
+        py_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
+        if not py_langs:
+            ProjectConfig.emit_skipped(args.json, "check_lsp disabled in settings.json")
+            return 0
+
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, py_langs))
+        if not roots:
+            print(
+                "Error: no configured source directories exist on disk",
+                file=sys.stderr,
+            )
+            return 1
+
+        all_classes = LiskovSubstitutionScanner._collect_all_classes(roots)
+        violations = LiskovSubstitutionScanner._check_all_violations(all_classes)
+
+        if args.json:
+            LiskovSubstitutionScanner._emit_json(roots, violations)
+            return 0
+
+        LiskovSubstitutionScanner._emit_text(violations)
         return 0
 
 

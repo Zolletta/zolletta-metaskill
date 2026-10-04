@@ -13,7 +13,9 @@ from unittest.mock import patch
 
 import pytest
 
+from zolletta_metaskill.documentor.doc_code_mapper import DocCodeMapper
 from zolletta_metaskill.documentor.drift_analyzer import DriftAnalyzer
+from zolletta_metaskill.documentor.drift_report_writer import DriftReportWriter
 
 
 class TestDriftAnalyzer:
@@ -260,25 +262,25 @@ class TestDriftAnalyzer:
 
     def test_find_code_files_finds_python_contains_main_py(self, tmp_path: Path) -> None:
         (tmp_path / "main.py").write_text("print('hi')", encoding="utf-8")
-        result = DriftAnalyzer.find_code_files(str(tmp_path))
+        result = DocCodeMapper.find_code_files(str(tmp_path))
         assert "main.py" in result
 
     def test_find_code_files_scope_subdir_is_valid(self, tmp_path: Path) -> None:
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "mod.py").write_text("x = 1", encoding="utf-8")
         (tmp_path / "other.py").write_text("x = 2", encoding="utf-8")
-        result = DriftAnalyzer.find_code_files(str(tmp_path), scope="src")
+        result = DocCodeMapper.find_code_files(str(tmp_path), scope="src")
         assert any("mod.py" in f for f in result)
         assert all("other.py" not in f for f in result)
 
     def test_find_code_files_nonexistent_scope_returns_empty_list(self, tmp_path: Path) -> None:
-        assert DriftAnalyzer.find_code_files(str(tmp_path), scope="nonexistent/") == []
+        assert DocCodeMapper.find_code_files(str(tmp_path), scope="nonexistent/") == []
 
     def test_find_code_files_skips_dirs_is_valid(self, tmp_path: Path) -> None:
         (tmp_path / "__pycache__").mkdir()
         (tmp_path / "__pycache__" / "mod.py").write_text("x = 1", encoding="utf-8")
         (tmp_path / "mod.py").write_text("x = 1", encoding="utf-8")
-        result = DriftAnalyzer.find_code_files(str(tmp_path))
+        result = DocCodeMapper.find_code_files(str(tmp_path))
         assert "mod.py" in result
         assert all("__pycache__" not in f for f in result)
 
@@ -290,7 +292,7 @@ class TestDriftAnalyzer:
         zm.mkdir()
         (zm / "tool.py").write_text("x = 1", encoding="utf-8")
         (tmp_path / "mod.py").write_text("x = 1", encoding="utf-8")
-        result = DriftAnalyzer.find_code_files(str(tmp_path))
+        result = DocCodeMapper.find_code_files(str(tmp_path))
         assert "mod.py" in result
         assert all(".zolletta-metaskill" not in f for f in result)
 
@@ -302,7 +304,7 @@ class TestDriftAnalyzer:
         (tmp_path / "src" / "auth.md").write_text("auth docs", encoding="utf-8")
         doc_files: list[str] = [os.path.join("src", "auth.md")]
         code_files: list[str] = [os.path.join("src", "auth.py")]
-        mapping = DriftAnalyzer.map_docs_to_code(str(tmp_path), doc_files, code_files)
+        mapping = DocCodeMapper.map_docs_to_code(str(tmp_path), doc_files, code_files)
         assert os.path.join("src", "auth.md") in mapping
 
     def test_map_docs_to_code_content_reference_contains_readme_md(self, tmp_path: Path) -> None:
@@ -311,7 +313,7 @@ class TestDriftAnalyzer:
         (tmp_path / "README.md").write_text("See auth.py for details", encoding="utf-8")
         doc_files: list[str] = ["README.md"]
         code_files: list[str] = [os.path.join("src", "auth.py")]
-        mapping = DriftAnalyzer.map_docs_to_code(str(tmp_path), doc_files, code_files)
+        mapping = DocCodeMapper.map_docs_to_code(str(tmp_path), doc_files, code_files)
         assert "README.md" in mapping
         assert os.path.join("src", "") in mapping["README.md"] or "src" in mapping["README.md"]
 
@@ -323,7 +325,7 @@ class TestDriftAnalyzer:
         (tmp_path / "pkg" / "docs" / "guide.md").write_text("guide", encoding="utf-8")
         doc_files: list[str] = [os.path.join("pkg", "docs", "guide.md")]
         code_files: list[str] = [os.path.join("pkg", "mod.py")]
-        mapping = DriftAnalyzer.map_docs_to_code(str(tmp_path), doc_files, code_files)
+        mapping = DocCodeMapper.map_docs_to_code(str(tmp_path), doc_files, code_files)
         assert os.path.join("pkg", "docs", "guide.md") in mapping
         assert "pkg" in mapping[os.path.join("pkg", "docs", "guide.md")]
 
@@ -332,7 +334,7 @@ class TestDriftAnalyzer:
         (tmp_path / "src" / "README.md").write_text("# Auth", encoding="utf-8")
         doc_files: list[str] = [os.path.join("src", "README.md")]
         code_files: list[str] = []
-        mapping = DriftAnalyzer.map_docs_to_code(str(tmp_path), doc_files, code_files)
+        mapping = DocCodeMapper.map_docs_to_code(str(tmp_path), doc_files, code_files)
         assert os.path.join("src", "README.md") in mapping
 
     def test_unreadable_doc_skipped(self, tmp_path: Path) -> None:
@@ -340,7 +342,7 @@ class TestDriftAnalyzer:
         doc_files = ["README.md"]
         code_files = ["src/main.py"]
         with patch("builtins.open", side_effect=OSError("boom")):
-            mapping = DriftAnalyzer.map_docs_to_code(str(tmp_path), doc_files, code_files)
+            mapping = DocCodeMapper.map_docs_to_code(str(tmp_path), doc_files, code_files)
         # Should not crash; mapping may be empty or have default
         assert isinstance(mapping, dict)
 
@@ -351,7 +353,7 @@ class TestDriftAnalyzer:
     ) -> None:
         doc = tmp_path / "README.md"
         doc.write_text("See [guide](guide.md) for more.", encoding="utf-8")
-        refs = DriftAnalyzer.extract_references_from_doc(str(tmp_path), "README.md")
+        refs = DocCodeMapper.extract_references_from_doc(str(tmp_path), "README.md")
         assert "guide.md" in refs["files"]
         assert "guide.md" in refs["links"]
 
@@ -360,7 +362,7 @@ class TestDriftAnalyzer:
     ) -> None:
         doc = tmp_path / "README.md"
         doc.write_text("Visit [site](https://example.com).", encoding="utf-8")
-        refs = DriftAnalyzer.extract_references_from_doc(str(tmp_path), "README.md")
+        refs = DocCodeMapper.extract_references_from_doc(str(tmp_path), "README.md")
         assert "https://example.com" in refs["links"]
         assert "https://example.com" not in refs["files"]
 
@@ -369,7 +371,7 @@ class TestDriftAnalyzer:
     ) -> None:
         doc = tmp_path / "README.md"
         doc.write_text("Call `my_func(` function.", encoding="utf-8")
-        refs = DriftAnalyzer.extract_references_from_doc(str(tmp_path), "README.md")
+        refs = DocCodeMapper.extract_references_from_doc(str(tmp_path), "README.md")
         assert "my_func" in refs["functions"]
 
     def test_extract_references_from_doc_version_strings_contains_1_2_3(
@@ -377,24 +379,24 @@ class TestDriftAnalyzer:
     ) -> None:
         doc = tmp_path / "README.md"
         doc.write_text("Requires v1.2.3 or later.", encoding="utf-8")
-        refs = DriftAnalyzer.extract_references_from_doc(str(tmp_path), "README.md")
+        refs = DocCodeMapper.extract_references_from_doc(str(tmp_path), "README.md")
         assert "1.2.3" in refs["versions"]
 
     def test_code_block_file_refs(self, tmp_path: Path) -> None:
         doc = tmp_path / "README.md"
         doc.write_text("Edit `config.yaml` file.", encoding="utf-8")
-        refs = DriftAnalyzer.extract_references_from_doc(str(tmp_path), "README.md")
+        refs = DocCodeMapper.extract_references_from_doc(str(tmp_path), "README.md")
         assert "config.yaml" in refs["files"]
 
     def test_extract_references_from_doc_unreadable_file_returns_dict(self, tmp_path: Path) -> None:
         with patch("builtins.open", side_effect=OSError("boom")):
-            refs = DriftAnalyzer.extract_references_from_doc(str(tmp_path), "README.md")
+            refs = DocCodeMapper.extract_references_from_doc(str(tmp_path), "README.md")
         assert refs == {"files": set(), "functions": set(), "versions": set(), "links": set()}
 
     def test_extract_references_from_doc_anchor_links_excludes_value(self, tmp_path: Path) -> None:
         doc = tmp_path / "README.md"
         doc.write_text("See [section](#section).", encoding="utf-8")
-        refs = DriftAnalyzer.extract_references_from_doc(str(tmp_path), "README.md")
+        refs = DocCodeMapper.extract_references_from_doc(str(tmp_path), "README.md")
         assert "#section" in refs["links"]
         assert "#section" not in refs["files"]
 
@@ -758,7 +760,7 @@ class TestDriftAnalyzer:
     def test_empty_issues_json(self, tmp_path: Path) -> None:
         import json
 
-        report = DriftAnalyzer.generate_report(str(tmp_path), [], [], as_json=True)
+        report = DriftReportWriter.generate_report(str(tmp_path), [], [], as_json=True)
         data = json.loads(report)
         assert data["summary"]["total_docs"] == 0
         assert data["summary"]["total_issues"] == 0
@@ -782,7 +784,7 @@ class TestDriftAnalyzer:
                 "fix_type": "manual",
             },
         ]
-        report = DriftAnalyzer.generate_report(
+        report = DriftReportWriter.generate_report(
             str(tmp_path), issues, ["README.md", "guide.md"], as_json=True
         )
         data = json.loads(report)
@@ -800,13 +802,15 @@ class TestDriftAnalyzer:
                 "fix_type": "auto",
             },
         ]
-        report = DriftAnalyzer.generate_report(str(tmp_path), issues, ["README.md"], as_json=False)
+        report = DriftReportWriter.generate_report(
+            str(tmp_path), issues, ["README.md"], as_json=False
+        )
         assert "Documentation Drift Report" in report
         assert "HIGH SEVERITY" in report
         assert "[AUTO]" in report
 
     def test_no_issues_human_readable(self, tmp_path: Path) -> None:
-        report = DriftAnalyzer.generate_report(str(tmp_path), [], ["README.md"], as_json=False)
+        report = DriftReportWriter.generate_report(str(tmp_path), [], ["README.md"], as_json=False)
         assert "No documentation drift detected" in report
 
     def test_generate_report_severity_sorting_succeeds(self, tmp_path: Path) -> None:
@@ -826,7 +830,7 @@ class TestDriftAnalyzer:
                 "fix_type": "auto",
             },
         ]
-        report = DriftAnalyzer.generate_report(
+        report = DriftReportWriter.generate_report(
             str(tmp_path), issues, ["a.md", "b.md"], as_json=False
         )
         # Critical should appear before low
@@ -849,7 +853,7 @@ class TestDriftAnalyzer:
                 "fix_type": "manual",
             },
         ]
-        report = DriftAnalyzer.generate_report(
+        report = DriftReportWriter.generate_report(
             str(tmp_path), issues, ["a.md", "b.md"], as_json=False
         )
         assert "FIX TYPE SUMMARY" in report

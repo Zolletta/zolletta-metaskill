@@ -60,20 +60,14 @@ class TestIntegrationGraphScanner:
         )
         assert IntegrationGraphScanner.resolve_extensions(settings) == {".php"}
 
-    def test_polyglot_settings_scans_all_configured_languages(
-        self, tmp_path: Path
-    ) -> None:
-        settings = self._write_settings(
-            tmp_path, language="python", php={"code_style": {}}
-        )
+    def test_polyglot_settings_scans_all_configured_languages(self, tmp_path: Path) -> None:
+        settings = self._write_settings(tmp_path, language="python", php={"code_style": {}})
         assert IntegrationGraphScanner.resolve_extensions(settings) == {
             ".py",
             ".php",
         }
 
-    def test_missing_settings_falls_back_to_all_engines(
-        self, tmp_path: Path
-    ) -> None:
+    def test_missing_settings_falls_back_to_all_engines(self, tmp_path: Path) -> None:
         missing = tmp_path / ".zolletta-metaskill" / "settings.json"
         assert IntegrationGraphScanner.resolve_extensions(missing) == {
             ".py",
@@ -189,9 +183,7 @@ class TestIntegrationGraphScanner:
         result = IntegrationGraphScanner.scan_directory([root], {".py"})
         assert result["edge_count"] == 1
         assert result["edges"][0]["to"].endswith("__init__.py")
-        assert result["edges"][0]["names"] == [
-            {"name": "X", "usage": "attribute"}
-        ]
+        assert result["edges"][0]["names"] == [{"name": "X", "usage": "attribute"}]
 
     # --- Tests for usage-hint classification (Python). ---
 
@@ -201,9 +193,7 @@ class TestIntegrationGraphScanner:
         self._write(root / "mod.py", "def go():\n    pass\n")
         self._write(root / "a.py", "import mod\n\nmod.go()\n")
         result = IntegrationGraphScanner.scan_directory([root], {".py"})
-        assert result["edges"][0]["names"] == [
-            {"name": "mod", "usage": "call"}
-        ]
+        assert result["edges"][0]["names"] == [{"name": "mod", "usage": "call"}]
 
     def test_usage_type_annotation(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
@@ -225,13 +215,9 @@ class TestIntegrationGraphScanner:
     def test_usage_extends_base_class(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
         self._write(root / "base.py", "class Base:\n    pass\n")
-        self._write(
-            root / "a.py", "from base import Base\n\n\nclass C(Base):\n    pass\n"
-        )
+        self._write(root / "a.py", "from base import Base\n\n\nclass C(Base):\n    pass\n")
         result = IntegrationGraphScanner.scan_directory([root], {".py"})
-        assert result["edges"][0]["names"] == [
-            {"name": "Base", "usage": "extends"}
-        ]
+        assert result["edges"][0]["names"] == [{"name": "Base", "usage": "extends"}]
 
     def test_usage_extends_keyword_metaclass(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
@@ -248,18 +234,14 @@ class TestIntegrationGraphScanner:
         self._write(root / "c.py", "CONST = 1\n")
         self._write(root / "a.py", "from c import CONST\n\ny = CONST + 1\n")
         result = IntegrationGraphScanner.scan_directory([root], {".py"})
-        assert result["edges"][0]["names"] == [
-            {"name": "CONST", "usage": "attribute"}
-        ]
+        assert result["edges"][0]["names"] == [{"name": "CONST", "usage": "attribute"}]
 
     def test_usage_import_only(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
         self._write(root / "u.py", "X = 1\n")
         self._write(root / "a.py", "from u import X\n")
         result = IntegrationGraphScanner.scan_directory([root], {".py"})
-        assert result["edges"][0]["names"] == [
-            {"name": "X", "usage": "import-only"}
-        ]
+        assert result["edges"][0]["names"] == [{"name": "X", "usage": "import-only"}]
 
     def test_usage_priority_call_beats_type(self, tmp_path: Path) -> None:
         """A name used in a call AND an annotation reports ``call``."""
@@ -278,9 +260,7 @@ class TestIntegrationGraphScanner:
         self._write(root / "pkg" / "mod.py", "class T:\n    pass\n")
         self._write(root / "a.py", "import pkg.mod\n\nx: pkg.mod.T\n")
         result = IntegrationGraphScanner.scan_directory([root], {".py"})
-        assert result["edges"][0]["names"] == [
-            {"name": "pkg.mod", "usage": "type"}
-        ]
+        assert result["edges"][0]["names"] == [{"name": "pkg.mod", "usage": "type"}]
 
     def test_usage_extends_dotted_base(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
@@ -290,13 +270,9 @@ class TestIntegrationGraphScanner:
             "import pkg.base\n\n\nclass C(pkg.base.Base):\n    pass\n",
         )
         result = IntegrationGraphScanner.scan_directory([root], {".py"})
-        assert result["edges"][0]["names"] == [
-            {"name": "pkg.base", "usage": "extends"}
-        ]
+        assert result["edges"][0]["names"] == [{"name": "pkg.base", "usage": "extends"}]
 
-    def test_python_usages_syntax_error_returns_empty_kinds(
-        self, tmp_path: Path
-    ) -> None:
+    def test_python_usages_syntax_error_returns_empty_kinds(self, tmp_path: Path) -> None:
         f = self._write(tmp_path / "broken.py", "def foo(:\n")
         kinds = IntegrationGraphScanner._python_usages(f)
         assert kinds == {
@@ -318,9 +294,7 @@ class TestIntegrationGraphScanner:
         self._write(root / "pkg" / "mod.py", "class Cls:\n    pass\n")
         self._write(root / "a.py", "import pkg.mod\n\nx = pkg.mod.Cls()\n")
         result = IntegrationGraphScanner.scan_directory([root], {".py"})
-        assert result["edges"][0]["names"] == [
-            {"name": "pkg.mod", "usage": "call"}
-        ]
+        assert result["edges"][0]["names"] == [{"name": "pkg.mod", "usage": "call"}]
 
     # --- Tests for PHP edge resolution and usage hints. ---
 
@@ -367,11 +341,7 @@ class TestIntegrationGraphScanner:
             "}\n",
         )
         result = IntegrationGraphScanner.scan_directory([root], {".php"})
-        by_name = {
-            n["name"]: n["usage"]
-            for e in result["edges"]
-            for n in e["names"]
-        }
+        by_name = {n["name"]: n["usage"] for e in result["edges"] for n in e["names"]}
         assert by_name["Base"] == "extends"
         assert by_name["IFace"] == "extends"
         assert by_name["Dto"] == "type"
@@ -382,9 +352,7 @@ class TestIntegrationGraphScanner:
         self._write(root / "App" / "Unused.php", "<?php\nclass Unused {}\n")
         self._write(root / "a.php", "<?php\nuse App\\Unused;\n")
         result = IntegrationGraphScanner.scan_directory([root], {".php"})
-        assert result["edges"][0]["names"] == [
-            {"name": "Unused", "usage": "import-only"}
-        ]
+        assert result["edges"][0]["names"] == [{"name": "Unused", "usage": "import-only"}]
 
     @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
     def test_php_external_use_counted(self, tmp_path: Path) -> None:
@@ -438,9 +406,7 @@ class TestIntegrationGraphScanner:
         self._write(root / "t.py", "T = 1\n")
         self._write(root / "a.py", "from t import T\n\nprint(T)\n")
         self._write(root / "x.php", "<?php\nuse App\\X;\n")
-        result = IntegrationGraphScanner.scan_directory(
-            [root], settings_path=settings
-        )
+        result = IntegrationGraphScanner.scan_directory([root], settings_path=settings)
         assert result["edge_count"] == 1
         assert result["edges"][0]["to"].endswith("t.py")
 

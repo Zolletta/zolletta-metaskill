@@ -127,6 +127,63 @@ class TestGodClassesScanner:
         return TestGodClassesScanner.scan_module(module)
 
     @staticmethod
+    def _resolve_top_n(settings: dict[str, Any], py_langs: set[str]) -> int:
+        """Resolve top N limit from settings (highest configured wins)."""
+        top_limits: list[int] = []
+        for lang in sorted(py_langs):
+            value = ProjectConfig.setting(settings, f"{lang}.patterns.test_god_classes_top", None)
+            if isinstance(value, int) and not isinstance(value, bool):
+                top_limits.append(value)
+        return max(top_limits) if top_limits else 30
+
+    @staticmethod
+    def _collect_metrics(roots: list[Path]) -> list[dict[str, Any]]:
+        """Collect test class metrics across all roots."""
+        all_results: list[dict[str, Any]] = []
+        for root in roots:
+            for py in ProjectConfig.iter_files(root, {".py"}):
+                engine = EngineRegistry.get_for_file(py)
+                if engine is None:  # pragma: no cover
+                    continue
+                module = engine.parse_module(py)
+                all_results.extend(TestGodClassesScanner._test_class_metrics(module))
+        return all_results
+
+    @staticmethod
+    def _emit_json(
+        roots: list[Path], top_n: int, total_classes: int, classes: list[dict[str, Any]]
+    ) -> None:
+        """Emit JSON formatted test class metrics."""
+        print(
+            json.dumps(
+                {
+                    "directories": [str(root) for root in roots],
+                    "top": top_n,
+                    "total_classes": total_classes,
+                    "classes": classes,
+                },
+                indent=2,
+            )
+        )
+
+    @staticmethod
+    def _emit_text(top: list[dict[str, Any]], show_methods: bool) -> None:
+        """Emit text formatted test class metrics."""
+        if show_methods:
+            for r in top:
+                print(f"\n=== {r['class']} ({r['lines']} lines, {r['methods']} methods) ===")
+                for name in r["method_names"]:
+                    print(f"  {name}")
+        else:
+            print(f"{'LINES':>6} {'METHODS':>7}  CLASS  (file:start-end)")
+            print("-" * 100)
+            for r in top:
+                print(
+                    f"{r['lines']:>6} {r['methods']:>7}  "
+                    f"{r['class']}  ({r['file']}:{r['start']}-{r['end']})"
+                )
+
+    @staticmethod
     def main() -> int:
         """Entry point for the test God class scanner CLI."""
         parser = argparse.ArgumentParser(
@@ -159,21 +216,8 @@ class TestGodClassesScanner:
             )
             return 1
 
-        top_limits: list[int] = []
-        for lang in sorted(py_langs):
-            value = ProjectConfig.setting(settings, f"{lang}.patterns.test_god_classes_top", None)
-            if isinstance(value, int) and not isinstance(value, bool):
-                top_limits.append(value)
-        top_n = max(top_limits) if top_limits else 30
-
-        all_results: list[dict[str, Any]] = []
-        for root in roots:
-            for py in ProjectConfig.iter_files(root, {".py"}):
-                engine = EngineRegistry.get_for_file(py)
-                if engine is None:  # pragma: no cover
-                    continue
-                module = engine.parse_module(py)
-                all_results.extend(TestGodClassesScanner._test_class_metrics(module))
+        top_n = TestGodClassesScanner._resolve_top_n(settings, py_langs)
+        all_results = TestGodClassesScanner._collect_metrics(roots)
 
         if not all_results:
             print("No test classes found", file=sys.stderr)
@@ -183,33 +227,10 @@ class TestGodClassesScanner:
         top = all_results[:top_n]
 
         if args.json:
-            print(
-                json.dumps(
-                    {
-                        "directories": [str(root) for root in roots],
-                        "top": top_n,
-                        "total_classes": len(all_results),
-                        "classes": top,
-                    },
-                    indent=2,
-                )
-            )
+            TestGodClassesScanner._emit_json(roots, top_n, len(all_results), top)
             return 0
 
-        if args.show_methods:
-            for r in top:
-                print(f"\n=== {r['class']} ({r['lines']} lines, {r['methods']} methods) ===")
-                for name in r["method_names"]:
-                    print(f"  {name}")
-        else:
-            print(f"{'LINES':>6} {'METHODS':>7}  CLASS  (file:start-end)")
-            print("-" * 100)
-            for r in top:
-                print(
-                    f"{r['lines']:>6} {r['methods']:>7}  "
-                    f"{r['class']}  ({r['file']}:{r['start']}-{r['end']})"
-                )
-
+        TestGodClassesScanner._emit_text(top, args.show_methods)
         return 0
 
 

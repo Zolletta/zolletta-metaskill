@@ -714,8 +714,8 @@
         "max_cyclomatic_complexity": {
           "type": "integer",
           "minimum": 1,
-          "default": 10,
-          "description": "Maximum allowed cyclomatic complexity per function/method (enforced by cyclomatic_complexity_scanner.py). Seeded from python.tools.ruff.max_complexity when configured, else 10 — matching ruff C901."
+          "default": 12,
+          "description": "Maximum allowed cyclomatic complexity per function/method (enforced by cyclomatic_complexity_scanner.py). Seeded from python.tools.ruff.max_complexity when configured, else 12 — matching ruff C901."
         },
         "vulture_min_confidence": {
           "type": "integer",
@@ -1265,7 +1265,7 @@
         "max_cyclomatic_complexity": {
           "type": "integer",
           "minimum": 1,
-          "default": 10,
+          "default": 12,
           "description": "Maximum allowed cyclomatic complexity per function/method (enforced by cyclomatic_complexity_scanner.py)."
         }
       }

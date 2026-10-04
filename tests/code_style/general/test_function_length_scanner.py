@@ -258,9 +258,7 @@ class TestFunctionLengthScanner:
         root.mkdir()
         self._write(root / "a.py", self._py_function("big", 150))
         self._write(root / "b.txt", "x\n" * 200)
-        findings = FunctionLengthScanner.scan_directory(
-            root, max_lines=100, extensions={".py"}
-        )
+        findings = FunctionLengthScanner.scan_directory(root, max_lines=100, extensions={".py"})
         assert len(findings) == 1
         assert findings[0].file == str(root / "a.py")
 
@@ -281,9 +279,7 @@ class TestFunctionLengthScanner:
         root.mkdir()
         self._write(root / "ignored.py", self._py_function("big", 150))
         self._write(root / "real.py", self._py_function("small", 5))
-        findings = FunctionLengthScanner.scan_directory(
-            root, max_lines=100, extensions={".py"}
-        )
+        findings = FunctionLengthScanner.scan_directory(root, max_lines=100, extensions={".py"})
         assert findings == []
 
     def test_outside_git_repo_scans_everything(self, tmp_path: Path) -> None:
@@ -298,10 +294,7 @@ class TestFunctionLengthScanner:
     def test_empty_directory_returns_empty(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
         root.mkdir()
-        assert (
-            FunctionLengthScanner.scan_directory(root, max_lines=5, extensions={".py"})
-            == []
-        )
+        assert FunctionLengthScanner.scan_directory(root, max_lines=5, extensions={".py"}) == []
 
     def test_max_lines_resolved_from_settings(self, tmp_path: Path) -> None:
         settings = self._write_settings(
@@ -322,9 +315,7 @@ class TestFunctionLengthScanner:
         root.mkdir()
         self._write(root / "mid.py", self._py_function("mid", 20))
         self._write(root / "mid.txt", "x\n" * 200)
-        findings = FunctionLengthScanner.scan_directory(
-            root, max_lines=10, settings_path=settings
-        )
+        findings = FunctionLengthScanner.scan_directory(root, max_lines=10, settings_path=settings)
         assert len(findings) == 1
         assert findings[0].file == str(root / "mid.py")
 
@@ -473,6 +464,7 @@ class TestFunctionLengthScanner:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A file whose engine parse fails warns on stderr and is skipped."""
+
         def _fail(*_args: object, **_kwargs: object) -> ModuleInfo:
             raise ImportError("engine unavailable")
 

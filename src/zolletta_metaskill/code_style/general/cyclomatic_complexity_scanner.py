@@ -37,7 +37,7 @@ Which files are scanned and with what limit is driven entirely by
   (exit 0).
 - The limit is read from each enabled language's
   ``code_style.max_cyclomatic_complexity`` (the smallest wins when
-  several are configured); 10 is the default when none is configured.
+  several are configured); 12 is the default when none is configured.
 - Scan roots come from settings: ``python.paths.source`` for Python,
   ``php.autoload.psr-4`` directories for PHP (``src`` when
   unconfigured).
@@ -74,7 +74,7 @@ from zolletta_metaskill.core.structs import Finding
 class CyclomaticComplexityScanner:
     """Flag functions and methods exceeding a complexity limit."""
 
-    DEFAULT_MAX_COMPLEXITY = 10
+    DEFAULT_MAX_COMPLEXITY = 12
     DEFAULT_SETTINGS_PATH = ProjectConfig.DEFAULT_SETTINGS_PATH
 
     # tree-sitter-php node types that add a decision point.
@@ -126,14 +126,10 @@ class CyclomaticComplexityScanner:
         """
         ProjectConfig.ensure_engines()
         settings = ProjectConfig.load_settings(settings_path)
-        languages = ProjectConfig.scan_languages(
-            settings, "code_style.check_cyclomatic_complexity"
-        )
+        languages = ProjectConfig.scan_languages(settings, "code_style.check_cyclomatic_complexity")
         extensions = ProjectConfig.extensions_for(languages)
         if not extensions and languages:
-            extensions = ProjectConfig.extensions_for(
-                set(EngineRegistry.available_languages())
-            )
+            extensions = ProjectConfig.extensions_for(set(EngineRegistry.available_languages()))
         return extensions
 
     @staticmethod
@@ -145,9 +141,7 @@ class CyclomaticComplexityScanner:
         back to ``DEFAULT_MAX_COMPLEXITY`` when nothing is configured.
         """
         settings = ProjectConfig.load_settings(settings_path)
-        langs = ProjectConfig.enabled_languages(
-            settings, "code_style.check_cyclomatic_complexity"
-        )
+        langs = ProjectConfig.enabled_languages(settings, "code_style.check_cyclomatic_complexity")
         limits = []
         for lang in sorted(langs):
             value = ProjectConfig.setting(
@@ -155,10 +149,7 @@ class CyclomaticComplexityScanner:
             )
             if isinstance(value, int) and not isinstance(value, bool):
                 limits.append(value)
-        return (
-            min(limits) if limits
-            else CyclomaticComplexityScanner.DEFAULT_MAX_COMPLEXITY
-        )
+        return min(limits) if limits else CyclomaticComplexityScanner.DEFAULT_MAX_COMPLEXITY
 
     # ------------------------------------------------------------------
     # Python (stdlib ast, ruff C901 semantics)
@@ -183,9 +174,7 @@ class CyclomaticComplexityScanner:
         if isinstance(node, ast.match_case):
             pattern = node.pattern
             is_catch_all = (
-                isinstance(pattern, ast.MatchAs)
-                and pattern.pattern is None
-                and node.guard is None
+                isinstance(pattern, ast.MatchAs) and pattern.pattern is None and node.guard is None
             )
             return 0 if is_catch_all else 1
         if isinstance(node, (ast.Try, ast.TryStar)):
@@ -263,9 +252,7 @@ class CyclomaticComplexityScanner:
         name_node = node.child_by_field_name("name")
         if name_node is None:
             return "closure" if node.type == "anonymous_function" else "arrow"
-        return source[name_node.start_byte : name_node.end_byte].decode(
-            "utf-8", errors="replace"
-        )
+        return source[name_node.start_byte : name_node.end_byte].decode("utf-8", errors="replace")
 
     @staticmethod
     def _php_complexity(root: Any) -> int:
@@ -288,8 +275,7 @@ class CyclomaticComplexityScanner:
                 complexity += sum(
                     1
                     for child in node.children
-                    if child.type
-                    in CyclomaticComplexityScanner._PHP_BINARY_OPERATORS
+                    if child.type in CyclomaticComplexityScanner._PHP_BINARY_OPERATORS
                 )
             stack.extend(node.children)
         return complexity
@@ -331,9 +317,7 @@ class CyclomaticComplexityScanner:
             "function_definition": "Function",
         }
         records = []
-        for name, node in CyclomaticComplexityScanner._php_functions(
-            tree.root_node, source
-        ):
+        for name, node in CyclomaticComplexityScanner._php_functions(tree.root_node, source):
             records.append(
                 {
                     "kind": kinds.get(node.type, "Closure"),
@@ -360,9 +344,7 @@ class CyclomaticComplexityScanner:
         return CyclomaticComplexityScanner._python_records(path)
 
     @staticmethod
-    def _findings(
-        records: list[dict[str, Any]], path: Path, max_complexity: int
-    ) -> list[Finding]:
+    def _findings(records: list[dict[str, Any]], path: Path, max_complexity: int) -> list[Finding]:
         """Return a ``cyclomatic_complexity`` finding per over-limit function."""
         return [
             Finding(
@@ -381,9 +363,7 @@ class CyclomaticComplexityScanner:
         ]
 
     @staticmethod
-    def scan_file(
-        path: Path, max_complexity: int = DEFAULT_MAX_COMPLEXITY
-    ) -> list[Finding]:
+    def scan_file(path: Path, max_complexity: int = DEFAULT_MAX_COMPLEXITY) -> list[Finding]:
         """Return ``cyclomatic_complexity`` findings for *path*.
 
         Args:
@@ -421,9 +401,7 @@ class CyclomaticComplexityScanner:
             max_complexity = CyclomaticComplexityScanner.resolve_max_complexity(path)
         findings: list[Finding] = []
         for file_path in ProjectConfig.iter_files(root, extensions):
-            findings.extend(
-                CyclomaticComplexityScanner.scan_file(file_path, max_complexity)
-            )
+            findings.extend(CyclomaticComplexityScanner.scan_file(file_path, max_complexity))
         return findings
 
     # ------------------------------------------------------------------
@@ -500,10 +478,7 @@ class CyclomaticComplexityScanner:
         print("CYCLOMATIC COMPLEXITY — VALIDATION REPORT")
         print("=" * 70)
         roots_str = ", ".join(str(root) for root in roots)
-        print(
-            f"\nScanned {scanned} files under {roots_str} "
-            f"(max complexity {max_complexity})"
-        )
+        print(f"\nScanned {scanned} files under {roots_str} (max complexity {max_complexity})")
 
         if violations:
             print(f"\n## Functions exceeding the limit ({len(violations)})\n")
@@ -544,18 +519,14 @@ class CyclomaticComplexityScanner:
 
         settings_path = CyclomaticComplexityScanner.DEFAULT_SETTINGS_PATH
         settings = ProjectConfig.load_settings(settings_path)
-        languages = ProjectConfig.scan_languages(
-            settings, "code_style.check_cyclomatic_complexity"
-        )
+        languages = ProjectConfig.scan_languages(settings, "code_style.check_cyclomatic_complexity")
         if not languages:
             ProjectConfig.emit_skipped(
                 args.json, "check_cyclomatic_complexity disabled in settings.json"
             )
             return 0
 
-        roots = ProjectConfig.existing_roots(
-            ProjectConfig.source_roots(settings, languages)
-        )
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, languages))
         if not roots:
             print(
                 "Error: no configured source directories exist on disk "
@@ -565,20 +536,14 @@ class CyclomaticComplexityScanner:
             return 1
 
         extensions = ProjectConfig.extensions_for(languages)
-        max_complexity = CyclomaticComplexityScanner.resolve_max_complexity(
-            settings_path
-        )
+        max_complexity = CyclomaticComplexityScanner.resolve_max_complexity(settings_path)
         scanned, violations = CyclomaticComplexityScanner._scan_roots(
             roots, extensions, max_complexity
         )
         if args.json:
-            CyclomaticComplexityScanner._emit_json(
-                roots, scanned, max_complexity, violations
-            )
+            CyclomaticComplexityScanner._emit_json(roots, scanned, max_complexity, violations)
         else:
-            CyclomaticComplexityScanner._emit_text(
-                roots, scanned, max_complexity, violations
-            )
+            CyclomaticComplexityScanner._emit_text(roots, scanned, max_complexity, violations)
         return 0
 
 

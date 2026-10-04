@@ -82,14 +82,10 @@ class FunctionLengthScanner:
         """
         ProjectConfig.ensure_engines()
         settings = ProjectConfig.load_settings(settings_path)
-        languages = ProjectConfig.scan_languages(
-            settings, "code_style.check_function_length"
-        )
+        languages = ProjectConfig.scan_languages(settings, "code_style.check_function_length")
         extensions = ProjectConfig.extensions_for(languages)
         if not extensions and languages:
-            extensions = ProjectConfig.extensions_for(
-                set(EngineRegistry.available_languages())
-            )
+            extensions = ProjectConfig.extensions_for(set(EngineRegistry.available_languages()))
         return extensions
 
     @staticmethod
@@ -102,14 +98,10 @@ class FunctionLengthScanner:
         configured.
         """
         settings = ProjectConfig.load_settings(settings_path)
-        langs = ProjectConfig.enabled_languages(
-            settings, "code_style.check_function_length"
-        )
+        langs = ProjectConfig.enabled_languages(settings, "code_style.check_function_length")
         limits = []
         for lang in sorted(langs):
-            value = ProjectConfig.setting(
-                settings, f"{lang}.code_style.max_function_length", None
-            )
+            value = ProjectConfig.setting(settings, f"{lang}.code_style.max_function_length", None)
             if isinstance(value, int) and not isinstance(value, bool):
                 limits.append(value)
         return min(limits) if limits else FunctionLengthScanner.DEFAULT_MAX_FUNCTION_LINES
@@ -203,9 +195,7 @@ class FunctionLengthScanner:
             return None
 
     @staticmethod
-    def scan_file(
-        path: Path, max_lines: int = DEFAULT_MAX_FUNCTION_LINES
-    ) -> list[Finding]:
+    def scan_file(path: Path, max_lines: int = DEFAULT_MAX_FUNCTION_LINES) -> list[Finding]:
         """Return ``function_length`` findings for *path*.
 
         Args:
@@ -355,18 +345,12 @@ class FunctionLengthScanner:
 
         settings_path = FunctionLengthScanner.DEFAULT_SETTINGS_PATH
         settings = ProjectConfig.load_settings(settings_path)
-        languages = ProjectConfig.scan_languages(
-            settings, "code_style.check_function_length"
-        )
+        languages = ProjectConfig.scan_languages(settings, "code_style.check_function_length")
         if not languages:
-            ProjectConfig.emit_skipped(
-                args.json, "check_function_length disabled in settings.json"
-            )
+            ProjectConfig.emit_skipped(args.json, "check_function_length disabled in settings.json")
             return 0
 
-        roots = ProjectConfig.existing_roots(
-            ProjectConfig.source_roots(settings, languages)
-        )
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, languages))
         if not roots:
             print(
                 "Error: no configured source directories exist on disk "
@@ -377,9 +361,7 @@ class FunctionLengthScanner:
 
         extensions = ProjectConfig.extensions_for(languages)
         max_lines = FunctionLengthScanner.resolve_max_lines(settings_path)
-        scanned, violations = FunctionLengthScanner._scan_roots(
-            roots, extensions, max_lines
-        )
+        scanned, violations = FunctionLengthScanner._scan_roots(roots, extensions, max_lines)
         if args.json:
             FunctionLengthScanner._emit_json(roots, scanned, max_lines, violations)
         else:

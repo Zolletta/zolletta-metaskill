@@ -67,7 +67,7 @@ class TestSuppressionReasonScanner:
         f = _write_source(
             tmp_path,
             "mod.py",
-            'x = get()  # type: ignore[no-any-return]  # plugin payload is dynamic\n',
+            "x = get()  # type: ignore[no-any-return]  # plugin payload is dynamic\n",
         )
         assert SuppressionReasonScanner._scan_python(f) == []
 
@@ -75,8 +75,7 @@ class TestSuppressionReasonScanner:
         f = _write_source(
             tmp_path,
             "mod.py",
-            "# plugin payload is genuinely dynamic\n"
-            "x = get()  # type: ignore[no-any-return]\n",
+            "# plugin payload is genuinely dynamic\nx = get()  # type: ignore[no-any-return]\n",
         )
         assert SuppressionReasonScanner._scan_python(f) == []
 
@@ -102,9 +101,7 @@ class TestSuppressionReasonScanner:
         assert len(violations) == 1
         assert violations[0]["missing"] == ["error code"]
 
-    def test_python_blanket_ignore_without_reason_is_flagged_for_both(
-        self, tmp_path: Path
-    ) -> None:
+    def test_python_blanket_ignore_without_reason_is_flagged_for_both(self, tmp_path: Path) -> None:
         f = _write_source(
             tmp_path,
             "mod.py",
@@ -156,9 +153,7 @@ class TestSuppressionReasonScanner:
 
     # --- PHP: identifier slots and reasons. ---
 
-    def test_php_phpstan_ignore_with_identifier_and_reason_is_clean(
-        self, tmp_path: Path
-    ) -> None:
+    def test_php_phpstan_ignore_with_identifier_and_reason_is_clean(self, tmp_path: Path) -> None:
         f = _write_source(
             tmp_path,
             "src/User.php",
@@ -177,9 +172,7 @@ class TestSuppressionReasonScanner:
         assert violations[0]["suppression"] == "@phpstan-ignore"
         assert violations[0]["missing"] == ["identifier", "reason"]
 
-    def test_php_phpstan_ignore_next_line_with_reason_is_clean(
-        self, tmp_path: Path
-    ) -> None:
+    def test_php_phpstan_ignore_next_line_with_reason_is_clean(self, tmp_path: Path) -> None:
         f = _write_source(
             tmp_path,
             "src/User.php",
@@ -187,9 +180,7 @@ class TestSuppressionReasonScanner:
         )
         assert SuppressionReasonScanner._scan_php(f) == []
 
-    def test_php_phpstan_ignore_next_line_without_reason_is_flagged(
-        self, tmp_path: Path
-    ) -> None:
+    def test_php_phpstan_ignore_next_line_without_reason_is_flagged(self, tmp_path: Path) -> None:
         f = _write_source(
             tmp_path,
             "src/User.php",
@@ -198,9 +189,7 @@ class TestSuppressionReasonScanner:
         violations = SuppressionReasonScanner._scan_php(f)
         assert violations[0]["missing"] == ["reason"]
 
-    def test_php_psalm_suppress_with_type_and_reason_is_clean(
-        self, tmp_path: Path
-    ) -> None:
+    def test_php_psalm_suppress_with_type_and_reason_is_clean(self, tmp_path: Path) -> None:
         f = _write_source(
             tmp_path,
             "src/User.php",
@@ -218,9 +207,7 @@ class TestSuppressionReasonScanner:
         assert violations[0]["suppression"] == "@psalm-suppress"
         assert violations[0]["missing"] == ["identifier", "reason"]
 
-    def test_php_psalm_suppress_type_only_is_flagged_for_reason(
-        self, tmp_path: Path
-    ) -> None:
+    def test_php_psalm_suppress_type_only_is_flagged_for_reason(self, tmp_path: Path) -> None:
         f = _write_source(
             tmp_path,
             "src/User.php",
@@ -266,12 +253,8 @@ class TestSuppressionReasonScanner:
     def test_scan_file_dispatches_by_extension(self, tmp_path: Path) -> None:
         py = _write_source(tmp_path, "a.py", "x = f()  # type: ignore\n")
         php = _write_source(tmp_path, "a.php", "<?php // @psalm-suppress\n")
-        assert SuppressionReasonScanner.scan_file(py)[0]["suppression"] == (
-            "# type: ignore"
-        )
-        assert SuppressionReasonScanner.scan_file(php)[0]["suppression"] == (
-            "@psalm-suppress"
-        )
+        assert SuppressionReasonScanner.scan_file(py)[0]["suppression"] == ("# type: ignore")
+        assert SuppressionReasonScanner.scan_file(php)[0]["suppression"] == ("@psalm-suppress")
 
     # --- ``main``: SKIPPED, error, text and JSON runs. ---
 

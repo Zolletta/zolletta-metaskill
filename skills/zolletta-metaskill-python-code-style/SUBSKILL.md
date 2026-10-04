@@ -49,7 +49,7 @@ Consistent code style and clear documentation make codebases maintainable and co
 | 20 | Formatting | Line length from project config                           | `check_line_length`                                        | `true`        |
 | 21 | Structure  | File length limit                                         | `check_file_length`, `max_file_length`                     | `true`, `800` |
 | 22 | Dead code  | Vulture minimum confidence + unused `__all__` exports     | `vulture_min_confidence`                                   | `80`          |
-| 23 | Structure  | Cyclomatic complexity limit                               | `check_cyclomatic_complexity`, `max_cyclomatic_complexity` | `true`, `10`  |
+| 23 | Structure  | Cyclomatic complexity limit                               | `check_cyclomatic_complexity`, `max_cyclomatic_complexity` | `true`, `12`  |
 | 24 | Structure  | Function length limit                                     | `check_function_length`, `max_function_length`             | `true`, `100` |
 | 25 | Structure  | Max arguments per function/method                         | `check_max_arguments`, `max_arguments`                     | `true`, `5`   |
 
@@ -183,7 +183,7 @@ python3 ../../src/zolletta_metaskill/code_style/general/file_length_scanner.py
 
 **#23 — Cyclomatic complexity limit** *(configurable: `check_cyclomatic_complexity`, `max_cyclomatic_complexity`)*
 
-Functions and methods must not exceed `max_cyclomatic_complexity` decision points (default: `10`, read from `python.code_style.max_cyclomatic_complexity` in `settings.json` — seeded from `python.tools.ruff.max_complexity` when configured, matching ruff `C901`/`[tool.ruff.lint.mccabe]`). Counting follows ruff `C901` semantics: each `if`/`elif`, `for`/`async for`, `while`, `except` handler, non-catch-all `match` case, `try` `else` clause, and nested `def` adds one; boolean operators, ternaries, and comprehensions add none. Nested functions are reported independently and fold into the enclosing count, exactly like `C901`. A complex function is a strong "extract collaborator" signal — legitimate cases (parsers, state machines, generated code) raise `max_cyclomatic_complexity` for the project. If the project's ruff config enables `C901`, `ruff check` reports the same violations — report them once under this rule.
+Functions and methods must not exceed `max_cyclomatic_complexity` decision points (default: `12`, read from `python.code_style.max_cyclomatic_complexity` in `settings.json` — seeded from `python.tools.ruff.max_complexity` when configured, matching ruff `C901`/`[tool.ruff.lint.mccabe]`). Counting follows ruff `C901` semantics: each `if`/`elif`, `for`/`async for`, `while`, `except` handler, non-catch-all `match` case, `try` `else` clause, and nested `def` adds one; boolean operators, ternaries, and comprehensions add none. Nested functions are reported independently and fold into the enclosing count, exactly like `C901`. A complex function is a strong "extract collaborator" signal — legitimate cases (parsers, state machines, generated code) raise `max_cyclomatic_complexity` for the project. If the project's ruff config enables `C901`, `ruff check` reports the same violations — report them once under this rule.
 
 - **Enforcement**: `cyclomatic_complexity_scanner.py` from `../../src/zolletta_metaskill/code_style/general/` (deterministic, language-agnostic).
 

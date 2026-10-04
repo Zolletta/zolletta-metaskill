@@ -5,35 +5,29 @@ Represents an extracted function or class signature from Python source files.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Any
 
 
+@dataclass
 class SourceSignature:
     """Represents an extracted function or class signature."""
 
-    def __init__(
-        self,
-        name: str,
-        kind: str,  # "function", "method", "class"
-        file_path: str,
-        line_number: int,
-        parameters: list[dict[str, Any]],
-        return_annotation: str | None = None,
-        decorators: list[str] | None = None,
-        docstring: str | None = None,
-        is_private: bool = False,
-        parent_class: str | None = None,
-    ):
-        self.name = name
-        self.kind = kind
-        self.file_path = file_path
-        self.line_number = line_number
-        self.parameters = parameters
-        self.return_annotation = return_annotation
-        self.decorators = decorators or []
-        self.docstring = docstring
-        self.is_private = is_private
-        self.parent_class = parent_class
+    name: str
+    kind: str  # "function", "method", "class"
+    file_path: str
+    line_number: int
+    parameters: list[dict[str, Any]]
+    return_annotation: str | None = None
+    decorators: list[str] = field(default_factory=list)
+    docstring: str | None = None
+    is_private: bool = False
+    parent_class: str | None = None
+
+    def __post_init__(self) -> None:
+        """Initialize default collections if None was explicitly passed."""
+        if self.decorators is None:
+            self.decorators = []
 
     @property
     def qualified_name(self) -> str:

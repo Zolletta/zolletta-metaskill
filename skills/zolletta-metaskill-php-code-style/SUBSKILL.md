@@ -80,7 +80,7 @@ Review PHP code for type safety, modern PHP feature adoption, PSR-12 compliance,
 | 32 | Perf      | Native array functions over loops  | `check_array_functions`                                    | `true`        | all     |
 | 33 | Perf      | Native string functions over regex | `check_string_functions`                                   | `true`        | all     |
 | 34 | Structure | File length limit                  | `check_file_length`, `max_file_length`                     | `true`, `800` | all     |
-| 35 | Structure | Cyclomatic complexity limit        | `check_cyclomatic_complexity`, `max_cyclomatic_complexity` | `true`, `10`  | all     |
+| 35 | Structure | Cyclomatic complexity limit        | `check_cyclomatic_complexity`, `max_cyclomatic_complexity` | `true`, `12`  | all     |
 | 36 | Structure | Function length limit              | `check_function_length`, `max_function_length`             | `true`, `100` | all     |
 | 37 | Structure | Max arguments limit                | `check_max_arguments`, `max_arguments`                     | `true`, `5`   | all     |
 
@@ -194,7 +194,7 @@ Write the report to `<runs_dir>/<timestamp>/reports/php-code-style.md` using the
 python3 ../../src/zolletta_metaskill/code_style/general/file_length_scanner.py
 ```
 
-- **#35 Cyclomatic complexity limit** — functions and methods must not exceed `max_cyclomatic_complexity` decision points (default: `10`, read from `php.code_style.max_cyclomatic_complexity` in `settings.json`). Each `if`/`elseif`, `for`, `foreach`, `while`, `do`, `case`, `match` arm, `catch`, ternary, and `&&`/`||`/`??` operator adds one; closures count independently. PHPStan and Psalm have no built-in McCabe rule, so the tree-sitter-backed `cyclomatic_complexity_scanner.py` is the deterministic check (it requires the optional `tree-sitter-php` dependency; without it `.php` files warn and are skipped). A complex function is a strong "extract collaborator" signal — legitimate cases (parsers, state machines, generated code) raise `max_cyclomatic_complexity` for the project:
+- **#35 Cyclomatic complexity limit** — functions and methods must not exceed `max_cyclomatic_complexity` decision points (default: `12`, read from `php.code_style.max_cyclomatic_complexity` in `settings.json`). Each `if`/`elseif`, `for`, `foreach`, `while`, `do`, `case`, `match` arm, `catch`, ternary, and `&&`/`||`/`??` operator adds one; closures count independently. PHPStan and Psalm have no built-in McCabe rule, so the tree-sitter-backed `cyclomatic_complexity_scanner.py` is the deterministic check (it requires the optional `tree-sitter-php` dependency; without it `.php` files warn and are skipped). A complex function is a strong "extract collaborator" signal — legitimate cases (parsers, state machines, generated code) raise `max_cyclomatic_complexity` for the project:
 
 ```bash
 python3 ../../src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py

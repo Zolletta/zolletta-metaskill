@@ -142,6 +142,25 @@ class PHPEngine:
 
     # -- Parsing ------------------------------------------------------------
 
+    def _build_class_like(self, child: Node, source: bytes) -> ClassInfo | None:
+        """Build ClassInfo for class, interface, or trait declaration."""
+        kind = child.type
+        if kind == "class_declaration":
+            return self._build_class(child, source)
+        if kind == "interface_declaration":
+            return self._build_interface(child, source)
+        if kind == "trait_declaration":
+            return self._build_trait(child, source)
+        return None
+
+    def _build_function_like(self, child: Node, source: bytes) -> MethodInfo | None:
+        """Build MethodInfo for function or method declaration."""
+        if child.type == "function_definition":
+            return self._build_function(child, source)
+        if child.type == "method_declaration":  # pragma: no cover
+            return self._build_method(child, source)
+        return None
+
     def parse_module(self, path: Path) -> ModuleInfo:
         """Parse the PHP file at *path* and return its :class:`ModuleInfo`.
 
@@ -177,30 +196,15 @@ class PHPEngine:
         functions: list[MethodInfo] = []
 
         for child in root.children:
-            kind = child.type
-            if kind == "class_declaration":
-                cls = self._build_class(child, source)
-                if cls is not None:
-                    classes.append(cls)
-            elif kind == "interface_declaration":
-                cls = self._build_interface(child, source)
-                if cls is not None:
-                    classes.append(cls)
-            elif kind == "trait_declaration":
-                cls = self._build_trait(child, source)
-                if cls is not None:
-                    classes.append(cls)
-            elif kind == "method_declaration":  # pragma: no cover
-                # Top-level function declarations use function_definition,
-                # but handle method_declaration defensively.
-                func = self._build_method(child, source)
-                if func is not None:
-                    functions.append(func)
-            elif kind == "function_definition":
-                func = self._build_function(child, source)
-                if func is not None:
-                    functions.append(func)
-            elif kind == "namespace_use_declaration":
+            cls = self._build_class_like(child, source)
+            if cls is not None:
+                classes.append(cls)
+                continue
+            func = self._build_function_like(child, source)
+            if func is not None:
+                functions.append(func)
+                continue
+            if child.type == "namespace_use_declaration":
                 imports.extend(self._build_imports(child, source))
 
         return ModuleInfo(
@@ -462,10 +466,7 @@ class PHPEngine:
         names: list[str] = []
         for descendant in self._iter_descendants(params_node):
             if descendant.type == "variable_name":
-                if (
-                    descendant.parent is not None
-                    and descendant.parent.type == "variadic_parameter"
-                ):
+                if descendant.parent is not None and descendant.parent.type == "variadic_parameter":
                     continue
                 name_child = self._child_by_type(descendant, "name")
                 if name_child is not None:

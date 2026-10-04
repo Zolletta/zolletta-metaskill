@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from zolletta_metaskill.patterns.python.test_splitter import (
+from zolletta_metaskill.testing_style.python.test_splitter import (
     TestSplitter,
 )
 

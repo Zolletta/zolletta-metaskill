@@ -1,0 +1,199 @@
+"""DocCompletenessScorer evaluates the structural completeness of documentation.
+
+Checks whether expected sections (e.g. Diátaxis quadrants or README conventions)
+are present in document files.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+from pathlib import Path
+from typing import Any
+
+
+class DocCompletenessScorer:
+    """Scores documentation based on section completeness and structural requirements."""
+
+    DIATAXIS_QUADRANTS: dict[str, dict[str, Any]] = {
+        "tutorials": {
+            "dir_names": {"tutorials", "tutorial"},
+            "required_sections": ["what we will learn", "prerequisites"],
+        },
+        "how-to": {
+            "dir_names": {"how-to", "howto", "how_to", "guides"},
+            "any_of_groups": [["prerequisites", "before starting"]],
+            "required_sections": [],
+        },
+        "reference": {
+            "dir_names": {"reference", "ref"},
+            "required_sections": [],
+        },
+        "explanation": {
+            "dir_names": {"explanation", "explanations", "concepts"},
+            "required_sections": [],
+        },
+    }
+
+    @staticmethod
+    def load_diataxis_translations(path: str) -> dict[str, Any]:
+        """Load translated Diátaxis signposts from a JSON file."""
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                return {"readme_sections": None, "quadrants": {}}
+            readme_sections = data.get("readme_sections")
+            quadrants = data.get("quadrants", data)
+            return {"readme_sections": readme_sections, "quadrants": quadrants}
+        except (OSError, json.JSONDecodeError):
+            return {"readme_sections": None, "quadrants": {}}
+
+    @staticmethod
+    def merge_translations(translations: dict[str, Any]) -> None:
+        """Merge translated signposts into DIATAXIS_QUADRANTS."""
+        quadrants = translations.get("quadrants", translations)
+        for name, quad_trans in quadrants.items():
+            if not isinstance(quad_trans, dict):
+                continue
+            quad = DocCompletenessScorer.DIATAXIS_QUADRANTS.setdefault(
+                name, {"dir_names": set(), "required_sections": []}
+            )
+            if "dir_names" in quad_trans and isinstance(quad_trans["dir_names"], list):
+                quad["dir_names"] = set(quad["dir_names"]) | {
+                    d.lower() for d in quad_trans["dir_names"]
+                }
+            if "required_sections" in quad_trans and isinstance(
+                quad_trans["required_sections"], list
+            ):
+                quad["required_sections"] = [s.lower() for s in quad_trans["required_sections"]]
+            if "any_of_groups" in quad_trans and isinstance(quad_trans["any_of_groups"], list):
+                quad["any_of_groups"] = [
+                    [s.lower() for s in group] for group in quad_trans["any_of_groups"]
+                ]
+
+    @staticmethod
+    def detect_diataxis_quadrant(doc_path: str) -> dict[str, Any] | None:
+        """Return the Diátaxis quadrant config if the doc is inside a quadrant directory."""
+        parts_lower = [p.lower() for p in Path(doc_path).parts]
+        for quadrant in DocCompletenessScorer.DIATAXIS_QUADRANTS.values():
+            if any(part in quadrant["dir_names"] for part in parts_lower):
+                return quadrant
+        return None
+
+    @staticmethod
+    def score_completeness(
+        repo_path: str, doc_path: str, required_sections: list[str]
+    ) -> tuple[float, dict[str, Any]]:
+        """Score based on whether expected sections are present. 0-100."""
+        full_path = os.path.join(repo_path, doc_path)
+        details: dict[str, Any] = {
+            "expected_sections": required_sections,
+            "found_sections": [],
+            "missing_sections": [],
+        }
+
+        any_of_groups: list[list[str]] = []
+        quadrant = DocCompletenessScorer.detect_diataxis_quadrant(doc_path)
+        if quadrant is not None:
+            required_sections = quadrant.get("required_sections", [])
+            any_of_groups = quadrant.get("any_of_groups", [])
+            details["expected_sections"] = required_sections
+            details["doc_structure"] = "diataxis"
+            details["any_of_groups"] = any_of_groups
+
+        try:
+            with open(full_path, encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+        except OSError:
+            return 0.0, details
+
+        headings_lower = DocCompletenessScorer._collect_heading_text(content)
+        heading_words: set[str] = set()
+        for h in headings_lower:
+            heading_words.update(h.split())
+
+        found, missing = DocCompletenessScorer._match_sections(
+            required_sections, headings_lower, heading_words
+        )
+
+        groups_found, groups_missing = DocCompletenessScorer._match_any_of_groups(
+            any_of_groups, headings_lower, heading_words
+        )
+
+        details["found_sections"] = found
+        details["missing_sections"] = missing
+        details["any_of_groups_found"] = groups_found
+        details["any_of_groups_missing"] = groups_missing
+
+        is_diataxis = quadrant is not None
+        content_lines = len([line for line in content.splitlines() if line.strip()])
+        length_penalty = 0
+        if not is_diataxis:
+            if content_lines < 10:
+                length_penalty = 30
+            elif content_lines < 30:
+                length_penalty = 15
+
+        total_requirements = len(required_sections) + len(any_of_groups)
+        if total_requirements == 0:
+            return max(0.0, 100.0 - length_penalty), details
+
+        satisfied = len(found) + groups_found
+        section_score = (satisfied / total_requirements) * 100.0
+
+        if section_score >= 100.0 and total_requirements > 1:
+            length_penalty = 0
+
+        return max(0.0, section_score - length_penalty), details
+
+    @staticmethod
+    def _collect_heading_text(content: str) -> set[str]:
+        """Collect the lowercase text of every markdown heading (levels 1-4)."""
+        headings_lower: set[str] = set()
+        for line in content.splitlines():
+            match = re.match(r"^#{1,4}\s+(.+)", line)
+            if match:
+                headings_lower.add(match.group(1).strip().lower())
+        return headings_lower
+
+    @staticmethod
+    def _match_sections(
+        required_sections: list[str],
+        headings_lower: set[str],
+        heading_words: set[str],
+    ) -> tuple[list[str], list[str]]:
+        """Split required sections into (found, missing) against the headings."""
+        found = []
+        missing = []
+        for section in required_sections:
+            section_lower = section.lower()
+            if (
+                section_lower in headings_lower
+                or section_lower in heading_words
+                or any(section_lower in h for h in headings_lower)
+            ):
+                found.append(section)
+            else:
+                missing.append(section)
+        return found, missing
+
+    @staticmethod
+    def _match_any_of_groups(
+        any_of_groups: list[list[str]],
+        headings_lower: set[str],
+        heading_words: set[str],
+    ) -> tuple[int, list[list[str]]]:
+        """Count satisfied any-of groups; return (found_count, missing_groups)."""
+        groups_found = 0
+        groups_missing = []
+        for group in any_of_groups:
+            group_lower = [g.lower() for g in group]
+            if any(g in headings_lower or g in heading_words for g in group_lower) or any(
+                any(g in h for h in headings_lower) for g in group_lower
+            ):
+                groups_found += 1
+            else:
+                groups_missing.append(group)
+        return groups_found, groups_missing
