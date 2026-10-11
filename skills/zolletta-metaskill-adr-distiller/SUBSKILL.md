@@ -1,11 +1,7 @@
 ---
 name: zolletta-metaskill-adr-distiller
 description: >
-  Distill Accepted Architecture Decision Records (ADRs) into a single
-  adr-distilled.md directives file. Discovers ADRs, compares mtimes against
-  a cache, mechanically extracts one-line directives from the Decision
-  section, and writes the distilled file for review subagents to read.
-  Use when refreshing architectural directives before a review.
+  Extracts Accepted-ADR Decision lines from docs/explanation/adr/architecture/ and writes adr-distilled.md directives for review agents. Use when ADRs change or before running a review. Do not use to author or edit ADRs.
 license: MIT + Commons Clause
 ---
 
@@ -90,6 +86,17 @@ Stale:    1  (0003-use-postgresql)
 Removed:  0
 Total:    8 directives in adr-distilled.md
 ```
+
+### Step 5 — Verify
+
+Re-run the orchestrator and verify the JSON report returns empty `new`/`stale` lists — if it does not, fix the cause (unrefined directive, unexpected mtime change) and repeat until the report is clean.
+
+## Safety
+
+- `adr_orchestrator.py` is read-only on ADR sources — it never modifies, deletes, or renames ADR files.
+- It writes only `<docs_dir>/<adrs_path>/adr-distilled.md` and the mtime cache at `.zolletta-metaskill/adr-cache.json` — both regenerable artifacts.
+- Do not edit `adr-distilled.md` by hand as a substitute for fixing a source ADR — mechanically extracted lines are refreshed on re-run and hand edits to them are lost; curated refinements on up-to-date directives are preserved.
+- Do not distill `Proposed` or `Superseded` ADRs — only `Accepted` records produce directives.
 
 ## Files
 

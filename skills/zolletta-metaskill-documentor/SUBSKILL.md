@@ -1,7 +1,7 @@
 ---
 name: zolletta-metaskill-documentor
 description: >
-  Documentation review combining [Diátaxis](https://diataxis.fr/) compliance checks with automated drift detection. Reviews the project's documentation directory (from `documentation.dir` in `settings.json`) for structure, accuracy, consistency, and freshness against the codebase. Use when reviewing docs, preparing releases, running CI doc gates, or auditing doc quality.
+  Reviews project documentation for Diátaxis structure, accuracy, consistency, and drift against the codebase; writes dated reports. Use when auditing docs or gating doc quality. Do not use to author documentation.
 license: MIT + Commons Clause
 ---
 
@@ -17,7 +17,7 @@ Derived from the [Diátaxis Documentation Expert](https://github.com/github/awes
 
 > This file narrows down any eventual general rule about code exploration and documentation, i.e. `code-exploration-rules.md`, `tokensave-rules.md`, `documentation-rules.md`. If you maintain rules as part of your agent configuration, those are the single source of truth for their domain.
 
-> **Execution protocol**: when running a review, follow [`../../docs/reference/code/scripts-first-protocol.md`](../../docs/reference/code/scripts-first-protocol.md) — run `documentor_cli.py`, which executes the quality review (drift + staleness), API doc validation, and link checking, persisting each tool's output to `cache/` (`quality.json`, `api_doc_validator.json`, `link_checker.json`) and printing an aggregated report. Assemble deterministic report sections from cached output, then run only the judgment pass items (false-positive filtering for known FP patterns — only open source files for FP candidates). Write your report to `reports/documentor.md`. Do not re-read source files the drift tools already validated.
+> **Execution protocol**: when running a review, follow `../../docs/reference/code/scripts-first-protocol.md` — run `documentor_cli.py`, which executes the quality review (drift + staleness), API doc validation, and link checking, persisting each tool's output to `cache/` (`quality.json`, `api_doc_validator.json`, `link_checker.json`) and printing an aggregated report. Assemble deterministic report sections from cached output, then run only the judgment pass items (false-positive filtering for known FP patterns — only open source files for FP candidates). Write your report to `reports/documentor.md`. Do not re-read source files the drift tools already validated.
 
 ## Shared resources
 
@@ -31,7 +31,7 @@ Read shared guidelines from the meta-skill (parent directory):
 - `../../src/zolletta_metaskill/testing_style/general/` — shared testing style scanning scripts
 - `../../src/zolletta_metaskill/patterns/` — pattern-specific scanning scripts
 
-**Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
+**Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the tool-failure handler (`../../SKILL.md#tool-failure-handler`) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
 
 Local scripts and references are in these locations:
 
@@ -132,7 +132,7 @@ When checking accuracy, the agent MUST:
 | `api_doc/api_doc_validator.py` | Validate API docs against Python source (AST)            | `python src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py [--json]` |
 | `links/link_checker.py`        | Audit all markdown links and anchors                     | `python src/zolletta_metaskill/documentor/links/link_checker.py [--broken-only]` |
 
-All tools: Python 3.8+ stdlib only, run from the repository root, `[--json]` and `--help`, any OS. Paths and thresholds come from `documentation.*` in `.zolletta-metaskill/settings.json` — see [settings-schema.md](../../docs/reference/settings-schema.md). Each tool writes its JSON cache under the configured cache dir (`documentation.cache_dir`, default `.zolletta-metaskill/cache/`).
+All tools: Python 3.8+ stdlib only, run from the repository root, `[--json]` and `--help`, any OS. Paths and thresholds come from `documentation.*` in `.zolletta-metaskill/settings.json` — see `../../docs/reference/settings-schema.md`. Each tool writes its JSON cache into the current run directory, `<runs_dir>/<YYYY-MM-DD-HH-MM>/cache/` — `.zolletta-metaskill/<timestamp>/cache/` with the default `runs_dir` — so each review keeps its own history instead of overwriting the last; before the first run directory exists, artifacts land in `<runs_dir>/cache/`.
 
 ### False positive filtering
 
@@ -150,10 +150,10 @@ When running automated tools, filter out these known false positive patterns:
 
 Load on demand — keep this file lean:
 
-- **[docs/reference/documentation/workflows-and-tools.md](../../docs/reference/documentation/workflows-and-tools.md)** — quick start, 5 core workflows, GitHub Actions + pre-commit recipes, complete per-tool parameter/output/exit-code reference.
+- **`../../docs/reference/documentation/workflows-and-tools.md`** — quick start, 5 core workflows, GitHub Actions + pre-commit recipes, complete per-tool parameter/output/exit-code reference.
 - **[docs/reference/documentation/scoring-and-categories.md](../../docs/reference/documentation/scoring-and-categories.md)** — staleness scoring model and weights, drift categories, auto-fix vs manual-fix classification, troubleshooting.
 - **[docs/reference/documentation/operational-rules.md](../../docs/reference/documentation/operational-rules.md)** — tool invocation conventions, false positive patterns, real drift patterns, workflow order, and drift report conventions.
-- **[docs/explanation/documentation/standards.md](../../docs/explanation/documentation/standards.md)** — README structure, API docs, changelogs, ADRs, docs-as-code standards — **shared**
+- **`../../docs/explanation/documentation/standards.md`** — README structure, API docs, changelogs, ADRs, docs-as-code standards — **shared**
 - **[docs/explanation/documentation/drift-prevention.md](../../docs/explanation/documentation/drift-prevention.md)** — coupling strategies, CI gates, review checklists, prevention patterns.
 
 ### Assets
@@ -212,6 +212,21 @@ Produce a structured markdown report with:
 - **Issues** — each with: file path, line number(s), severity, problem, impact, suggested fix
 - **Previous issues verified as resolved** (if applicable)
 - **False positives filtered out** (if any tools were run)
+
+For example:
+
+```markdown
+## Grade: 78/100 — Good
+
+| Section                     | Points |
+|-----------------------------|--------|
+| Diátaxis structure          | 24/30  |
+| Accuracy vs codebase        | 21/30  |
+| Freshness (staleness score) | 18/25  |
+| Link integrity              | 15/15  |
+
+Findings: 3 medium, 5 low — see per-file table below.
+```
 
 ### Grading scale
 

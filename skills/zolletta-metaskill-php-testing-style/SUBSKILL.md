@@ -2,9 +2,7 @@
 name: zolletta-metaskill-php-testing-style
 license: MIT + Commons Clause
 description: >
-  PHP test code review: PHPUnit test naming, directory mirroring, coverage gap
-  detection, mocking with Mockery or PHPUnit mocks, data providers, test doubles,
-  and AAA structure. Use when reviewing PHP test code or setting up PHPUnit test suites.
+  Reviews PHPUnit test code for naming, directory mirroring, coverage gaps, mocking, data providers, and AAA structure. Use when reviewing PHP tests or setting up suites. Do not use for application code review.
 allowed-tools:
   - read
   - grep
@@ -15,10 +13,11 @@ allowed-tools:
   - mcp_call_tool
   - mcp_list_tools
   - skill
-permissions:
-  allow:
-    - Read
-    - Write(.zolletta-metaskill/**)
+metadata:
+  permissions:
+    allow:
+      - Read
+      - Write(.zolletta-metaskill/**)
 ---
 
 # PHP Testing Style
@@ -166,7 +165,15 @@ Test methods must start with the `test_` prefix and follow the pattern `test_<un
 
 ### #7 — Test directory mirroring (always-on)
 
-The `tests/` directory must mirror the `src/` directory structure per PSR-4 autoloading. For example, `src/Domain/User.php` (namespace `App\Domain\User`) is tested by `tests/Domain/UserTest.php` (namespace `Tests\Domain\UserTest`). This makes it trivial to locate the test for any source class and ensures the test autoloader works correctly.
+The `tests/` directory must mirror the `src/` directory structure per PSR-4 autoloading, and namespaces mirror paths:
+
+```php
+// src/Domain/User.php          → tests/Domain/UserTest.php
+namespace App\Domain;           class User {}        // source
+namespace Tests\Domain;         class UserTest {}    // test
+```
+
+This makes it trivial to locate the test for any source class and ensures the test autoloader works correctly.
 
 ### #8 — One test class per SUT (always-on)
 
@@ -322,15 +329,21 @@ Write the report to `<runs_dir>/<timestamp>/reports/php-testing-patterns.md` usi
 When this skill runs a review, it writes its findings to a markdown file using the [report template](assets/report_template.md):
 
 - **Path**: `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/php-testing-patterns.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`; `runs_dir` from `settings.json`, default `.zolletta-metaskill`)
-- **Compound skills** (e.g. `zolletta-metaskill-review`) may override the folder and filename — follow their instructions instead
-- **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the [setup guard](../../SKILL.md#setup-guard) — no manual setup needed
+- **Compound skills** (e.g. `zolletta-metaskill-review`) may override the directory and filename — follow their instructions instead
+- **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the setup guard (`../../SKILL.md#setup-guard`) — no manual setup needed
 - **Format**: follow the [report template](assets/report_template.md) — grade at the top, coverage summary, coverage gaps table, findings grouped by severity with file/test-symbol/rule/issue/fix columns
+
+## Safety
+
+- `vendor/bin/phpunit` is invoked with `--coverage-*` report flags only — it executes the project's test suite; never pass filters that run destructive or network-dependent tests unattended.
+- `infection`/`mutmut` runs are expensive — always scope them (`--filter`, `--threads`, `--min-covered-msi` from settings); never run a full unscoped mutation suite as part of a review.
+- All review artifacts go under `<runs_dir>/<timestamp>/` (`cache/` JSON + `reports/php-testing-style.md`); nothing else is written. Scanner scripts are read-only on source.
 
 ## Shared resources
 
 - [`../../docs/reference/code/review-mode.md`](../../docs/reference/code/review-mode.md) — read-only review conventions
-- [`../../docs/explanation/code/general-principles.md`](../../docs/explanation/code/general-principles.md) — language-agnostic SOLID/KISS principles
-- [`../../docs/explanation/code/php/php-review-patterns.md`](../../docs/explanation/code/php/php-review-patterns.md) — PHP-specific review patterns
+- `../../docs/explanation/code/general-principles.md` — language-agnostic SOLID/KISS principles
+- `../../docs/explanation/code/php/php-review-patterns.md` — PHP-specific review patterns
 
 ## Attribution
 

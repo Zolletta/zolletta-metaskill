@@ -1,7 +1,8 @@
 ---
 name: zolletta-metaskill-python-code-style
 license: MIT
-description: Python code style, linting, formatting, naming conventions, and documentation standards. Use when writing new code, reviewing style, configuring linters, writing docstrings, or establishing project standards.
+description: >
+  Reviews Python code for style, linting, formatting, naming, and documentation standards. Use when writing or reviewing Python code, configuring linters, or writing docstrings. Do not use for test review.
 ---
 
 # Python Code Style & Documentation
@@ -12,7 +13,7 @@ Consistent code style and clear documentation make codebases maintainable and co
 
 > **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../../docs/reference/code/review-mode.md`](../../docs/reference/code/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
 
-> **Execution protocol**: when running a review, follow [`../../docs/reference/code/scripts-first-protocol.md`](../../docs/reference/code/scripts-first-protocol.md) — batch-run the scripts listed in the per-subcommand table (ruff, ty, mypy, vulture, acronym_casing_scanner, unused_all_exports_scanner, one_class_per_file_scanner, file_length_scanner, function_length_scanner, max_arguments_scanner, cyclomatic_complexity_scanner, suppression_reason_scanner), persist their output to `cache/`, assemble deterministic report sections from cached output, then run only the judgment pass items (vulture false-positive review for dynamically-accessed methods). Write your report to `reports/python-code-style.md`. Do not re-read source files the scripts already parsed.
+> **Execution protocol**: when running a review, follow `../../docs/reference/code/scripts-first-protocol.md` — batch-run the scripts listed in the per-subcommand table (ruff, ty, mypy, vulture, acronym_casing_scanner, unused_all_exports_scanner, one_class_per_file_scanner, file_length_scanner, function_length_scanner, max_arguments_scanner, cyclomatic_complexity_scanner, suppression_reason_scanner), persist their output to `cache/`, assemble deterministic report sections from cached output, then run only the judgment pass items (vulture false-positive review for dynamically-accessed methods). Write your report to `reports/python-code-style.md`. Do not re-read source files the scripts already parsed.
 
 ## When to Use This Skill
 
@@ -207,7 +208,7 @@ python3 ../../src/zolletta_metaskill/code_style/general/function_length_scanner.
 
 **#25 — Max arguments limit** *(configurable: `check_max_arguments`, `max_arguments`)*
 
-Functions and methods must not declare more than `max_arguments` parameters (default: `5`, read from `python.code_style.max_arguments` in `settings.json` — seeded from `python.tools.ruff.max_args` when configured, matching ruff `PLR0913`). Positional-only, positional-or-keyword, and keyword-only parameters count; `self`, `cls`, `*args`, and `**kwargs` do not. Long parameter lists are a classic AI-generation smell — the fix is usually a parameter object or a small collaborator, not more arguments.
+Functions and methods must not declare more than `max_arguments` arguments (default: `5`, read from `python.code_style.max_arguments` in `settings.json` — seeded from `python.tools.ruff.max_args` when configured, matching ruff `PLR0913`). Positional-only, positional-or-keyword, and keyword-only arguments count; `self`, `cls`, `*args`, and `**kwargs` do not. Long parameter lists are a classic AI-generation smell — the fix is usually grouping them into a small value object or collaborator, not more arguments.
 
 - **Enforcement**: `max_arguments_scanner.py` from `../../src/zolletta_metaskill/code_style/general/` (deterministic, language-agnostic).
 
@@ -215,7 +216,7 @@ Functions and methods must not declare more than `max_arguments` parameters (def
 python3 ../../src/zolletta_metaskill/code_style/general/max_arguments_scanner.py
 ```
 
-> The scanner is the single source of truth for this rule. Do not manually flag functions that the scanner doesn't flag — the declared-parameter count against the configured threshold is the objective criterion.
+> The scanner is the single source of truth for this rule. Do not manually flag functions that the scanner doesn't flag — the declared-argument count against the configured threshold is the objective criterion.
 
 ### Docstrings
 
@@ -285,9 +286,9 @@ One-line functions where the name and signature are self-explanatory do not need
 
 **#19 — Type hints required for all public APIs** *(always-on)*
 
-All public classes, methods, and functions must include type annotations for parameters and return types. Enforcement is via the available type checkers with `disallow_untyped_defs` or equivalent, plus manual review for the public vs. private distinction. Run `ty` if `python.tools.ty.available` is `true` and `mypy` if `python.tools.mypy.available` is `true` — when both are available, both run. If neither is available, type checking is skipped.
+All public classes, methods, and functions must include type annotations on all signature inputs and return types. Enforcement is via the available type checkers with `disallow_untyped_defs` or equivalent, plus manual review for the public vs. private distinction. Run `ty` if `python.tools.ty.available` is `true` and `mypy` if `python.tools.mypy.available` is `true` — when both are available, both run. If neither is available, type checking is skipped.
 
-Judgment call: `Any` is acceptable when a specific type would add noise without value (generic plugin data, truly dynamic payloads). When a checker diagnostic results, the suppression must carry the specific error code and a reason explaining why the type is deliberately broad — per `docs/reference/code/python/python-code-style.md` §3.5. `suppression_reason_scanner.py` is the single source of truth for missing codes/reasons — do not manually flag suppressions it does not flag.
+Judgment call: `Any` is acceptable when a specific type would add noise without value (generic plugin data, truly dynamic payloads). When a checker diagnostic results, the suppression must carry the specific error code and a reason explaining why the type is deliberately broad — per `../../docs/reference/code/python/python-code-style.md` §3.5. `suppression_reason_scanner.py` is the single source of truth for missing codes/reasons — do not manually flag suppressions it does not flag.
 
 ### Formatting
 
@@ -340,9 +341,15 @@ This scanner cross-references every `__all__` entry against actual import statem
 When this skill runs a review, it writes its findings to a markdown file using the [report template](assets/report_template.md):
 
 - **Path**: `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/python-code-style.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`; `runs_dir` from `settings.json`, default `.zolletta-metaskill`)
-- **Compound skills** (e.g. `zolletta-metaskill-review`) may override the folder and filename — follow their instructions instead
-- **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the [setup guard](../../SKILL.md#setup-guard) — no manual setup needed
+- **Compound skills** (e.g. `zolletta-metaskill-review`) may override the directory and filename — follow their instructions instead
+- **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the setup guard (`../../SKILL.md#setup-guard`) — no manual setup needed
 - **Format**: follow the [report template](assets/report_template.md) — grade at the top, tool results (ruff, type checker, vulture), auto-fixable issues (informational, do not count toward grade), findings grouped by severity with file/symbol/rule ID/issue/fix columns
+
+## Safety
+
+- `ruff`, `ty`, `mypy`, and `vulture` run in read-only analysis mode — report diagnostics only. Do not run `ruff check --fix` or `ruff format` on the project when invoked under `/zolletta-metaskill review`.
+- Scanner invocations (`python3 ../../src/zolletta_metaskill/code_style/…`) are read-only on source; they print findings and write nothing outside `cache/`.
+- The only write target is the report at `<runs_dir>/<timestamp>/reports/python-code-style.md`.
 
 ## Attribution
 

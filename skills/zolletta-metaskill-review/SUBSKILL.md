@@ -2,8 +2,7 @@
 name: zolletta-metaskill-review
 license: MIT + Commons Clause
 description: >
-  Full project review orchestrator. Reads the project language from .zolletta-metaskill/settings.json (written by setup), then runs the appropriate specialist skills as subagents in parallel batches — general skills (patterns, documentor) always, plus language-specific skills when applicable (e.g. python-code-style and python-testing-patterns for Python). Saves each report to .zolletta-metaskill/<YYYY-MM-DD-HH-MM>/reports/, produces an aggregated TODO.md organized by functional priority (dependency changes first, then by severity), and compares with the previous review's TODO to verify completion. Respond in the user's language.
-subagent: true
+  Runs full project reviews: dispatches specialist skills as parallel subagents, writes dated reports, and builds a prioritized TODO.md. Use for whole-project reviews. Do not use for single-aspect checks — invoke the specialist directly.
 allowed-tools:
   - read
   - grep
@@ -18,10 +17,12 @@ allowed-tools:
   - ask_user_question
   - mcp_call_tool
   - mcp_list_tools
-permissions:
-  allow:
-    - mcp__tokensave__tokensave_status
-    - mcp__tokensave__tokensave_files
+metadata:
+  subagent: true
+  permissions:
+    allow:
+      - mcp__tokensave__tokensave_status
+      - mcp__tokensave__tokensave_files
 ---
 
 # Zolletta-metaskill Review — Orchestrator
@@ -42,7 +43,7 @@ Read shared guidelines from the meta-skill (parent directory):
 - `../../src/zolletta_metaskill/shared/` — shared scanning scripts
 - `../../src/zolletta_metaskill/patterns/` — pattern-specific scanning scripts
 
-**Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
+**Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the tool-failure handler (`../../SKILL.md#tool-failure-handler`) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
 
 **Respond in the same language the user used to invoke you.** If the user wrote in Italian, respond in Italian. If in English, respond in English. And so on for any other language.
 
@@ -53,13 +54,13 @@ When spawning a subagent, look up `subcommands.<subcommand-name>.model` in `.zol
 - If the value is **non-null**, pass it as the `profile` argument to `run_subagent`.
 - If the value is **null** (the default), omit `profile` and let the harness pick its default.
 
-The orchestrator itself always runs on the model it was invoked with — only the subagents inherit the configured model. Model/profile ids are harness-specific; the skill never hardcodes one. See [`../../docs/explanation/patterns.md`](../../docs/explanation/patterns.md) → "Smart Plan, Cheap Execution" for the rationale.
+The orchestrator itself always runs on the model it was invoked with — only the subagents inherit the configured model. Model/profile ids are harness-specific; the skill never hardcodes one. See `../../docs/explanation/patterns.md` → "Smart Plan, Cheap Execution" for the rationale.
 
 ## Procedure
 
 ### Step 1 — Read the project language from settings.json
 
-The setup guard (see the meta-skill's [setup guard](../../SKILL.md#setup-guard)) guarantees that `.zolletta-metaskill/settings.json` exists before this subcommand runs.
+The setup guard (see the meta-skill's setup guard, `../../SKILL.md#setup-guard`) guarantees that `.zolletta-metaskill/settings.json` exists before this subcommand runs.
 
 1. Read `.zolletta-metaskill/settings.json` and extract the `language` field.
 2. If `settings.json` is missing or `language` is empty, fall back to detecting the language using the marker list in `skills/zolletta-metaskill-setup/SUBSKILL.md` Step 3.
@@ -88,18 +89,18 @@ This step ensures the tokensave index is fresh before any subagent uses it. Stal
 
 > **Why this runs in the orchestrator**: running `tokensave sync` inside a subagent would risk concurrent syncs if multiple subagents detect staleness simultaneously. The orchestrator syncs once, before any subagent launches, so all subagents see a consistent fresh index.
 
-### Step 2 — Create the run folder
+### Step 2 — Create the run directory
 
 1. Read `runs_dir` from `settings.json` (default `.zolletta-metaskill`).
 2. Generate a timestamp in `YYYY-MM-DD-HH-MM` format. Use `date +%Y-%m-%d-%H-%M` to get this.
-3. Create the run folder structure:
+3. Create the run directory structure:
    - `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/` — for LLM judgment (subcommand reports, SUMMARY.md, TODO.md)
    - `<runs_dir>/<YYYY-MM-DD-HH-MM>/cache/` — for deterministic artifacts (script outputs + shared context)
 
 ### Step 3 — Check for previous reviews
 
 1. List all timestamp subdirectories directly under `<runs_dir>/` (i.e. `<runs_dir>/*/`, excluding `settings.json` and other non-directory files).
-2. If there are previous run folders, identify the **newest** one (excluding the one you just created). Read its `reports/TODO.md` if it exists.
+2. If there are previous run directories, identify the **newest** one (excluding the one you just created). Read its `reports/TODO.md` if it exists.
 3. Keep this previous TODO for the comparison in Step 6.
 
 ### Step 3.5 — Refresh ADR directives
@@ -145,9 +146,9 @@ This step deduplicates work that every subagent would otherwise repeat: reading 
 
 ### Step 4 — Launch the review subagents in parallel
 
-> One subagent per command follows the **Focused Agent** pattern, avoiding the **Distracted Agent** anti-pattern. See [`../../docs/reference/augmented-coding-patterns.md`](../../docs/reference/augmented-coding-patterns.md) for distilled definitions.
+> One subagent per command follows the **Focused Agent** pattern, avoiding the **Distracted Agent** anti-pattern. See `../../docs/reference/augmented-coding-patterns.md` for distilled definitions.
 
-Launch **one subagent per command**, all in parallel as background subagents (`is_background: true`). Issue all `run_subagent` calls in a single tool-call block so they run concurrently. Each subagent writes its own report file directly to the review folder — the orchestrator does not collect and save reports on their behalf. Apply the [Model selection](#model-selection) rules above for each `run_subagent` call.
+Launch **one subagent per command**, all in parallel as background subagents (`is_background: true`). Issue all `run_subagent` calls in a single tool-call block so they run concurrently. Each subagent writes its own report file directly to the review directory — the orchestrator does not collect and save reports on their behalf. Apply the [Model selection](#model-selection) rules above for each `run_subagent` call.
 
 **General skills** (always run, regardless of language):
 
@@ -254,7 +255,7 @@ If a subagent fails or times out, create its report file with a note explaining 
 
 ### Step 6 — Compare with previous review (if exists)
 
-If a previous review folder was found in Step 3:
+If a previous review directory was found in Step 3:
 
 1. Read the previous `TODO.md`.
 2. For each item in the previous TODO, check whether it has been addressed:
@@ -268,7 +269,7 @@ If no previous review exists, skip this step (note in the TODO that this is the 
 
 ### Step 7 — Create the executive summary (SUMMARY.md)
 
-Read all report files that were produced by the subagents and extract the grade from each. Create `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/SUMMARY.md` following the [summary template](assets/summary_template.md).
+Read all report files that were produced by the subagents and extract the grade from each. Create `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/SUMMARY.md` following the summary template (`assets/summary_template.md`).
 
 The SUMMARY.md is an executive overview — it contains grades, strengths, weaknesses, and trends. It does **not** duplicate the detailed findings from the specialist reports. Instead, it links to them in a "Detailed reports" section so the reader can drill down.
 
@@ -294,7 +295,7 @@ If a previous review exists, include a "Trend vs previous review" subsection not
 
 ### Step 8 — Create the aggregated TODO.md
 
-Read all report files produced by the subagents. Create `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/TODO.md` following the [TODO template](assets/todo_template.md).
+Read all report files produced by the subagents. Create `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/TODO.md` following the TODO template (`assets/todo_template.md`).
 
 The TODO.md is a prioritized action list — it does **not** duplicate the full findings from the specialist reports. Each item links to the relevant specialist report for full details (file path, line numbers, impact, suggested fix).
 

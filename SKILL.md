@@ -1,8 +1,9 @@
 ---
 name: zolletta-metaskill
 license: MIT + Commons Clause
-description: 'Zolletta-metaskill — meta-skill and registry for the zolletta-* review family. Lists available skills, shared resources, and orchestration rules.'
-argument-hint: "[subcommand]"
+description: 'Manages the zolletta-* skill registry: routes /zolletta-metaskill subcommands to specialist skills (setup, review, patterns, documentor). Use when the user runs a zolletta-metaskill subcommand. Do not use to perform reviews directly.'
+metadata:
+  argument-hint: "[subcommand]"
 ---
 
 # Zolletta-metaskill — Skill Registry
@@ -44,7 +45,7 @@ If you maintain rules as part of your agent configuration, those are the **singl
 
 Before dispatching to **any** subcommand (including `setup` itself), check if `.zolletta-metaskill/settings.json` exists in the current project root:
 
-1. If it **exists**, read it and proceed to the requested subcommand. The subcommand may read `language`, `container_name`, `tokensave_available`, `acronyms`, `python`, `php`, `subcommands`, and `runs_dir` from it. See [`docs/reference/settings-schema.md`](docs/reference/settings-schema.md) for the full field shape.
+1. If it **exists**, read it and proceed to the requested subcommand. The subcommand may read `language`, `container_name`, `tokensave_available`, `acronyms`, `python`, `php`, `subcommands`, and `runs_dir` from it. See `docs/reference/settings-schema.md` for the full field shape.
 2. If it **does not exist**, run the full `setup` procedure first (read `skills/zolletta-metaskill-setup/SUBSKILL.md` and execute every step). Once `settings.json` is written, proceed to the requested subcommand.
 3. If the user invoked `/zolletta-metaskill setup` explicitly, run setup and stop — do not dispatch to another subcommand.
 4. **Staleness check (Python projects only)**: if `settings.json` exists and `python` is not `null`, compare `pyproject.toml`'s current modification time against `python.pyproject_mtime`. If they differ (the file was modified after the last setup), re-run **only** Steps 7–8 of setup (pyproject extraction + source layout detection) and patch the `python.tools.*` configuration fields + `python.paths` + `python.pyproject_mtime` in `settings.json`. Do not re-run full setup (language detection, Docker probe, tokensave probe). If `pyproject.toml` does not exist or `python` is `null`, skip this check.
@@ -77,10 +78,19 @@ This handler applies to every subcommand that uses tokensave (`patterns`, `docum
 
 ## Dispatch
 
-> The subcommand architecture follows the **Focused Agent** pattern, avoiding the **Distracted Agent** anti-pattern. See [`docs/reference/augmented-coding-patterns.md`](docs/reference/augmented-coding-patterns.md) for distilled definitions.
+> The subcommand architecture follows the **Focused Agent** pattern, avoiding the **Distracted Agent** anti-pattern. See `docs/reference/augmented-coding-patterns.md` for distilled definitions.
 
 When invoked as `/zolletta-metaskill <subcommand>`:
 
 1. If no subcommand is given, does not exists, or the subcommand is `help`, read `skills/zolletta-metaskill-help/SUBSKILL.md` and execute its instructions (display the help table). Stop — do not run the setup guard or any other subcommand.
 2. Run the **setup guard** (see above) — ensure `.zolletta-metaskill/settings.json` exists.
 3. Read `skills/zolletta-metaskill-<subcommand>/SUBSKILL.md` and execute its instructions.
+
+For example:
+
+```text
+/zolletta-metaskill help    → skills/zolletta-metaskill-help/SUBSKILL.md
+/zolletta-metaskill setup   → skills/zolletta-metaskill-setup/SUBSKILL.md
+/zolletta-metaskill review  → skills/zolletta-metaskill-review/SUBSKILL.md
+/zolletta-metaskill         → skills/zolletta-metaskill-help/SUBSKILL.md (no subcommand)
+```

@@ -2,10 +2,7 @@
 name: zolletta-metaskill-php-code-style
 license: MIT + Commons Clause
 description: >
-  PHP code style review: strict typing, modern PHP 8.x features, PSR-12 compliance,
-  naming conventions, error handling, performance, and security. Version-gated by
-  detected php_version. Use when reviewing PHP code for style, type safety, or
-  modern PHP feature adoption.
+  Reviews PHP code for strict typing, PHP 8.x features, PSR-12 compliance, naming, error handling, performance, and security. Use when reviewing PHP code style or feature adoption. Do not use for PHPUnit review.
 allowed-tools:
   - read
   - grep
@@ -16,9 +13,10 @@ allowed-tools:
   - mcp_call_tool
   - mcp_list_tools
   - skill
-permissions:
-  allow:
-    - Write(.zolletta-metaskill/**)
+metadata:
+  permissions:
+    allow:
+      - Write(.zolletta-metaskill/**)
 ---
 
 # PHP Code Style
@@ -43,7 +41,7 @@ Review PHP code for type safety, modern PHP feature adoption, PSR-12 compliance,
 |----|----------|------------------------------------------------------------|---------|
 | 1  | Types    | `declare(strict_types=1)` in every file                    | 7.0+    |
 | 2  | Types    | Return type declarations on all methods                    | 7.0+    |
-| 3  | Types    | Parameter type declarations                                | 7.0+    |
+| 3  | Types    | Param type declarations                                    | 7.0+    |
 | 4  | Types    | Property type declarations                                 | 7.4+    |
 | 5  | Types    | Nullable types explicitly declared (`?Type`)               | 7.1+    |
 | 6  | Types    | Use `void`/`never` for appropriate returns                 | 8.1+    |
@@ -96,6 +94,14 @@ If `php_version` is not set in `settings.json`, all rules are evaluated (assume 
 
 ## Procedure
 
+Review checklist:
+
+- [ ] Read `settings.json` (`php.php_version`, `php.code_style` toggles, `php.tools.*`)
+- [ ] Run available external tools; classify diagnostics (auto-fixable → informational)
+- [ ] Apply always-on rules (Table 1), skipping rules above `php_version`
+- [ ] Apply enabled configurable rules (Table 2), skipping rules above `php_version`
+- [ ] Write the report to `<runs_dir>/<timestamp>/reports/php-code-style.md`
+
 ### Step 1 — Read configuration
 
 Read `settings.json`:
@@ -136,7 +142,7 @@ Write the report to `<runs_dir>/<timestamp>/reports/php-code-style.md` using the
 
 - **#1 `declare(strict_types=1)`** — every `.php` file must start with `declare(strict_types=1);` as the first statement (after the opening `<?php` tag). This prevents implicit type coercion bugs.
 - **#2 Return types** — every method must declare a return type. Exceptions: constructors (`__construct`), destructors (`__destruct`), and `__clone` which implicitly return `void`.
-- **#3 Parameter types** — every parameter must have a type declaration. Use `mixed` only when genuinely unknown (but see rule #7).
+- **#3 Param types** — every method signature must be fully typed. Use `mixed` only when genuinely unknown (but see rule #7).
 - **#4 Property types** — every class property must have a type declaration (PHP 7.4+ typed properties).
 - **#5 Nullable types** — use `?Type` explicitly instead of `Type|null` in unions for single nullable types.
 - **#6 `void`/`never`** — use `void` for methods that return nothing, `never` for methods that never return (throw or exit). PHP 8.1+ for `never`.
@@ -156,7 +162,7 @@ Write the report to `<runs_dir>/<timestamp>/reports/php-code-style.md` using the
 - **#8 Constructor promotion** — use constructor property promotion (`public function __construct(private readonly int $id)`) instead of manual assignment. PHP 8.0+.
 - **#9 Match expression** — use `match` instead of `switch` for value matching (returns a value, is strict, exhausts cases). PHP 8.0+.
 - **#10 Nullsafe operator** — use `?->` for null-safe method chaining instead of manual null checks. PHP 8.0+.
-- **#11 Named arguments** — use named arguments for functions with many optional parameters (`foo(limit: 10, offset: 0)`). PHP 8.0+.
+- **#11 Named arguments** — use named arguments for functions with many optional arguments (`foo(limit: 10, offset: 0)`). PHP 8.0+.
 - **#12 Attributes** — use `#[Attribute]` syntax instead of docblock annotations for metadata. PHP 8.0+.
 - **#13 Enums** — use `enum` instead of class constants for finite sets (status codes, types). PHP 8.1+.
 - **#14 Readonly properties** — use `readonly` for immutable data properties. PHP 8.1+.
@@ -172,10 +178,20 @@ Write the report to `<runs_dir>/<timestamp>/reports/php-code-style.md` using the
 
 ### PSR Standards (#16–#19)
 
-- **#16 PSR-4** — class names, namespaces, and file paths must follow PSR-4 autoloading. `App\Domain\User` lives in `src/Domain/User.php`.
+PSR-4 maps namespace segments to path segments — rules #16 and #19 check this mapping:
+
+```php
+namespace App\Domain;
+class User {}            // → src/Domain/User.php
+
+namespace App\Services;
+class PaymentService {}  // → src/Services/PaymentService.php
+```
+
+- **#16 PSR-4** — class names, namespaces, and file paths must follow PSR-4 autoloading (see mapping above).
 - **#17 PSR-12** — coding style compliance (opening tag, brace placement, line length, indentation). Use php-cs-fixer or phpcs to verify.
 - **#18 camelCase methods** — method names use camelCase: `getUserById()`, not `get_user_by_id()` or `GetUserById()`.
-- **#19 Namespace usage** — namespaces must match directory structure. `App\Services\PaymentService` lives in `src/Services/PaymentService.php`.
+- **#19 Namespace usage** — namespaces must match directory structure (see mapping above).
 
 ### Error Handling (#20)
 
@@ -206,7 +222,7 @@ python3 ../../src/zolletta_metaskill/code_style/general/cyclomatic_complexity_sc
 python3 ../../src/zolletta_metaskill/code_style/general/function_length_scanner.py
 ```
 
-- **#37 Max arguments limit** — functions and methods must not declare more than `max_arguments` parameters (default: `5`, read from `php.code_style.max_arguments` in `settings.json`). Variadic parameters (`...$args`) do not count toward the limit — the semantics match ruff `PLR0913` (`self`/`cls`, `*args`, `**kwargs` excluded). Long parameter lists are a classic AI-generation smell — the fix is usually a parameter object or a small collaborator. Enforced by the language-agnostic `max_arguments_scanner.py`:
+- **#37 Max arguments limit** — functions and methods must not declare more than `max_arguments` (default: `5`, read from `php.code_style.max_arguments` in `settings.json`). Variadic arguments (`...$args`) do not count toward the limit — the semantics match ruff `PLR0913` (`self`/`cls`, `*args`, `**kwargs` excluded). Long parameter lists are a classic AI-generation smell — the fix is usually a small value object or collaborator. Enforced by the language-agnostic `max_arguments_scanner.py`:
 
 ```bash
 python3 ../../src/zolletta_metaskill/code_style/general/max_arguments_scanner.py
@@ -216,10 +232,16 @@ python3 ../../src/zolletta_metaskill/code_style/general/max_arguments_scanner.py
 
 - **#21 File uploads** — validate `$_FILES` entries: check `UPLOAD_ERR_OK`, verify MIME type with `finfo_file()`, enforce size limits, generate safe filenames (never trust client-provided names), store outside the web root.
 
+## Safety
+
+- External tools are read-only in review mode: `phpstan analyse`, `psalm`, `phpcs` only report. `php-cs-fixer` is invoked with `--dry-run --diff` — never run `php-cs-fixer fix` without `--dry-run` when reviewing.
+- Scanner scripts (`file_length_scanner.py`, `cyclomatic_complexity_scanner.py`, `function_length_scanner.py`, `max_arguments_scanner.py`, `suppression_reason_scanner.py`) are read-only on source; they print findings and write nothing outside `cache/`.
+- The only write target is the report at `<runs_dir>/<timestamp>/reports/php-code-style.md`. Do not apply fixes to source files when invoked under `/zolletta-metaskill review`.
+
 ## Shared resources
 
 - [`../../docs/reference/code/review-mode.md`](../../docs/reference/code/review-mode.md) — read-only review conventions
 - [`../../docs/explanation/code/error-handling.md`](../../docs/explanation/code/error-handling.md) — language-agnostic error handling rules
 - [`../../docs/explanation/code/performance.md`](../../docs/explanation/code/performance.md) — language-agnostic performance rules
 - [`../../docs/explanation/code/security.md`](../../docs/explanation/code/security.md) — language-agnostic security rules
-- [`../../docs/explanation/code/php/php-review-patterns.md`](../../docs/explanation/code/php/php-review-patterns.md) — PHP-specific review patterns
+- `../../docs/explanation/code/php/php-review-patterns.md` — PHP-specific review patterns

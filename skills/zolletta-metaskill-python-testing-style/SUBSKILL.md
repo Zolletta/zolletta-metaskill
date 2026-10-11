@@ -1,7 +1,8 @@
 ---
 name: zolletta-metaskill-python-testing-style
 license: MIT
-description: Implement comprehensive testing strategies with pytest, fixtures, mocking, and test-driven development. Use when writing Python tests, setting up test suites, or implementing testing best practices.
+description: >
+  Implements and reviews pytest suites — fixtures, mocking, TDD, and testing best practices. Use when writing Python tests or setting up suites. Do not use for application code style review.
 ---
 
 # Python Testing Style
@@ -12,7 +13,7 @@ Review skill for Python test code: test isolation, naming, coverage gaps, mockin
 
 > **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../../docs/reference/code/review-mode.md`](../../docs/reference/code/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
 
-> **Execution protocol**: when running a review, follow [`../../docs/reference/code/scripts-first-protocol.md`](../../docs/reference/code/scripts-first-protocol.md) — batch-run the scripts listed in the per-subcommand table (`pytest --cov --cov-report=term-missing`, `test_naming_scanner.py --json`, plus `mutmut run` and `mutmut_survived_reporter.py` when `python.tools.mutmut.available` and `python.testing.check_mutation_testing`), persist their output to `cache/`, assemble deterministic report sections (coverage gaps from `cache/pytest_cov.txt`, naming violations from `cache/test_naming.json`, mutation results from `cache/mutmut_survived.txt`) from cached output, then run only the judgment pass items (indirect-coverage tracing for modules below the gap threshold, survived-mutant → suggested-test-name recommendations). Write your report to `reports/python-testing-patterns.md`. Do not re-read source files the scripts already parsed.
+> **Execution protocol**: when running a review, follow `../../docs/reference/code/scripts-first-protocol.md` — batch-run the scripts listed in the per-subcommand table (`pytest --cov --cov-report=term-missing`, `test_naming_scanner.py --json`, plus `mutmut run` and `mutmut_survived_reporter.py` when `python.tools.mutmut.available` and `python.testing.check_mutation_testing`), persist their output to `cache/`, assemble deterministic report sections (coverage gaps from `cache/pytest_cov.txt`, naming violations from `cache/test_naming.json`, mutation results from `cache/mutmut_survived.txt`) from cached output, then run only the judgment pass items (indirect-coverage tracing for modules below the gap threshold, survived-mutant → suggested-test-name recommendations). Write your report to `reports/python-testing-patterns.md`. Do not re-read source files the scripts already parsed.
 
 ## When to Use This Skill
 
@@ -206,9 +207,15 @@ Caps how many survived mutants `mutmut_survived_reporter.py` details with file/l
 When this skill runs a review, it writes its findings to a markdown file using the [report template](assets/report_template.md):
 
 - **Path**: `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/python-testing-patterns.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`; `runs_dir` from `settings.json`, default `.zolletta-metaskill`)
-- **Compound skills** (e.g. `zolletta-metaskill-review`) may override the folder and filename — follow their instructions instead
-- **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the [setup guard](../../SKILL.md#setup-guard) — no manual setup needed
+- **Compound skills** (e.g. `zolletta-metaskill-review`) may override the directory and filename — follow their instructions instead
+- **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the setup guard (`../../SKILL.md#setup-guard`) — no manual setup needed
 - **Format**: follow the [report template](assets/report_template.md) — grade at the top, coverage summary, coverage gaps table, findings grouped by severity with file/test-symbol/rule/issue/fix columns
+
+## Safety
+
+- `pytest --cov` executes the project's test suite — follow the container/uv detection convention; never run suites that mutate external state unattended.
+- `mutmut run` is expensive and writes a disposable `mutants/` result cache in the project root — always scope it via `mutation_target` (default `changed`); never run an unscoped `all` run as part of a review, and ensure `mutants/` stays git-ignored.
+- Scanner invocations (`python3 ../../src/zolletta_metaskill/testing_style/…`) are read-only on source; review artifacts go under `<runs_dir>/<timestamp>/` only.
 
 ## Attribution
 

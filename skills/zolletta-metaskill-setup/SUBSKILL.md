@@ -2,7 +2,7 @@
 name: zolletta-metaskill-setup
 license: MIT + Commons Clause
 description: >
-  Project initialization for Zolletta-metaskill. Creates the .zolletta-metaskill/ directory, detects the project language, detects Docker container, tests tokensave availability, detects Python and PHP tooling, and writes settings.json. Also adds .zolletta-metaskill/ to the user's global ~/.gitignore. Run automatically by the setup guard before any subcommand if settings.json is missing, or manually via /zolletta-metaskill setup.
+  Creates .zolletta-metaskill/ and settings.json: detects project language, Docker, tokensave, and Python/PHP tooling on first run. Use when settings.json is missing or on /zolletta-metaskill setup. Do not use to change existing settings.
 allowed-tools:
   - read
   - grep
@@ -13,11 +13,12 @@ allowed-tools:
   - mcp_call_tool
   - mcp_list_tools
   - skill
-permissions:
-  allow:
-    - Write(.zolletta-metaskill/**)
-    - Write(~/.gitignore)
-    - mcp__tokensave__tokensave_status
+metadata:
+  permissions:
+    allow:
+      - Write(.zolletta-metaskill/**)
+      - Write(~/.gitignore)
+      - mcp__tokensave__tokensave_status
 ---
 
 # Zolletta-metaskill Setup
@@ -26,7 +27,7 @@ Initialize the `.zolletta-metaskill/` directory and write `settings.json` so tha
 
 ## Shared resources
 
-- `../../docs/reference/tool-messages.md` — "not installed" and "unconfigured" messages
+- [`../../docs/reference/tool-messages.md`](../../docs/reference/tool-messages.md) — "not installed" and "unconfigured" messages
 - `../../docs/reference/settings-schema.md` — canonical schema reference for `settings.json` field shapes
 
 ## Procedure
@@ -67,7 +68,7 @@ If `.zolletta-metaskill/settings.json` already exists, read it and check `setup_
 
 > **What changed in v3.2.0**: conditional mutation-testing sensor (issue #47). New `python.tools.mutmut` / `php.tools.infection` availability keys, and four `testing` keys per language (`check_mutation_testing`, `mutation_score_threshold`, `mutation_target`, `mutation_max_mutants`). Backfill is additive: the tool-detection steps re-run so `available` reflects the real installation state, user-customized values are preserved, only absent keys are added.
 
-> **What changed in v2.0.0**: the `external_review_model` scalar (for the removed `external-review` subcommand) and the `subagent_profile` scalar (all review subagents) are replaced by `subcommands` — a per-subcommand map where each entry has a `model` field. The `external-review` subcommand is removed; `external_review_model` is not migrated. This lets the user configure a different model per subcommand (e.g. a strong model for `patterns`/`documentor`, a cheap one for `*-code-style`). See [`../../docs/reference/settings-schema.md`](../../docs/reference/settings-schema.md#subcommands-per-subcommand-model-configuration) for the full schema.
+> **What changed in v2.0.0**: the `external_review_model` scalar (for the removed `external-review` subcommand) and the `subagent_profile` scalar (all review subagents) are replaced by `subcommands` — a per-subcommand map where each entry has a `model` field. The `external-review` subcommand is removed; `external_review_model` is not migrated. This lets the user configure a different model per subcommand (e.g. a strong model for `patterns`/`documentor`, a cheap one for `*-code-style`). See `../../docs/reference/settings-schema.md` for the full schema.
 
 ### Step 1 — Create the .zolletta-metaskill directory
 
@@ -148,7 +149,7 @@ python3 ../../src/zolletta_metaskill/setup/doc_config_detector.py
 
 Reads `documentation.dir` from `settings.json` (default `docs`). Default documentation language is `"en"` (ISO 639-1).
 
-### Step 10 — Detect ADR folder
+### Step 10 — Detect ADR directory
 
 ```bash
 python3 ../../src/zolletta_metaskill/setup/adr_detector.py <docs_dir>
@@ -204,21 +205,21 @@ If unavailable, print the corresponding "not installed" message in Step 16.
 
 Read the [settings template](assets/settings_template.json) and write `.zolletta-metaskill/settings.json` with the following fields:
 
-| Field                 | Source                                                                                                                                                                                                                                  |
-|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `setup_version`       | Matches the skill version (see front-matter)                                                                                                                                                                                            |
-| `setup_timestamp`     | Current timestamp in ISO 8601 (`date -u +%Y-%m-%dT%H:%M:%S`)                                                                                                                                                                            |
-| `language`            | Step 3                                                                                                                                                                                                                                  |
-| `container_name`      | Step 4 (`null` if no Docker)                                                                                                                                                                                                            |
-| `tokensave_available` | Step 5                                                                                                                                                                                                                                  |
-| `acronyms`            | Step 7 (`[]` if none)                                                                                                                                                                                                                   |
-| `python`              | Steps 6 + 7 + 8 (Python only; `null` otherwise)                                                                                                                                                                                         |
-| `php`                 | Steps 11 + 12 (PHP only; `null` otherwise)                                                                                                                                                                                              |
-| `subcommands`         | Object with one key per subcommand, each containing `model` (default `null` = harness default). See [`../../docs/reference/settings-schema.md`](../../docs/reference/settings-schema.md#subcommands-per-subcommand-model-configuration) |
-| `documentation`       | Steps 9 + 10                                                                                                                                                                                                                            |
-| `runs_dir`            | `".zolletta-metaskill"`                                                                                                                                                                                                                 |
+| Field                 | Source                                                                                                                                        |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| `setup_version`       | Matches the skill version (see front-matter)                                                                                                  |
+| `setup_timestamp`     | Current timestamp in ISO 8601 (`date -u +%Y-%m-%dT%H:%M:%S`)                                                                                  |
+| `language`            | Step 3                                                                                                                                        |
+| `container_name`      | Step 4 (`null` if no Docker)                                                                                                                  |
+| `tokensave_available` | Step 5                                                                                                                                        |
+| `acronyms`            | Step 7 (`[]` if none)                                                                                                                         |
+| `python`              | Steps 6 + 7 + 8 (Python only; `null` otherwise)                                                                                               |
+| `php`                 | Steps 11 + 12 (PHP only; `null` otherwise)                                                                                                    |
+| `subcommands`         | Object with one key per subcommand, each containing `model` (default `null` = harness default). See `../../docs/reference/settings-schema.md` |
+| `documentation`       | Steps 9 + 10                                                                                                                                  |
+| `runs_dir`            | `".zolletta-metaskill"`                                                                                                                       |
 
-For the full JSON shape of each subobject, see [`../../docs/reference/settings-schema.md`](../../docs/reference/settings-schema.md). Use the `write` tool. JSON must be valid, pretty-printed (2-space indent).
+For the full JSON shape of each subobject, see `../../docs/reference/settings-schema.md`. Use the `write` tool. JSON must be valid, pretty-printed (2-space indent).
 
 ### Step 16 — Print "not installed" and "unconfigured" messages
 
@@ -235,6 +236,14 @@ Print the following, replacing the path with the absolute path to the project's 
 ```text
 Zolletta-metaskill setup complete. You can view the configuration by looking at <ref_file file="<project_root>/.zolletta-metaskill/settings.json" />
 ```
+
+## Safety
+
+- This is the only skill that writes outside the project cache: it creates `.zolletta-metaskill/` and `settings.json` in the project root and appends `.zolletta-metaskill/` to the user's global `~/.gitignore`. It never touches the project's local `.gitignore`.
+- Detector scripts (`language_detector.py`, `pyproject_sections_detector.py`, `python_paths_detector.py`, `doc_config_detector.py`, `adr_detector.py`, `php_tools_detector.py`, `companion_skill_detector.py`) are read-only — they print JSON.
+- `global_gitignore_ensurer.py` is the single exception: it edits `~/.gitignore` idempotently; do not run it against a local `.gitignore`.
+- Re-running setup **overwrites** `settings.json` — user-customized values are preserved by the additive merge, but anything not covered by the schema is lost. Confirm before re-running on a project with hand-edited settings.
+- Never install detected-missing tools — setup only reports "not installed"/"unconfigured" messages.
 
 ## Re-running setup
 

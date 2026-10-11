@@ -2,7 +2,7 @@
 name: zolletta-metaskill-patterns
 license: MIT + Commons Clause
 description: >
-  Language-agnostic design pattern analysis with automated class metrics scanning. Detects God classes, SOLID violations, tight coupling, and composition-vs-inheritance issues in Python (via AST scripts) and other languages (via manual principle application). Use when refactoring a God class, evaluating structural quality, or planning a modular architecture. Succeeds and extends python-design-patterns (MIT, wshobson/agents).
+  Analyzes class structure for God classes, SOLID violations, and coupling problems via AST metrics and manual principles. Use when evaluating structural quality or planning refactoring. Do not use for style or test review.
 allowed-tools:
   - read
   - grep
@@ -23,8 +23,7 @@ Identify structural problems in object-oriented codebases using a two-phase appr
 
 The principles are language-agnostic (KISS, SOLID, Separation of Concerns, Composition over Inheritance, Rule of Three). The automated scripts currently support Python via its `ast` module. For PHP and other languages, apply the principles manually by reading the code — the scripts are a triage accelerator, not a requirement.
 
-> **Execution protocol**: when running a review, follow [`../../docs/reference/code/scripts-first-protocol.md`](../../docs/reference/code/scripts-first-protocol.md) — batch-run the 9 scanning scripts (class_metrics, test_god_classes, one_class_per_file, test_structure, dependency_inversion, interface_segregation, open_closed, liskov_substitution, integration_graph), persist their output to `cache/`, assemble deterministic report sections (scanner tables copied verbatim from cache) from cached output, then run only the judgment pass items ("reason to change" test on top-N class_metrics candidates, DIP composition-root suppression, "Missing tests" coverage cross-check, coupling assessment on `cache/integration_graph.json` edges). Write your report to `reports/patterns.md`. Do not re-read source files the scanners already parsed.
-
+> **Execution protocol**: when running a review, follow `../../docs/reference/code/scripts-first-protocol.md` — batch-run the 9 scanning scripts (class_metrics, test_god_classes, one_class_per_file, test_structure, dependency_inversion, interface_segregation, open_closed, liskov_substitution, integration_graph), persist their output to `cache/`, assemble deterministic report sections (scanner tables copied verbatim from cache) from cached output, then run only the judgment pass items ("reason to change" test on top-N class_metrics candidates, DIP composition-root suppression, "Missing tests" coverage cross-check, coupling assessment on `cache/integration_graph.json` edges). Write your report to `reports/patterns.md`. Do not re-read source files the scanners already parsed.
 
 ## When to Use This Skill
 
@@ -40,17 +39,17 @@ The principles are language-agnostic (KISS, SOLID, Separation of Concerns, Compo
 
 This skill is organized into a lean entry point (this file) plus shared reference files in `../../docs/`. Some are **mandatory reading** (marked with ★) — you must read them before starting any review. Others are optional and can be read on demand.
 
-| File                                                                                      | Mandatory | Content                                                                                                                                                                                                                                                                                                                         |
-|-------------------------------------------------------------------------------------------|-----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [general-principles.md](../../docs/explanation/code/general-principles.md)                | ★         | Language-agnostic principles: SOLID (SRP, OCP, LSP, ISP, DIP), KISS, Separation of Concerns, Composition over Inheritance, Rule of Three, function size, dependency injection, God class detection procedure, "What is NOT a God class" criteria, common anti-patterns, and manual checks for non-Python languages — **shared** |
-| [python-review-patterns.md](../../docs/explanation/code/python/python-review-patterns.md) | ★         | Python-specific patterns: strategy pattern with autodiscovery, Protocol vs ABC guidance — **shared**                                                                                                                                                                                                                            |
-| [structural-conventions.md](../../docs/explanation/code/structural-conventions.md)        | ★         | One-class-per-file convention, naming conventions, test structure mirroring, test God class splitting — **shared**                                                                                                                                                                                                              |
-| [balanced-coupling.md](../../docs/explanation/code/balanced-coupling.md)                  | ★         | Balanced Coupling model (Khononov): integration strength / distance / volatility, the balance rule, verdict discipline — drives the mandatory coupling assessment — **shared**                                                                                                                                                  |                                                                                                                                                                                                              |
-| [scripts.md](../../docs/reference/code/scripts.md)                                        | ★         | Full reference for all 10 scripts: usage, options, examples, and the complete 14-step workflow — **shared**                                                                                                                                                                                                                     |
-| [code-exploration.md](../../docs/reference/code/code-exploration.md)                      | on demand | Code graph tools (tokensave) decision tree, subagent guidance, and task templates — **shared**                                                                                                                                                                                                                                  |
-| [tool-messages.md](../../docs/reference/tool-messages.md)                                 | on demand | "not installed" messages for the tool-failure handler — **shared**                                                                                                                                                                                                                                                              |
+| File                                                             | Mandatory   | Content                                                                                                                                                                                                                                                                                                                           |
+|------------------------------------------------------------------|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `../../docs/explanation/code/general-principles.md`              | ★           | Language-agnostic principles: SOLID (SRP, OCP, LSP, ISP, DIP), KISS, Separation of Concerns, Composition over Inheritance, Rule of Three, function size, dependency injection, God class detection procedure, "What is NOT a God class" criteria, common anti-patterns, and manual checks for non-Python languages — **shared**   |
+| `../../docs/explanation/code/python/python-review-patterns.md`   | ★           | Python-specific patterns: strategy pattern with autodiscovery, Protocol vs ABC guidance — **shared**                                                                                                                                                                                                                              |
+| `../../docs/explanation/code/structural-conventions.md`          | ★           | One-class-per-file convention, naming conventions, test structure mirroring, test God class splitting — **shared**                                                                                                                                                                                                                |
+| `../../docs/explanation/code/balanced-coupling.md`               | ★           | Balanced Coupling model (Khononov): integration strength / distance / volatility, the balance rule, verdict discipline — drives the mandatory coupling assessment — **shared**                                                                                                                                                    |
+| `../../docs/reference/code/scripts.md`                           | ★           | Full reference for all 10 scripts: usage, options, examples, and the complete 14-step workflow — **shared**                                                                                                                                                                                                                       |
+| `../../docs/reference/code/code-exploration.md`                  | on demand   | Code graph tools (tokensave) decision tree, subagent guidance, and task templates — **shared**                                                                                                                                                                                                                                    |
+| `../../docs/reference/tool-messages.md`                          | on demand   | "not installed" messages for the tool-failure handler — **shared**                                                                                                                                                                                                                                                                |
 
-**Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the [tool-failure handler](../../SKILL.md#tool-failure-handler) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
+**Tool-failure handler**: if a tokensave MCP call fails with tool-not-found / server-not-found, follow the tool-failure handler (`../../SKILL.md#tool-failure-handler`) in the meta-skill — update `settings.json`, print the "not installed" message, and continue with grep/read fallback.
 
 ## Mandatory Procedure (Python)
 
@@ -64,6 +63,13 @@ For every class in the `class_metrics_scanner.py` top-15 output, you MUST apply 
 2. Group the changes by domain (HTTP/API, business logic, data access, configuration, presentation, I/O).
 3. If the list has items from **different domains**, report it as a God class.
 4. If all changes stem from the **same domain**, the class is cohesive. Explicitly state "cohesive — not a God class" in the report and do NOT report it as a finding.
+
+Example `class_metrics_scanner.py` triage output (signal, not verdict):
+
+```text
+src/payments/engine.py::PaymentEngine — 42 methods, 18 attributes → apply "reason to change" test
+src/feed/parser.py::FeedParser        — 14 methods, 3 attributes  → single domain: suppress
+```
 
 **Classes that must be suppressed** (from `general-principles.md` "What is NOT a God class"):
 
@@ -104,8 +110,8 @@ The `dependency_inversion_scanner.py` scanner excludes entry points by filename 
 When this skill runs a review, it writes its findings to a markdown file using the [report template](assets/report_template.md):
 
 - **Path**: `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/patterns.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`; `runs_dir` from `settings.json`, default `.zolletta-metaskill`)
-- **Compound skills** (e.g. `zolletta-metaskill-review`) may override the folder and filename — follow their instructions instead
-- **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the [setup guard](../../SKILL.md#setup-guard) — no manual setup needed
+- **Compound skills** (e.g. `zolletta-metaskill-review`) may override the directory and filename — follow their instructions instead
+- **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the setup guard (`../../SKILL.md#setup-guard`) — no manual setup needed
 - **Format**: follow the [report template](assets/report_template.md) — grade at the top, scanning script results, findings grouped by severity with file/class/issue/principle/fix columns
 
 ## Best Practices Summary
