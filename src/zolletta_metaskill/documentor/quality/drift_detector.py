@@ -294,22 +294,22 @@ class DriftDetector:
         else:
             doc_modified_utc = doc_modified.astimezone(UTC)
         days_since = (now - doc_modified_utc).days
-        if days_since > 180:
+        if days_since > 365:
             return [
                 {
                     "file": doc_path,
-                    "severity": "medium",
+                    "severity": "high",
                     "category": "temporal",
                     "description": f"Documentation not updated in {days_since} days",
                     "fix_type": "manual",
                     "details": {"days_since_update": days_since, "last_updated": since_date},
                 }
             ]
-        if days_since > 365:  # pragma: no cover
+        if days_since > 180:
             return [
                 {
                     "file": doc_path,
-                    "severity": "high",
+                    "severity": "medium",
                     "category": "temporal",
                     "description": f"Documentation not updated in {days_since} days",
                     "fix_type": "manual",

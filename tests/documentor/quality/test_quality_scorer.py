@@ -307,9 +307,45 @@ class TestQualityScorer:
         weights = QualityScorer._resolve_weights(settings)
         assert weights["last_updated"] == QualityScorer.DEFAULT_WEIGHTS["last_updated"]
 
+    def test_resolve_weights_zero_total_returns_unnormalized(self) -> None:
+        """All-zero weights are returned un-normalized because there is nothing to divide by."""
+        settings = {
+            "documentation": {
+                "staleness_weights": {
+                    "last_updated": 0,
+                    "code_doc_alignment": 0,
+                    "link_health": 0,
+                    "completeness": 0,
+                    "accuracy": 0,
+                }
+            }
+        }
+        weights = QualityScorer._resolve_weights(settings)
+        assert sum(weights.values()) == 0.0
+
     def test_resolve_required_sections_defaults(self) -> None:
         assert QualityScorer._resolve_required_sections({}) == QualityScorer.DEFAULT_README_SECTIONS
 
     def test_resolve_required_sections_setting(self) -> None:
         settings = {"documentation": {"readme_sections": ["Foo", "Bar"]}}
         assert QualityScorer._resolve_required_sections(settings) == ["Foo", "Bar"]
+
+    def test_resolve_required_sections_from_translations_file(self, tmp_path: Path) -> None:
+        """Translated readme sections are loaded from the configured translations file."""
+        trans_file = tmp_path / "translations.json"
+        trans_file.write_text(
+            '{"readme_sections": [" installazione ", "uso"], "quadrants": {}}', encoding="utf-8"
+        )
+        settings = {"documentation": {"diataxis_translations": str(trans_file)}}
+        assert QualityScorer._resolve_required_sections(settings) == ["installazione", "uso"]
+
+    def test_resolve_required_sections_translations_without_readme_sections(
+        self, tmp_path: Path
+    ) -> None:
+        """A translations file without readme_sections falls back to the defaults."""
+        trans_file = tmp_path / "translations.json"
+        trans_file.write_text('{"quadrants": {}}', encoding="utf-8")
+        settings = {"documentation": {"diataxis_translations": str(trans_file)}}
+        assert QualityScorer._resolve_required_sections(settings) == (
+            QualityScorer.DEFAULT_README_SECTIONS
+        )

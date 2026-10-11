@@ -71,6 +71,17 @@ class TestGitHelper:
             assert {"status": "M", "file": "src/a.py"} in changes
             assert {"status": "A", "file": "docs/b.md"} in changes
 
+    def test_get_files_changed_since_with_scope_passes_pathspec(self, tmp_path: Path) -> None:
+        with patch.object(GitHelper, "run_git", return_value="M\tsrc/a.py\n") as mock_run:
+            GitHelper.get_files_changed_since(str(tmp_path), "2024-01-01", scope="src")
+            args = mock_run.call_args.args[1]
+            assert args[-2:] == ["--", "src"]
+
+    def test_get_files_changed_since_skips_blank_lines(self, tmp_path: Path) -> None:
+        with patch.object(GitHelper, "run_git", return_value="\n\nM\tsrc/a.py\n\n"):
+            changes = GitHelper.get_files_changed_since(str(tmp_path), "2024-01-01")
+            assert changes == [{"status": "M", "file": "src/a.py"}]
+
     def test_get_files_changed_since_empty_returns_empty(self, tmp_path: Path) -> None:
         with patch.object(GitHelper, "run_git", return_value=""):
             assert GitHelper.get_files_changed_since(str(tmp_path), "2024-01-01") == []
@@ -81,6 +92,11 @@ class TestGitHelper:
         with patch.object(GitHelper, "run_git", return_value="R100\told.py\tnew.py\n"):
             renames = GitHelper.get_renamed_files(str(tmp_path), "2024-01-01")
             assert ("old.py", "new.py") in renames
+
+    def test_get_renamed_files_skips_blank_lines(self, tmp_path: Path) -> None:
+        with patch.object(GitHelper, "run_git", return_value="\n\nR100\told.py\tnew.py\n\n"):
+            renames = GitHelper.get_renamed_files(str(tmp_path), "2024-01-01")
+            assert renames == [("old.py", "new.py")]
 
     def test_get_renamed_files_empty_returns_empty(self, tmp_path: Path) -> None:
         with patch.object(GitHelper, "run_git", return_value=""):

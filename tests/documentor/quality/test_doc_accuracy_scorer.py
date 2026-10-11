@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
@@ -88,6 +89,21 @@ class TestDocAccuracyScorer:
         with patch.object(DocAccuracyScorer, "get_latest_tag", return_value="1.2.3"):
             score, details = DocAccuracyScorer.score_accuracy(str(tmp_path), "doc.md")
             assert score == 100.0
+
+    # --- get_latest_tag ---
+
+    def test_get_latest_tag_returns_none_on_success_no_tag(self, tmp_path: Path) -> None:
+        """A successful git call without tags yields None instead of an empty string."""
+        with patch.object(subprocess, "run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="   \n", stderr=""
+            )
+            assert DocAccuracyScorer.get_latest_tag(str(tmp_path)) is None
+
+    def test_get_latest_tag_oserror_returns_none(self, tmp_path: Path) -> None:
+        """A subprocess failure is swallowed and reported as no tag."""
+        with patch.object(subprocess, "run", side_effect=OSError("no git")):
+            assert DocAccuracyScorer.get_latest_tag(str(tmp_path)) is None
 
     # --- _extract_version_from_manifest ---
 

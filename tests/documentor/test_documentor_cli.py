@@ -49,7 +49,7 @@ class TestDocumentorCLI:
             patch.object(
                 QualityReview,
                 "run",
-                side_effect=lambda repo, s, cd: fake_run(cd, quality_payload),
+                side_effect=lambda _repo, _s, cd: fake_run(cd, quality_payload),
             ),
             patch.object(APIDocValidator, "run", return_value=None),
             patch.object(APIDocValidator, "_write_cache", return_value=None),
@@ -60,6 +60,63 @@ class TestDocumentorCLI:
                 return_value=python_configured,
             ),
         )
+
+    # --- _python_configured ---
+
+    def _layout(self, tmp_path: Path, *, src: bool, docs: bool) -> Path:
+        """Create the requested subset of ``src``/``docs`` and chdir into tmp_path."""
+        if src:
+            (tmp_path / "src").mkdir()
+            (tmp_path / "src" / "mod.py").write_text("def foo(): pass\n")
+        if docs:
+            (tmp_path / "docs").mkdir()
+        return tmp_path
+
+    def test_python_configured_true_when_src_and_docs_exist(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Both an existing source root and an existing docs dir enable the Python run."""
+        self._layout(tmp_path, src=True, docs=True)
+        monkeypatch.chdir(tmp_path)
+        settings = {"language": "python", "documentation": {"dir": "docs"}}
+        assert DocumentorCLI._python_configured(settings) is True
+
+    def test_python_configured_false_when_source_root_missing(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """A configured source root that does not exist disables the Python run."""
+        self._layout(tmp_path, src=False, docs=True)
+        monkeypatch.chdir(tmp_path)
+        settings = {"language": "python", "documentation": {"dir": "docs"}}
+        assert DocumentorCLI._python_configured(settings) is False
+
+    def test_python_configured_false_when_docs_dir_missing(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """A missing docs dir disables the Python run even with a valid source root."""
+        self._layout(tmp_path, src=True, docs=False)
+        monkeypatch.chdir(tmp_path)
+        settings = {"language": "python", "documentation": {"dir": "docs"}}
+        assert DocumentorCLI._python_configured(settings) is False
+
+    def test_python_configured_false_for_non_python_language(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """A language without Python source roots yields no roots for ``.py``."""
+        self._layout(tmp_path, src=True, docs=True)
+        monkeypatch.chdir(tmp_path)
+        settings = {"language": "php", "documentation": {"dir": "docs"}}
+        assert DocumentorCLI._python_configured(settings) is False
+
+    def test_python_configured_uses_custom_docs_dir(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """``documentation.dir`` is honoured rather than the ``docs`` default."""
+        self._layout(tmp_path, src=True, docs=True)
+        (tmp_path / "guide").mkdir()
+        monkeypatch.chdir(tmp_path)
+        settings = {"language": "python", "documentation": {"dir": "guide"}}
+        assert DocumentorCLI._python_configured(settings) is True
 
     # --- main ---
 

@@ -89,6 +89,33 @@ class TestFileDiscovery:
         files = FileDiscovery.find_doc_files(str(tmp_path), patterns=["*.rst"])
         assert files == ["guide.rst"]
 
+    def test_find_doc_files_explicit_extensions(self, tmp_path: Path) -> None:
+        (tmp_path / "README.md").write_text("# Test")
+        (tmp_path / "guide.rst").write_text("Test")
+        files = FileDiscovery.find_doc_files(str(tmp_path), extensions={".rst"})
+        assert files == ["guide.rst"]
+
+    def test_find_doc_files_extra_skip_dirs(self, tmp_path: Path) -> None:
+        (tmp_path / "README.md").write_text("# Test")
+        (tmp_path / "guide.rst").write_text("Test")
+        files = FileDiscovery.find_doc_files(str(tmp_path), skip_dirs={"guide.rst"})
+        assert files == ["README.md"]
+
+    # --- _extensions_from_patterns ---
+
+    def test_extensions_from_patterns_dot_prefixed_entry(self) -> None:
+        assert FileDiscovery._extensions_from_patterns([".adoc"]) == {".adoc"}
+
+    def test_extensions_from_patterns_bare_name_gets_dot(self) -> None:
+        assert FileDiscovery._extensions_from_patterns(["md"]) == {".md"}
+
+    def test_find_doc_files_dot_prefixed_and_bare_patterns(self, tmp_path: Path) -> None:
+        (tmp_path / "README.md").write_text("# Test")
+        (tmp_path / "notes.rst").write_text("Test")
+        (tmp_path / "plain.txt").write_text("Test")
+        files = FileDiscovery.find_doc_files(str(tmp_path), patterns=[".md", "txt"])
+        assert files == ["README.md", "plain.txt"]
+
     # --- find_code_files ---
 
     def test_find_code_files_finds_python(self, tmp_path: Path) -> None:
@@ -109,3 +136,13 @@ class TestFileDiscovery:
 
     def test_find_code_files_nonexistent_scope_returns_empty(self, tmp_path: Path) -> None:
         assert FileDiscovery.find_code_files(str(tmp_path), scope="nope") == []
+
+    def test_find_code_files_extra_skip_dirs(self, tmp_path: Path) -> None:
+        keep = tmp_path / "keep.py"
+        keep.write_text("x = 1")
+        skipdir = tmp_path / "skipme"
+        skipdir.mkdir()
+        (skipdir / "dropped.py").write_text("y = 2")
+        files = FileDiscovery.find_code_files(str(tmp_path), skip_dirs={"skipme"})
+        assert "keep.py" in files
+        assert not any("dropped.py" in f for f in files)

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from zolletta_metaskill.documentor.structs.source_signature import SourceSignature
 
 
@@ -28,6 +30,26 @@ class TestSourceSignature:
         assert not sig.is_private
         assert sig.parent_class is None
         assert sig.qualified_name == "foo"
+        assert not sig.is_deprecated
+
+    def test_none_decorators_becomes_empty_list(self) -> None:
+        """__post_init__ replaces an explicitly passed None decorators with an empty list.
+
+        The kwargs go through a ``dict[str, Any]`` because passing ``None`` for a
+        ``list[str]`` field is exactly what an untyped caller does at runtime, and
+        the guard exists for that case. Going via the dict keeps the test honest
+        without a type-checker suppression.
+        """
+        kwargs: dict[str, Any] = {
+            "name": "foo",
+            "kind": "function",
+            "file_path": "foo.py",
+            "line_number": 10,
+            "parameters": [],
+            "decorators": None,
+        }
+        sig = SourceSignature(**kwargs)
+        assert sig.decorators == []
         assert not sig.is_deprecated
 
     def test_qualified_name_with_parent_class(self) -> None:

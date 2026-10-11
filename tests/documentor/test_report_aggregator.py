@@ -75,6 +75,33 @@ class TestReportAggregator:
         (cache_dir / "quality.json").write_text("not json")
         assert ReportAggregator.read_quality_cache(cache_dir)["missing"] is True
 
+    def test_read_api_doc_cache_invalid_json_returns_missing(self, tmp_path: Path) -> None:
+        """An unparsable api doc cache degrades to a missing record."""
+        cache_dir = tmp_path / "cache"
+        cache_dir.mkdir(parents=True)
+        (cache_dir / "api_doc_validator.json").write_text("{not json")
+        record = ReportAggregator.read_api_doc_cache(cache_dir)
+        assert record["missing"] is True and record["name"] == "api_doc"
+
+    def test_read_link_cache_invalid_json_returns_missing(self, tmp_path: Path) -> None:
+        """An unparsable link cache degrades to a missing record."""
+        cache_dir = tmp_path / "cache"
+        cache_dir.mkdir(parents=True)
+        (cache_dir / "link_checker.json").write_text("][")
+        record = ReportAggregator.read_link_cache(cache_dir)
+        assert record["missing"] is True and record["name"] == "links"
+
+    def test_read_caches_unreadable_files_return_missing(self, tmp_path: Path) -> None:
+        """Unreadable cache files are reported as missing rather than raising."""
+        cache_dir = tmp_path / "cache"
+        cache_dir.mkdir(parents=True)
+        (cache_dir / "quality.json").mkdir()
+        (cache_dir / "api_doc_validator.json").mkdir()
+        (cache_dir / "link_checker.json").mkdir()
+        assert ReportAggregator.read_quality_cache(cache_dir)["missing"] is True
+        assert ReportAggregator.read_api_doc_cache(cache_dir)["missing"] is True
+        assert ReportAggregator.read_link_cache(cache_dir)["missing"] is True
+
     def test_read_caches_valid_files_return_data(self, tmp_path: Path) -> None:
         cache_dir = tmp_path / "cache"
         self._full_caches(cache_dir)

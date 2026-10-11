@@ -929,3 +929,21 @@ class TestAPIDocValidator:
         out = capsys.readouterr().out
         assert rc == 0
         assert "phantom" in out
+
+    # --- _parse_inline_param_list ---
+
+    def test_parse_inline_param_list_empty_string_returns_empty(self) -> None:
+        """An empty parameter string yields no parameters."""
+        assert APIDocValidator._parse_inline_param_list("") == []
+
+    def test_parse_inline_param_list_skips_non_identifier_entries(self) -> None:
+        """Entries that are not valid identifiers after stripping ``*`` are dropped."""
+        params = APIDocValidator._parse_inline_param_list("a, *, 2bad, b=1, ...")
+        assert [p["name"] for p in params] == ["a", "b"]
+
+    def test_extract_documented_items_inline_zero_arg_function(self, tmp_path: Path) -> None:
+        """A zero-argument inline reference is recorded with an empty parameter list."""
+        p = tmp_path / "api.md"
+        p.write_text("Call `noop()` first.\n")
+        items = APIDocValidator.extract_documented_items(str(p))
+        assert items["noop"]["parameters"] == []
