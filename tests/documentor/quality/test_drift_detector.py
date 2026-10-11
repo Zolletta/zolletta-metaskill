@@ -4,12 +4,48 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 from zolletta_metaskill.documentor.quality.drift_detector import DriftDetector
+from zolletta_metaskill.documentor.quality.structs import DocContext, GitRunContext
+from zolletta_metaskill.documentor.utils.documentor_settings import DocumentorSettings
 
 
 class TestDriftDetector:
+    # --- Context builders (DriftDetector takes resolved contexts, not loose args). ---
+
+    @staticmethod
+    def _settings(include_referential: bool = False) -> DocumentorSettings:
+        return DocumentorSettings.from_settings(
+            {
+                "runs_dir": ".zolletta-metaskill",
+                "documentation": {"include_referential": include_referential},
+            }
+        )
+
+    @staticmethod
+    def _git_ctx(
+        repo_root: str,
+        renames: tuple[tuple[str, str], ...] = (),
+        current_version: str | None = None,
+    ) -> GitRunContext:
+        return GitRunContext(repo_root=repo_root, renames=renames, current_version=current_version)
+
+    @staticmethod
+    def _doc_ctx(
+        file_rel_path: str,
+        refs: dict[str, Any] | None = None,
+        since_date: str = "2026-01-01",
+        associated_code_dirs: tuple[str, ...] = (),
+    ) -> DocContext:
+        return DocContext(
+            file_rel_path=file_rel_path,
+            refs=refs or {},
+            since_date=since_date,
+            associated_code_dirs=associated_code_dirs,
+        )
+
     # --- detect_drift_for_doc ---
 
     def test_no_git_history(self, tmp_path: Path) -> None:
@@ -18,7 +54,12 @@ class TestDriftDetector:
             "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_file_last_commit_date",
             return_value=None,
         ):
-            issues = DriftDetector.detect_drift_for_doc(str(tmp_path), "README.md", [], [], None)
+            issues = DriftDetector.detect_drift_for_doc(
+                self._git_ctx(str(tmp_path), (), None),
+                self._settings(),
+                "README.md",
+                [],
+            )
         assert len(issues) == 1
         assert issues[0]["category"] == "temporal"
         assert issues[0]["severity"] == "info"
@@ -37,7 +78,12 @@ class TestDriftDetector:
             ) as mock_changed,
         ):
             mock_changed.return_value = [{"status": "M", "file": "auth.py"}]
-            issues = DriftDetector.detect_drift_for_doc(str(tmp_path), "README.md", [], [], None)
+            issues = DriftDetector.detect_drift_for_doc(
+                self._git_ctx(str(tmp_path), (), None),
+                self._settings(),
+                "README.md",
+                [],
+            )
         factual = [i for i in issues if i["category"] == "factual"]
         assert len(factual) == 1
         assert factual[0]["severity"] == "low"
@@ -59,7 +105,12 @@ class TestDriftDetector:
             ) as mock_changed,
         ):
             mock_changed.return_value = [{"status": "M", "file": "mod0.py"}]
-            issues = DriftDetector.detect_drift_for_doc(str(tmp_path), "README.md", [], [], None)
+            issues = DriftDetector.detect_drift_for_doc(
+                self._git_ctx(str(tmp_path), (), None),
+                self._settings(),
+                "README.md",
+                [],
+            )
         factual = [i for i in issues if i["category"] == "factual"]
         assert len(factual) == 1
         assert factual[0]["severity"] == "high"
@@ -77,7 +128,12 @@ class TestDriftDetector:
                 return_value=[],
             ),
         ):
-            issues = DriftDetector.detect_drift_for_doc(str(tmp_path), "README.md", [], [], None)
+            issues = DriftDetector.detect_drift_for_doc(
+                self._git_ctx(str(tmp_path), (), None),
+                self._settings(),
+                "README.md",
+                [],
+            )
         temporal = [
             i for i in issues if i["category"] == "temporal" and "not updated" in i["description"]
         ]
@@ -97,7 +153,12 @@ class TestDriftDetector:
                 return_value=[],
             ),
         ):
-            issues = DriftDetector.detect_drift_for_doc(str(tmp_path), "README.md", [], [], "2.0.0")
+            issues = DriftDetector.detect_drift_for_doc(
+                self._git_ctx(str(tmp_path), (), "2.0.0"),
+                self._settings(),
+                "README.md",
+                [],
+            )
         version_issues = [i for i in issues if "version" in i["description"].lower()]
         assert len(version_issues) == 1
 
@@ -116,7 +177,10 @@ class TestDriftDetector:
             ),
         ):
             issues = DriftDetector.detect_drift_for_doc(
-                str(tmp_path), "README.md", [], [("old.py", "new.py")], None
+                self._git_ctx(str(tmp_path), (("old.py", "new.py"),), None),
+                self._settings(include_referential=True),
+                "README.md",
+                [],
             )
         ref_issues = [i for i in issues if i["category"] == "referential"]
         assert len(ref_issues) == 1
@@ -135,7 +199,12 @@ class TestDriftDetector:
                 return_value=[],
             ),
         ):
-            issues = DriftDetector.detect_drift_for_doc(str(tmp_path), "README.md", [], [], None)
+            issues = DriftDetector.detect_drift_for_doc(
+                self._git_ctx(str(tmp_path), (), None),
+                self._settings(),
+                "README.md",
+                [],
+            )
         structural = [i for i in issues if i["category"] == "structural"]
         assert len(structural) > 0
 
@@ -152,7 +221,12 @@ class TestDriftDetector:
                 return_value=[],
             ),
         ):
-            issues = DriftDetector.detect_drift_for_doc(str(tmp_path), "README.md", [], [], None)
+            issues = DriftDetector.detect_drift_for_doc(
+                self._git_ctx(str(tmp_path), (), None),
+                self._settings(),
+                "README.md",
+                [],
+            )
         temporal = [
             i for i in issues if i["category"] == "temporal" and "not updated" in i["description"]
         ]
@@ -165,7 +239,9 @@ class TestDriftDetector:
         (tmp_path / "mod.py").write_text("x = 1", encoding="utf-8")
         (tmp_path / "guide.md").write_text("notes", encoding="utf-8")
         refs = {"files": ["guide.md", "mod.py"]}
-        resolved = DriftDetector._resolve_referenced_files(str(tmp_path), "", refs)
+        resolved = DriftDetector._resolve_referenced_files(
+            self._git_ctx(str(tmp_path)), self._doc_ctx("README.md", refs)
+        )
         assert resolved == ["mod.py"]
 
     def test_resolve_referenced_files_falls_back_to_repo_root(self, tmp_path: Path) -> None:
@@ -174,7 +250,9 @@ class TestDriftDetector:
         docs.mkdir()
         (tmp_path / "mod.py").write_text("x = 1", encoding="utf-8")
         refs = {"files": ["mod.py"]}
-        resolved = DriftDetector._resolve_referenced_files(str(tmp_path), "docs", refs)
+        resolved = DriftDetector._resolve_referenced_files(
+            self._git_ctx(str(tmp_path)), self._doc_ctx("docs/doc.md", refs)
+        )
         assert resolved == ["mod.py"]
 
     # --- _check_factual_drift severity tiers ---
@@ -197,7 +275,12 @@ class TestDriftDetector:
                 return_value=[{"status": "M", "file": "mod0.py"}],
             ),
         ):
-            issues = DriftDetector.detect_drift_for_doc(str(tmp_path), "README.md", [], [], None)
+            issues = DriftDetector.detect_drift_for_doc(
+                self._git_ctx(str(tmp_path), (), None),
+                self._settings(),
+                "README.md",
+                [],
+            )
         factual = [i for i in issues if i["category"] == "factual"]
         assert len(factual) == 1
         assert factual[0]["severity"] == "medium"
@@ -221,7 +304,10 @@ class TestDriftDetector:
             ),
         ):
             issues = DriftDetector.detect_drift_for_doc(
-                str(tmp_path), "README.md", ["src"], [], None
+                self._git_ctx(str(tmp_path), (), None),
+                self._settings(),
+                "README.md",
+                ["src"],
             )
         factual = [i for i in issues if i["category"] == "factual"]
         assert len(factual) == 1
@@ -246,12 +332,10 @@ class TestDriftDetector:
             ),
         ):
             issues = DriftDetector.detect_drift_for_doc(
-                str(tmp_path),
+                self._git_ctx(str(tmp_path), (("old.py", "new.py"),), None),
+                self._settings(include_referential=True),
                 "README.md",
                 [],
-                [("old.py", "new.py")],
-                None,
-                include_referential=True,
             )
         ref_issues = [i for i in issues if i["category"] == "referential"]
         assert len(ref_issues) == 2
@@ -275,7 +359,10 @@ class TestDriftDetector:
             ),
         ):
             issues = DriftDetector.detect_drift_for_doc(
-                str(tmp_path), "README.md", [], [], None, include_referential=True
+                self._git_ctx(str(tmp_path), (), None),
+                self._settings(include_referential=True),
+                "README.md",
+                [],
             )
         broken = [i for i in issues if "non-existent" in i["description"]]
         assert len(broken) == 1
@@ -286,7 +373,8 @@ class TestDriftDetector:
         """An existing reference produces no broken-ref issue."""
         (tmp_path / "here.md").write_text("notes", encoding="utf-8")
         issues = DriftDetector._check_broken_refs(
-            str(tmp_path), "README.md", "", {"files": ["here.md"]}
+            self._git_ctx(str(tmp_path)),
+            self._doc_ctx("README.md", {"files": ["here.md"]}),
         )
         assert issues == []
 
@@ -296,7 +384,8 @@ class TestDriftDetector:
         docs.mkdir()
         (tmp_path / "top.md").write_text("notes", encoding="utf-8")
         issues = DriftDetector._check_broken_refs(
-            str(tmp_path), "docs/README.md", "docs", {"files": ["top.md"]}
+            self._git_ctx(str(tmp_path)),
+            self._doc_ctx("docs/doc.md", {"files": ["top.md"]}),
         )
         assert issues == []
 
@@ -304,7 +393,9 @@ class TestDriftDetector:
 
     def test_check_readme_structure_missing_sections_contains_license(self, tmp_path: Path) -> None:
         (tmp_path / "README.md").write_text("# Project\n\nSome text.", encoding="utf-8")
-        issues = DriftDetector.check_readme_structure(str(tmp_path), "README.md")
+        issues = DriftDetector.check_readme_structure(
+            self._git_ctx(str(tmp_path)), self._doc_ctx("README.md")
+        )
         sections = {i["description"].split(": ")[-1] for i in issues}
         assert "Installation" in sections
         assert "Usage" in sections
@@ -314,7 +405,9 @@ class TestDriftDetector:
         (tmp_path / "README.md").write_text(
             "# Project\n## Installation\n## Usage\n## License\n", encoding="utf-8"
         )
-        issues = DriftDetector.check_readme_structure(str(tmp_path), "README.md")
+        issues = DriftDetector.check_readme_structure(
+            self._git_ctx(str(tmp_path)), self._doc_ctx("README.md")
+        )
         assert len(issues) == 0
 
     def test_check_readme_structure_partial_match_returns_0(self, tmp_path: Path) -> None:
@@ -322,14 +415,18 @@ class TestDriftDetector:
             "# Project\n## Installation Guide\n## Usage Guide\n## License Info\n",
             encoding="utf-8",
         )
-        issues = DriftDetector.check_readme_structure(str(tmp_path), "README.md")
+        issues = DriftDetector.check_readme_structure(
+            self._git_ctx(str(tmp_path)), self._doc_ctx("README.md")
+        )
         assert len(issues) == 0
 
     def test_check_readme_structure_unreadable_file_returns_empty_list(
         self, tmp_path: Path
     ) -> None:
         with patch("builtins.open", side_effect=OSError("boom")):
-            issues = DriftDetector.check_readme_structure(str(tmp_path), "README.md")
+            issues = DriftDetector.check_readme_structure(
+                self._git_ctx(str(tmp_path)), self._doc_ctx("README.md")
+            )
         assert issues == []
 
     # --- _check_temporal_drift severity tiers ---
@@ -337,38 +434,56 @@ class TestDriftDetector:
     def test_temporal_drift_recent_doc_returns_no_issues(self) -> None:
         """A doc touched within the 180-day window raises no temporal issue."""
         recent = datetime.now(UTC) - timedelta(days=10)
-        assert DriftDetector._check_temporal_drift("README.md", recent, "2026-01-01") == []
+        assert (
+            DriftDetector._check_temporal_drift(
+                self._doc_ctx("README.md", since_date="2026-01-01"), recent
+            )
+            == []
+        )
 
     def test_temporal_drift_exactly_180_days_returns_no_issues(self) -> None:
         """The 180-day boundary is exclusive: exactly 180 days is not stale."""
         boundary = datetime.now(UTC) - timedelta(days=180)
-        assert DriftDetector._check_temporal_drift("README.md", boundary, "2026-01-01") == []
+        assert (
+            DriftDetector._check_temporal_drift(
+                self._doc_ctx("README.md", since_date="2026-01-01"), boundary
+            )
+            == []
+        )
 
     def test_temporal_drift_just_past_180_days_returns_medium(self) -> None:
         """181 days stale is medium severity."""
         stale = datetime.now(UTC) - timedelta(days=181)
-        issues = DriftDetector._check_temporal_drift("README.md", stale, "2026-01-01")
+        issues = DriftDetector._check_temporal_drift(
+            self._doc_ctx("README.md", since_date="2026-01-01"), stale
+        )
         assert len(issues) == 1
         assert issues[0]["severity"] == "medium"
 
     def test_temporal_drift_exactly_365_days_stays_medium(self) -> None:
         """The 365-day boundary is exclusive: exactly 365 days is still medium."""
         stale = datetime.now(UTC) - timedelta(days=365)
-        issues = DriftDetector._check_temporal_drift("README.md", stale, "2026-01-01")
+        issues = DriftDetector._check_temporal_drift(
+            self._doc_ctx("README.md", since_date="2026-01-01"), stale
+        )
         assert len(issues) == 1
         assert issues[0]["severity"] == "medium"
 
     def test_temporal_drift_past_365_days_returns_high(self) -> None:
         """366 days stale escalates to high severity."""
         stale = datetime.now(UTC) - timedelta(days=366)
-        issues = DriftDetector._check_temporal_drift("README.md", stale, "2026-01-01")
+        issues = DriftDetector._check_temporal_drift(
+            self._doc_ctx("README.md", since_date="2026-01-01"), stale
+        )
         assert len(issues) == 1
         assert issues[0]["severity"] == "high"
 
     def test_temporal_drift_naive_datetime_treated_as_utc(self) -> None:
         """A naive datetime is assumed to be UTC rather than raising."""
         naive = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=200)
-        issues = DriftDetector._check_temporal_drift("README.md", naive, "2026-01-01")
+        issues = DriftDetector._check_temporal_drift(
+            self._doc_ctx("README.md", since_date="2026-01-01"), naive
+        )
         assert len(issues) == 1
         assert issues[0]["severity"] == "medium"
 

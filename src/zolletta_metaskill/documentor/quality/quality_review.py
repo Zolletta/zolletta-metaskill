@@ -14,6 +14,7 @@ from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.documentor.quality.drift_detector import DriftDetector
 from zolletta_metaskill.documentor.quality.quality_report_writer import QualityReportWriter
 from zolletta_metaskill.documentor.quality.quality_scorer import QualityScorer
+from zolletta_metaskill.documentor.quality.structs import GitRunContext
 from zolletta_metaskill.documentor.utils.doc_code_mapper import DocCodeMapper
 from zolletta_metaskill.documentor.utils.documentor_settings import DocumentorSettings
 from zolletta_metaskill.documentor.utils.file_discovery import FileDiscovery
@@ -74,9 +75,6 @@ class QualityReview:
         weights = QualityScorer._resolve_weights(settings)
         required_sections = QualityScorer._resolve_required_sections(settings)
         quadrants = QualityScorer._resolve_diataxis_quadrants(settings)
-        include_referential = bool(
-            ProjectConfig.setting(settings, "documentation.include_referential", False)
-        )
         min_severity = str(ProjectConfig.setting(settings, "documentation.min_severity", "low"))
 
         languages = ProjectConfig.configured_languages(settings)
@@ -98,6 +96,12 @@ class QualityReview:
         doc_code_map = DocCodeMapper.map_docs_to_code(repo_path, doc_files, code_files)
         renames = GitHelper.get_renamed_files(repo_path, "90 days ago")
         current_version = GitHelper.get_latest_tag(repo_path)
+        doc_settings = DocumentorSettings.from_settings(settings)
+        git_ctx = GitRunContext(
+            repo_root=repo_path,
+            renames=tuple(renames),
+            current_version=current_version,
+        )
 
         all_scores: list[dict[str, Any]] = []
         all_issues: list[dict[str, Any]] = []
@@ -108,12 +112,10 @@ class QualityReview:
                 associated_dirs = [""]
 
             issues = DriftDetector.detect_drift_for_doc(
-                repo_path,
+                git_ctx,
+                doc_settings,
                 doc,
                 associated_dirs,
-                renames,
-                current_version,
-                include_referential=include_referential,
             )
             all_issues.extend(issues)
             all_scores.append(

@@ -171,7 +171,8 @@ class TestQualityReview:
                 self._settings(include_referential=True),
                 cache_dir,
             )
-        assert mock_detect.call_args.kwargs["include_referential"] is True
+        doc_settings: DocumentorSettings = mock_detect.call_args.args[1]
+        assert doc_settings.include_referential is True
 
     def test_min_severity_filters_issues(self, tmp_path: Path) -> None:
         """Issues below min_severity are excluded from the cache report."""
@@ -243,7 +244,8 @@ class TestQualityReview:
             patch.object(DriftDetector, "detect_drift_for_doc", return_value=[]) as mock_detect,
         ):
             QualityReview.run(str(tmp_path), self._settings(), cache_dir)
-        assert mock_detect.call_args.args[2] == [""]
+        assert mock_detect.call_args.args[2] == "guide.md"
+        assert mock_detect.call_args.args[3] == [""]
 
     def test_unknown_min_severity_falls_back_to_info(self, tmp_path: Path) -> None:
         """An unknown ``min_severity`` string is mapped to the default rank."""
