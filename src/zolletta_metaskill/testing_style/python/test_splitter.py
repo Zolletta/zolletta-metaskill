@@ -45,6 +45,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from zolletta_metaskill.core.project_config import ProjectConfig
+from zolletta_metaskill.testing_style.python.structs import SplitPlan
 
 
 class TestSplitter:
@@ -144,15 +145,12 @@ class TestSplitter:
         return "\n".join(indent + line if line.strip() else line for line in source.splitlines())
 
     @staticmethod
-    def _build_split_file(
-        original_module: ast.Module,
-        class_node: ast.ClassDef,
-        sut_name: str,
-        test_methods: list[ast.FunctionDef | ast.AsyncFunctionDef],
-        shared_methods: list[ast.FunctionDef | ast.AsyncFunctionDef],
-        original_class_name: str,
-    ) -> str:
+    def _build_split_file(plan: SplitPlan, sut_name: str) -> str:
         """Build the source code for a single split test file."""
+        original_module = plan.original_module
+        test_methods = list(plan.test_methods)
+        shared_methods = list(plan.shared_methods)
+        original_class_name = plan.original_class_name
         lines: list[str] = []
 
         # Module docstring (if present)
@@ -248,7 +246,16 @@ class TestSplitter:
 
         if not mapping:
             TestSplitter._emit_auto_mapping(
-                args.json, test_file, class_node, test_methods, shared_methods, result
+                args.json,
+                test_file,
+                SplitPlan(
+                    original_module=tree,
+                    class_node=class_node,
+                    test_methods=tuple(test_methods),
+                    shared_methods=tuple(shared_methods),
+                    original_class_name=class_node.name,
+                ),
+                result,
             )
             return 0
 
@@ -350,12 +357,12 @@ class TestSplitter:
     def _emit_auto_mapping(
         json_mode: bool,
         test_file: Path,
-        class_node: ast.ClassDef,
-        test_methods: list[ast.FunctionDef | ast.AsyncFunctionDef],
-        shared_methods: list[ast.FunctionDef | ast.AsyncFunctionDef],
+        plan: SplitPlan,
         result: dict[str, Any],
     ) -> None:
         """Emit the auto-derived prefix proposal when no --mapping was given."""
+        test_methods = list(plan.test_methods)
+        shared_methods = list(plan.shared_methods)
         auto = TestSplitter._auto_derive_prefixes(test_methods)
         proposed = {p: TestSplitter._snake_to_pascal(p) for p in auto}
         if json_mode:
@@ -366,7 +373,7 @@ class TestSplitter:
         print("=" * 70)
         print(f"TEST SPLITTER — {test_file.name}")
         print("=" * 70)
-        print(f"\nClass: {class_node.name}")
+        print(f"\nClass: {plan.class_node.name}")
         print(f"Test methods: {len(test_methods)}")
         print(f"Shared methods (fixtures/helpers): {len(shared_methods)}")
         print("\nNo --mapping provided. Auto-deriving prefixes from method names:")
@@ -427,7 +434,14 @@ class TestSplitter:
             filename = f"test_{TestSplitter._pascal_to_snake(sut)}.py"
             filepath = out_dir / filename
             content = TestSplitter._build_split_file(
-                tree, class_node, sut, methods, shared_methods, class_node.name
+                SplitPlan(
+                    original_module=tree,
+                    class_node=class_node,
+                    test_methods=tuple(methods),
+                    shared_methods=tuple(shared_methods),
+                    original_class_name=class_node.name,
+                ),
+                sut,
             )
             filepath.write_text(content, encoding="utf-8")
             written.append(filename)

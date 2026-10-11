@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from zolletta_metaskill.testing_style.python.structs import SplitPlan
 from zolletta_metaskill.testing_style.python.test_splitter import (
     TestSplitter,
 )
@@ -272,7 +273,7 @@ class TestTestSplitter:
         cls = _parse_class("class TestOriginal:\n    def test_cache_get(self):\n        pass\n")
         test_methods = TestSplitter._get_test_methods(cls)
         result = TestSplitter._build_split_file(
-            module, cls, "Cache", test_methods, [], "TestOriginal"
+            _plan(module, cls, test_methods, [], "TestOriginal"), "Cache"
         )
         assert "split from TestOriginal" in result
         assert "Original docstring" in result
@@ -284,7 +285,7 @@ class TestTestSplitter:
         cls = _parse_class("class TestOriginal:\n    def test_cache_get(self):\n        pass\n")
         test_methods = TestSplitter._get_test_methods(cls)
         result = TestSplitter._build_split_file(
-            module, cls, "Cache", test_methods, [], "TestOriginal"
+            _plan(module, cls, test_methods, [], "TestOriginal"), "Cache"
         )
         assert "Tests for Cache" in result
 
@@ -293,7 +294,7 @@ class TestTestSplitter:
             "import pytest\nfrom foo import bar\nclass TestOriginal:\n    pass\n"
         )
         cls = _parse_class("class TestOriginal:\n    pass\n")
-        result = TestSplitter._build_split_file(module, cls, "Cache", [], [], "TestOriginal")
+        result = TestSplitter._build_split_file(_plan(module, cls, [], [], "TestOriginal"), "Cache")
         assert "import pytest" in result
         assert "from foo import bar" in result
 
@@ -302,13 +303,13 @@ class TestTestSplitter:
             "import pytest\npytestmark = pytest.mark.xfail\nclass TestOriginal:\n    pass\n"
         )
         cls = _parse_class("class TestOriginal:\n    pass\n")
-        result = TestSplitter._build_split_file(module, cls, "Cache", [], [], "TestOriginal")
+        result = TestSplitter._build_split_file(_plan(module, cls, [], [], "TestOriginal"), "Cache")
         assert "pytestmark" in result
 
     def test_new_class_name(self) -> None:
         module = _parse_module("class TestOriginal:\n    pass\n")
         cls = _parse_class("class TestOriginal:\n    pass\n")
-        result = TestSplitter._build_split_file(module, cls, "Cache", [], [], "TestOriginal")
+        result = TestSplitter._build_split_file(_plan(module, cls, [], [], "TestOriginal"), "Cache")
         assert "class TestCache:" in result
 
     def test_includes_shared_methods(self) -> None:
@@ -325,7 +326,7 @@ class TestTestSplitter:
         test_methods = TestSplitter._get_test_methods(cls)
         shared = TestSplitter._get_shared_methods(cls)
         result = TestSplitter._build_split_file(
-            module, cls, "Cache", test_methods, shared, "TestOriginal"
+            _plan(module, cls, test_methods, shared, "TestOriginal"), "Cache"
         )
         assert "def setup" in result
         assert "def test_cache_get" in result
@@ -343,7 +344,7 @@ class TestTestSplitter:
         )
         test_methods = TestSplitter._get_test_methods(cls)
         result = TestSplitter._build_split_file(
-            module, cls, "Cache", test_methods, [], "TestOriginal"
+            _plan(module, cls, test_methods, [], "TestOriginal"), "Cache"
         )
         assert "def test_cache_get" in result
         assert "def test_cache_set" in result
@@ -351,7 +352,7 @@ class TestTestSplitter:
     def test_parse_module_class_docstring_contains_long_string(self) -> None:
         module = _parse_module("class TestOriginal:\n    pass\n")
         cls = _parse_class("class TestOriginal:\n    pass\n")
-        result = TestSplitter._build_split_file(module, cls, "Cache", [], [], "TestOriginal")
+        result = TestSplitter._build_split_file(_plan(module, cls, [], [], "TestOriginal"), "Cache")
         assert "Tests for Cache, split from TestOriginal" in result
 
     # --- Main ---
@@ -646,3 +647,20 @@ class TestTestSplitter:
         rc = TestSplitter.main()
         assert rc == 0
         assert (tmp_path / "out_runs" / "test_split" / "test_god" / "test_cache.py").exists()
+
+
+def _plan(
+    module: ast.Module,
+    class_node: ast.ClassDef,
+    test_methods: list[ast.FunctionDef | ast.AsyncFunctionDef],
+    shared_methods: list[ast.FunctionDef | ast.AsyncFunctionDef],
+    original_class_name: str,
+) -> SplitPlan:
+    """Build the SplitPlan that TestSplitter's private helpers now take."""
+    return SplitPlan(
+        original_module=module,
+        class_node=class_node,
+        test_methods=tuple(test_methods),
+        shared_methods=tuple(shared_methods),
+        original_class_name=original_class_name,
+    )
