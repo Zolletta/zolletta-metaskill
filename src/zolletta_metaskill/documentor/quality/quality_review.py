@@ -72,10 +72,8 @@ class QualityReview:
             cache_path.write_text(json.dumps(empty_data, indent=2, default=str) + "\n")
             return cache_path
 
-        weights = QualityScorer._resolve_weights(settings)
-        required_sections = QualityScorer._resolve_required_sections(settings)
-        quadrants = QualityScorer._resolve_diataxis_quadrants(settings)
-        min_severity = str(ProjectConfig.setting(settings, "documentation.min_severity", "low"))
+        doc_settings = DocumentorSettings.from_settings(settings)
+        min_severity = doc_settings.min_severity
 
         languages = ProjectConfig.configured_languages(settings)
         source_dirs = [
@@ -96,7 +94,6 @@ class QualityReview:
         doc_code_map = DocCodeMapper.map_docs_to_code(repo_path, doc_files, code_files)
         renames = GitHelper.get_renamed_files(repo_path, "90 days ago")
         current_version = GitHelper.get_latest_tag(repo_path)
-        doc_settings = DocumentorSettings.from_settings(settings)
         git_ctx = GitRunContext(
             repo_root=repo_path,
             renames=tuple(renames),
@@ -119,7 +116,13 @@ class QualityReview:
             )
             all_issues.extend(issues)
             all_scores.append(
-                QualityScorer.score_document(repo_path, doc, weights, required_sections, quadrants)
+                QualityScorer.score_document(
+                    repo_path,
+                    doc,
+                    doc_settings.staleness_weights,
+                    list(doc_settings.required_sections),
+                    doc_settings.quadrants,
+                )
             )
 
         min_sev_map = DriftDetector.SEVERITY_ORDER

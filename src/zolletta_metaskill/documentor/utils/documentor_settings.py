@@ -34,6 +34,8 @@ class DocumentorSettings:
         min_severity: Lowest severity to report.
         check_external: Whether external URLs are validated.
         quadrants: Effective Diátaxis quadrant mapping.
+        staleness_weights: Normalized weights for the five staleness dimensions.
+        required_sections: README sections a document must carry.
 
     """
 
@@ -44,6 +46,28 @@ class DocumentorSettings:
     #: not a run and must never be mistaken for the most recent one.
     RUN_FOLDER_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}$")
 
+    #: Weights applied to the five staleness dimensions when
+    #: ``documentation.staleness_weights`` is unset. They live here rather than on
+    #: ``QualityScorer`` because they are the default for a settings key, and this
+    #: is the only place that reads settings keys.
+    DEFAULT_WEIGHTS = {
+        "last_updated": 0.20,
+        "code_doc_alignment": 0.30,
+        "link_health": 0.15,
+        "completeness": 0.20,
+        "accuracy": 0.15,
+    }
+
+    #: Sections a README must carry when ``documentation.readme_sections`` is
+    #: unset and no translations file supplies its own list.
+    DEFAULT_README_SECTIONS = (
+        "installation",
+        "usage",
+        "api",
+        "contributing",
+        "license",
+    )
+
     cache_dir: Path
     documentation_rel_dir: Path
     adrs_dir: Path | None
@@ -52,6 +76,8 @@ class DocumentorSettings:
     min_severity: str
     check_external: bool
     quadrants: dict[str, dict[str, Any]]
+    staleness_weights: dict[str, float]
+    required_sections: tuple[str, ...]
 
     @classmethod
     def from_settings(cls, settings: dict[str, Any]) -> DocumentorSettings:
@@ -76,6 +102,9 @@ class DocumentorSettings:
             if isinstance(raw_patterns, list)
             else None
         )
+        # One read, two consumers: the quadrants and the required sections are both
+        # derived from this file when it is configured.
+        translations_path = cls._translations_path(settings)
         return cls(
             cache_dir=cls.resolve_cache_dir(settings),
             documentation_rel_dir=ProjectConfig.docs_dir(settings),
@@ -88,8 +117,98 @@ class DocumentorSettings:
             check_external=bool(
                 ProjectConfig.setting(settings, "documentation.check_external", False)
             ),
-            quadrants=QualityScorer._resolve_diataxis_quadrants(settings),
+            quadrants=QualityScorer._resolve_diataxis_quadrants(translations_path),
+            staleness_weights=cls._resolve_staleness_weights(settings),
+            required_sections=cls._resolve_required_sections(settings, translations_path),
         )
+
+    @staticmethod
+    def _translations_path(settings: dict[str, Any]) -> str | None:
+        """Return the configured Diátaxis translations file, or ``None``.
+
+        Read once by :meth:`from_settings` and passed to both resolvers that
+        depend on it, so ``documentation.diataxis_translations`` has one reader
+        rather than one per consumer.
+
+        Args:
+            settings: Parsed ``settings.json`` contents.
+
+        Returns:
+            The configured path, or ``None`` when unset or not a non-empty string.
+
+        """
+        configured = ProjectConfig.setting(settings, "documentation.diataxis_translations", None)
+        if isinstance(configured, str) and configured:
+            return configured
+        return None
+
+    @staticmethod
+    def _resolve_staleness_weights(settings: dict[str, Any]) -> dict[str, float]:
+        """Build and normalize the staleness dimension weights from *settings*.
+
+        Only numeric overrides are honoured, and the result is renormalized to
+        sum to 1 so a partial override cannot silently rescale the aggregate
+        score. A zero total is returned unnormalized rather than raising: the
+        weights are scoring policy, and a scoring run is not the place to abort.
+
+        Args:
+            settings: Parsed ``settings.json`` contents.
+
+        Returns:
+            A fresh weight mapping — never the class attribute itself.
+
+        """
+        weights = dict(DocumentorSettings.DEFAULT_WEIGHTS)
+        raw_weights = ProjectConfig.setting(settings, "documentation.staleness_weights", None)
+        if isinstance(raw_weights, dict):
+            for key in weights:
+                value = raw_weights.get(key)
+                if isinstance(value, (int, float)):
+                    weights[key] = float(value)
+        total_weight = sum(weights.values())
+        if total_weight > 0:
+            return {k: v / total_weight for k, v in weights.items()}
+        return weights
+
+    @classmethod
+    def _resolve_required_sections(
+        cls, settings: dict[str, Any], translations_path: str | None = None
+    ) -> tuple[str, ...]:
+        """Resolve the README sections a document must carry.
+
+        Resolution order: an explicit ``documentation.readme_sections`` list,
+        then the ``readme_sections`` of the configured translations file, then
+        :data:`DEFAULT_README_SECTIONS`.
+
+        Args:
+            settings: Parsed ``settings.json`` contents.
+            translations_path: Already-resolved translations file from
+                :meth:`_translations_path`. Left optional so the method can be
+                called standalone; ``from_settings`` always supplies it.
+
+        Returns:
+            Section names, stripped of surrounding whitespace.
+
+        """
+        raw_sections = ProjectConfig.setting(settings, "documentation.readme_sections", None)
+        if isinstance(raw_sections, list):
+            return tuple(s.strip() for s in raw_sections if isinstance(s, str))
+
+        if translations_path is None:
+            translations_path = cls._translations_path(settings)
+        if translations_path:
+            # Lazy for the same reason as in ``from_settings``: ``quality``
+            # already imports ``utils``, so a module-scope import here would be
+            # circular.
+            from zolletta_metaskill.documentor.quality.doc_completeness_scorer import (
+                DocCompletenessScorer,
+            )
+
+            translations = DocCompletenessScorer.load_diataxis_translations(translations_path)
+            translated_readme = translations.get("readme_sections")
+            if translated_readme:
+                return tuple(s.strip() for s in translated_readme)
+        return cls.DEFAULT_README_SECTIONS
 
     @staticmethod
     def resolve_cache_dir(settings: dict[str, Any]) -> Path:

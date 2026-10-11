@@ -8,7 +8,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.documentor.quality.doc_accuracy_scorer import DocAccuracyScorer
 from zolletta_metaskill.documentor.quality.doc_completeness_scorer import DocCompletenessScorer
 from zolletta_metaskill.documentor.utils.git_helper import GitHelper
@@ -33,22 +32,6 @@ class QualityScorer:
         ".rb",
         ".php",
     }
-
-    DEFAULT_WEIGHTS = {
-        "last_updated": 0.20,
-        "code_doc_alignment": 0.30,
-        "link_health": 0.15,
-        "completeness": 0.20,
-        "accuracy": 0.15,
-    }
-
-    DEFAULT_README_SECTIONS = [
-        "installation",
-        "usage",
-        "api",
-        "contributing",
-        "license",
-    ]
 
     SCORE_LABELS = {
         (90, 100): "excellent",
@@ -344,50 +327,27 @@ class QualityScorer:
         }
 
     @staticmethod
-    def _resolve_weights(settings: dict[str, Any]) -> dict[str, float]:
-        """Build and normalize staleness dimension weights from settings."""
-        weights = dict(QualityScorer.DEFAULT_WEIGHTS)
-        raw_weights = ProjectConfig.setting(settings, "documentation.staleness_weights", None)
-        if isinstance(raw_weights, dict):
-            for key in weights:
-                value = raw_weights.get(key)
-                if isinstance(value, (int, float)):
-                    weights[key] = float(value)
-        total_weight = sum(weights.values())
-        if total_weight > 0:
-            return {k: v / total_weight for k, v in weights.items()}
-        return weights
+    def _resolve_diataxis_quadrants(translations_path: str | None) -> dict[str, dict[str, Any]]:
+        """Resolve the effective Diátaxis quadrant mapping from a translations path.
 
-    @staticmethod
-    def _resolve_diataxis_quadrants(settings: dict[str, Any]) -> dict[str, dict[str, Any]]:
-        """Resolve the effective Diátaxis quadrant mapping from settings.
+        Takes the already-resolved path rather than *settings*, so the
+        ``documentation.diataxis_translations`` key is read exactly once per run —
+        by :meth:`DocumentorSettings.from_settings` — instead of independently
+        here and for the required sections.
 
         Pure: returns a fresh mapping and never mutates
-        ``DocCompletenessScorer.DIATAXIS_QUADRANTS``. When
-        ``documentation.diataxis_translations`` is unset the built-in mapping is
-        returned as-is, so the default path costs no extra file read.
+        ``DocCompletenessScorer.DIATAXIS_QUADRANTS``. When *translations_path* is
+        unset the built-in mapping is returned as-is, so the default path costs no
+        extra file read.
+
+        Args:
+            translations_path: Configured translations file, or ``None``.
+
+        Returns:
+            The effective quadrant mapping.
+
         """
-        translations_path = ProjectConfig.setting(
-            settings, "documentation.diataxis_translations", None
-        )
-        if isinstance(translations_path, str) and translations_path:
+        if translations_path:
             translations = DocCompletenessScorer.load_diataxis_translations(translations_path)
             return DocCompletenessScorer.merged_quadrants(translations)
         return DocCompletenessScorer.DIATAXIS_QUADRANTS
-
-    @staticmethod
-    def _resolve_required_sections(settings: dict[str, Any]) -> list[str]:
-        """Resolve required sections from settings or Diátaxis translations."""
-        raw_sections = ProjectConfig.setting(settings, "documentation.readme_sections", None)
-        if isinstance(raw_sections, list):
-            return [s.strip() for s in raw_sections if isinstance(s, str)]
-
-        translations_path = ProjectConfig.setting(
-            settings, "documentation.diataxis_translations", None
-        )
-        if isinstance(translations_path, str) and translations_path:
-            translations = DocCompletenessScorer.load_diataxis_translations(translations_path)
-            translated_readme = translations.get("readme_sections")
-            if translated_readme:
-                return [s.strip() for s in translated_readme]
-        return QualityScorer.DEFAULT_README_SECTIONS
