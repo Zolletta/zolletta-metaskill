@@ -206,3 +206,32 @@ class TestDocumentorSettings:
         (tmp_path / "cache").mkdir()
         result = DocumentorSettings._latest_run_dir(tmp_path)
         assert result == tmp_path / "2026-01-02-03-04"
+
+    # --- rename window ---
+
+    def test_rename_window_days_defaults_to_90(self) -> None:
+        assert DocumentorSettings._resolve_rename_window_days({}) == 90
+
+    def test_rename_window_days_from_settings(self) -> None:
+        settings = {"documentation": {"rename_window_days": 30}}
+        assert DocumentorSettings._resolve_rename_window_days(settings) == 30
+
+    def test_rename_window_days_rejects_non_positive(self) -> None:
+        assert (
+            DocumentorSettings._resolve_rename_window_days(
+                {"documentation": {"rename_window_days": 0}}
+            )
+            == 90
+        )
+
+    def test_rename_window_days_rejects_bool(self) -> None:
+        settings = {"documentation": {"rename_window_days": True}}
+        assert DocumentorSettings._resolve_rename_window_days(settings) == 90
+
+    def test_rename_window_days_rejects_wrong_type(self) -> None:
+        settings = {"documentation": {"rename_window_days": "30"}}
+        assert DocumentorSettings._resolve_rename_window_days(settings) == 90
+
+    def test_rename_window_reaches_the_struct(self) -> None:
+        settings = DocumentorSettings.from_settings({"documentation": {"rename_window_days": 7}})
+        assert settings.rename_window_days == 7

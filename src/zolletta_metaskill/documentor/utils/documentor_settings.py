@@ -31,6 +31,7 @@ class DocumentorSettings:
         adrs_dir: Repository-relative ADR directory, or ``None``.
         doc_patterns: Glob patterns for doc discovery, or ``None`` for defaults.
         include_referential: Whether referential drift checks run.
+        rename_window_days: How far back rename drift is looked for.
         min_severity: Lowest severity to report.
         check_external: Whether external URLs are validated.
         quadrants: Effective Diátaxis quadrant mapping.
@@ -73,6 +74,7 @@ class DocumentorSettings:
     adrs_dir: Path | None
     doc_patterns: tuple[str, ...] | None
     include_referential: bool
+    rename_window_days: int
     min_severity: str
     check_external: bool
     quadrants: dict[str, dict[str, Any]]
@@ -113,6 +115,7 @@ class DocumentorSettings:
             include_referential=bool(
                 ProjectConfig.setting(settings, "documentation.include_referential", False)
             ),
+            rename_window_days=cls._resolve_rename_window_days(settings),
             min_severity=str(ProjectConfig.setting(settings, "documentation.min_severity", "low")),
             check_external=bool(
                 ProjectConfig.setting(settings, "documentation.check_external", False)
@@ -209,6 +212,19 @@ class DocumentorSettings:
             if translated_readme:
                 return tuple(s.strip() for s in translated_readme)
         return cls.DEFAULT_README_SECTIONS
+
+    @staticmethod
+    def _resolve_rename_window_days(settings: dict[str, Any]) -> int:
+        """Return the rename-lookback window in days (default 90).
+
+        Was a hardcoded ``"90 days ago"`` string at the git call site. How far
+        back a rename still matters is policy, so it belongs in settings with
+        everything else rather than baked into the caller.
+        """
+        value = ProjectConfig.setting(settings, "documentation.rename_window_days", 90)
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+            return 90
+        return value
 
     @staticmethod
     def resolve_cache_dir(settings: dict[str, Any]) -> Path:

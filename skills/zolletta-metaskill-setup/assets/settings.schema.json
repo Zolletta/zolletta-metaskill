@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://zolletta-metaskill/schemas/settings.schema.json",
   "title": "Zolletta-metaskill settings.json",
-  "description": "Project-wide configuration written by /zolletta-metaskill setup and read by every other subcommand. The prose documentation lives in docs/reference/settings-schema.md — this schema is the machine-readable counterpart. Keep both in sync.",
+  "description": "Project-wide configuration written by /zolletta-metaskill setup and read by every other subcommand. The prose documentation lives in docs/reference/settings-schema.md \u2014 this schema is the machine-readable counterpart. Keep both in sync.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -221,7 +221,7 @@
         },
         "check_external": {
           "type": "boolean",
-          "description": "When true, link_checker verifies external http(s) links too (default: false — external links are skipped).",
+          "description": "When true, link_checker verifies external http(s) links too (default: false \u2014 external links are skipped).",
           "default": false
         },
         "include_referential": {
@@ -243,6 +243,12 @@
           "type": "boolean",
           "description": "When true, api_doc_validator suggests a documentation coverage target based on public API surface (default: false).",
           "default": false
+        },
+        "rename_window_days": {
+          "type": "integer",
+          "description": "How far back git rename drift is examined, in days. Renames older than this are not reported as referential drift.",
+          "default": 90,
+          "minimum": 1
         }
       }
     },
@@ -425,7 +431,7 @@
           ],
           "minimum": 1,
           "default": null,
-          "description": "Mirrors [tool.ruff.lint.pylint] max-args (the PLR0913 threshold). null when unconfigured — ruff's built-in default is 5."
+          "description": "Mirrors [tool.ruff.lint.pylint] max-args (the PLR0913 threshold). null when unconfigured \u2014 ruff's built-in default is 5."
         },
         "max_statements": {
           "type": [
@@ -434,7 +440,7 @@
           ],
           "minimum": 1,
           "default": null,
-          "description": "Mirrors [tool.ruff.lint.pylint] max-statements (the PLR0915 threshold). null when unconfigured — ruff's built-in default is 50."
+          "description": "Mirrors [tool.ruff.lint.pylint] max-statements (the PLR0915 threshold). null when unconfigured \u2014 ruff's built-in default is 50."
         },
         "max_complexity": {
           "type": [
@@ -443,7 +449,7 @@
           ],
           "minimum": 1,
           "default": null,
-          "description": "Mirrors [tool.ruff.lint.mccabe] max-complexity (the C901 threshold). null when unconfigured — ruff's built-in default is 10."
+          "description": "Mirrors [tool.ruff.lint.mccabe] max-complexity (the C901 threshold). null when unconfigured \u2014 ruff's built-in default is 10."
         }
       }
     },
@@ -543,7 +549,7 @@
       "properties": {
         "available": {
           "type": "boolean",
-          "description": "mutmut is a zero-config mutation tester — availability only."
+          "description": "mutmut is a zero-config mutation tester \u2014 availability only."
         }
       }
     },
@@ -632,7 +638,7 @@
         "check_zero_class_files": {
           "type": "boolean",
           "default": true,
-          "description": "Report files with 0 classes (utility/helper modules). Replaces the removed --ignore-zero flag — set false to hide them."
+          "description": "Report files with 0 classes (utility/helper modules). Replaces the removed --ignore-zero flag \u2014 set false to hide them."
         },
         "check_filename_matches_class": {
           "type": "boolean",
@@ -709,13 +715,13 @@
           "type": "integer",
           "minimum": 1,
           "default": 100,
-          "description": "Maximum line span per function/method (enforced by function_length_scanner.py). Lines are not statements — see python.tools.ruff.max_statements for the PLR0915 alternative."
+          "description": "Maximum line span per function/method (enforced by function_length_scanner.py). Lines are not statements \u2014 see python.tools.ruff.max_statements for the PLR0915 alternative."
         },
         "max_cyclomatic_complexity": {
           "type": "integer",
           "minimum": 1,
           "default": 12,
-          "description": "Maximum allowed cyclomatic complexity per function/method (enforced by cyclomatic_complexity_scanner.py). Seeded from python.tools.ruff.max_complexity when configured, else 12 — matching ruff C901."
+          "description": "Maximum allowed cyclomatic complexity per function/method (enforced by cyclomatic_complexity_scanner.py). Seeded from python.tools.ruff.max_complexity when configured, else 12 \u2014 matching ruff C901."
         },
         "vulture_min_confidence": {
           "type": "integer",
@@ -764,7 +770,7 @@
         "check_mutation_testing": {
           "type": "boolean",
           "default": true,
-          "description": "Run mutmut during python-testing-style reviews when python.tools.mutmut.available. Conditional sensor — mutation runs are slow, set false to opt out without uninstalling."
+          "description": "Run mutmut during python-testing-style reviews when python.tools.mutmut.available. Conditional sensor \u2014 mutation runs are slow, set false to opt out without uninstalling."
         },
         "mutation_score_threshold": {
           "type": "integer",
@@ -849,7 +855,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Module names treated as composition roots — exempt from dependency_inversion_scanner findings.",
+          "description": "Module names treated as composition roots \u2014 exempt from dependency_inversion_scanner findings.",
           "default": [
             "main",
             "cli",
@@ -1073,7 +1079,7 @@
         },
         "config_file": {
           "type": "boolean",
-          "description": "true if .php-cs-fixer.php or .php-cs-fixer.dist.php exists. The file is PHP code and cannot be parsed by setup — the php-code-style skill reads it at review time."
+          "description": "true if .php-cs-fixer.php or .php-cs-fixer.dist.php exists. The file is PHP code and cannot be parsed by setup \u2014 the php-code-style skill reads it at review time."
         }
       }
     },
@@ -1106,7 +1112,7 @@
       "properties": {
         "available": {
           "type": "boolean",
-          "description": "Infection is a zero-config mutation tester — availability only. infection.json* is not parsed."
+          "description": "Infection is a zero-config mutation tester \u2014 availability only. infection.json* is not parsed."
         }
       }
     },
@@ -1302,7 +1308,7 @@
         "check_mutation_testing": {
           "type": "boolean",
           "default": true,
-          "description": "Run Infection during php-testing-style reviews when php.tools.infection.available. Conditional sensor — mutation runs are slow, set false to opt out without uninstalling."
+          "description": "Run Infection during php-testing-style reviews when php.tools.infection.available. Conditional sensor \u2014 mutation runs are slow, set false to opt out without uninstalling."
         },
         "mutation_score_threshold": {
           "type": "integer",

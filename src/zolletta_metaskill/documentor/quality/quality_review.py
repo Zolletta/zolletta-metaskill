@@ -92,7 +92,8 @@ class QualityReview:
         code_files.sort()
 
         doc_code_map = DocCodeMapper.map_docs_to_code(repo_path, doc_files, code_files)
-        renames = GitHelper.get_renamed_files(repo_path, "90 days ago")
+        since = f"{doc_settings.rename_window_days} days ago"
+        renames = GitHelper.get_renamed_files(repo_path, since)
         current_version = GitHelper.get_latest_tag(repo_path)
         git_ctx = GitRunContext(
             repo_root=repo_path,
