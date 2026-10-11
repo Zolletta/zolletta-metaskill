@@ -57,6 +57,7 @@ from typing import Any
 from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
 from zolletta_metaskill.core.engine.python_engine import PythonEngine
 from zolletta_metaskill.core.project_config import ProjectConfig
+from zolletta_metaskill.testing_style.general.structs import TestStructureResults
 
 
 class TestStructureScanner:
@@ -207,15 +208,19 @@ class TestStructureScanner:
             src_index, classified["directly_covered"], indirectly_covered
         )
         orphaned_dirs = [{"test_dir": str(d) + "/"} for d in test_only_dirs]
+        results = TestStructureResults(
+            misnamed=classified["misnamed"],
+            misplaced=classified["misplaced"],
+            orphaned=classified["orphaned"],
+            orphaned_dirs=orphaned_dirs,
+            missing=missing,
+            indirect_refs=indirect_refs,
+        )
 
         if args.json:
-            TestStructureScanner._emit_json(
-                src_pkgs, test_pkgs, classified, orphaned_dirs, missing, indirect_refs
-            )
+            TestStructureScanner._emit_json(src_pkgs, test_pkgs, results)
             return 0
-        TestStructureScanner._emit_text(
-            src_pkgs, test_pkgs, classified, orphaned_dirs, missing, indirect_refs
-        )
+        TestStructureScanner._emit_text(src_pkgs, test_pkgs, results)
         return 0
 
     @staticmethod
@@ -495,32 +500,21 @@ class TestStructureScanner:
     def _emit_json(
         src_pkgs: list[Path],
         test_pkgs: list[Path],
-        classified: dict[str, Any],
-        orphaned_dirs: list[dict[str, Any]],
-        missing: list[dict[str, Any]],
-        indirect_refs: list[dict[str, Any]],
+        results: TestStructureResults,
     ) -> None:
         """Emit the JSON report."""
-        has_issues = bool(
-            classified["misnamed"]
-            or classified["misplaced"]
-            or classified["orphaned"]
-            or orphaned_dirs
-            or missing
-            or indirect_refs
-        )
         print(
             json.dumps(
                 {
                     "source_packages": [str(p) for p in src_pkgs],
                     "test_packages": [str(p) for p in test_pkgs],
-                    "misnamed": classified["misnamed"],
-                    "misplaced": classified["misplaced"],
-                    "orphaned": classified["orphaned"],
-                    "orphaned_dirs": orphaned_dirs,
-                    "missing": missing,
-                    "indirect_refs": indirect_refs,
-                    "has_issues": has_issues,
+                    "misnamed": results.misnamed,
+                    "misplaced": results.misplaced,
+                    "orphaned": results.orphaned,
+                    "orphaned_dirs": results.orphaned_dirs,
+                    "missing": results.missing,
+                    "indirect_refs": results.indirect_refs,
+                    "has_issues": results.has_issues,
                 },
                 indent=2,
             )
@@ -530,18 +524,15 @@ class TestStructureScanner:
     def _emit_text(
         src_pkgs: list[Path],
         test_pkgs: list[Path],
-        classified: dict[str, Any],
-        orphaned_dirs: list[dict[str, Any]],
-        missing: list[dict[str, Any]],
-        indirect_refs: list[dict[str, Any]],
+        results: TestStructureResults,
     ) -> None:
         """Emit the markdown report."""
-        misnamed = classified["misnamed"]
-        misplaced = classified["misplaced"]
-        orphaned = classified["orphaned"]
-        has_issues = bool(
-            misnamed or misplaced or orphaned or orphaned_dirs or missing or indirect_refs
-        )
+        misnamed = results.misnamed
+        misplaced = results.misplaced
+        orphaned = results.orphaned
+        orphaned_dirs = results.orphaned_dirs
+        missing = results.missing
+        indirect_refs = results.indirect_refs
 
         print("# Test Structure — Validation Report\n")
         print(f"**Source packages:** {', '.join(f'`{p}`' for p in src_pkgs)}")
@@ -552,9 +543,7 @@ class TestStructureScanner:
         TestStructureScanner._emit_orphaned(orphaned, orphaned_dirs)
         TestStructureScanner._emit_missing(missing)
         TestStructureScanner._emit_indirect(indirect_refs)
-        TestStructureScanner._emit_summary(
-            misnamed, misplaced, orphaned, orphaned_dirs, missing, indirect_refs, has_issues
-        )
+        TestStructureScanner._emit_summary(results)
 
     @staticmethod
     def _emit_misnamed(misnamed: list[dict[str, Any]]) -> None:
@@ -647,16 +636,15 @@ class TestStructureScanner:
         print()
 
     @staticmethod
-    def _emit_summary(
-        misnamed: list[dict[str, Any]],
-        misplaced: list[dict[str, Any]],
-        orphaned: list[dict[str, Any]],
-        orphaned_dirs: list[dict[str, Any]],
-        missing: list[dict[str, Any]],
-        indirect_refs: list[dict[str, Any]],
-        has_issues: bool,
-    ) -> None:
+    def _emit_summary(results: TestStructureResults) -> None:
         """Emit the summary table and result line."""
+        misnamed = results.misnamed
+        misplaced = results.misplaced
+        orphaned = results.orphaned
+        orphaned_dirs = results.orphaned_dirs
+        missing = results.missing
+        indirect_refs = results.indirect_refs
+        has_issues = results.has_issues
         total_orphaned = len(orphaned) + len(orphaned_dirs)
         print("---\n")
         print("## Summary\n")
