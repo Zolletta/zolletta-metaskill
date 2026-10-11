@@ -26,6 +26,7 @@ from zolletta_metaskill.adr.adr_cache import ADRCache
 from zolletta_metaskill.adr.adr_discovery import ADRDiscovery
 from zolletta_metaskill.adr.adr_distiller import ADRDistiller
 from zolletta_metaskill.adr.structs.adr_record import ADRRecord
+from zolletta_metaskill.adr.structs.distill_diff import DistillDiff
 from zolletta_metaskill.adr.structs.distill_report import DistillReport
 
 
@@ -98,10 +99,12 @@ class ADROrchestrator:
         self._write_distilled(
             distilled_path,
             existing_content,
-            existing_directives,
-            new_directives,
-            directive_lines,
-            report,
+            DistillDiff(
+                existing_directives=existing_directives,
+                new_directives=new_directives,
+                directive_lines=tuple(directive_lines),
+                report=report,
+            ),
         )
 
         # Save cache
@@ -187,12 +190,13 @@ class ADROrchestrator:
     def _write_distilled(
         distilled_path: Path,
         existing_content: str | None,
-        existing_directives: dict[str, str],
-        new_directives: dict[str, str],
-        directive_lines: list[str],
-        report: DistillReport,
+        diff: DistillDiff,
     ) -> None:
         """Write the distilled file — in-place when possible, else full rewrite."""
+        report = diff.report
+        existing_directives = diff.existing_directives
+        new_directives = diff.new_directives
+        directive_lines = list(diff.directive_lines)
         if not (report.has_adrs and directive_lines):
             ADRDistiller.write_placeholder(distilled_path)
             return
