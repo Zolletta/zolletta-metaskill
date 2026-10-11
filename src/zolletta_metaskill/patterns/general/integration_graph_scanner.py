@@ -54,6 +54,7 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import os
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -108,6 +109,27 @@ class IntegrationGraphScanner:
     # ------------------------------------------------------------------
 
     @staticmethod
+    def _exists_exact(candidate: Path) -> bool:
+        """Return ``True`` when *candidate* exists under exactly that name.
+
+        ``Path.is_file()`` resolves case-insensitively on macOS and Windows, so
+        a candidate built from an imported symbol name — ``from …structs
+        import Finding`` yields ``…/structs/Finding.py`` — matches the real
+        ``…/structs/finding.py``. That fabricated phantom modules, reported
+        ``fan_in`` for files that do not exist, and made the edge graph differ
+        per platform. Compare against the directory's actual entries instead;
+        ``os.listdir`` returns on-disk casing and ``in`` is an exact comparison.
+
+        The module docstring promises that what cannot be resolved "degrades to
+        the external count, never to a false edge" — this keeps that promise
+        true on case-insensitive filesystems.
+        """
+        try:
+            return candidate.name in os.listdir(candidate.parent)
+        except OSError:
+            return False
+
+    @staticmethod
     def _python_candidates(base: Path, dotted: str) -> list[Path]:
         """Return candidate files for a dotted module path under *base*."""
         parts = [p for p in dotted.split(".") if p]
@@ -145,13 +167,13 @@ class IntegrationGraphScanner:
             if not imp.module:
                 candidates.append(base / "__init__.py")
             for candidate in candidates:
-                if candidate.is_file():
+                if IntegrationGraphScanner._exists_exact(candidate):
                     for name in imp.names or [imp.module]:
                         module_hits[candidate].append(name)
             for name in imp.names:
                 dotted = f"{imp.module}.{name}" if imp.module else name
                 for candidate in IntegrationGraphScanner._python_candidates(base, dotted):
-                    if candidate.is_file():
+                    if IntegrationGraphScanner._exists_exact(candidate):
                         # The name is a submodule — attribute it to the
                         # submodule edge, not the package edge.
                         module_hits[candidate] = [

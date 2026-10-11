@@ -110,6 +110,64 @@ class TestIntegrationGraphScanner:
         assert edge["line"] == 1
         assert edge["names"] == [{"name": "Thing", "usage": "call"}]
 
+    def test_symbol_import_does_not_fabricate_pascal_case_module(self, tmp_path: Path) -> None:
+        """A ``Finding`` symbol must not resolve to a phantom ``Finding.py``.
+
+        ``Path.is_file()`` matches case-insensitively on macOS/Windows, so
+        ``.../structs/Finding.py`` used to resolve against the real
+        ``.../structs/finding.py`` — fabricating 9.5% of all edges and making
+        the graph platform-dependent.
+        """
+        root = tmp_path / "src"
+        self._write(root / "pkg" / "__init__.py", "")
+        self._write(root / "pkg" / "structs" / "__init__.py", "")
+        self._write(root / "pkg" / "structs" / "finding.py", "class Finding:\n    pass\n")
+        self._write(
+            root / "pkg" / "a.py",
+            "from pkg.structs import Finding\n\nx = Finding()\n",
+        )
+        result = IntegrationGraphScanner.scan_directory([root], {".py"})
+        targets = [edge["to"] for edge in result["edges"]]
+        assert not [t for t in targets if t.endswith("structs/Finding.py")]
+        # Only the real package edge survives.
+        assert result["edge_count"] == 1
+        assert targets[0].endswith("structs/__init__.py")
+
+    def test_exists_exact_is_case_sensitive(self, tmp_path: Path) -> None:
+        root = tmp_path / "pkg"
+        self._write(root / "finding.py", "X = 1\n")
+        assert IntegrationGraphScanner._exists_exact(root / "finding.py")
+        assert not IntegrationGraphScanner._exists_exact(root / "Finding.py")
+        assert not IntegrationGraphScanner._exists_exact(root / "absent.py")
+
+    def test_exists_exact_returns_false_for_absent_dir(self, tmp_path: Path) -> None:
+        assert not IntegrationGraphScanner._exists_exact(tmp_path / "nope" / "x.py")
+
+    def test_case_insensitive_filesystem_does_not_change_edge_count(self, tmp_path: Path) -> None:
+        """The same tree must yield the same edges on Linux and macOS.
+
+        ``Finding`` resolves nowhere (phantom rejected); ``module_info``
+        resolves to the real submodule. Both are lowercase module stems, so a
+        name-based filter would be wrong in the other direction — this asserts
+        the real submodule edge still lands.
+        """
+        root = tmp_path / "src"
+        self._write(root / "pkg" / "__init__.py", "")
+        self._write(root / "pkg" / "structs" / "__init__.py", "")
+        self._write(root / "pkg" / "structs" / "finding.py", "class Finding:\n    pass\n")
+        self._write(root / "pkg" / "structs" / "module_info.py", "class ModuleInfo:\n    pass\n")
+        self._write(
+            root / "pkg" / "a.py",
+            "from pkg.structs import Finding\nfrom pkg.structs import module_info\n",
+        )
+        result = IntegrationGraphScanner.scan_directory([root], {".py"})
+        targets = [edge["to"] for edge in result["edges"]]
+        assert not [t for t in targets if t.endswith("structs/Finding.py")]
+        # 1 package edge for the Finding import, 2 for the module_info import
+        # (package edge plus its real submodule edge).
+        assert result["edge_count"] == 3
+        assert len([t for t in targets if t.endswith("structs/module_info.py")]) == 1
+
     def test_package_init_resolution(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
         self._write(root / "pkg" / "__init__.py", "X = 1\n")

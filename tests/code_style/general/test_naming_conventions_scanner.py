@@ -12,6 +12,7 @@ import pytest
 from zolletta_metaskill.code_style.general.naming_conventions_scanner import (
     NamingConventionsScanner,
 )
+from zolletta_metaskill.core.project_config import ProjectConfig
 
 
 def _write_settings(dirpath: Path, **overrides: object) -> Path:
@@ -38,6 +39,85 @@ def _git_init(root: Path) -> None:
 
 
 class TestNamingConventionsScanner:
+    # --- Tests for NamingConventionsScanner._resolve_packages(). ---
+
+    @staticmethod
+    def _make_src_pkg(root: Path) -> None:
+        (root / "src" / "mypkg").mkdir(parents=True, exist_ok=True)
+        (root / "src" / "mypkg" / "__init__.py").write_text("")
+
+    def test_resolve_roots_accepts_flat_test_mirror(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A flat ``tests/<path>/`` mirror resolves — no package level required.
+
+        This scanner carried a byte-identical copy of ``test_structure_scanner``'s
+        package-name guard, so both aborted with exit 1 and zero output for two
+        consecutive review runs on the layout AGENTS.md mandates.
+        """
+        _write_settings(tmp_path)
+        self._make_src_pkg(tmp_path)
+        (tmp_path / "tests" / "core").mkdir(parents=True)
+        (tmp_path / "tests" / "core" / "test_config.py").write_text("")
+        monkeypatch.chdir(tmp_path)
+        resolved = NamingConventionsScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        )
+        assert resolved is not None
+        assert resolved[4] == [Path("tests")]
+
+    def test_resolve_roots_still_accepts_packaged_test_mirror(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        self._make_src_pkg(tmp_path)
+        (tmp_path / "tests" / "mypkg" / "core").mkdir(parents=True)
+        (tmp_path / "tests" / "mypkg" / "core" / "test_config.py").write_text("")
+        monkeypatch.chdir(tmp_path)
+        resolved = NamingConventionsScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        )
+        assert resolved is not None
+        assert resolved[4] == [Path("tests") / "mypkg"]
+
+    def test_resolve_roots_prefers_packaged_when_both_exist(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        self._make_src_pkg(tmp_path)
+        (tmp_path / "tests" / "mypkg").mkdir(parents=True)
+        (tmp_path / "tests" / "mypkg" / "__init__.py").write_text("")
+        (tmp_path / "tests" / "core").mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)
+        resolved = NamingConventionsScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        )
+        assert resolved is not None
+        assert resolved[4] == [Path("tests") / "mypkg"]
+
+    def test_resolve_roots_returns_none_when_source_package_absent(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        (tmp_path / "src").mkdir(parents=True)
+        (tmp_path / "tests").mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)
+        assert (
+            NamingConventionsScanner._resolve_packages(ProjectConfig.load_settings(), {"python"})
+            is None
+        )
+
+    def test_resolve_roots_returns_none_when_no_test_dir_on_disk(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        self._make_src_pkg(tmp_path)
+        monkeypatch.chdir(tmp_path)
+        assert (
+            NamingConventionsScanner._resolve_packages(ProjectConfig.load_settings(), {"python"})
+            is None
+        )
+
     # --- Tests for NamingConventionsScanner._snake_to_pascal(). ---
 
     def test_snake_to_pascal_simple_input_returns_myclass(self) -> None:
@@ -417,18 +497,35 @@ class TestNamingConventionsScanner:
         assert rc == 1
         assert "does not exist" in err
 
-    def test_main_test_package_not_exist(
+    def test_main_flat_test_mirror_is_accepted_not_an_error(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        """A test root with no ``mypkg/`` subdir is a valid flat mirror, not an error.
+
+        This test previously asserted ``rc == 1`` — it encoded the bug. The
+        scanner required a package-named test directory, contradicting both
+        AGENTS.md and ``structural-conventions.md``, so it aborted with zero
+        output for two consecutive review runs.
+        """
         _write_settings(tmp_path)
         src = tmp_path / "src"
-        tests = tmp_path / "tests"
         (src / "mypkg").mkdir(parents=True)
-        tests.mkdir()
+        (src / "mypkg" / "__init__.py").write_text("")
+        (tmp_path / "tests" / "core").mkdir(parents=True)
+        (tmp_path / "tests" / "core" / "test_config.py").write_text("")
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
+
+    def test_main_test_dir_absent_is_an_error(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """No configured test directory on disk -> exit 1 naming the real cause."""
+        _write_settings(tmp_path)
+        (tmp_path / "src" / "mypkg").mkdir(parents=True)
         rc = self._run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "does not exist" in err
+        assert "no configured test directories exist on disk" in err
 
     def test_main_empty_dirs(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch

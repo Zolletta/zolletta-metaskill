@@ -214,7 +214,6 @@ class NamingConventionsScanner:
             return None
 
         src_pkgs = [root / pkg_name for root in src_roots if (root / pkg_name).is_dir()]
-        test_pkgs = [root / pkg_name for root in test_roots if (root / pkg_name).is_dir()]
         if not src_pkgs:
             print(
                 f"Error: source package '{pkg_name}' does not exist under any "
@@ -222,12 +221,17 @@ class NamingConventionsScanner:
                 file=sys.stderr,
             )
             return None
+        # Tests may mirror the source with or without the package directory level:
+        #   src/<pkg>/core/config.py -> tests/<pkg>/core/test_config.py  (packaged)
+        #   src/<pkg>/core/config.py -> tests/core/test_config.py        (flat)
+        # Both layouts are valid; `structural-conventions.md` documents the flat
+        # form (``src/.../cache.py -> tests/.../test_cache*.py``). Fall back to
+        # the test roots themselves when no package directory is present. The
+        # ``test_roots`` guard above already errors when none exist on disk, and
+        # `existing_roots` filtered them to directories, so this is never empty.
+        test_pkgs = [root / pkg_name for root in test_roots if (root / pkg_name).is_dir()]
         if not test_pkgs:
-            print(
-                f"Error: test package '{pkg_name}' does not exist under any configured test root",
-                file=sys.stderr,
-            )
-            return None
+            test_pkgs = list(test_roots)
         return src_roots, test_roots, pkg_name, src_pkgs, test_pkgs
 
     @staticmethod

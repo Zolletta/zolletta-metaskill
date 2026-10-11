@@ -9,12 +9,92 @@ from pathlib import Path
 
 import pytest
 
+from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.testing_style.general.test_structure_scanner import (
     TestStructureScanner,
 )
 
 
 class TestTestStructureScanner:
+    # --- Tests for TestStructureScanner._resolve_packages(). ---
+
+    @staticmethod
+    def _make_src_pkg(root: Path) -> None:
+        (root / "src" / "mypkg").mkdir(parents=True, exist_ok=True)
+        (root / "src" / "mypkg" / "__init__.py").write_text("")
+
+    def test_resolve_packages_accepts_flat_test_mirror(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A flat ``tests/<path>/`` mirror resolves — no package level required.
+
+        This is the layout AGENTS.md mandates (``src/<pkg>/<path>/<name>.py``
+        → ``tests/<path>/test_<name>.py``) and the one
+        ``structural-conventions.md`` documents. Requiring a package-named test
+        directory aborted the scanner with exit 1 and zero output for two
+        consecutive review runs.
+        """
+        self._write_settings(tmp_path)
+        self._make_src_pkg(tmp_path)
+        (tmp_path / "tests" / "core").mkdir(parents=True)
+        (tmp_path / "tests" / "core" / "test_config.py").write_text("")
+        monkeypatch.chdir(tmp_path)
+        src_pkgs, test_pkgs = TestStructureScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        )
+        # Paths are built from the configured roots, so they stay relative.
+        assert src_pkgs == [Path("src") / "mypkg"]
+        assert test_pkgs == [Path("tests")]
+
+    def test_resolve_packages_still_accepts_packaged_test_mirror(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The packaged layout ``tests/<pkg>/`` keeps working unchanged."""
+        self._write_settings(tmp_path)
+        self._make_src_pkg(tmp_path)
+        (tmp_path / "tests" / "mypkg" / "core").mkdir(parents=True)
+        (tmp_path / "tests" / "mypkg" / "core" / "test_config.py").write_text("")
+        monkeypatch.chdir(tmp_path)
+        _, test_pkgs = TestStructureScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        )
+        assert test_pkgs == [Path("tests") / "mypkg"]
+
+    def test_resolve_packages_prefers_packaged_when_both_exist(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._write_settings(tmp_path)
+        self._make_src_pkg(tmp_path)
+        (tmp_path / "tests" / "mypkg").mkdir(parents=True)
+        (tmp_path / "tests" / "mypkg" / "__init__.py").write_text("")
+        (tmp_path / "tests" / "core").mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)
+        _, test_pkgs = TestStructureScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        )
+        assert test_pkgs == [Path("tests") / "mypkg"]
+
+    def test_resolve_packages_errors_when_source_package_absent(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._write_settings(tmp_path)
+        (tmp_path / "src").mkdir(parents=True)
+        (tmp_path / "tests").mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)
+        assert TestStructureScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        ) == (None, None)
+
+    def test_resolve_packages_errors_when_no_test_dir_on_disk(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._write_settings(tmp_path)
+        self._make_src_pkg(tmp_path)
+        monkeypatch.chdir(tmp_path)
+        assert TestStructureScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        ) == (None, None)
+
     # --- Tests for TestStructureScanner._pascal_to_snake(). ---
 
     def test_pascal_to_snake_simple_input_returns_my_class(self) -> None:
@@ -436,19 +516,40 @@ class TestTestStructureScanner:
         assert rc == 1
         assert "does not exist" in err
 
-    def test_main_test_package_not_exist(
+    def test_main_flat_test_mirror_is_accepted_not_an_error(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Configured package missing under every test root -> error."""
+        """A test root with no ``mypkg/`` subdir is a valid flat mirror, not an error.
+
+        This test previously asserted ``rc == 1`` — it encoded the bug. The
+        scanner required a package-named test directory, contradicting both
+        AGENTS.md and ``structural-conventions.md``, and so aborted with zero
+        output for two consecutive review runs.
+        """
         self._write_settings(tmp_path)
-        src_pkg = tmp_path / "src" / "mypkg"
-        src_pkg.mkdir(parents=True)
-        (src_pkg / "__init__.py").write_text("")
-        (tmp_path / "tests" / "otherpkg").mkdir(parents=True)
+        self._make_src_pkg(tmp_path)
+        (tmp_path / "tests" / "core").mkdir(parents=True)
+        (tmp_path / "tests" / "core" / "test_config.py").write_text("")
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "Test Structure" in out
+
+    def test_main_test_dir_absent_is_an_error(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """No configured test directory on disk -> exit 1 with a clear message.
+
+        Previously this case reported "test package 'mypkg' does not exist under
+        any configured test root", which blamed the package name rather than the
+        missing directory. The ``test_roots`` guard names the real cause.
+        """
+        self._write_settings(tmp_path)
+        self._make_src_pkg(tmp_path)
         rc = self._run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "does not exist" in err
+        assert "no configured test directories exist on disk" in err
 
     def test_main_empty_dirs(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
