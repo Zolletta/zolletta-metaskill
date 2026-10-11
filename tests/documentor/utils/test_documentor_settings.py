@@ -11,6 +11,43 @@ from zolletta_metaskill.documentor.utils.documentor_settings import DocumentorSe
 
 
 class TestDocumentorSettings:
+    # --- from_settings ---
+
+    def test_from_settings_resolves_every_documentation_key(self, tmp_path: Path) -> None:
+        settings = {
+            "runs_dir": str(tmp_path / "runs"),
+            "documentation": {
+                "dir": "guide",
+                "adrs": "decisions",
+                "doc_patterns": ["*.md", 7, "*.rst"],
+                "include_referential": True,
+                "min_severity": "medium",
+                "check_external": True,
+            },
+        }
+        resolved = DocumentorSettings.from_settings(settings)
+        assert resolved.documentation_rel_dir == Path("guide")
+        assert resolved.adrs_dir == Path("guide/decisions")
+        assert resolved.doc_patterns == ("*.md", "*.rst")
+        assert resolved.include_referential is True
+        assert resolved.min_severity == "medium"
+        assert resolved.check_external is True
+
+    def test_from_settings_applies_documented_defaults(self, tmp_path: Path) -> None:
+        settings = {"runs_dir": str(tmp_path / "runs"), "documentation": {}}
+        resolved = DocumentorSettings.from_settings(settings)
+        assert resolved.documentation_rel_dir == Path("docs")
+        assert resolved.adrs_dir is None
+        assert resolved.doc_patterns is None
+        assert resolved.include_referential is False
+        assert resolved.min_severity == "low"
+        assert resolved.check_external is False
+
+    def test_from_settings_carries_default_quadrants(self, tmp_path: Path) -> None:
+        settings = {"runs_dir": str(tmp_path / "runs"), "documentation": {}}
+        resolved = DocumentorSettings.from_settings(settings)
+        assert set(resolved.quadrants) >= {"tutorials", "how-to", "reference", "explanation"}
+
     # --- resolve_cache_dir: explicit override ---
 
     def test_resolve_cache_dir_configured_path_returns_absolute(self, tmp_path: Path) -> None:
