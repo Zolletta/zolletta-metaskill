@@ -10,6 +10,8 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
+from zolletta_metaskill.documentor.utils.fenced_content import FencedContent
+
 
 class DocCodeMapper:
     """Discovers code files and maps documentation files to code directories."""
@@ -173,6 +175,12 @@ class DocCodeMapper:
                 content = f.read()
         except OSError:
             return refs
+
+        # A ```markdown block *illustrating* a link is documentation about a
+        # link, not a reference to one. Stripping fences here — rather than
+        # tracking them inline — is what makes this agree structurally with
+        # link_checker instead of by coincidence.
+        content = FencedContent.strip_fences(content)
 
         link_pattern = re.compile(r"\[([^\]]*)\]\(([^)]+)\)")
         for match in link_pattern.finditer(content):

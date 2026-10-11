@@ -214,17 +214,22 @@ class DocumentorSettings:
     def resolve_cache_dir(settings: dict[str, Any]) -> Path:
         """Return the cache directory for documentor tool outputs.
 
-        Resolution order:
+        Resolution:
 
-        1. ``documentation.cache_dir`` from *settings*, when set to a non-empty
-           string. This is an explicit override and always wins.
-        2. The ``cache/`` directory of the most recent review run folder under
+        1. The ``cache/`` directory of the most recent review run folder under
            ``runs_dir``. Run folders are named ``YYYY-MM-DD-HH-MM``, so the
            greatest name is the most recent one. Keeping artifacts inside the run
            folder means each review keeps its own history instead of overwriting
            a single shared directory.
-        3. ``<runs_dir>/cache`` when no run folder exists yet, i.e. before the
+        2. ``<runs_dir>/cache`` when no run folder exists yet, i.e. before the
            first review has created one.
+
+        There is deliberately no override. A ``documentation.cache_dir`` key was
+        honoured here for a while, but the settings schema closes
+        ``documentation`` with ``additionalProperties: false`` and never declared
+        it — so the branch was unreachable through any validated configuration. A
+        feature nobody can configure is not a feature; it is a second description
+        of the default that reads like an override.
 
         Args:
             settings: Parsed ``settings.json`` contents.
@@ -234,14 +239,6 @@ class DocumentorSettings:
             here; callers write into it.
 
         """
-        configured = ProjectConfig.setting(settings, "documentation.cache_dir", None)
-        if isinstance(configured, str) and configured:
-            return Path(os.path.abspath(configured))
-        return DocumentorSettings._default_cache_dir(settings)
-
-    @staticmethod
-    def _default_cache_dir(settings: dict[str, Any]) -> Path:
-        """Return the per-run cache directory, or the ``runs_dir`` fallback."""
         runs_dir = ProjectConfig.runs_dir(settings)
         latest_run = DocumentorSettings._latest_run_dir(runs_dir)
         if latest_run is not None:

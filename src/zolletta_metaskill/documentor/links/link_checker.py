@@ -32,6 +32,7 @@ from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.documentor.links.link_report_writer import LinkReportWriter
 from zolletta_metaskill.documentor.structs.link_info import LinkInfo
 from zolletta_metaskill.documentor.utils.documentor_settings import DocumentorSettings
+from zolletta_metaskill.documentor.utils.fenced_content import FencedContent
 
 
 class LinkChecker:
@@ -133,7 +134,7 @@ class LinkChecker:
         in_code_block = False
         for i, line in enumerate(lines, 1):
             stripped = line.strip()
-            if stripped.startswith("```"):
+            if FencedContent.is_fence(line):
                 in_code_block = not in_code_block
                 continue
             if in_code_block:
@@ -194,9 +195,8 @@ class LinkChecker:
         in_code_block = False
 
         for i, line in enumerate(lines, 1):
-            stripped = line.strip()
             # Skip code blocks — # comments inside code blocks are not headings
-            if stripped.startswith("```"):
+            if FencedContent.is_fence(line):
                 in_code_block = not in_code_block
                 continue
             if in_code_block:

@@ -139,3 +139,35 @@ class TestDocCodeMapper:
         """extract_references_from_doc returns empty reference sets for an unreadable doc."""
         refs = DocCodeMapper.extract_references_from_doc(str(tmp_path), "absent.md")
         assert refs == {"files": set(), "functions": set(), "versions": set(), "links": set()}
+
+    def test_fenced_link_example_is_not_a_reference(self, tmp_path: Path) -> None:
+        """A fenced block illustrating a link is documentation, not a reference.
+
+        This is the false positive: the scorer reported ``link_health = 0``
+        while ``link_checker`` correctly found 0 broken of 667, because only one
+        of the two tracked fences.
+        """
+        doc = tmp_path / "guide.md"
+        doc.write_text(
+            "Real prose link: [api](api.md).\n"
+            "\n"
+            "```markdown\n"
+            "Example syntax: [label](target.md)\n"
+            "```\n",
+            encoding="utf-8",
+        )
+        refs = DocCodeMapper.extract_references_from_doc(str(tmp_path), "guide.md")
+        assert "api.md" in refs["files"]
+        assert "target.md" not in refs["files"]
+        assert "target.md" not in refs["links"]
+
+    def test_fenced_code_reference_is_not_a_reference(self, tmp_path: Path) -> None:
+        """A ```python block showing `import foo.py` is an example, not a reference."""
+        doc = tmp_path / "guide.md"
+        doc.write_text(
+            "See `real.py`.\n\n```python\nimport `illustrative.py`\n```\n",
+            encoding="utf-8",
+        )
+        refs = DocCodeMapper.extract_references_from_doc(str(tmp_path), "guide.md")
+        assert "real.py" in refs["files"]
+        assert "illustrative.py" not in refs["files"]
