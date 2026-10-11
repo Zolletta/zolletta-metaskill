@@ -232,6 +232,100 @@ class TestOpenClosedScanner:
         node = _parse_if(source)
         assert OpenClosedScanner._count_type_branches(node) == 0
 
+    # --- syntax vocabulary is not a type ladder ---
+
+    def test_ast_node_ladder_is_not_counted(self) -> None:
+        """``ast.*`` is a closed grammar; a ladder over it is parser dispatch."""
+        source = (
+            "if isinstance(node, ast.ClassDef):\n    pass\n"
+            "elif isinstance(node, ast.FunctionDef):\n    pass\n"
+            "elif isinstance(node, ast.Import):\n    pass\n"
+        )
+        node = _parse_if(source)
+        assert OpenClosedScanner._count_type_branches(node) == 0
+
+    def test_ast_tuple_ladder_is_not_counted(self) -> None:
+        source = (
+            "if isinstance(node, ast.ClassDef):\n    pass\n"
+            "elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):\n    pass\n"
+            "elif isinstance(node, ast.Import):\n    pass\n"
+        )
+        node = _parse_if(source)
+        assert OpenClosedScanner._count_type_branches(node) == 0
+
+    def test_tree_sitter_type_string_ladder_is_not_counted(self) -> None:
+        """``node.type`` names tree-sitter node types — a grammar, not application types."""
+        source = (
+            "if child.type == 'namespace_use_group':\n    pass\n"
+            "elif child.type == 'namespace_use_clause':\n    pass\n"
+            "elif child.type in ('name', 'qualified_name'):\n    pass\n"
+        )
+        node = _parse_if(source)
+        assert OpenClosedScanner._count_type_branches(node) == 0
+
+    def test_application_type_ladder_is_still_flagged(self) -> None:
+        """The positive case: narrowing must not suppress a genuine ladder."""
+        source = (
+            "if isinstance(x, Dog):\n    pass\n"
+            "elif isinstance(x, Cat):\n    pass\n"
+            "elif isinstance(x, Bird):\n    pass\n"
+        )
+        node = _parse_if(source)
+        assert OpenClosedScanner._count_type_branches(node) == 3
+
+    def test_kind_ladder_is_still_flagged(self) -> None:
+        """``.kind`` is a domain convention, so a ``.kind`` ladder stays a finding."""
+        source = (
+            "if issue.kind == 'critical':\n    pass\n"
+            "elif issue.kind == 'high':\n    pass\n"
+            "elif issue.kind == 'low':\n    pass\n"
+        )
+        node = _parse_if(source)
+        assert OpenClosedScanner._count_type_branches(node) == 3
+
+    def test_mixed_ast_and_domain_operands_are_still_flagged(self) -> None:
+        """A domain branch that merely mentions ``ast`` is still a domain branch."""
+        source = (
+            "if isinstance(n, ast.Call) and isinstance(n.value, Dog):\n    pass\n"
+            "elif isinstance(n, ast.Name) and isinstance(n.ctx, Cat):\n    pass\n"
+            "elif isinstance(n, ast.Constant) and isinstance(n.value, Bird):\n    pass\n"
+        )
+        node = _parse_if(source)
+        assert OpenClosedScanner._count_type_branches(node) == 3
+
+    def test_mixed_ladder_counts_only_the_domain_branch(self) -> None:
+        source = (
+            "if isinstance(n, ast.Call):\n    pass\n"
+            "elif isinstance(n, Dog):\n    pass\n"
+            "elif isinstance(n, Cat):\n    pass\n"
+        )
+        node = _parse_if(source)
+        assert OpenClosedScanner._count_type_branches(node) == 2
+
+    def test_scan_file_ignores_ast_ladder(self, tmp_path: Path) -> None:
+        source = (
+            "import ast\n\n\n"
+            "def walk(node):\n"
+            "    if isinstance(node, ast.ClassDef):\n        pass\n"
+            "    elif isinstance(node, ast.FunctionDef):\n        pass\n"
+            "    elif isinstance(node, ast.Import):\n        pass\n"
+        )
+        path = tmp_path / "walker.py"
+        path.write_text(source)
+        assert OpenClosedScanner.scan_file(path) == []
+
+    def test_scan_file_reports_application_ladder(self, tmp_path: Path) -> None:
+        source = (
+            "def handle(x):\n"
+            "    if isinstance(x, Dog):\n        pass\n"
+            "    elif isinstance(x, Cat):\n        pass\n"
+            "    elif isinstance(x, Bird):\n        pass\n"
+        )
+        path = tmp_path / "handler.py"
+        path.write_text(source)
+        violations = OpenClosedScanner.scan_file(path)
+        assert [v["type"] for v in violations] == ["type_ladder"]
+
     # --- IsStringTypeDispatch ---
 
     def test_getattr_with_concat(self) -> None:

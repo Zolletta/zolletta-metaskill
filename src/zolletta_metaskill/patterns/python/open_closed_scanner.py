@@ -71,15 +71,88 @@ class OpenClosedScanner:
                 return True
         return False
 
+    _SYNTAX_MODULES = frozenset({"ast", "token", "tokenize", "keyword", "symtable"})
+
+    @staticmethod
+    def _is_syntax_class(node: ast.expr) -> bool:
+        """Return True when *node* names a Python grammar symbol, not an application type."""
+        if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
+            return node.value.id in OpenClosedScanner._SYNTAX_MODULES
+        if isinstance(node, ast.Tuple):
+            return bool(node.elts) and all(
+                OpenClosedScanner._is_syntax_class(element) for element in node.elts
+            )
+        return False
+
+    @staticmethod
+    def _is_string_literal(node: ast.expr) -> bool:
+        """Return True when *node* is a plain string constant."""
+        return isinstance(node, ast.Constant) and isinstance(node.value, str)
+
+    @staticmethod
+    def _is_string_collection(node: ast.expr) -> bool:
+        """Return True when *node* is a string, or a non-empty tuple of strings.
+
+        ``child.type in ("name", "qualified_name")`` compares against a tuple,
+        so the single-literal test would miss half the tree-sitter ladders.
+        """
+        if OpenClosedScanner._is_string_literal(node):
+            return True
+        if isinstance(node, ast.Tuple):
+            return bool(node.elts) and all(
+                OpenClosedScanner._is_string_literal(element) for element in node.elts
+            )
+        return False
+
+    @staticmethod
+    def _is_syntax_vocabulary(node: ast.AST) -> bool:
+        """Return True when *every* type operand in *node* is parser vocabulary.
+
+        Syntax vocabulary is a closed grammar fixed by Python or by the parser:
+        ``ast.*`` node classes, and ``node.type`` strings naming tree-sitter node
+        types. No application type can be added to that grammar, so a ladder over
+        it is not an Open/Closed violation — it is how every AST walker and every
+        tree-sitter binding in this codebase is written. Flagging them asks
+        authors to replace working parser dispatch with polymorphism over a
+        grammar they do not own.
+
+        Two shapes qualify:
+
+        - ``isinstance(node, ast.Call)`` and ``isinstance(node, (ast.A, ast.B))``
+        - ``node.type == "call_expression"`` — ``.type`` only. ``.kind`` is a
+          domain convention, so a ``.kind`` ladder stays a finding.
+
+        ``and`` combinations qualify only when *every* operand does.
+        ``isinstance(n, ast.Call) and isinstance(n.value, MyClass)`` is a domain
+        branch that happens to mention ``ast``, and is still counted.
+        """
+        if isinstance(node, ast.BoolOp):
+            return all(OpenClosedScanner._is_syntax_vocabulary(value) for value in node.values)
+        if isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name) and node.func.id == "isinstance":
+                return len(node.args) == 2 and OpenClosedScanner._is_syntax_class(node.args[1])
+            return False
+        if isinstance(node, ast.Compare):
+            left = node.left
+            if isinstance(left, ast.Attribute) and left.attr == "type":
+                return all(
+                    OpenClosedScanner._is_string_collection(comparator)
+                    for comparator in node.comparators
+                )
+        return False
+
     @staticmethod
     def _count_type_branches(node: ast.If) -> int:
-        """Count how many branches in an if/elif chain do type checks."""
+        """Count how many branches in an if/elif chain do application type checks."""
         count = 0
         current = node
         while isinstance(current, ast.If):
-            if OpenClosedScanner._is_type_check(
-                current.test
-            ) or OpenClosedScanner._contains_type_check(current.test):
+            test = current.test
+            is_domain_branch = not OpenClosedScanner._is_syntax_vocabulary(test) and (
+                OpenClosedScanner._is_type_check(test)
+                or OpenClosedScanner._contains_type_check(test)
+            )
+            if is_domain_branch:
                 count += 1
             # Check elif chain
             if (
