@@ -29,7 +29,7 @@ Review project documentation for [Diátaxis](https://diataxis.fr/) compliance, d
 python3 src/zolletta_metaskill/documentor/documentor_cli.py
 ```
 
-This runs all three documentor tools and prints one aggregated report. Each tool also writes its own JSON cache under `documentation.cache_dir` (default `.zolletta-metaskill/cache/`):
+This runs all three documentor tools and prints one aggregated report. Each tool also writes its own JSON cache into the current run folder, `<runs_dir>/<YYYY-MM-DD-HH-MM>/cache/` — `.zolletta-metaskill/<timestamp>/cache/` with the default `runs_dir` — so each review keeps its own history instead of overwriting the last; before the first run folder exists, artifacts land in `<runs_dir>/cache/`:
 
 - `quality.json` — unified drift + staleness review (freshness score 0-100 plus drift issues); when `documentation.staleness_threshold` is set the CLI exits non-zero below it
 - `api_doc_validator.json` — API documentation validated against actual code signatures

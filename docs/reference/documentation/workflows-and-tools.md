@@ -31,7 +31,7 @@ python src/zolletta_metaskill/documentor/links/link_checker.py
 python src/zolletta_metaskill/documentor/documentor_cli.py
 ```
 
-All tools run from the repository root, take `[--json]` (plus `--broken-only` on the link checker), and read configuration from `.zolletta-metaskill/settings.json`. Each writes its JSON cache under `documentation.cache_dir` (default `.zolletta-metaskill/cache/`). `--help` shows usage.
+All tools run from the repository root, take `[--json]` (plus `--broken-only` on the link checker), and read configuration from `.zolletta-metaskill/settings.json`. Each writes its JSON cache into the current run folder, `<runs_dir>/<YYYY-MM-DD-HH-MM>/cache/` — `.zolletta-metaskill/<timestamp>/cache/` with the default `runs_dir` — so each review keeps its own history instead of overwriting the last; before the first run folder exists, artifacts land in `<runs_dir>/cache/`. `--help` shows usage.
 
 ## Core Workflows
 

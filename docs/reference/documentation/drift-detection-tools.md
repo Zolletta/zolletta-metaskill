@@ -19,7 +19,7 @@ The `documentor` skill includes a top-level orchestrator plus three domain tools
 
 All tools: Python 3.8+ stdlib only, `[--json]`, run from the repository root, any OS. All configuration — docs directory, source roots, thresholds — comes from `.zolletta-metaskill/settings.json` under `documentation.*`.
 
-Each tool writes its own JSON cache artifact under the configured cache dir (`documentation.cache_dir`, default `.zolletta-metaskill/cache/`):
+Each tool writes its own JSON cache artifact into the current run folder, `<runs_dir>/<YYYY-MM-DD-HH-MM>/cache/` — `.zolletta-metaskill/<timestamp>/cache/` with the default `runs_dir` — so each review keeps its own history instead of overwriting the last. Before the first run folder exists, artifacts land in `<runs_dir>/cache/`:
 
 | Tool cache file          | Produced by                    |
 |--------------------------|--------------------------------|
