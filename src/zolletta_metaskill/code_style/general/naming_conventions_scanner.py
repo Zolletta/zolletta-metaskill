@@ -55,10 +55,62 @@ from zolletta_metaskill.core.project_config import ProjectConfig
 class NamingConventionsScanner:
     """Check naming conventions for source files and test files."""
 
+    # The shipped acronym list — skill folder first, then the source layout.
+    # Source layout: _SCRIPT_DIR is <repo>/src/zolletta_metaskill/code_style/general/,
+    # so parents[3] is the repo root. Same two-path lookup the acronym casing scanners use.
+    _SCRIPT_DIR = Path(__file__).resolve().parent
+    _ACRONYMS_JSON = (
+        _SCRIPT_DIR / "assets" / "acronyms.json"  # installed package layout
+        if (_SCRIPT_DIR / "assets" / "acronyms.json").exists()
+        else _SCRIPT_DIR.parents[3]
+        / "skills"
+        / "zolletta-metaskill-python-code-style"
+        / "assets"
+        / "acronyms.json"
+    )
+
+    @staticmethod
+    def _known_acronyms() -> frozenset[str]:
+        """Return the uppercase acronym set the filename↔class rule accepts.
+
+        Loaded from the shipped ``assets/acronyms.json``. The list already
+        carried ``ADR``, ``PHP``, ``API`` and ``CLI`` — the filename rule simply
+        never consulted it, which is why ``ADRCache`` in ``adr_cache.py`` was
+        reported as a violation against an expected ``AdrCache``.
+        """
+        try:
+            data = json.loads(NamingConventionsScanner._ACRONYMS_JSON.read_text(encoding="utf-8"))
+            acronyms = data.get("acronyms", [])
+            if isinstance(acronyms, list) and acronyms:
+                return frozenset(a.upper() for a in acronyms if isinstance(a, str))
+        except (OSError, json.JSONDecodeError, AttributeError):
+            pass
+        return frozenset({"ADR", "API", "CLI", "HTTP", "JSON", "PHP", "URL"})
+
     @staticmethod
     def _snake_to_pascal(name: str) -> str:
         """Convert snake_case to PascalCase (e.g. my_class -> MyClass)."""
         return "".join(word.capitalize() for word in name.split("_"))
+
+    @staticmethod
+    def _acceptable_class_names(stem: str, acronyms: frozenset[str]) -> set[str]:
+        """Return every class name *stem* may legitimately hold.
+
+        Each snake word is either a plain capitalised word, or — when it matches
+        a known acronym case-insensitively — the acronym's own spelling. So
+        ``adr_cli`` legitimately yields ``ADRCLI``, ``AdrCLI`` and ``ADRCli``,
+        and ``php_engine`` yields ``PHPEngine`` and ``PhpEngine``.
+
+        Narrowing must stay narrow: a class that matches none of these is still
+        a violation, which is what keeps the rule usable as rename evidence.
+        """
+        variants = {""}
+        for word in stem.split("_"):
+            options = {word.capitalize()}
+            if word.upper() in acronyms:
+                options.add(word.upper())
+            variants = {prefix + option for prefix in variants for option in options}
+        return variants
 
     @staticmethod
     def _pascal_to_snake(name: str) -> str:
@@ -238,6 +290,7 @@ class NamingConventionsScanner:
     def _check_name_mismatches(src_pkgs: list[Path]) -> list[dict[str, Any]]:
         """Check 1: source file name == class name."""
         name_mismatch: list[dict[str, Any]] = []
+        acronyms = NamingConventionsScanner._known_acronyms()
         for src_pkg in src_pkgs:
             for py in ProjectConfig.iter_files(src_pkg, {".py"}):
                 if py.name == "__init__.py":
@@ -249,7 +302,8 @@ class NamingConventionsScanner:
 
                 cls_name = classes[0]
                 expected_pascal = NamingConventionsScanner._snake_to_pascal(py.stem)
-                if cls_name != expected_pascal and cls_name != py.stem:
+                acceptable = NamingConventionsScanner._acceptable_class_names(py.stem, acronyms)
+                if cls_name not in acceptable and cls_name != py.stem:
                     name_mismatch.append(
                         {
                             "file": str(py.relative_to(src_pkg)),

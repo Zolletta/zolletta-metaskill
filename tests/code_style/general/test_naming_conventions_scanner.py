@@ -628,3 +628,73 @@ class TestNamingConventionsScanner:
         out = capsys.readouterr().out
         assert rc == 0
         assert "test_conftest.py" not in out
+
+    # --- acronym-aware filename↔class matching ---
+
+    def test_acceptable_names_include_leading_acronym(self) -> None:
+        acronyms = NamingConventionsScanner._known_acronyms()
+        names = NamingConventionsScanner._acceptable_class_names("adr_cache", acronyms)
+        assert "ADRCache" in names
+        assert "AdrCache" in names
+
+    def test_acceptable_names_include_trailing_acronym(self) -> None:
+        acronyms = NamingConventionsScanner._known_acronyms()
+        names = NamingConventionsScanner._acceptable_class_names("adr_cli", acronyms)
+        assert "ADRCLI" in names
+        assert "AdrCLI" in names
+
+    def test_acceptable_names_for_non_acronym_word_unchanged(self) -> None:
+        acronyms = NamingConventionsScanner._known_acronyms()
+        assert NamingConventionsScanner._acceptable_class_names("user_store", acronyms) == {
+            "UserStore"
+        }
+
+    def test_shipped_acronym_list_is_loaded(self) -> None:
+        """The shipped list must load, not the hardcoded fallback."""
+        assert NamingConventionsScanner._ACRONYMS_JSON.exists()
+        acronyms = NamingConventionsScanner._known_acronyms()
+        assert len(acronyms) > 20
+        assert {"ADR", "PHP", "API", "CLI"} <= acronyms
+
+    def test_adr_class_not_flagged(self, tmp_path: Path) -> None:
+        """ADRCache in adr_cache.py is correct, not a violation."""
+        src_pkg = tmp_path / "pkg"
+        src_pkg.mkdir(parents=True)
+        (src_pkg / "adr_cache.py").write_text("class ADRCache:\n    pass\n")
+        assert NamingConventionsScanner._check_name_mismatches([src_pkg]) == []
+
+    def test_trailing_acronym_class_not_flagged(self, tmp_path: Path) -> None:
+        """ADRCLI in adr_cli.py is correct, not a violation."""
+        src_pkg = tmp_path / "pkg"
+        src_pkg.mkdir(parents=True)
+        (src_pkg / "adr_cli.py").write_text("class ADRCLI:\n    pass\n")
+        assert NamingConventionsScanner._check_name_mismatches([src_pkg]) == []
+
+    def test_wrongly_cased_acronym_is_owned_by_the_casing_rule(self, tmp_path: Path) -> None:
+        """``AdrCache`` in ``adr_cache.py`` corresponds to the filename.
+
+        The violation is the casing, and the acronym-casing rule owns it — two
+        scanners reporting one defect would double-count it. So this rule stays
+        silent while that one still fires.
+        """
+        from zolletta_metaskill.code_style.python.acronym_casing_scanner import (
+            AcronymCasingScanner,
+        )
+
+        src_pkg = tmp_path / "pkg"
+        src_pkg.mkdir(parents=True)
+        (src_pkg / "adr_cache.py").write_text("class AdrCache:\n    pass\n")
+
+        assert NamingConventionsScanner._check_name_mismatches([src_pkg]) == []
+
+        acronym_map = {a.lower(): a for a in AcronymCasingScanner._load_default_acronyms()}
+        violations = AcronymCasingScanner._check_class("AdrCache", 1, "adr_cache.py", acronym_map)
+        assert [(v["word"], v["expected"]) for v in violations] == [("Adr", "ADR")]
+
+    def test_unrelated_mismatch_still_flagged(self, tmp_path: Path) -> None:
+        """A genuine filename↔class mismatch is still reported."""
+        src_pkg = tmp_path / "pkg"
+        src_pkg.mkdir(parents=True)
+        (src_pkg / "user_store.py").write_text("class Vehicle:\n    pass\n")
+        mismatches = NamingConventionsScanner._check_name_mismatches([src_pkg])
+        assert [m["class"] for m in mismatches] == ["Vehicle"]

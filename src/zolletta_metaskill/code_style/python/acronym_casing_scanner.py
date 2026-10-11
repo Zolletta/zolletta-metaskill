@@ -57,13 +57,22 @@ class AcronymCasingScanner:
 
     # Path to the shipped acronym list — check skill folder first, then src/.
     _SCRIPT_DIR = Path(__file__).resolve().parent
+    # Source layout: _SCRIPT_DIR is <repo>/src/zolletta_metaskill/code_style/python/,
+    # so parents[3] is the repo root and the shipped list lives under skills/.
+    # The previous path was parents[3] / "python-code-style" — <repo>/python-code-style
+    # — which never existed, so the shipped 57-entry list silently degraded to the
+    # 14-entry fallback, and ADR and PHP looked "missing" from the list.
+    _SOURCE_LAYOUT_JSON = (
+        _SCRIPT_DIR.parents[3]
+        / "skills"
+        / "zolletta-metaskill-python-code-style"
+        / "assets"
+        / "acronyms.json"
+    )
     _ACRONYMS_JSON = (
         _SCRIPT_DIR / "assets" / "acronyms.json"  # installed package layout
         if (_SCRIPT_DIR / "assets" / "acronyms.json").exists()
-        else _SCRIPT_DIR.parents[3]
-        / "python-code-style"
-        / "assets"
-        / "acronyms.json"  # source layout
+        else _SOURCE_LAYOUT_JSON
     )
 
     @staticmethod

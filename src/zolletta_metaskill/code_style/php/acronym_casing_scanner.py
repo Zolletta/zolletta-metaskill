@@ -92,10 +92,18 @@ class AcronymCasingScanner:
         available it is loaded, otherwise the fallback is used.
         """
         # Try the shared assets file (same location the Python scanner uses).
+        # Source layout: script_dir is <repo>/src/zolletta_metaskill/code_style/php/,
+        # so parents[3] is the repo root. The previous `parents[3] / "python-code-style"`
+        # pointed at <repo>/python-code-style, which never existed, so the shipped list
+        # silently degraded to the fallback here too.
         script_dir = Path(__file__).resolve().parent
         candidates = [
             script_dir / "assets" / "acronyms.json",  # installed package layout
-            script_dir.parents[3] / "python-code-style" / "assets" / "acronyms.json",
+            script_dir.parents[3]
+            / "skills"
+            / "zolletta-metaskill-python-code-style"
+            / "assets"
+            / "acronyms.json",
         ]
         for candidate in candidates:
             if candidate.exists():
