@@ -11,6 +11,7 @@ import pytest
 
 from zolletta_metaskill.documentor.api_doc.api_doc_report_writer import APIDocReportWriter
 from zolletta_metaskill.documentor.api_doc.api_doc_validator import APIDocValidator
+from zolletta_metaskill.documentor.structs import APIDocReportOptions
 from zolletta_metaskill.documentor.structs.source_signature import SourceSignature
 
 
@@ -718,14 +719,18 @@ class TestAPIDocValidator:
 
     def test_generate_report_json_output_returns_3(self) -> None:
         issues = [{"type": "documented_not_in_source", "severity": "high", "description": "test"}]
-        report = APIDocReportWriter.generate_report(issues, [], 5, 3, as_json=True)
+        report = APIDocReportWriter.generate_report(
+            issues, [], APIDocReportOptions(5, 3, as_json=True)
+        )
         data = json.loads(report)
         assert data["summary"]["total_issues"] == 1
         assert data["summary"]["source_signatures"] == 5
         assert data["summary"]["documented_items"] == 3
 
     def test_text_output_no_issues(self) -> None:
-        report = APIDocReportWriter.generate_report([], [], 5, 3, as_json=False)
+        report = APIDocReportWriter.generate_report(
+            [], [], APIDocReportOptions(5, 3, as_json=False)
+        )
         assert "No drift issues found" in report
         assert "Source signatures found: 5" in report
 
@@ -739,7 +744,9 @@ class TestAPIDocValidator:
                 "source_line": 10,
             }
         ]
-        report = APIDocReportWriter.generate_report(issues, [], 5, 3, as_json=False)
+        report = APIDocReportWriter.generate_report(
+            issues, [], APIDocReportOptions(5, 3, as_json=False)
+        )
         assert "HIGH" in report
         assert "test" in report
 
@@ -754,7 +761,9 @@ class TestAPIDocValidator:
                 "description": "desc",
             }
         ]
-        report = APIDocReportWriter.generate_report([], suggestions, 5, 3, suggest_coverage=True)
+        report = APIDocReportWriter.generate_report(
+            [], suggestions, APIDocReportOptions(5, 3, suggest_coverage=True)
+        )
         assert "DOCUMENTATION SUGGESTIONS" in report
         assert "foo" in report
 
@@ -770,12 +779,16 @@ class TestAPIDocValidator:
             }
             for i in range(25)
         ]
-        report = APIDocReportWriter.generate_report([], suggestions, 5, 3, suggest_coverage=True)
+        report = APIDocReportWriter.generate_report(
+            [], suggestions, APIDocReportOptions(5, 3, suggest_coverage=True)
+        )
         assert "more" in report
 
     def test_issues_by_type_section(self) -> None:
         issues = [{"type": "documented_not_in_source", "severity": "high", "description": "test"}]
-        report = APIDocReportWriter.generate_report(issues, [], 5, 3, as_json=False)
+        report = APIDocReportWriter.generate_report(
+            issues, [], APIDocReportOptions(5, 3, as_json=False)
+        )
         assert "ISSUES BY TYPE" in report
 
     # --- APIDocValidator.main() ---

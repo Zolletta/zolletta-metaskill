@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 from zolletta_metaskill.documentor.api_doc.api_doc_report_writer import APIDocReportWriter
+from zolletta_metaskill.documentor.structs import APIDocReportOptions
 
 
 class TestAPIDocReportWriter:
@@ -14,10 +15,14 @@ class TestAPIDocReportWriter:
 
     def test_generate_report_no_issues(self) -> None:
         """Report with no issues prints clear message or valid empty json."""
-        text = APIDocReportWriter.generate_report([], [], 10, 10, as_json=False)
+        text = APIDocReportWriter.generate_report(
+            [], [], APIDocReportOptions(10, 10, as_json=False)
+        )
         assert "No drift issues found" in text
 
-        json_out = APIDocReportWriter.generate_report([], [], 10, 10, as_json=True)
+        json_out = APIDocReportWriter.generate_report(
+            [], [], APIDocReportOptions(10, 10, as_json=True)
+        )
         data = json.loads(json_out)
         assert data["summary"]["total_issues"] == 0
         assert data["summary"]["source_signatures"] == 10
@@ -46,7 +51,7 @@ class TestAPIDocReportWriter:
             }
         ]
         text = APIDocReportWriter.generate_report(
-            issues, suggestions, 5, 4, as_json=False, suggest_coverage=True
+            issues, suggestions, APIDocReportOptions(5, 4, as_json=False, suggest_coverage=True)
         )
         assert "API Documentation Validation Report" in text
         assert "HIGH (1 issues):" in text
@@ -55,7 +60,7 @@ class TestAPIDocReportWriter:
         assert "ISSUES BY TYPE:" in text
 
         json_out = APIDocReportWriter.generate_report(
-            issues, suggestions, 5, 4, as_json=True, suggest_coverage=True
+            issues, suggestions, APIDocReportOptions(5, 4, as_json=True, suggest_coverage=True)
         )
         data = json.loads(json_out)
         assert data["summary"]["total_issues"] == 1

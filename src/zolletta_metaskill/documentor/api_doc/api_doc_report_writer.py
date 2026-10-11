@@ -8,6 +8,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from zolletta_metaskill.documentor.structs import APIDocReportOptions
+
 
 class APIDocReportWriter:
     """Formats API documentation validation issues and suggestions into reports."""
@@ -16,30 +18,23 @@ class APIDocReportWriter:
     def generate_report(
         issues: list[dict[str, Any]],
         suggestions: list[dict[str, Any]],
-        source_count: int,
-        doc_count: int,
-        as_json: bool = False,
-        suggest_coverage: bool = False,
+        options: APIDocReportOptions,
     ) -> str:
         """Generate a validation report.
 
         Args:
             issues: Real drift issues (phantom docs, param mismatches, deprecations).
             suggestions: Undocumented items with priority classification.
-            source_count: Total number of source items discovered.
-            doc_count: Total number of documented items found.
-            as_json: If True, return the report as a JSON string; otherwise return Markdown.
-            suggest_coverage: If True, include prioritized documentation suggestions
-                in the report. If False, only show a summary count of undocumented items.
+            options: Report-level values — the corpus totals, which are not
+                derivable from *issues* or *suggestions* because both are the
+                filtered output of validation, plus the two rendering flags.
 
         """
-        report_data = APIDocReportWriter.generate_report_data(
-            issues,
-            suggestions,
-            source_count,
-            doc_count,
-            suggest_coverage=suggest_coverage,
-        )
+        source_count = options.source_count
+        doc_count = options.doc_count
+        as_json = options.as_json
+        suggest_coverage = options.suggest_coverage
+        report_data = APIDocReportWriter.generate_report_data(issues, suggestions, options)
 
         if as_json:
             return json.dumps(report_data, indent=2, default=str)
@@ -60,11 +55,12 @@ class APIDocReportWriter:
     def generate_report_data(
         issues: list[dict[str, Any]],
         suggestions: list[dict[str, Any]],
-        source_count: int,
-        doc_count: int,
-        suggest_coverage: bool = False,
+        options: APIDocReportOptions,
     ) -> dict[str, Any]:
         """Return the JSON-serializable report data structure."""
+        source_count = options.source_count
+        doc_count = options.doc_count
+        suggest_coverage = options.suggest_coverage
         sug_by_priority = APIDocReportWriter._count_by_priority(suggestions)
         report_data = APIDocReportWriter._build_report_data(
             issues, suggestions, source_count, doc_count, sug_by_priority

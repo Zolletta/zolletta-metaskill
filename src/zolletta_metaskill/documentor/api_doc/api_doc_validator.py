@@ -39,6 +39,7 @@ from typing import Any
 
 from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.documentor.api_doc.api_doc_report_writer import APIDocReportWriter
+from zolletta_metaskill.documentor.structs import APIDocReportOptions
 from zolletta_metaskill.documentor.structs.source_signature import SourceSignature
 from zolletta_metaskill.documentor.utils.documentor_settings import DocumentorSettings
 
@@ -667,22 +668,15 @@ class APIDocValidator:
 
         issues, suggestions = APIDocValidator.validate_api_docs(source_sigs, documented_items)
 
-        report = APIDocReportWriter.generate_report(
-            issues,
-            suggestions,
-            source_count,
-            doc_count,
+        options = APIDocReportOptions(
+            source_count=source_count,
+            doc_count=doc_count,
             as_json=as_json,
             suggest_coverage=suggest_coverage,
         )
+        report = APIDocReportWriter.generate_report(issues, suggestions, options)
 
-        cache_data = APIDocReportWriter.generate_report_data(
-            issues,
-            suggestions,
-            source_count,
-            doc_count,
-            suggest_coverage=suggest_coverage,
-        )
+        cache_data = APIDocReportWriter.generate_report_data(issues, suggestions, options)
         APIDocValidator._write_cache(cache_dir, cache_data)
 
         return report, True
