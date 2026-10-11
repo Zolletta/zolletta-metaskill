@@ -181,7 +181,7 @@ class AcronymCasingScanner:
             return []
         AcronymCasingScanner._ensure_php_engine()
         engine = EngineRegistry.get_for_file(path)
-        if engine is None or not isinstance(engine, PHPEngine):  # pragma: no cover
+        if engine is None:  # pragma: no cover
             return []
         try:
             module = engine.parse_module(path)

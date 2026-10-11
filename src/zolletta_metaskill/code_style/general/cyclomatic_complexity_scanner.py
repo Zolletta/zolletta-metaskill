@@ -66,7 +66,7 @@ from pathlib import Path
 from typing import Any
 
 from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
-from zolletta_metaskill.core.engine.php_engine import PHPEngine
+from zolletta_metaskill.core.engine.raw_ast_engine import RawAstEngine
 from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.core.structs import Finding
 
@@ -303,7 +303,7 @@ class CyclomaticComplexityScanner:
         return found
 
     @staticmethod
-    def _php_records(engine: PHPEngine, path: Path) -> list[dict[str, Any]]:
+    def _php_records(engine: RawAstEngine, path: Path) -> list[dict[str, Any]]:
         """Return complexity records for every function in a ``.php`` file."""
         try:
             tree, source = engine.parse_raw(path)
@@ -339,7 +339,7 @@ class CyclomaticComplexityScanner:
         engine = EngineRegistry.get_for_file(path)
         if engine is None:
             return None
-        if isinstance(engine, PHPEngine):
+        if isinstance(engine, RawAstEngine):
             return CyclomaticComplexityScanner._php_records(engine, path)
         return CyclomaticComplexityScanner._python_records(path)
 
