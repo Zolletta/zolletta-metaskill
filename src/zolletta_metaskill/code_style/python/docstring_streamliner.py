@@ -70,7 +70,11 @@ from pathlib import Path
 from typing import Any, cast
 
 from zolletta_metaskill.code_style.python.docstring_report_writer import DocstringReportWriter
-from zolletta_metaskill.code_style.python.structs import FileReport, Finding
+from zolletta_metaskill.code_style.python.structs import (
+    DocstringStripOptions,
+    FileReport,
+    Finding,
+)
 from zolletta_metaskill.core.project_config import ProjectConfig
 
 
@@ -397,10 +401,7 @@ class DocstringStreamliner:
     def _analyze_function(
         node: ast.FunctionDef | ast.AsyncFunctionDef,
         path: Path,
-        strip_private: bool,
-        strip_tests: bool,
-        strip_nested: bool,
-        strip_obvious_init: bool,
+        options: DocstringStripOptions,
     ) -> Finding | None:
         """Analyse a single function/method docstring.  Return a Finding or None."""
         docstring = ast.get_docstring(node, clean=True)
@@ -412,17 +413,17 @@ class DocstringStreamliner:
         return_annotation = DocstringStreamliner.get_return_annotation(node)
 
         # --- Opt-in: strip private / test / nested / obvious-init -------------
-        if strip_private and DocstringStreamliner._is_private(name):
+        if options.strip_private and DocstringStreamliner._is_private(name):
             return Finding(path, node.lineno, "private", f"{name}() — private", node, remove=True)
         if (
-            strip_tests
+            options.strip_tests
             and DocstringStreamliner._is_test_function(name)
             and DocstringStreamliner._is_test_file(path)
         ):
             return Finding(
                 path, node.lineno, "test", f"{name}() — test function", node, remove=True
             )
-        if strip_nested and DocstringStreamliner._is_nested(node):
+        if options.strip_nested and DocstringStreamliner._is_nested(node):
             return Finding(
                 path,
                 node.lineno,
@@ -432,7 +433,7 @@ class DocstringStreamliner:
                 remove=True,
             )
         if (
-            strip_obvious_init
+            options.strip_obvious_init
             and name == "__init__"
             and DocstringStreamliner._init_is_obvious(arg_annotations)
         ):
@@ -548,13 +549,7 @@ class DocstringStreamliner:
     # ---------------------------------------------------------------------------
 
     @staticmethod
-    def process_file(
-        path: Path,
-        strip_private: bool,
-        strip_tests: bool,
-        strip_nested: bool,
-        strip_obvious_init: bool,
-    ) -> FileReport:
+    def process_file(path: Path, options: DocstringStripOptions) -> FileReport:
         """Analyse a single .py file and return its report."""
         report = FileReport(path=path)
         try:
@@ -567,14 +562,7 @@ class DocstringStreamliner:
 
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                finding = DocstringStreamliner._analyze_function(
-                    node,
-                    path,
-                    strip_private,
-                    strip_tests,
-                    strip_nested,
-                    strip_obvious_init,
-                )
+                finding = DocstringStreamliner._analyze_function(node, path, options)
                 if finding is not None:
                     report.findings.append(finding)
             # Class docstrings: only reduce redundant Args/Returns is not
@@ -688,29 +676,12 @@ class DocstringStreamliner:
             )
             return 1
 
-        strip_private = ProjectConfig.any_enabled(
-            settings, py_langs, "code_style.docstring_strip_private"
-        )
-        strip_tests = ProjectConfig.any_enabled(
-            settings, py_langs, "code_style.docstring_strip_tests"
-        )
-        strip_nested = ProjectConfig.any_enabled(
-            settings, py_langs, "code_style.docstring_strip_nested"
-        )
-        strip_obvious_init = ProjectConfig.any_enabled(
-            settings, py_langs, "code_style.docstring_strip_obvious_init"
-        )
+        options = DocstringStripOptions.from_settings(settings, py_langs)
 
         files = [f for root in roots for f in ProjectConfig.iter_files(root, {".py"})]
         reports: list[FileReport] = []
         for py in files:
-            report = DocstringStreamliner.process_file(
-                py,
-                strip_private=strip_private,
-                strip_tests=strip_tests,
-                strip_nested=strip_nested,
-                strip_obvious_init=strip_obvious_init,
-            )
+            report = DocstringStreamliner.process_file(py, options)
             if report.findings:
                 reports.append(report)
 

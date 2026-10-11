@@ -11,7 +11,10 @@ import pytest
 
 from zolletta_metaskill.code_style.python.docstring_report_writer import DocstringReportWriter
 from zolletta_metaskill.code_style.python.docstring_streamliner import DocstringStreamliner
-from zolletta_metaskill.code_style.python.structs import FileReport
+from zolletta_metaskill.code_style.python.structs import (
+    DocstringStripOptions,
+    FileReport,
+)
 
 
 def _write_settings(dirpath: Path, **overrides: object) -> Path:
@@ -452,7 +455,7 @@ class TestDocstringStreamliner:
         src = 'def f(x: int) -> None:\n    """Summary.\n\nArgs:\n    x: int"""\n    pass\n'
         node = self._parse(src)
         finding = DocstringStreamliner._analyze_function(
-            node, Path("f.py"), False, False, False, False
+            node, Path("f.py"), DocstringStripOptions(False, False, False, False)
         )
         assert finding is not None
         assert finding.kind == "redundant"
@@ -462,7 +465,7 @@ class TestDocstringStreamliner:
         src = 'def f(x: int) -> int:\n    """Summary.\n\nReturns:\n    int"""\n    return x\n'
         node = self._parse(src)
         finding = DocstringStreamliner._analyze_function(
-            node, Path("f.py"), False, False, False, False
+            node, Path("f.py"), DocstringStripOptions(False, False, False, False)
         )
         assert finding is not None
         assert "Returns" in finding.detail
@@ -475,7 +478,7 @@ class TestDocstringStreamliner:
         )
         node = self._parse(src)
         finding = DocstringStreamliner._analyze_function(
-            node, Path("f.py"), False, False, False, False
+            node, Path("f.py"), DocstringStripOptions(False, False, False, False)
         )
         assert finding is not None
         assert finding.remove is True
@@ -484,7 +487,7 @@ class TestDocstringStreamliner:
         src = "def f(x: int) -> int:\n    return x\n"
         node = self._parse(src)
         finding = DocstringStreamliner._analyze_function(
-            node, Path("f.py"), False, False, False, False
+            node, Path("f.py"), DocstringStripOptions(False, False, False, False)
         )
         assert finding is None
 
@@ -496,7 +499,7 @@ class TestDocstringStreamliner:
         )
         node = self._parse(src)
         finding = DocstringStreamliner._analyze_function(
-            node, Path("f.py"), False, False, False, False
+            node, Path("f.py"), DocstringStripOptions(False, False, False, False)
         )
         assert finding is None
 
@@ -504,7 +507,7 @@ class TestDocstringStreamliner:
         src = 'def _helper(x: int) -> None:\n    """A helper."""\n    pass\n'
         node = self._parse(src)
         finding = DocstringStreamliner._analyze_function(
-            node, Path("f.py"), True, False, False, False
+            node, Path("f.py"), DocstringStripOptions(True, False, False, False)
         )
         assert finding is not None
         assert finding.kind == "private"
@@ -514,7 +517,7 @@ class TestDocstringStreamliner:
         src = 'def test_foo(x: int) -> None:\n    """Test foo."""\n    pass\n'
         node = self._parse(src)
         finding = DocstringStreamliner._analyze_function(
-            node, Path("test_foo.py"), False, True, False, False
+            node, Path("test_foo.py"), DocstringStripOptions(False, True, False, False)
         )
         assert finding is not None
         assert finding.kind == "test"
@@ -523,7 +526,7 @@ class TestDocstringStreamliner:
         src = 'def test_foo(x: int) -> None:\n    """Test foo."""\n    pass\n'
         node = self._parse(src)
         finding = DocstringStreamliner._analyze_function(
-            node, Path("src/foo.py"), False, True, False, False
+            node, Path("src/foo.py"), DocstringStripOptions(False, True, False, False)
         )
         assert finding is None
 
@@ -536,7 +539,7 @@ class TestDocstringStreamliner:
         inner = outer.body[0]
         assert isinstance(inner, ast.FunctionDef)
         finding = DocstringStreamliner._analyze_function(
-            inner, Path("f.py"), False, False, True, False
+            inner, Path("f.py"), DocstringStripOptions(False, False, True, False)
         )
         assert finding is not None
         assert finding.kind == "nested"
@@ -552,7 +555,7 @@ class TestDocstringStreamliner:
         init_node = cls.body[0]
         assert isinstance(init_node, ast.FunctionDef)
         finding = DocstringStreamliner._analyze_function(
-            init_node, Path("f.py"), False, False, False, True
+            init_node, Path("f.py"), DocstringStripOptions(False, False, False, True)
         )
         assert finding is not None
         assert finding.kind == "obvious_init"
@@ -566,7 +569,7 @@ class TestDocstringStreamliner:
         init_node = cls.body[0]
         assert isinstance(init_node, ast.FunctionDef)
         finding = DocstringStreamliner._analyze_function(
-            init_node, Path("f.py"), False, False, False, True
+            init_node, Path("f.py"), DocstringStripOptions(False, False, False, True)
         )
         assert finding is None
 
@@ -578,7 +581,7 @@ class TestDocstringStreamliner:
         )
         node = self._parse(src)
         finding = DocstringStreamliner._analyze_function(
-            node, Path("f.py"), False, False, False, False
+            node, Path("f.py"), DocstringStripOptions(False, False, False, False)
         )
         assert finding is not None
         assert "Args" in finding.detail
@@ -593,7 +596,9 @@ class TestDocstringStreamliner:
             'def f(x: int) -> None:\n    """Summary.\n\nArgs:\n    x: int"""\n    pass\n',
             encoding="utf-8",
         )
-        report = DocstringStreamliner.process_file(src, False, False, False, False)
+        report = DocstringStreamliner.process_file(
+            src, DocstringStripOptions(False, False, False, False)
+        )
         assert len(report.findings) == 1
         assert report.findings[0].kind == "redundant"
 
@@ -603,19 +608,25 @@ class TestDocstringStreamliner:
             'def f(x: int) -> None:\n    """Summary."""\n    pass\n',
             encoding="utf-8",
         )
-        report = DocstringStreamliner.process_file(src, False, False, False, False)
+        report = DocstringStreamliner.process_file(
+            src, DocstringStripOptions(False, False, False, False)
+        )
         assert len(report.findings) == 0
 
     def test_syntax_error_returns_empty(self, tmp_path: Path) -> None:
         src = tmp_path / "mod.py"
         src.write_text("def f(:\n    pass\n", encoding="utf-8")
-        report = DocstringStreamliner.process_file(src, False, False, False, False)
+        report = DocstringStreamliner.process_file(
+            src, DocstringStripOptions(False, False, False, False)
+        )
         assert len(report.findings) == 0
 
     def test_unicode_decode_error(self, tmp_path: Path) -> None:
         src = tmp_path / "mod.py"
         src.write_bytes(b"\xff\xfe\x00def f(): pass\n")
-        report = DocstringStreamliner.process_file(src, False, False, False, False)
+        report = DocstringStreamliner.process_file(
+            src, DocstringStripOptions(False, False, False, False)
+        )
         assert len(report.findings) == 0
 
     def test_strip_private_in_file(self, tmp_path: Path) -> None:
@@ -624,7 +635,9 @@ class TestDocstringStreamliner:
             'def _helper() -> None:\n    """Helper."""\n    pass\n',
             encoding="utf-8",
         )
-        report = DocstringStreamliner.process_file(src, True, False, False, False)
+        report = DocstringStreamliner.process_file(
+            src, DocstringStripOptions(True, False, False, False)
+        )
         assert len(report.findings) == 1
         assert report.findings[0].kind == "private"
 
@@ -634,7 +647,9 @@ class TestDocstringStreamliner:
         src = tmp_path / "mod.py"
         original = 'def f(x: int) -> None:\n    """Summary.\n\nArgs:\n    x: int"""\n    pass\n'
         src.write_text(original, encoding="utf-8")
-        report = DocstringStreamliner.process_file(src, False, False, False, False)
+        report = DocstringStreamliner.process_file(
+            src, DocstringStripOptions(False, False, False, False)
+        )
         result = DocstringStreamliner.apply_edits(src, report.findings)
         assert "Args:" not in result
         assert "Summary." in result
@@ -643,7 +658,9 @@ class TestDocstringStreamliner:
         src = tmp_path / "mod.py"
         original = 'def f(x: int) -> int:\n    """\nArgs:\n    x: int\nReturns:\n    int"""\n'
         src.write_text(original, encoding="utf-8")
-        report = DocstringStreamliner.process_file(src, False, False, False, False)
+        report = DocstringStreamliner.process_file(
+            src, DocstringStripOptions(False, False, False, False)
+        )
         result = DocstringStreamliner.apply_edits(src, report.findings)
         # The docstring is the only statement, so pass should be inserted
         assert "pass" in result
@@ -656,7 +673,9 @@ class TestDocstringStreamliner:
             "    return x\n"
         )
         src.write_text(original, encoding="utf-8")
-        report = DocstringStreamliner.process_file(src, False, False, False, False)
+        report = DocstringStreamliner.process_file(
+            src, DocstringStripOptions(False, False, False, False)
+        )
         result = DocstringStreamliner.apply_edits(src, report.findings)
         assert "return x" in result
 
@@ -664,7 +683,9 @@ class TestDocstringStreamliner:
         src = tmp_path / "mod.py"
         original = 'def _helper() -> None:\n    """Helper."""\n    pass\n'
         src.write_text(original, encoding="utf-8")
-        report = DocstringStreamliner.process_file(src, True, False, False, False)
+        report = DocstringStreamliner.process_file(
+            src, DocstringStripOptions(True, False, False, False)
+        )
         result = DocstringStreamliner.apply_edits(src, report.findings)
         assert "Helper" not in result
 
@@ -678,7 +699,9 @@ class TestDocstringStreamliner:
             "    return x\n"
         )
         src.write_text(original, encoding="utf-8")
-        report = DocstringStreamliner.process_file(src, False, False, False, False)
+        report = DocstringStreamliner.process_file(
+            src, DocstringStripOptions(False, False, False, False)
+        )
         result = DocstringStreamliner.apply_edits(src, report.findings)
         # The docstring and the trailing blank line are both removed
         assert "Args:" not in result
@@ -691,7 +714,9 @@ class TestDocstringStreamliner:
         src = tmp_path / "mod.py"
         original = 'def f(x: int) -> None:\n    """Summary.\n\nArgs:\n    x: int"""'
         src.write_bytes(original.encode("utf-8"))
-        report = DocstringStreamliner.process_file(src, False, False, False, False)
+        report = DocstringStreamliner.process_file(
+            src, DocstringStripOptions(False, False, False, False)
+        )
         result = DocstringStreamliner.apply_edits(src, report.findings)
         assert "Args:" not in result
         assert "Summary." in result
@@ -732,7 +757,7 @@ class TestDocstringStreamliner:
         node = tree.body[0]
         assert isinstance(node, ast.FunctionDef)
         finding = DocstringStreamliner._analyze_function(
-            node, Path("src/mod.py"), False, False, False, False
+            node, Path("src/mod.py"), DocstringStripOptions(False, False, False, False)
         )
         assert finding is not None
         report = FileReport(path=Path("src/mod.py"), findings=[finding])
@@ -751,7 +776,7 @@ class TestDocstringStreamliner:
         node = tree.body[0]
         assert isinstance(node, ast.FunctionDef)
         finding = DocstringStreamliner._analyze_function(
-            node, Path("src/mod.py"), False, False, False, False
+            node, Path("src/mod.py"), DocstringStripOptions(False, False, False, False)
         )
         assert finding is not None
         report = FileReport(path=Path("src/mod.py"), findings=[finding])
