@@ -22,8 +22,18 @@ classifiers = [
 ]
 dependencies = [
     "tree-sitter>=0.22.0",
-    "tree-sitter-php>=0.23.0",
 ]
+
+[project.optional-dependencies]
+# ADR-0004 §Decision. `tree-sitter-php` is optional for *consumers*: without it
+# PHPEngine still imports and still satisfies the LanguageEngine protocol, and
+# parse_module raises a clear ImportError with installation instructions.
+#
+# `tree-sitter` itself is a hard dependency. php_engine.py imports
+# `from tree_sitter import Node, Parser, Tree` at module scope, so a missing
+# tree-sitter would break the import rather than degrade gracefully — which is
+# why ADR-0004 previously described both as optional and was wrong.
+php = ["tree-sitter-php>=0.23.0"]
 
 
 [dependency-groups]
@@ -38,6 +48,10 @@ dev = [
     "mutmut>=3.8.0",
     "python-semantic-release>=9.0",
     "gitpython>=3.1.59",
+    # The PHP grammar is optional for consumers, but the dev group carries it so
+    # `uv run pytest` exercises the PHP scanners instead of skipping all 41
+    # tests guarded on `PHPEngine._have_tree_sitter_php()`.
+    "tree-sitter-php>=0.23.0",
 ]
 
 [project.urls]
@@ -116,7 +130,10 @@ mypy_path = "src"
 exclude = ["zolletta-metaskill/"]
 
 [[tool.mypy.overrides]]
-module = ["tree_sitter.*"]
+# Scoped to the optional grammar only (ADR-0004). `tree_sitter` itself is a hard
+# dependency and must be typed normally: masking it would hide the one failure
+# this project can actually hit, namely tree-sitter not being installed.
+module = ["tree_sitter_php.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

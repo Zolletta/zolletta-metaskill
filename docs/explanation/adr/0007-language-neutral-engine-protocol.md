@@ -37,4 +37,4 @@ Scanners in `shared/` and `patterns/` are now language-agnostic — they operate
 
 **Neutral:**
 
-- tree-sitter and tree-sitter-php are optional dependencies. The PHPEngine degrades gracefully if they are not installed — PHP review is skipped with a "not installed" message.
+- `tree-sitter` is a hard dependency and `tree-sitter-php` is the optional one (see the ADR-0004 amendment). Without the grammar, `PHPEngine` degrades gracefully — it still satisfies this protocol and PHP review is skipped with a "not installed" message.

@@ -1256,6 +1256,10 @@ version = "3.5.0"
 source = { editable = "." }
 dependencies = [
     { name = "tree-sitter" },
+]
+
+[package.optional-dependencies]
+php = [
     { name = "tree-sitter-php" },
 ]
 
@@ -1269,6 +1273,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "python-semantic-release" },
     { name = "ruff" },
+    { name = "tree-sitter-php" },
     { name = "ty" },
     { name = "vulture" },
 ]
@@ -1276,8 +1281,9 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "tree-sitter", specifier = ">=0.22.0" },
-    { name = "tree-sitter-php", specifier = ">=0.23.0" },
+    { name = "tree-sitter-php", marker = "extra == 'php'", specifier = ">=0.23.0" },
 ]
+provides-extras = ["php"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -1289,6 +1295,7 @@ dev = [
     { name = "pytest-cov", specifier = ">=5.0" },
     { name = "python-semantic-release", specifier = ">=9.0" },
     { name = "ruff", specifier = ">=0.16.3" },
+    { name = "tree-sitter-php", specifier = ">=0.23.0" },
     { name = "ty", specifier = ">=0.0.72" },
     { name = "vulture", specifier = ">=2.10" },
 ]

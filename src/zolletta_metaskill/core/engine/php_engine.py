@@ -5,9 +5,16 @@ protocol by wrapping tree-sitter and the tree-sitter-php grammar, translating
 the resulting syntax tree into language-neutral
 :class:`~zolletta_metaskill.core.structs.ModuleInfo`.
 
-If the optional ``tree-sitter-php`` dependency is not installed, the engine
-still exists and satisfies the protocol, but :meth:`PHPEngine.parse_module`
-raises a clear :class:`ImportError` with installation instructions.
+Two dependencies, deliberately of different kinds (ADR-0004):
+
+- ``tree-sitter`` is a **hard** runtime dependency and is imported at module
+  scope. Without it this module does not import at all, which is why the
+  dependency is declared rather than deferred.
+- ``tree-sitter-php`` is **optional** (``pip install 'zolletta-metaskill[php]'``)
+  and is imported lazily. Without it this module still imports and
+  :class:`PHPEngine` still satisfies the protocol;
+  :meth:`PHPEngine.parse_module` raises a clear :class:`ImportError` carrying the
+  install command instead.
 """
 
 from __future__ import annotations
@@ -38,7 +45,9 @@ class PHPEngine:
     The ``tree-sitter-php`` package is an optional dependency. If it is not
     installed, the engine still instantiates and satisfies the
     :class:`~zolletta_metaskill.core.engine.language_engine.LanguageEngine`
-    protocol, but :meth:`parse_module` raises an :class:`ImportError`.
+    protocol, but :meth:`parse_module` raises an :class:`ImportError` naming the
+    install command. The underlying ``tree-sitter`` package is not optional and
+    is not checked for at runtime — it is imported when this module is.
 
     Args:
         parser_factory: Optional callable that returns a configured
@@ -257,7 +266,8 @@ class PHPEngine:
         if not self._ready:
             raise ImportError(
                 "tree-sitter-php is required to parse PHP files. "
-                "Install it with: uv add tree-sitter tree-sitter-php"
+                "Install it with: uv add 'zolletta-metaskill[php]' "
+                "(or: pip install 'zolletta-metaskill[php]')"
             )
         factory = self._parser_factory or PHPEngine._default_parser_factory
         self._parser = factory()
