@@ -40,18 +40,7 @@ class LanguageEngine(Protocol):
         """
         ...
 
-    def is_test_file(self, path: Path) -> bool:
-        """Return ``True`` if *path* is a test file for this language."""
-        ...
-
-    def is_source_file(self, path: Path) -> bool:
-        """Return ``True`` if *path* is a source file for this language."""
-        ...
-
     def file_extensions(self) -> list[str]:
         """Return the list of file extensions this engine handles (e.g. ``[".py"]``)."""
         ...
 
-    def test_file_glob(self) -> str:
-        """Return the glob pattern for test files (e.g. ``"test_*.py"``, ``"*Test.php"``)."""
-        ...

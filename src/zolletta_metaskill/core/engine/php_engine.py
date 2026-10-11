@@ -111,44 +111,6 @@ class PHPEngine:
         """
         return [".php"]
 
-    def test_file_glob(self) -> str:
-        """Return the glob pattern for PHP test files.
-
-        Returns:
-            ``"*Test.php"``.
-
-        """
-        return "*Test.php"
-
-    def is_source_file(self, path: Path) -> bool:
-        """Return ``True`` if *path* has a ``.php`` suffix.
-
-        Args:
-            path: The file path to check.
-
-        Returns:
-            ``True`` if the suffix is ``.php``, ``False`` otherwise.
-
-        """
-        return path.suffix == ".php"
-
-    def is_test_file(self, path: Path) -> bool:
-        """Return ``True`` if *path* is a PHP test file.
-
-        A file is considered a test file if its name ends with ``Test.php``
-        or if it lives inside a ``tests/`` directory.
-
-        Args:
-            path: The file path to check.
-
-        Returns:
-            ``True`` if the path looks like a test file, ``False`` otherwise.
-
-        """
-        if path.name.endswith("Test.php"):
-            return True
-        return any(part == "tests" for part in path.parts)
-
     # -- Parsing ------------------------------------------------------------
 
     def _build_class_like(self, child: Node, source: bytes) -> ClassInfo | None:

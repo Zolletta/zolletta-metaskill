@@ -32,27 +32,6 @@ class TestPHPEngine:
     def test_file_extensions_file_extensions_returns_single_item(self) -> None:
         assert PHPEngine().file_extensions() == [".php"]
 
-    def test_test_file_glob_returns_pattern(self) -> None:
-        assert PHPEngine().test_file_glob() == "*Test.php"
-
-    def test_is_source_file(self) -> None:
-        engine = PHPEngine()
-        assert engine.is_source_file(Path("src/Foo.php")) is True
-        assert engine.is_source_file(Path("src/Foo.PHP")) is False
-        assert engine.is_source_file(Path("src/Foo.phtml")) is False
-        assert engine.is_source_file(Path("README.md")) is False
-
-    def test_is_test_file_by_name(self) -> None:
-        engine = PHPEngine()
-        assert engine.is_test_file(Path("tests/UserTest.php")) is True
-        assert engine.is_test_file(Path("src/CalculatorTest.php")) is True
-        assert engine.is_test_file(Path("src/User.php")) is False
-
-    def test_is_test_file_by_directory(self) -> None:
-        engine = PHPEngine()
-        assert engine.is_test_file(Path("tests/Helper.php")) is True
-        assert engine.is_test_file(Path("app/Service.php")) is False
-
     @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
     def test_parse_simple_class(self, tmp_path: Path) -> None:
         engine = PHPEngine()
@@ -422,7 +401,6 @@ class First {
         # Metadata methods must work without the optional dependency.
         assert engine.language == "php"
         assert engine.file_extensions() == [".php"]
-        assert engine.test_file_glob() == "*Test.php"
 
     def test_parse_module_missing_dependency(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path

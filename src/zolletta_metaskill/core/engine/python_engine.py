@@ -109,35 +109,6 @@ class PythonEngine:
             has_syntax_error=False,
         )
 
-    def is_test_file(self, path: Path) -> bool:
-        """Return ``True`` if *path* is a Python test file.
-
-        A file is considered a test file if its name starts with ``test_``
-        or if it lives inside a ``tests/`` directory.
-
-        Args:
-            path: The file path to check.
-
-        Returns:
-            ``True`` if the path looks like a test file, ``False`` otherwise.
-
-        """
-        if path.name.startswith("test_"):
-            return True
-        return any(part == "tests" for part in path.parts)
-
-    def is_source_file(self, path: Path) -> bool:
-        """Return ``True`` if *path* has a ``.py`` suffix.
-
-        Args:
-            path: The file path to check.
-
-        Returns:
-            ``True`` if the suffix is ``.py``, ``False`` otherwise.
-
-        """
-        return path.suffix == ".py"
-
     def file_extensions(self) -> list[str]:
         """Return the list of file extensions handled by this engine.
 
@@ -146,15 +117,6 @@ class PythonEngine:
 
         """
         return [".py"]
-
-    def test_file_glob(self) -> str:
-        """Return the glob pattern for Python test files.
-
-        Returns:
-            ``"test_*.py"``.
-
-        """
-        return "test_*.py"
 
     # --- Internal helpers -------------------------------------------------
 

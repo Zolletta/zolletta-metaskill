@@ -387,32 +387,10 @@ class TestPythonEngine:
         assert info.functions == []
         assert info.imports == []
 
-    # --- is_test_file ---
-
-    def test_is_test_file_test_prefix_returns_true(self, tmp_path: Path) -> None:
-        assert PythonEngine().is_test_file(tmp_path / "test_foo.py") is True
-
-    def test_in_tests_dir(self) -> None:
-        assert PythonEngine().is_test_file(Path("/proj/tests/foo.py")) is True
-
-    def test_is_test_file_regular_source_returns_false(self) -> None:
-        assert PythonEngine().is_test_file(Path("/proj/src/foo.py")) is False
-
-    # --- is_source_file ---
-
-    def test_is_source_file_py_file_returns_true(self) -> None:
-        assert PythonEngine().is_source_file(Path("foo.py")) is True
-
-    def test_is_source_file_php_file_returns_false(self) -> None:
-        assert PythonEngine().is_source_file(Path("foo.php")) is False
-
     # --- file_extensions / test_file_glob ---
 
     def test_file_extensions_file_extensions_returns_single_item(self) -> None:
         assert PythonEngine().file_extensions() == [".py"]
-
-    def test_test_file_glob_returns_pattern(self) -> None:
-        assert PythonEngine().test_file_glob() == "test_*.py"
 
     # --- ModuleInfo basics ---
 
