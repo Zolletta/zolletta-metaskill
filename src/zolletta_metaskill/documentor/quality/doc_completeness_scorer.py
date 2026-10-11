@@ -51,15 +51,35 @@ class DocCompletenessScorer:
             return {"readme_sections": None, "quadrants": {}}
 
     @staticmethod
-    def merge_translations(translations: dict[str, Any]) -> None:
-        """Merge translated signposts into DIATAXIS_QUADRANTS."""
+    def merged_quadrants(translations: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        """Return ``DIATAXIS_QUADRANTS`` with *translations* applied.
+
+        Pure: the class attribute is never mutated. A per-invocation settings
+        value must not write into process-global state -- the previous
+        ``merge_translations`` did exactly that, irreversibly, so a scoped or
+        stale settings dict permanently altered the quadrant config for the rest
+        of the process.
+
+        Merge semantics are inherited from that implementation and are
+        deliberately mixed: ``dir_names`` **unions** (additive), while
+        ``required_sections`` and ``any_of_groups`` **replace**.
+
+        Returns:
+            A new quadrant mapping, safe for the caller to pass around.
+
+        """
+        merged: dict[str, dict[str, Any]] = {
+            name: {
+                key: DocCompletenessScorer._copy_quadrant_value(value)
+                for key, value in quad.items()
+            }
+            for name, quad in DocCompletenessScorer.DIATAXIS_QUADRANTS.items()
+        }
         quadrants = translations.get("quadrants", translations)
         for name, quad_trans in quadrants.items():
             if not isinstance(quad_trans, dict):
                 continue
-            quad = DocCompletenessScorer.DIATAXIS_QUADRANTS.setdefault(
-                name, {"dir_names": set(), "required_sections": []}
-            )
+            quad = merged.setdefault(name, {"dir_names": set(), "required_sections": []})
             if "dir_names" in quad_trans and isinstance(quad_trans["dir_names"], list):
                 quad["dir_names"] = set(quad["dir_names"]) | {
                     d.lower() for d in quad_trans["dir_names"]
@@ -72,21 +92,54 @@ class DocCompletenessScorer:
                 quad["any_of_groups"] = [
                     [s.lower() for s in group] for group in quad_trans["any_of_groups"]
                 ]
+        return merged
 
     @staticmethod
-    def detect_diataxis_quadrant(doc_path: str) -> dict[str, Any] | None:
-        """Return the Diátaxis quadrant config if the doc is inside a quadrant directory."""
+    def _copy_quadrant_value(value: Any) -> Any:
+        """Copy one quadrant config value so the class attribute is never shared."""
+        if isinstance(value, set):
+            return set(value)
+        if isinstance(value, list):
+            return list(value)
+        return value
+
+    @staticmethod
+    def detect_diataxis_quadrant(
+        doc_path: str, quadrants: dict[str, dict[str, Any]] | None = None
+    ) -> dict[str, Any] | None:
+        """Return the Diátaxis quadrant config if the doc is inside a quadrant directory.
+
+        Args:
+            doc_path: Repo-relative path of the document.
+            quadrants: Effective quadrant mapping, e.g. from
+                :meth:`merged_quadrants`. Defaults to the built-in
+                ``DIATAXIS_QUADRANTS``.
+
+        """
+        effective = quadrants if quadrants is not None else DocCompletenessScorer.DIATAXIS_QUADRANTS
         parts_lower = [p.lower() for p in Path(doc_path).parts]
-        for quadrant in DocCompletenessScorer.DIATAXIS_QUADRANTS.values():
+        for quadrant in effective.values():
             if any(part in quadrant["dir_names"] for part in parts_lower):
                 return quadrant
         return None
 
     @staticmethod
     def score_completeness(
-        repo_path: str, doc_path: str, required_sections: list[str]
+        repo_path: str,
+        doc_path: str,
+        required_sections: list[str],
+        quadrants: dict[str, dict[str, Any]] | None = None,
     ) -> tuple[float, dict[str, Any]]:
-        """Score based on whether expected sections are present. 0-100."""
+        """Score based on whether expected sections are present. 0-100.
+
+        Args:
+            repo_path: Absolute path to the repository root.
+            doc_path: Repo-relative path of the document.
+            required_sections: README sections to look for outside quadrants.
+            quadrants: Effective Diátaxis quadrant mapping. Defaults to the
+                built-in ``DIATAXIS_QUADRANTS``.
+
+        """
         full_path = os.path.join(repo_path, doc_path)
         details: dict[str, Any] = {
             "expected_sections": required_sections,
@@ -95,7 +148,7 @@ class DocCompletenessScorer:
         }
 
         any_of_groups: list[list[str]] = []
-        quadrant = DocCompletenessScorer.detect_diataxis_quadrant(doc_path)
+        quadrant = DocCompletenessScorer.detect_diataxis_quadrant(doc_path, quadrants)
         if quadrant is not None:
             required_sections = quadrant.get("required_sections", [])
             any_of_groups = quadrant.get("any_of_groups", [])

@@ -272,15 +272,26 @@ class QualityScorer:
         doc_path: str,
         weights: dict[str, float],
         required_sections: list[str],
+        quadrants: dict[str, dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
-        """Score a single documentation file across all dimensions."""
+        """Score a single documentation file across all dimensions.
+
+        Args:
+            repo_path: Absolute path to the repository root.
+            doc_path: Repo-relative path of the document.
+            weights: Normalised dimension weights.
+            required_sections: README sections to look for outside quadrants.
+            quadrants: Effective Diátaxis quadrant mapping, or ``None`` to use
+                the built-in one.
+
+        """
         updated_score, updated_details = QualityScorer.score_last_updated(repo_path, doc_path)
         alignment_score, alignment_details = QualityScorer.score_code_doc_alignment(
             repo_path, doc_path
         )
         link_score, link_details = QualityScorer.score_link_health(repo_path, doc_path)
         completeness_score, completeness_details = DocCompletenessScorer.score_completeness(
-            repo_path, doc_path, required_sections
+            repo_path, doc_path, required_sections, quadrants
         )
         accuracy_score, accuracy_details = DocAccuracyScorer.score_accuracy(
             repo_path, doc_path, latest_tag=GitHelper.get_latest_tag(repo_path)
@@ -348,6 +359,23 @@ class QualityScorer:
         return weights
 
     @staticmethod
+    def _resolve_diataxis_quadrants(settings: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        """Resolve the effective Diátaxis quadrant mapping from settings.
+
+        Pure: returns a fresh mapping and never mutates
+        ``DocCompletenessScorer.DIATAXIS_QUADRANTS``. When
+        ``documentation.diataxis_translations`` is unset the built-in mapping is
+        returned as-is, so the default path costs no extra file read.
+        """
+        translations_path = ProjectConfig.setting(
+            settings, "documentation.diataxis_translations", None
+        )
+        if isinstance(translations_path, str) and translations_path:
+            translations = DocCompletenessScorer.load_diataxis_translations(translations_path)
+            return DocCompletenessScorer.merged_quadrants(translations)
+        return DocCompletenessScorer.DIATAXIS_QUADRANTS
+
+    @staticmethod
     def _resolve_required_sections(settings: dict[str, Any]) -> list[str]:
         """Resolve required sections from settings or Diátaxis translations."""
         raw_sections = ProjectConfig.setting(settings, "documentation.readme_sections", None)
@@ -359,7 +387,6 @@ class QualityScorer:
         )
         if isinstance(translations_path, str) and translations_path:
             translations = DocCompletenessScorer.load_diataxis_translations(translations_path)
-            DocCompletenessScorer.merge_translations(translations)
             translated_readme = translations.get("readme_sections")
             if translated_readme:
                 return [s.strip() for s in translated_readme]

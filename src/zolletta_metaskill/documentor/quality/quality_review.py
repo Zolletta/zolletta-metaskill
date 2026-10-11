@@ -73,6 +73,7 @@ class QualityReview:
 
         weights = QualityScorer._resolve_weights(settings)
         required_sections = QualityScorer._resolve_required_sections(settings)
+        quadrants = QualityScorer._resolve_diataxis_quadrants(settings)
         include_referential = bool(
             ProjectConfig.setting(settings, "documentation.include_referential", False)
         )
@@ -116,7 +117,7 @@ class QualityReview:
             )
             all_issues.extend(issues)
             all_scores.append(
-                QualityScorer.score_document(repo_path, doc, weights, required_sections)
+                QualityScorer.score_document(repo_path, doc, weights, required_sections, quadrants)
             )
 
         min_sev_map = DriftDetector.SEVERITY_ORDER
