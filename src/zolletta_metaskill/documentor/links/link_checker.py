@@ -29,10 +29,9 @@ from pathlib import Path
 from typing import Any
 
 from zolletta_metaskill.core.project_config import ProjectConfig
+from zolletta_metaskill.documentor.links.link_report_writer import LinkReportWriter
 from zolletta_metaskill.documentor.structs.link_info import LinkInfo
 from zolletta_metaskill.documentor.utils.documentor_settings import DocumentorSettings
-
-from .link_report_writer import LinkReportWriter
 
 
 class LinkChecker:

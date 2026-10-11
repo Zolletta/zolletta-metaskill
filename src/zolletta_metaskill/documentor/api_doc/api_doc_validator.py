@@ -38,10 +38,9 @@ from pathlib import Path
 from typing import Any
 
 from zolletta_metaskill.core.project_config import ProjectConfig
+from zolletta_metaskill.documentor.api_doc.api_doc_report_writer import APIDocReportWriter
 from zolletta_metaskill.documentor.structs.source_signature import SourceSignature
 from zolletta_metaskill.documentor.utils.documentor_settings import DocumentorSettings
-
-from .api_doc_report_writer import APIDocReportWriter
 
 
 class APIDocValidator:
