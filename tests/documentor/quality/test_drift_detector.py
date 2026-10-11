@@ -162,8 +162,44 @@ class TestDriftDetector:
         version_issues = [i for i in issues if "version" in i["description"].lower()]
         assert len(version_issues) == 1
 
-    def test_referential_rename_edge_case(self, tmp_path: Path) -> None:
+    def test_referential_rename_round_trip_is_not_flagged(self, tmp_path: Path) -> None:
+        """A rename that was undone leaves the reference correct — not a finding.
+
+        Git records ``old.py → new.py``, but ``old.py`` is back on disk and
+        ``new.py`` is gone. That is a round trip, the way this repo renamed
+        ``tests.yml → ci.yml`` and back. Reporting ``high`` here flagged a
+        perfectly correct file.
+        """
         (tmp_path / "old.py").write_text("x = 1", encoding="utf-8")
+        (tmp_path / "README.md").write_text("See `old.py`", encoding="utf-8")
+        doc_modified = datetime.now(UTC) - timedelta(days=10)
+        with (
+            patch(
+                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_file_last_commit_date",
+                return_value=doc_modified,
+            ),
+            patch(
+                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_files_changed_since",
+                return_value=[],
+            ),
+        ):
+            issues = DriftDetector.detect_drift_for_doc(
+                self._git_ctx(str(tmp_path), (("old.py", "new.py"),), None),
+                self._settings(include_referential=True),
+                "README.md",
+                [],
+            )
+        assert [i for i in issues if i["category"] == "referential"] == []
+
+    def test_referential_rename_edge_case_is_still_high(self, tmp_path: Path) -> None:
+        """The genuine stale case: the rename stuck *and* the old name is occupied.
+
+        ``new.py`` exists, so the rename held, and ``old.py`` exists as a
+        different file — a document pointing at ``old.py`` now points at the
+        wrong thing. That must stay ``high``.
+        """
+        (tmp_path / "old.py").write_text("# a different file\n", encoding="utf-8")
+        (tmp_path / "new.py").write_text("x = 1", encoding="utf-8")
         (tmp_path / "README.md").write_text("See `old.py`", encoding="utf-8")
         doc_modified = datetime.now(UTC) - timedelta(days=10)
         with (
@@ -185,6 +221,7 @@ class TestDriftDetector:
         ref_issues = [i for i in issues if i["category"] == "referential"]
         assert len(ref_issues) == 1
         assert ref_issues[0]["severity"] == "high"
+        assert ref_issues[0]["fix_type"] == "manual"
 
     def test_readme_structure_check(self, tmp_path: Path) -> None:
         (tmp_path / "README.md").write_text("# Project\n\nSome content.", encoding="utf-8")

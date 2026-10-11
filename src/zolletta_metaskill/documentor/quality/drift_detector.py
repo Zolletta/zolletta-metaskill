@@ -178,7 +178,21 @@ class DriftDetector:
         doc_settings: DocumentorSettings,
         doc_ctx: DocContext,
     ) -> list[dict[str, Any]]:
-        """Flag references to renamed files (stale-name edge case, or broad rename)."""
+        """Flag references to renamed files (stale-name edge case, or broad rename).
+
+        Three states, not one boolean. Whether the *destination* still exists is
+        what separates a stale reference from a correct one:
+
+        1. destination exists — the rename stuck. If the old name is occupied
+           again, a different file now sits there and the reference is stale
+           (``high``); otherwise the reference names the pre-rename file
+           (``medium``).
+        2. destination gone, old name back — the rename was undone. A round
+           trip like ``tests.yml → ci.yml → tests.yml`` leaves the reference
+           correct, and reporting it was a false positive.
+        3. neither exists — the destination was itself deleted later. The
+           reference names a path that no longer exists at all.
+        """
         issues: list[dict[str, Any]] = []
         repo_root = git_ctx.repo_root
         doc_path = doc_ctx.file_rel_path
@@ -187,11 +201,11 @@ class DriftDetector:
             old_base = os.path.basename(old_name)
             new_base = os.path.basename(new_name)
             if old_base in {os.path.basename(r) for r in doc_ctx.refs["files"]}:
-                old_resolved = os.path.normpath(os.path.join(repo_root, doc_dir, old_name))
-                old_resolved_root = os.path.normpath(os.path.join(repo_root, old_name))
-                old_still_exists = os.path.exists(old_resolved) or os.path.exists(old_resolved_root)
+                old_still_exists = DriftDetector._resolves(repo_root, doc_dir, old_name)
+                new_exists = DriftDetector._resolves(repo_root, doc_dir, new_name)
 
-                if old_still_exists:
+                if old_still_exists and new_exists:
+                    # A different file now occupies the old name: stale.
                     issues.append(
                         {
                             "file": doc_path,
@@ -206,7 +220,11 @@ class DriftDetector:
                             "details": {"old_path": old_name, "new_path": new_name},
                         }
                     )
+                elif old_still_exists and not new_exists:
+                    # The rename was undone; the reference is still correct.
+                    continue
                 elif doc_settings.include_referential:
+                    # The rename stuck (or the destination was deleted later).
                     issues.append(
                         {
                             "file": doc_path,
@@ -220,6 +238,13 @@ class DriftDetector:
                         }
                     )
         return issues
+
+    @staticmethod
+    def _resolves(repo_root: str, doc_dir: str, name: str) -> bool:
+        """Return True when *name* exists, relative to the doc dir or the repo root."""
+        relative_to_doc = os.path.normpath(os.path.join(repo_root, doc_dir, name))
+        relative_to_root = os.path.normpath(os.path.join(repo_root, name))
+        return os.path.exists(relative_to_doc) or os.path.exists(relative_to_root)
 
     @staticmethod
     def _check_broken_refs(git_ctx: GitRunContext, doc_ctx: DocContext) -> list[dict[str, Any]]:
