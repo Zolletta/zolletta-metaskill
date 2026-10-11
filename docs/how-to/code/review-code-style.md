@@ -59,7 +59,7 @@ The review flags functions and methods whose line span exceeds the configured `m
 
 ### Cyclomatic complexity
 
-The review flags functions and methods whose cyclomatic complexity exceeds the configured `max_cyclomatic_complexity` (default 12, matching ruff `C901`). The check is enforced by the language-agnostic `cyclomatic_complexity_scanner.py` — decision points are counted per function with ruff `C901` semantics for Python and the equivalent tree-sitter walk for PHP (PHPStan and Psalm have no built-in McCabe rule). Nested functions and closures are reported independently. A complex function is a strong "extract collaborator" signal; parsers, state machines, and generated code can be exempted by raising the threshold in `settings.json`.
+The review flags functions and methods whose cyclomatic complexity exceeds the configured `max_cyclomatic_complexity` (default 12 — this skill's own default; ruff's built-in C901 default is 10). The check is enforced by the language-agnostic `cyclomatic_complexity_scanner.py` — decision points are counted per function with ruff `C901` semantics for Python and the equivalent tree-sitter walk for PHP (PHPStan and Psalm have no built-in McCabe rule). Nested functions and closures are reported independently. A complex function is a strong "extract collaborator" signal; parsers, state machines, and generated code can be exempted by raising the threshold in `settings.json`.
 
 ### Dead code
 

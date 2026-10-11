@@ -445,7 +445,7 @@ Deterministic enforcement: `function_length_scanner.py` flags functions spanning
 python3 src/zolletta_metaskill/code_style/general/function_length_scanner.py
 ```
 
-`cyclomatic_complexity_scanner.py` complements it by counting decision points instead of lines: functions exceeding `max_cyclomatic_complexity` (default `12`, matching ruff `C901`) are flagged — a strong "extract collaborator" signal.
+`cyclomatic_complexity_scanner.py` complements it by counting decision points instead of lines: functions exceeding `max_cyclomatic_complexity` (default `12` — this skill's own default; ruff's built-in C901 default is 10) are flagged — a strong "extract collaborator" signal.
 
 ```bash
 python3 src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py

@@ -721,7 +721,7 @@
           "type": "integer",
           "minimum": 1,
           "default": 12,
-          "description": "Maximum allowed cyclomatic complexity per function/method (enforced by cyclomatic_complexity_scanner.py). Seeded from python.tools.ruff.max_complexity when configured, else 12 \u2014 matching ruff C901."
+          "description": "Maximum allowed cyclomatic complexity per function/method (enforced by cyclomatic_complexity_scanner.py). Seeded from python.tools.ruff.max_complexity when configured, else 12 (this skill's own default; ruff's built-in C901 default is 10)."
         },
         "vulture_min_confidence": {
           "type": "integer",
