@@ -110,13 +110,13 @@ class TestDependencyInversionScanner:
     def test_is_real_dependency_real_class_returns_true(self) -> None:
         assert DependencyInversionScanner._is_real_dependency("HttpClient") is True
 
-    def test_built_in_stdClass(self) -> None:
+    def test_is_real_dependency_built_in_std_class_returns_false(self) -> None:
         assert DependencyInversionScanner._is_real_dependency("stdClass") is False
 
-    def test_built_in_DateTime(self) -> None:
+    def test_is_real_dependency_built_in_date_time_returns_false(self) -> None:
         assert DependencyInversionScanner._is_real_dependency("DateTime") is False
 
-    def test_built_in_Exception(self) -> None:
+    def test_is_real_dependency_built_in_exception_returns_false(self) -> None:
         assert DependencyInversionScanner._is_real_dependency("Exception") is False
 
     def test_is_real_dependency_scalar_array_returns_false(self) -> None:

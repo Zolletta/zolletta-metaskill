@@ -61,9 +61,13 @@ target-version = "py312"
 #   UP      — pyupgrade (modern syntax for target-version py312)
 #   T20     — flake8-print (no print/pprint in library code)
 #   SIM     — flake8-simplify (collapsible ifs, redundant code, ...)
-#   PGH003  — blanket `# type: ignore` must name the ignored error code (issue #41)
+#   N       — pep8-naming (N802: a test name must not embed a foreign-language
+#             class spelling, e.g. test_built_in_stdClass)
+#   TID     — flake8-tidy-imports (TID252: no relative imports — ADR-0015
+#             promises `python3 <script>.py [--json]` runnable from the project
+#             root with zero arguments, which a relative import makes impossible)#   PGH003  — blanket `# type: ignore` must name the ignored error code (issue #41)
 #   PGH004  — blanket `# noqa` must name the ignored rule codes (issue #41)
-select = ["E", "W", "F", "I", "B", "C4", "D", "UP", "T20", "SIM", "PGH003", "PGH004"]
+select = ["E", "W", "F", "I", "B", "C4", "D", "UP", "T20", "SIM", "N", "TID", "PGH003", "PGH004"]
 
 # Suppressed rules:
 #   B008  — function call in default argument; Typer/argparse defaults legitimately
@@ -77,11 +81,29 @@ select = ["E", "W", "F", "I", "B", "C4", "D", "UP", "T20", "SIM", "PGH003", "PGH
 #           we keep D212-style summaries on the first line)
 ignore = ["B008", "T201", "D104", "D107", "D203", "D213"]
 
+[tool.ruff.lint.flake8-tidy-imports]
+# "all", not ruff's default "parents".
+#
+# The default bans only `from ..pkg import x`; `from .sibling import x` still
+# passes. That is exactly the import that broke ADR-0015's documented
+# invocation — running link_checker.py or api_doc_validator.py directly aborted
+# with "attempted relative import with no known parent package" — while the
+# scanner reported all clear. "all" bans both forms, so the rule can no longer
+# pass vacuously.
+ban-relative-imports = "all"
+
 [tool.ruff.lint.per-file-ignores]
 # Tests are exempt from docstring rules (D100 module / D101 class / D102 method /
 # D103 function / D105 magic-method docstrings) and from B010 (setattr with a
 # constant attribute name — used to poke internals under test).
-"tests/**/*.py" = ["D100", "D101", "D102", "D103", "D105", "B010"]
+#
+# TID252 is exempt for a different reason. ADR-0015 constrains *scripts*:
+# `python3 <script>.py [--json]` must work from the project root, and a relative
+# import breaks that. Tests have no such requirement — pytest imports them as
+# modules of a real package — and `from .conftest import ...` is the idiomatic
+# way to reach a shared fixture. Exempting them keeps the rule pointed at the
+# case it exists to prevent rather than at conventional pytest style.
+"tests/**/*.py" = ["D100", "D101", "D102", "D103", "D105", "B010", "TID252"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["zolletta_metaskill"]
