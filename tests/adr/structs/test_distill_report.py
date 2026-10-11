@@ -51,8 +51,6 @@ class TestDistillReport:
         """to_dict returns only JSON-serializable types."""
         import json
 
-        report = DistillReport(
-            new=["a"], stale=["b"], removed=["c"], dropped=["d"], has_adrs=True
-        )
+        report = DistillReport(new=["a"], stale=["b"], removed=["c"], dropped=["d"], has_adrs=True)
         d = report.to_dict()
         json.dumps(d)  # should not raise

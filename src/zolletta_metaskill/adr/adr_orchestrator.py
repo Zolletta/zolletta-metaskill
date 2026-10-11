@@ -104,9 +104,7 @@ class ADROrchestrator:
                 if directive is not None:
                     new_directives[key] = directive
 
-        accepted_keys = {
-            ADRCache.key(r) for r in records if self._is_accepted(r.status)
-        }
+        accepted_keys = {ADRCache.key(r) for r in records if self._is_accepted(r.status)}
         merged = self._merge_directives(existing_directives, new_directives, accepted_keys)
         report.dropped = [k for k in existing_directives if k not in merged]
 
