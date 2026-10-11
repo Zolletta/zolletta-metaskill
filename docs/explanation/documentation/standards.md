@@ -64,3 +64,13 @@ Each paragraph must be written on a single line. Never hard-wrap prose at a fixe
 The same rule applies inside blockquotes: a blockquote paragraph is a run of consecutive non-blank `>` lines. Join them into a single `>` line.
 
 To separate distinct ideas, use a blank line (creating a new paragraph) or a list — never a mid-paragraph line break.
+
+### Mermaid diagrams
+
+Mermaid diagrams are declared in ` ```mermaid ` fenced blocks. Style rules:
+
+- **No `fill` styles** — never add `style <node> fill:...`, `classDef ... fill:...`, or `linkStyle ... fill:...` overrides.
+- **No background** — do not set a background color or image on the diagram.
+- Default theme only — no `%%{init: {'theme': ...}}%%` directives, no `classDef`, no `style` statements at all.
+
+Reason: mkdocs-material renders Mermaid theme-aware — diagrams pick up the reader's light/dark palette automatically. Hardcoded fills and backgrounds fight that theming and make diagrams inconsistent with the rest of the page. If a diagram needs visual grouping, express it in the structure (subgraphs, node naming), not in color.

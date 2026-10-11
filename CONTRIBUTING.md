@@ -24,15 +24,15 @@ This installs all optional dependency groups: `dev` (pytest, ruff, mypy, ty, vul
 2. **Make your changes**. Follow the existing code style — the project uses ruff, mypy, ty, and vulture (see `pyproject.toml` for configuration).
 3. **Run the full quality gate locally** before pushing:
 
-```bash
-uv run pytest --cov=zolletta_metaskill --cov-report=term -q
-uv run ruff check
-uv run ty check .
-uv run mypy .
-uv run vulture .
-```
+   ```bash
+   uv run pytest --cov=zolletta_metaskill --cov-report=term -q
+   uv run ruff check
+   uv run ty check .
+   uv run mypy .
+   uv run vulture .
+   ```
 
-These are the same checks CI runs (see `.github/workflows/ci.yml`). All four must pass.
+   These are the same checks CI runs (see `.github/workflows/ci.yml`). All four must pass.
 
 4. **Commit and push** your branch, then open a pull request against `main`.
 
@@ -54,7 +54,7 @@ This project follows [Conventional Commits](https://www.conventionalcommits.org/
 
 Example: `feat(setup): detect PHP tools from composer.json`
 
-Scope is optional but encouraged when the change targets a specific subcommand or module.
+Scope is optional but encouraged when the change targets a specific subcommand or module. Write commit messages in English.
 
 ## Dogfooding
 
@@ -92,7 +92,7 @@ Then open <http://127.0.0.1:8000>.
 
 ## Project structure
 
-```
+```text
 src/zolletta_metaskill/   # Python package (scanning scripts, engines, setup)
 skills/                # SUBSKILL.md files for each subcommand (zolletta-metaskill-<name>/)
 docs/                     # Diátaxis-structured documentation

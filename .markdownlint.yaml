@@ -1,0 +1,56 @@
+# markdownlint rules for this repository.
+# Every setting below names the AGENTS.md rule it enforces. If a rule here
+# has no AGENTS.md backing, it is a candidate for removal — the config is
+# the gate, the file is the policy.
+
+default: true
+
+# --- AGENTS.md: "no artificial line break" ---
+# MD013 (line-length) cannot coexist with unwrapped prose — the two rules
+# contradict each other, so this is disabled. The convention itself stays
+# unenforceable: nothing checks that prose IS unwrapped.
+MD013: false
+
+# --- AGENTS.md: "every file should end with an empty row with a newline" ---
+# Repo-wide rule (also covered by the pre-commit hook for all file types);
+# MD047 is the markdown slice of it — markdownlint only sees .md files.
+MD047: true
+
+# --- AGENTS.md: "relative links only" (partial) ---
+# MD034: no bare URLs — a pasted https://github.com/Zolletta/... URL is exactly
+#   what the relative-links rule forbids; MD034 catches the bare form.
+# MD051: link fragments (#setup-guard, file.md#anchor) must resolve — the
+#   manifests rely on intra-doc anchors, so broken fragments are real bugs.
+# MD011: no reversed link syntax (text)[url]. MD039/MD042: link text/dest
+#   sanity. The "relative-only" policy itself needs a custom rule — not done.
+MD034: true
+MD051: true
+MD011: true
+MD039: true
+MD042: true
+
+# --- style pins: make "consistent" enforceable ---
+# These match how the repo already writes, so the gate checks style, not
+# opinion.
+MD001: true            # heading levels increment by one
+MD004:
+  style: dash          # unordered lists use `-` everywhere
+MD009: true            # no trailing spaces
+MD012: true            # no multiple consecutive blank lines
+MD024:
+  siblings_only: true  # duplicate headings only flagged among siblings
+MD025: true            # exactly one H1 per file — SUBSKILL.md format requires it
+MD029:
+  style: ordered       # ordered lists use sequential numbering 1. 2. 3.
+MD046:
+  style: fenced        # code blocks are fenced, never indented
+MD048:
+  style: backtick      # fences use ``` not ~~~
+MD049:
+  style: asterisk      # emphasis uses *em* not _em_
+MD050:
+  style: asterisk      # strong uses **bold** not __bold__
+MD055:
+  style: leading_and_trailing   # repo tables carry both outer pipes
+MD056: true            # table column count matches the header
+MD058: true            # tables are surrounded by blank lines
