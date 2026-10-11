@@ -61,7 +61,7 @@ If `.zolletta-metaskill/settings.json` already exists, read it and check `setup_
   5. Set `setup_version` to `"3.2.0"`.
   6. Write the migrated file and proceed.
 
-> **What changed in v3.0.0**: every review script now resolves scan roots and rule knobs from `settings.json` instead of CLI flags (see ADR-0015). New keys: `python.paths` (source/test roots + package — the PHP-autoload equivalent Python lacked), `python.patterns` and `php.patterns` (SOLID-check toggles and thresholds), new `python.code_style`/`python.testing`/`php.code_style` toggles, and the `documentation.*` options that drive the documentor tools. Backfill is additive: user-customized values are preserved, only absent keys are added.
+> **What changed in v3.0.0**: every review script now resolves scan roots and rule knobs from `settings.json` instead of CLI flags (see ADR-0002, formerly ADR-0015). New keys: `python.paths` (source/test roots + package — the PHP-autoload equivalent Python lacked), `python.patterns` and `php.patterns` (SOLID-check toggles and thresholds), new `python.code_style`/`python.testing`/`php.code_style` toggles, and the `documentation.*` options that drive the documentor tools. Backfill is additive: user-customized values are preserved, only absent keys are added.
 >
 > **What changed in v3.1.0**: `one_class_per_file_scanner.py` also scans test roots (one test class per test file, named after its stem) — gated by the new `python.code_style.check_one_class_per_test_file` toggle (default `true`, set `false` to skip test files). Its name check is now case-insensitive, so acronym-cased classes (`ADRCache`, `TestADRCLI`) match their lowercase filenames instead of being reported as false positives.
 
@@ -156,6 +156,7 @@ python3 ../../src/zolletta_metaskill/setup/adr_detector.py <docs_dir>
 
 Prints JSON `{"adrs_path": "adr"}` or `{"adrs_path": null}`. Store in `documentation.adrs`.
 
+Detection matches `# ADR-NNNN: Title` headings only. In this project's layout the corpus sits at `adr/architecture/` and the activity log at `adr/activity/` uses `ACT-NNN` headings — so detection resolves to `explanation/adr/architecture` and never to the log.
 
 ### Step 11 — Detect PHP tooling (PHP only)
 

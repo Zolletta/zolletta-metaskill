@@ -41,11 +41,11 @@ python3 ../../src/zolletta_metaskill/adr/adr_orchestrator.py --json
 `documentation.dir`, `documentation.adrs`, and `runs_dir` are read from `settings.json` — no path flags.
 
 The orchestrator:
-1. Discovers ADR files in `<docs_dir>/<adrs_path>/`.
+1. Discovers ADR files in `<docs_dir>/<adrs_path>/` — files with `# ADR-NNNN: Title` headings only.
 2. Compares mtimes against the cache at `.zolletta-metaskill/adr-cache.json`.
 3. Re-distills **new** and **stale** ADRs (Accepted status only).
-4. Removes directives for **removed** ADRs.
-5. Preserves up-to-date directives (including any agent refinements).
+4. Removes directives for **removed** ADRs and drops directives whose ADR no longer exists or is no longer Accepted.
+5. Preserves up-to-date directives for currently Accepted ADRs (including any agent refinements).
 6. Writes the updated `adr-distilled.md` and cache.
 
 ### Step 2 — Parse the JSON report
@@ -55,11 +55,14 @@ The `--json` flag outputs a report like:
 ```json
 {
   "has_adrs": true,
-  "new": ["0007-async-event-bus"],
-  "stale": ["0003-use-postgresql"],
-  "removed": ["0002-old-approach"]
+  "new": ["ADR-0007"],
+  "stale": ["ADR-0003"],
+  "removed": ["ADR-0002"],
+  "dropped": []
 }
 ```
+
+`removed` lists ADR files deleted from the corpus; `dropped` lists directives pruned because their ADR is no longer discovered or no longer Accepted (e.g. after supersession).
 
 If `has_adrs` is `false`, no Accepted ADRs were found — print a message and exit.
 

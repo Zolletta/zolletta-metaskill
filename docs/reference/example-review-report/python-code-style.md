@@ -98,11 +98,10 @@ No low findings. Vulture reported no dead code and the `__all__` scanner reporte
 
 ## Architectural Directive Alignment
 
-| Directive                                            | Alignment | Notes                                                                                                                                                                                  |
-|------------------------------------------------------|-----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| ADR-0004 — Python stdlib only for scanners           | Aligned   | Scanners use only stdlib (`ast`, `argparse`, `pathlib`, `json`); no third-party imports in scanner modules.                                                                            |
-| ADR-0007 — Language-neutral engine protocol          | Aligned   | `LanguageEngine` protocol + `ModuleInfo` data model present; `PythonEngine`/`PHPEngine` implementations follow the protocol. (`PHPEngine` class name correctly keeps `PHP` uppercase.) |
-| ADR-0009 — Inline shell replaced with Python scripts | Aligned   | Setup detectors are standalone Python scripts under `src/zolletta_metaskill/setup/`, all typed and documented.                                                                         |
+| Directive                                   | Alignment | Notes                                                                                                                                                                                  |
+|---------------------------------------------|-----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ADR-0004 — Scanner constraints              | Aligned   | Scanners use only stdlib (`ast`, `argparse`, `pathlib`, `json`); no third-party imports in scanner modules. Setup detectors are standalone, tested Python scripts.                     |
+| ADR-0005 — Language-neutral engine protocol | Aligned   | `LanguageEngine` protocol + `ModuleInfo` data model present; `PythonEngine`/`PHPEngine` implementations follow the protocol. (`PHPEngine` class name correctly keeps `PHP` uppercase.) |
 
 No architectural directive violations observed.
 

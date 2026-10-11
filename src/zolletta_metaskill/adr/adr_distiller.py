@@ -87,6 +87,7 @@ class ADRDistiller:
             "---\n"
             "audience: ai\n"
             "status: generated\n"
+            'description: "Auto-generated architectural directives distilled from Accepted ADRs."\n'
             "---\n\n"
             "# adr-distilled.md — Architectural Directives\n\n"
             "> Auto-generated from the project's ADRs by the adr-distiller.\n"
@@ -106,6 +107,7 @@ class ADRDistiller:
             "---\n"
             "audience: ai\n"
             "status: generated\n"
+            'description: "Auto-generated placeholder written when no Accepted ADRs are found."\n'
             "---\n\n"
             "# adr-distilled.md — Architectural Directives\n\n"
             "No Architecture Decision Records (ADRs) were found in this "

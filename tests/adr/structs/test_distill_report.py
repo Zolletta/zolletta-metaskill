@@ -14,6 +14,7 @@ class TestDistillReport:
         assert report.new == []
         assert report.stale == []
         assert report.removed == []
+        assert report.dropped == []
         assert report.has_adrs is False
 
     # --- Tests for DistillReport.to_dict. ---
@@ -22,7 +23,13 @@ class TestDistillReport:
         """to_dict returns empty lists and False for a default report."""
         report = DistillReport()
         d = report.to_dict()
-        assert d == {"new": [], "stale": [], "removed": [], "has_adrs": False}
+        assert d == {
+            "new": [],
+            "stale": [],
+            "removed": [],
+            "dropped": [],
+            "has_adrs": False,
+        }
 
     def test_to_dict_with_entries_returns_serializable_dict(self) -> None:
         """to_dict returns all fields correctly when populated."""
@@ -30,18 +37,22 @@ class TestDistillReport:
             new=["adr-001.md"],
             stale=["adr-002.md"],
             removed=["adr-003.md"],
+            dropped=["adr-004.md"],
             has_adrs=True,
         )
         d = report.to_dict()
         assert d["new"] == ["adr-001.md"]
         assert d["stale"] == ["adr-002.md"]
         assert d["removed"] == ["adr-003.md"]
+        assert d["dropped"] == ["adr-004.md"]
         assert d["has_adrs"] is True
 
     def test_to_dict_returns_json_serializable_types(self) -> None:
         """to_dict returns only JSON-serializable types."""
         import json
 
-        report = DistillReport(new=["a"], stale=["b"], removed=["c"], has_adrs=True)
+        report = DistillReport(
+            new=["a"], stale=["b"], removed=["c"], dropped=["d"], has_adrs=True
+        )
         d = report.to_dict()
         json.dumps(d)  # should not raise

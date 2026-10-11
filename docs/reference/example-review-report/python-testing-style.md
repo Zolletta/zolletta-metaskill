@@ -122,12 +122,11 @@ None. This skill runs no auto-fixing tools (ruff/ty/mypy/vulture are owned by th
 
 ## Architectural Directive Alignment
 
-| Directive                                                     | Type    | Status | Notes                                                                                                                                                 |
-|---------------------------------------------------------------|---------|--------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [ADR-0004] Python stdlib only for scanners                    | Binary  | PASS   | Scanners under test are stdlib-only; tests do not introduce non-stdlib runtime deps.                                                                  |
-| [ADR-0009] Inline shell replaced with testable Python scripts | Binary  | PASS   | Setup/scanner scripts (`test_naming_scanner.py`, `test_structure_scanner.py`, detectors) are unit-tested with real invocations.                       |
-| [ADR-0005] Review orchestrator with parallel subagents        | Nuanced | N/A    | Process directive; not observable in test code.                                                                                                       |
-| [ADR-0007] LanguageEngine protocol with ModuleInfo            | Nuanced | PASS   | `core/engine/` and `core/structs/` are directly unit-tested (`test_engine_registry.py`, `test_python_engine.py`, `test_php_engine.py`, struct tests). |
+| Directive                                          | Type    | Status | Notes                                                                                                                                                 |
+|----------------------------------------------------|---------|--------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [ADR-0004] Scanner constraints                     | Binary  | PASS   | Scanners under test are stdlib-only and unit-tested with real invocations (`test_naming_scanner.py`, `test_structure_scanner.py`, detectors).         |
+| [ADR-0001] Meta-skill architecture                 | Nuanced | N/A    | Process directive; not observable in test code.                                                                                                       |
+| [ADR-0005] LanguageEngine protocol with ModuleInfo | Nuanced | PASS   | `core/engine/` and `core/structs/` are directly unit-tested (`test_engine_registry.py`, `test_python_engine.py`, `test_php_engine.py`, struct tests). |
 
 No binary directive violations found.
 

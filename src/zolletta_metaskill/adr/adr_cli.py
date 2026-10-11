@@ -52,10 +52,13 @@ class ADRCLI:
         if as_json:
             return json.dumps(report.to_dict())
         if report.has_adrs:
-            return (
+            counts = (
                 f"ADR distiller: {len(report.new)} new, "
                 f"{len(report.stale)} stale, {len(report.removed)} removed"
             )
+            if report.dropped:
+                counts += f", {len(report.dropped)} dropped"
+            return counts
         return "ADR distiller: no ADRs found"
 
     @staticmethod
@@ -67,6 +70,7 @@ class ADRCLI:
                     "new": [],
                     "stale": [],
                     "removed": [],
+                    "dropped": [],
                     "has_adrs": False,
                 }
             )

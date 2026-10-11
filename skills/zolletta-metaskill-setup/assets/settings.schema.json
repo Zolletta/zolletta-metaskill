@@ -128,7 +128,7 @@
             "string",
             "null"
           ],
-          "description": "Relative path within documentation.dir where ADRs live (e.g. \"adr\"), \"\" if scattered in docs root, or null if no ADRs found. Auto-detected during setup.",
+          "description": "Relative path within documentation.dir where architecture ADRs live (e.g. \"adr\" or \"adr/architecture\" when an ACT archive exists), \"\" if scattered in docs root, or null if no ADRs found. Auto-detected during setup.",
           "default": null
         },
         "min_severity": {

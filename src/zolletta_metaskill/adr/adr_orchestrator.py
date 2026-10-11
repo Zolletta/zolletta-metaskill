@@ -54,12 +54,12 @@ class ADROrchestrator:
         2. Compares against the mtime cache to classify as new/stale/removed.
         3. Re-distills new and stale ADRs mechanically (Accepted only).
         4. Preserves up-to-date directives (including agent refinements).
-        5. Removes directives for removed ADRs.
+        5. Removes directives for removed, demoted, or orphaned ADRs.
         6. Writes the updated ``adr-distilled.md`` and cache.
 
         Returns:
-            A :class:`DistillReport` with lists of new, stale, and removed
-            ADR numbers, and whether any ADRs exist.
+            A :class:`DistillReport` with lists of new, stale, removed, and
+            dropped ADR numbers, and whether any ADRs exist.
 
         """
         records = ADRDiscovery.find_files(self.docs_dir, self.adrs_path)
@@ -90,7 +90,25 @@ class ADROrchestrator:
         else:
             existing_directives = {}
 
-        merged = self._merge_directives(existing_directives, new_directives, report.removed)
+        # Self-heal: regenerate any Accepted ADR whose directive is absent
+        # from the file — covers a deleted/moved distilled file, manually
+        # removed lines, and cache/directory migration divergence.
+        for record in records:
+            key = ADRCache.key(record)
+            if (
+                self._is_accepted(record.status)
+                and key not in new_directives
+                and key not in existing_directives
+            ):
+                directive = self.distill_adr(record)
+                if directive is not None:
+                    new_directives[key] = directive
+
+        accepted_keys = {
+            ADRCache.key(r) for r in records if self._is_accepted(r.status)
+        }
+        merged = self._merge_directives(existing_directives, new_directives, accepted_keys)
+        report.dropped = [k for k in existing_directives if k not in merged]
 
         # Sort by ADR number for deterministic output
         sorted_keys = sorted(merged, key=lambda k: int(k.split("-")[1]))
@@ -171,19 +189,20 @@ class ADROrchestrator:
     def _merge_directives(
         existing_directives: dict[str, str],
         new_directives: dict[str, str],
-        removed: list[str],
+        accepted_keys: set[str],
     ) -> dict[str, str]:
-        """Merge existing and freshly distilled directives, dropping removed ADRs."""
+        """Merge existing and freshly distilled directives.
+
+        An existing directive is kept only while its ADR is an Accepted
+        record — file removals, status demotions, and orphaned lines whose
+        ADR is no longer in the corpus all drop out here.
+        """
         merged: dict[str, str] = {}
         for key, directive in existing_directives.items():
-            if key in removed:
-                continue
-            merged[key] = new_directives.get(key, directive)
-
-        # Add brand-new directives (not in existing file)
+            if key in accepted_keys:
+                merged[key] = new_directives.get(key, directive)
         for key, directive in new_directives.items():
-            if key not in merged:
-                merged[key] = directive
+            merged[key] = directive
         return merged
 
     @staticmethod
@@ -214,7 +233,10 @@ class ADROrchestrator:
         )
         if can_update_in_place and existing_content is not None:
             ADRDistiller.update_in_place(
-                distilled_path, existing_content, new_directives, report.removed
+                distilled_path,
+                existing_content,
+                new_directives,
+                report.dropped,
             )
         else:
             ADRDistiller.write(distilled_path, directive_lines)

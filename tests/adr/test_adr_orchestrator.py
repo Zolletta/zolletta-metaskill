@@ -196,6 +196,84 @@ class TestADROrchestrator:
         assert "[ADR-001]" not in result
         assert "No Architecture Decision Records" in result
 
+    def test_status_demotion_removes_directive_with_survivor(self, tmp_path: Path) -> None:
+        """Accepted -> Superseded drops the directive even when other ADRs remain."""
+        docs = tmp_path / "docs"
+        write_adr(docs / "adr" / "0001-keep.md", "001", "Keep", "Accepted", "We do X.")
+        f2 = docs / "adr" / "0002-gone.md"
+        write_adr(f2, "002", "Gone", "Accepted", "We do Y.")
+        cache_path = tmp_path / "cache.json"
+        distiller = ADROrchestrator(docs, "adr", cache_path)
+        distiller.refresh()
+        write_adr(f2, "002", "Gone", "Superseded by ADR-003", "We do Y.")
+        os.utime(f2, (9999999999, 9999999999))  # far-future mtime to force staleness
+        report = distiller.refresh()
+        assert "ADR-002" in report.dropped
+        assert "ADR-002" not in report.removed
+        result = (docs / "adr" / "adr-distilled.md").read_text(encoding="utf-8")
+        assert "[ADR-002]" not in result
+        assert "[ADR-001]" in result
+        # Demoted ADR stays cached — a third refresh reports nothing for it.
+        report3 = distiller.refresh()
+        assert "ADR-002" not in report3.new
+        assert "ADR-002" not in report3.stale
+
+    def test_orphaned_directive_dropped(self, tmp_path: Path) -> None:
+        """A directive whose ADR is not in the corpus is pruned, not preserved."""
+        docs = tmp_path / "docs"
+        write_adr(docs / "adr" / "0001-keep.md", "001", "Keep", "Accepted", "We do X.")
+        cache_path = tmp_path / "cache.json"
+        distiller = ADROrchestrator(docs, "adr", cache_path)
+        distiller.refresh()
+        # Simulate a leftover line from a previous corpus (e.g. directory move).
+        distilled = docs / "adr" / "adr-distilled.md"
+        distilled.write_text(
+            distilled.read_text(encoding="utf-8")
+            + "- [ADR-099](0099-ghost.md) Ghost directive from a retired ADR.\n",
+            encoding="utf-8",
+        )
+        report = distiller.refresh()
+        assert "ADR-099" in report.dropped
+        result = distilled.read_text(encoding="utf-8")
+        assert "[ADR-099]" not in result
+        assert "[ADR-001]" in result
+
+    def test_missing_distilled_file_regenerates(self, tmp_path: Path) -> None:
+        """Deleting the file with an intact cache regenerates all directives."""
+        docs = tmp_path / "docs"
+        write_adr(docs / "adr" / "0001-keep.md", "001", "Keep", "Accepted", "We do X.")
+        write_adr(docs / "adr" / "0002-more.md", "002", "More", "Accepted", "We do Y.")
+        distiller = ADROrchestrator(docs, "adr", tmp_path / "cache.json")
+        distiller.refresh()
+        (docs / "adr" / "adr-distilled.md").unlink()
+        distiller.refresh()
+        result = (docs / "adr" / "adr-distilled.md").read_text(encoding="utf-8")
+        assert "[ADR-001]" in result
+        assert "[ADR-002]" in result
+        assert "No Architecture Decision Records" not in result
+
+    def test_missing_directive_line_restored(self, tmp_path: Path) -> None:
+        """An up-to-date ADR whose directive line was removed is re-distilled."""
+        docs = tmp_path / "docs"
+        write_adr(docs / "adr" / "0001-keep.md", "001", "Keep", "Accepted", "We do X.")
+        write_adr(docs / "adr" / "0002-more.md", "002", "More", "Accepted", "We do Y.")
+        distiller = ADROrchestrator(docs, "adr", tmp_path / "cache.json")
+        distiller.refresh()
+        distilled = docs / "adr" / "adr-distilled.md"
+        distilled.write_text(
+            "\n".join(
+                line
+                for line in distilled.read_text(encoding="utf-8").splitlines()
+                if "[ADR-001]" not in line
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        distiller.refresh()
+        result = distilled.read_text(encoding="utf-8")
+        assert "[ADR-001]" in result
+        assert "[ADR-002]" in result
+
     def test_status_change_proposed_to_accepted_adds(self, tmp_path: Path) -> None:
         docs = tmp_path / "docs"
         f = docs / "adr" / "0001-test.md"

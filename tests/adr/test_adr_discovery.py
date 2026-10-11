@@ -159,3 +159,15 @@ class TestADRDiscovery:
         (docs / "adr" / "notes.md").write_text("Just notes.\n", encoding="utf-8")
         records = ADRDiscovery.find_files(docs, "adr")
         assert len(records) == 1
+
+    def test_act_activity_record_skipped(self, tmp_path: Path) -> None:
+        """Archived ``ACT-NNNN`` headings are not ADR headings — never discovered."""
+        docs = tmp_path / "docs"
+        write_adr(docs / "adr" / "architecture" / "0001-test.md", "001", "Test")
+        (docs / "adr" / "activity").mkdir(parents=True)
+        (docs / "adr" / "activity" / "0001-old.md").write_text(
+            "# ACT-0001: Old record\n\n## Status\n\nAccepted\n",
+            encoding="utf-8",
+        )
+        records = ADRDiscovery.find_files(docs, "adr")
+        assert [r.number for r in records] == ["001"]
