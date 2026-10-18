@@ -2,21 +2,41 @@
 
 Conventions for the zolletta-metaskill repository. Follow them in all files in the repo unless a file already deviates for a documented reason. Rules marked *unenforced* have no tool checking them — they are real, not optional.
 
+## Before any commit
+
+Every command below also runs in CI (`.github/workflows/tests.yml`, jobs `pytest + coverage`, `ruff + ty + mypy + vulture`, `markdownlint`). Run them locally first — a red CI run is a wasted round trip.
+
+```bash
+uv run ruff check src tests
+uv run ruff format --check src tests
+uv run ty check .
+uv run mypy .
+uv run vulture . --min-confidence 80
+uv run pytest -q
+npx --yes markdownlint-cli2@0.23.3
+```
+
+`ruff format --check` is the only one CI does not run. When an ADR changes, refresh the distiller cache and confirm it goes quiet:
+
+```bash
+PYTHONPATH=src uv run python src/zolletta_metaskill/adr/adr_cli.py
+```
+
 ## General
 
-| Rule                                                    | Enforced by                                                                                                                            |
-|---------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
-| Every file ends with an empty row and a newline (POSIX) | *unenforced* — pre-commit hook, bypassable with `--no-verify`; `.markdownlint.yaml` adds MD047 for the `.md` slice once that gate runs |
+| Rule                                                    | Enforced by                                                                                                                                                                                                                    |
+|---------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Every file ends with an empty row and a newline (POSIX) | *unenforced* for `.json`/`.yml`/`.toml`/`.txt` — no pre-commit hook exists. `.py` is covered by `ruff format --check`, which CI does not run; `.md` by `MD047` in `.markdownlint.yaml`, which the CI markdownlint job does run |
 
 ## Markdown
 
-| Rule                                                                                                                                                                                                                                                                                                 | Enforced by                                                                                                                       |
-|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
-| No artificial line break — prose paragraphs stay on one line (spec: `docs/explanation/documentation/standards.md`)                                                                                                                                                                                   | `.markdownlint.yaml` — disables MD013 so no lint rule demands the wrapping this convention forbids                                |
-| Should pass markdownlint                                                                                                                                                                                                                                                                             | *unenforced* — `.markdownlint.yaml` exists but no workflow runs it yet                                                            |
-| Mermaid graphs have no fill and no background — default theme only (spec: `docs/explanation/documentation/standards.md#mermaid-diagrams`)                                                                                                                                                            | *unenforced* — no checker; zero diagrams in the repo today                                                                        |
-| Relative links only — never hardcode `https://github.com/Zolletta/zolletta-metaskill/...` URLs in `docs/` or `skills/`; repo-root-relative links resolve on GitHub and locally (mkdocs cannot see outside `docs/`, so they're downgraded to `info` via `validation.links.not_found` in `mkdocs.yml`) | `link_checker.py` — resolves links against the repo root                                                                          |
-| ADR corpus layout — architecture ADRs live in `docs/explanation/adr/architecture/`; activity records never enter the corpus; accepted ADRs are immutable — replace only by supersession (see `docs/explanation/adr/architecture/0000-adrs-record-architecture-not-activity.md`)                      | `adr-distiller` reads only `documentation.adrs` in `.zolletta-metaskill/settings.json`; pre-reform records decode via git history |
+| Rule                                                                                                                                                                                                                                                                                                 | Enforced by                                                                                                                                                                                                          |
+|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| No artificial line break — prose paragraphs stay on one line (spec: `docs/explanation/documentation/standards.md`)                                                                                                                                                                                   | `.markdownlint.yaml` — disables MD013 so no lint rule demands the wrapping this convention forbids                                                                                                                   |
+| Should pass markdownlint                                                                                                                                                                                                                                                                             | `.markdownlint.yaml` holds the rule set and `.markdownlint-cli2.jsonc` the globs; the CI `markdownlint` job runs `npx --yes markdownlint-cli2@0.23.3` with `continue-on-error: true`, so it reports without blocking |
+| Mermaid graphs have no fill and no background — default theme only (spec: `docs/explanation/documentation/standards.md#mermaid-diagrams`)                                                                                                                                                            | *unenforced* — no checker; zero diagrams in the repo today                                                                                                                                                           |
+| Relative links only — never hardcode `https://github.com/Zolletta/zolletta-metaskill/...` URLs in `docs/` or `skills/`; repo-root-relative links resolve on GitHub and locally (mkdocs cannot see outside `docs/`, so they're downgraded to `info` via `validation.links.not_found` in `mkdocs.yml`) | `link_checker.py` — resolves links against the repo root                                                                                                                                                             |
+| ADR corpus layout — architecture ADRs live in `docs/explanation/adr/architecture/`; activity records never enter the corpus; accepted ADRs are immutable — replace only by supersession (see `docs/explanation/adr/architecture/0000-adrs-record-architecture-not-activity.md`)                      | `adr-distiller` reads only `documentation.adrs` in `.zolletta-metaskill/settings.json`; pre-reform records decode via git history                                                                                    |
 
 ## Commits
 
