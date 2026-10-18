@@ -62,3 +62,24 @@ jobs:
 
       - name: vulture
         run: uv run vulture .
+
+  markdownlint:
+    name: markdownlint
+    needs: quality
+    runs-on: ubuntu-latest
+    # Temporary, deliberately. The repo is green on this gate as of
+    # 2026-10-18 (94 files, 0 issues), but the flag stays until the gate has
+    # run on a few releases without a surprise. Remove it once that is proven;
+    # until then a red run here is information, not a block.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up environment
+        uses: ./.github/actions/setup-env
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache-suffix: "markdownlint"
+
+      - name: markdownlint
+        run: npx --yes markdownlint-cli2@0.23.3
