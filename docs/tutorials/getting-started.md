@@ -8,7 +8,7 @@ skills: [setup, review, patterns, documentor, python-*]
 
 Welcome to Zolletta-MetaSkill — a family of generic code review skills with specializations for Python and other languages. This tutorial walks through installing the skill, setting up a project, and running a first review.
 
-## What you will learn
+## What we will learn
 
 - How to install Zolletta-metaskill
 - How to set up a project for reviews
