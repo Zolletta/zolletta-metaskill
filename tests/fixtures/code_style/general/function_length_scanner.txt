@@ -1,0 +1,14 @@
+======================================================================
+FUNCTION LENGTH — VALIDATION REPORT
+======================================================================
+
+Scanned 3 files under src (max 100 lines)
+
+## Functions exceeding the limit (2)
+
+     126 lines  src/long.py:5-130  runner  (over by 26)
+     106 lines  src/big.py:20-125  Big.run  (over by 6)
+
+  Fix: split the function by responsibility, or raise max_function_length in settings.json if the length is justified (dispatch tables, generated code).
+
+Result: violations found (report-only mode)

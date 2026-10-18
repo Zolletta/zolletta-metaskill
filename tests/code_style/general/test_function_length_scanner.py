@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -480,3 +481,37 @@ class TestFunctionLengthScanner:
         assert rc == 0
         assert "all clear" in captured.out
         assert "Warning: could not parse" in captured.err
+
+    # --- Text-output contract. ---
+
+    def test_emit_text_matches_committed_contract(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The captured text is a byte-for-byte contract that must not be loosened.
+
+        A legitimate change is ``pytest --update-fixtures`` plus a reviewed diff.
+        """
+        violations = [
+            {
+                "file": "src/long.py",
+                "function": "runner",
+                "kind": "Function",
+                "line": 5,
+                "end_line": 130,
+                "lines": 126,
+                "over": 26,
+            },
+            {
+                "file": "src/big.py",
+                "function": "Big.run",
+                "kind": "Method",
+                "line": 20,
+                "end_line": 125,
+                "lines": 106,
+                "over": 6,
+            },
+        ]
+        FunctionLengthScanner._emit_text([Path("src")], 3, 100, violations)
+        text_contract("code_style/general/function_length_scanner.txt", capsys.readouterr().out)

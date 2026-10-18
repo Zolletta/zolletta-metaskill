@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -602,3 +603,46 @@ class TestOneClassPerFileScanner:
         report = json.loads(capsys.readouterr().out)
         assert rc == 0
         assert report["violation_count"] == 1
+
+    # --- Text-output contract. ---
+
+    def test_emit_text_matches_committed_contract(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The captured text is a byte-for-byte contract that must not be loosened.
+
+        A legitimate change is ``pytest --update-fixtures`` plus a reviewed diff.
+        """
+        findings = [
+            Finding(
+                file="src/multi.py",
+                line=1,
+                category="multi_class",
+                severity="high",
+                description="2 classes: Foo, Bar",
+                fix_type="manual",
+            ),
+            Finding(
+                file="src/user.py",
+                line=3,
+                category="name_mismatch",
+                severity="medium",
+                description=(
+                    "Class 'WrongName' doesn't match filename. Expected 'User' "
+                    "(or rename file to match class)"
+                ),
+                fix_type="manual",
+            ),
+            Finding(
+                file="src/utils.py",
+                line=0,
+                category="zero_class",
+                severity="low",
+                description="No classes (utility/helper module)",
+                fix_type="skip",
+            ),
+        ]
+        OneClassPerFileScanner._emit_text(findings, report_zero=True)
+        text_contract("code_style/general/one_class_per_file_scanner.txt", capsys.readouterr().out)

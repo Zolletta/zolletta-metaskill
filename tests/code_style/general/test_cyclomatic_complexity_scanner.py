@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -697,3 +698,38 @@ class TestCyclomaticComplexityScanner:
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
+
+    # --- Text-output contract. ---
+
+    def test_emit_text_matches_committed_contract(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The captured text is a byte-for-byte contract that must not be loosened.
+
+        A legitimate change is ``pytest --update-fixtures`` plus a reviewed diff.
+        """
+        violations = [
+            {
+                "file": "src/deep.py",
+                "function": "walk",
+                "kind": "Function",
+                "line": 12,
+                "complexity": 17,
+                "over": 5,
+            },
+            {
+                "file": "src/state.py",
+                "function": "StateMachine.step",
+                "kind": "Function",
+                "line": 40,
+                "complexity": 14,
+                "over": 2,
+            },
+        ]
+        CyclomaticComplexityScanner._emit_text([Path("src")], 4, 12, violations)
+        text_contract(
+            "code_style/general/cyclomatic_complexity_scanner.txt",
+            capsys.readouterr().out,
+        )
