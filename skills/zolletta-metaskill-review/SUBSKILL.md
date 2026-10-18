@@ -75,17 +75,17 @@ This step ensures the tokensave index is fresh before any subagent uses it. Stal
 
 **Only run this step if `tokensave_available` is `true` in `settings.json`.** If `tokensave_available` is `false`, skip this step — subagents will use the grep/read fallback as usual.
 
-1. **Call `tokensave_status`** (no arguments) via the tokensave MCP server.
-2. **Check index freshness** using the response fields:
-   - **`file_count` vs actual source files**: count `.py` files (or the project's primary language extension) under `src/` using `find src/ -name '*.py' | wc -l` (adapt the extension for the project language). If the indexed `file_count` is significantly lower than the actual count (ratio < 0.8), the index is stale.
-   - **`branch_fallback` / `branch_warning`**: if `branch_fallback` is `true` or a `branch_warning` string is present, the current branch is not tracked. Run `tokensave branch add <current_branch>` (use `git branch --show-current` to get the branch name) before syncing.
-   - **`last_sync_at` staleness**: if the last sync was more than 1 hour ago (compare `last_sync_at` epoch timestamp to current time), the index is stale.
-3. **If any check fails, re-sync the index**:
-   - If `branch_fallback` is `true`: run `tokensave branch add <current_branch>` first.
-   - Then run `tokensave sync` and wait for it to complete.
-   - After sync, call `tokensave_status` again to confirm the index is now fresh.
-4. **If `tokensave sync` fails or the index remains stale after sync**: print a warning at the top of the SUMMARY.md ("⚠️ tokensave index is stale — review quality may be degraded for code exploration tasks") and continue. Do not abort the review. Each subagent will use the grep/read fallback per the tool-failure handler.
-5. **If all checks pass**: proceed to Step 2. No warning is needed.
+1. **Verify tokensave is runnable**: run `tokensave doctor`, which checks that the binary is on `PATH` and that the server responds. A static `tokensave_available: true` written by setup is not evidence — it is only a claim. If `tokensave doctor` fails, set `tokensave_available` to `false` in `settings.json` and continue to Step 2; subagents will use the grep/read fallback per the tool-failure handler. If the doctor output names a newer version than the one installed, note it in the SUMMARY.md warning but do not treat it as a failure.
+2. **Read the freshness signals**: call `tokensave_status` (no arguments) via the MCP server, and run `tokensave branch list` (CLI) — the two responses carry every signal this step needs.
+3. **Check index freshness** using those responses:
+   - **`files_by_language.<lang>` vs a like-for-like count**: count the primary-language files under the configured source roots (`python.paths.source` / `php.autoload.psr-4`) and compare that against the matching entry of `files_by_language`, never against the whole-repo `file_count`, which also counts documents, config and vendored files. A ratio below 0.8 means the index is stale.
+   - **Branch tracked**: `tokensave branch list` returns the tracked branches, and an empty list means multi-branch tracking is off. If the list does not contain the current branch (`git branch --show-current`), the branch is untracked and the index is stale.
+   - **`stale_files`**: indexed files that changed on disk. This is the cheapest real freshness signal the tool reports — any value above zero means the index is stale.
+   - **`last_full_sync_at` vs `last_sync_at`**: an incremental `tokensave sync` refreshes `last_sync_at` without re-reading files git considers unchanged, so a recent `last_sync_at` alone proves nothing about a weeks-old index. Treat the index as stale when `last_sync_at` is more than 1 hour old **or** `last_full_sync_at` is more than 24 hours old.
+4. **Name the outcome and act on it**:
+   - **PASS** — `tokensave doctor` succeeded, the branch is tracked, `stale_files` is 0, and both timestamps are fresh. Proceed to Step 2 with no warning.
+   - **DEGRADED** — at least one signal is off but a sync is possible. Run `tokensave branch add <current_branch>` when the branch is untracked, then run `tokensave sync` and wait for it to complete, then re-check with `tokensave_status` and `tokensave branch list`. If the re-check clears every signal, proceed as PASS.
+   - **UNRECOVERABLE** — `tokensave doctor` failed, or `tokensave sync` failed, or the index is still stale after a sync. Print a warning at the top of SUMMARY.md ("⚠️ tokensave index is stale — review quality may be degraded for code exploration tasks") and continue. Do not abort the review. Each subagent will use the grep/read fallback per the tool-failure handler.
 
 > **Why this runs in the orchestrator**: running `tokensave sync` inside a subagent would risk concurrent syncs if multiple subagents detect staleness simultaneously. The orchestrator syncs once, before any subagent launches, so all subagents see a consistent fresh index.
 
