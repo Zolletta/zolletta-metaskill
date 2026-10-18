@@ -7,9 +7,12 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
+import pytest
+
 from zolletta_metaskill.documentor.quality.drift_detector import DriftDetector
 from zolletta_metaskill.documentor.quality.structs import DocContext, GitRunContext
 from zolletta_metaskill.documentor.utils.documentor_settings import DocumentorSettings
+from zolletta_metaskill.documentor.utils.git_helper import GitHelper
 
 
 class TestDriftDetector:
@@ -46,14 +49,29 @@ class TestDriftDetector:
             associated_code_dirs=associated_code_dirs,
         )
 
+    @staticmethod
+    def _patch_git(
+        last_commit: datetime | None = None,
+        changed: list[dict[str, str]] | None = None,
+    ) -> tuple[Any, Any]:
+        """Patch the two GitHelper reads ``detect_drift_for_doc`` makes.
+
+        Twelve tests opened the same two-patch block, each spelling the patch
+        target out again. The pair is the *fixture* the detector needs rather
+        than the subject of any one test, so it is built once and each test
+        states only the commit date and the changed files it cares about.
+        """
+        return (
+            patch.object(GitHelper, "get_file_last_commit_date", return_value=last_commit),
+            patch.object(GitHelper, "get_files_changed_since", return_value=changed or []),
+        )
+
     # --- detect_drift_for_doc ---
 
     def test_no_git_history(self, tmp_path: Path) -> None:
         (tmp_path / "README.md").write_text("# Test", encoding="utf-8")
-        with patch(
-            "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_file_last_commit_date",
-            return_value=None,
-        ):
+        p = self._patch_git(None)
+        with p[0], p[1]:
             issues = DriftDetector.detect_drift_for_doc(
                 self._git_ctx(str(tmp_path), (), None),
                 self._settings(),
@@ -68,16 +86,8 @@ class TestDriftDetector:
         (tmp_path / "auth.py").write_text("x = 1", encoding="utf-8")
         (tmp_path / "README.md").write_text("See `auth.py` for auth.", encoding="utf-8")
         doc_modified = datetime.now(UTC) - timedelta(days=10)
-        with (
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_file_last_commit_date",
-                return_value=doc_modified,
-            ),
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_files_changed_since"
-            ) as mock_changed,
-        ):
-            mock_changed.return_value = [{"status": "M", "file": "auth.py"}]
+        p = self._patch_git(doc_modified, [{"status": "M", "file": "auth.py"}])
+        with p[0], p[1]:
             issues = DriftDetector.detect_drift_for_doc(
                 self._git_ctx(str(tmp_path), (), None),
                 self._settings(),
@@ -95,16 +105,8 @@ class TestDriftDetector:
             "See " + " ".join(f"`mod{i}.py`" for i in range(7)), encoding="utf-8"
         )
         doc_modified = datetime.now(UTC) - timedelta(days=10)
-        with (
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_file_last_commit_date",
-                return_value=doc_modified,
-            ),
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_files_changed_since"
-            ) as mock_changed,
-        ):
-            mock_changed.return_value = [{"status": "M", "file": "mod0.py"}]
+        p = self._patch_git(doc_modified, [{"status": "M", "file": "mod0.py"}])
+        with p[0], p[1]:
             issues = DriftDetector.detect_drift_for_doc(
                 self._git_ctx(str(tmp_path), (), None),
                 self._settings(),
@@ -118,16 +120,8 @@ class TestDriftDetector:
     def test_now_temporal_staleness_returns_medium(self, tmp_path: Path) -> None:
         (tmp_path / "README.md").write_text("# Test", encoding="utf-8")
         old_date = datetime.now(UTC) - timedelta(days=200)
-        with (
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_file_last_commit_date",
-                return_value=old_date,
-            ),
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_files_changed_since",
-                return_value=[],
-            ),
-        ):
+        p = self._patch_git(old_date)
+        with p[0], p[1]:
             issues = DriftDetector.detect_drift_for_doc(
                 self._git_ctx(str(tmp_path), (), None),
                 self._settings(),
@@ -143,16 +137,8 @@ class TestDriftDetector:
     def test_now_version_drift_returns_1(self, tmp_path: Path) -> None:
         (tmp_path / "README.md").write_text("Requires v1.0.0", encoding="utf-8")
         doc_modified = datetime.now(UTC) - timedelta(days=10)
-        with (
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_file_last_commit_date",
-                return_value=doc_modified,
-            ),
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_files_changed_since",
-                return_value=[],
-            ),
-        ):
+        p = self._patch_git(doc_modified)
+        with p[0], p[1]:
             issues = DriftDetector.detect_drift_for_doc(
                 self._git_ctx(str(tmp_path), (), "2.0.0"),
                 self._settings(),
@@ -173,16 +159,8 @@ class TestDriftDetector:
         (tmp_path / "old.py").write_text("x = 1", encoding="utf-8")
         (tmp_path / "README.md").write_text("See `old.py`", encoding="utf-8")
         doc_modified = datetime.now(UTC) - timedelta(days=10)
-        with (
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_file_last_commit_date",
-                return_value=doc_modified,
-            ),
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_files_changed_since",
-                return_value=[],
-            ),
-        ):
+        p = self._patch_git(doc_modified)
+        with p[0], p[1]:
             issues = DriftDetector.detect_drift_for_doc(
                 self._git_ctx(str(tmp_path), (("old.py", "new.py"),), None),
                 self._settings(include_referential=True),
@@ -202,16 +180,8 @@ class TestDriftDetector:
         (tmp_path / "new.py").write_text("x = 1", encoding="utf-8")
         (tmp_path / "README.md").write_text("See `old.py`", encoding="utf-8")
         doc_modified = datetime.now(UTC) - timedelta(days=10)
-        with (
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_file_last_commit_date",
-                return_value=doc_modified,
-            ),
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_files_changed_since",
-                return_value=[],
-            ),
-        ):
+        p = self._patch_git(doc_modified)
+        with p[0], p[1]:
             issues = DriftDetector.detect_drift_for_doc(
                 self._git_ctx(str(tmp_path), (("old.py", "new.py"),), None),
                 self._settings(include_referential=True),
@@ -226,16 +196,8 @@ class TestDriftDetector:
     def test_readme_structure_check(self, tmp_path: Path) -> None:
         (tmp_path / "README.md").write_text("# Project\n\nSome content.", encoding="utf-8")
         doc_modified = datetime.now(UTC) - timedelta(days=10)
-        with (
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_file_last_commit_date",
-                return_value=doc_modified,
-            ),
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_files_changed_since",
-                return_value=[],
-            ),
-        ):
+        p = self._patch_git(doc_modified)
+        with p[0], p[1]:
             issues = DriftDetector.detect_drift_for_doc(
                 self._git_ctx(str(tmp_path), (), None),
                 self._settings(),
@@ -248,16 +210,8 @@ class TestDriftDetector:
     def test_naive_datetime_handled(self, tmp_path: Path) -> None:
         (tmp_path / "README.md").write_text("# Test", encoding="utf-8")
         old_date = datetime(2020, 1, 1)  # naive
-        with (
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_file_last_commit_date",
-                return_value=old_date,
-            ),
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_files_changed_since",
-                return_value=[],
-            ),
-        ):
+        p = self._patch_git(old_date)
+        with p[0], p[1]:
             issues = DriftDetector.detect_drift_for_doc(
                 self._git_ctx(str(tmp_path), (), None),
                 self._settings(),
@@ -302,16 +256,8 @@ class TestDriftDetector:
             "See " + " ".join(f"`mod{i}.py`" for i in range(3)), encoding="utf-8"
         )
         doc_modified = datetime.now(UTC) - timedelta(days=10)
-        with (
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_file_last_commit_date",
-                return_value=doc_modified,
-            ),
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_files_changed_since",
-                return_value=[{"status": "M", "file": "mod0.py"}],
-            ),
-        ):
+        p = self._patch_git(doc_modified, [{"status": "M", "file": "mod0.py"}])
+        with p[0], p[1]:
             issues = DriftDetector.detect_drift_for_doc(
                 self._git_ctx(str(tmp_path), (), None),
                 self._settings(),
@@ -330,16 +276,8 @@ class TestDriftDetector:
         (tmp_path / "README.md").write_text("# Test\n", encoding="utf-8")
         doc_modified = datetime.now(UTC) - timedelta(days=10)
         changes = [{"status": "M", "file": f"src/mod{i}.py"} for i in range(25)]
-        with (
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_file_last_commit_date",
-                return_value=doc_modified,
-            ),
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_files_changed_since",
-                return_value=changes,
-            ),
-        ):
+        p = self._patch_git(doc_modified, changes)
+        with p[0], p[1]:
             issues = DriftDetector.detect_drift_for_doc(
                 self._git_ctx(str(tmp_path), (), None),
                 self._settings(),
@@ -358,16 +296,8 @@ class TestDriftDetector:
         """In referential mode a renamed-and-deleted file yields a medium issue."""
         (tmp_path / "README.md").write_text("See [old](old.py)", encoding="utf-8")
         doc_modified = datetime.now(UTC) - timedelta(days=10)
-        with (
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_file_last_commit_date",
-                return_value=doc_modified,
-            ),
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_files_changed_since",
-                return_value=[],
-            ),
-        ):
+        p = self._patch_git(doc_modified)
+        with p[0], p[1]:
             issues = DriftDetector.detect_drift_for_doc(
                 self._git_ctx(str(tmp_path), (("old.py", "new.py"),), None),
                 self._settings(include_referential=True),
@@ -385,16 +315,8 @@ class TestDriftDetector:
         """Referential mode also reports links to files that no longer exist."""
         (tmp_path / "README.md").write_text("See [gone](gone.md)", encoding="utf-8")
         doc_modified = datetime.now(UTC) - timedelta(days=10)
-        with (
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_file_last_commit_date",
-                return_value=doc_modified,
-            ),
-            patch(
-                "zolletta_metaskill.documentor.quality.drift_detector.GitHelper.get_files_changed_since",
-                return_value=[],
-            ),
-        ):
+        p = self._patch_git(doc_modified)
+        with p[0], p[1]:
             issues = DriftDetector.detect_drift_for_doc(
                 self._git_ctx(str(tmp_path), (), None),
                 self._settings(include_referential=True),
@@ -468,61 +390,32 @@ class TestDriftDetector:
 
     # --- _check_temporal_drift severity tiers ---
 
-    def test_temporal_drift_recent_doc_returns_no_issues(self) -> None:
-        """A doc touched within the 180-day window raises no temporal issue."""
-        recent = datetime.now(UTC) - timedelta(days=10)
-        assert (
-            DriftDetector._check_temporal_drift(
-                self._doc_ctx("README.md", since_date="2026-01-01"), recent
-            )
-            == []
-        )
-
-    def test_temporal_drift_exactly_180_days_returns_no_issues(self) -> None:
-        """The 180-day boundary is exclusive: exactly 180 days is not stale."""
-        boundary = datetime.now(UTC) - timedelta(days=180)
-        assert (
-            DriftDetector._check_temporal_drift(
-                self._doc_ctx("README.md", since_date="2026-01-01"), boundary
-            )
-            == []
-        )
-
-    def test_temporal_drift_just_past_180_days_returns_medium(self) -> None:
-        """181 days stale is medium severity."""
-        stale = datetime.now(UTC) - timedelta(days=181)
+    @pytest.mark.parametrize(
+        ("days_ago", "naive", "expected_severity"),
+        [
+            pytest.param(10, False, None, id="recent_doc_has_no_issue"),
+            pytest.param(180, False, None, id="exactly_180_days_has_no_issue"),
+            pytest.param(181, False, "medium", id="just_past_180_days_is_medium"),
+            pytest.param(365, False, "medium", id="exactly_365_days_stays_medium"),
+            pytest.param(366, False, "high", id="past_365_days_is_high"),
+            pytest.param(200, True, "medium", id="naive_datetime_is_utc"),
+        ],
+    )
+    def test_temporal_drift_age_returns_expected_severity(
+        self, days_ago: int, naive: bool, expected_severity: str | None
+    ) -> None:
+        """The 180- and 365-day boundaries are exclusive; a naive datetime is UTC."""
+        when = datetime.now(UTC) - timedelta(days=days_ago)
+        if naive:
+            when = when.replace(tzinfo=None)
         issues = DriftDetector._check_temporal_drift(
-            self._doc_ctx("README.md", since_date="2026-01-01"), stale
+            self._doc_ctx("README.md", since_date="2026-01-01"), when
         )
+        if expected_severity is None:
+            assert issues == []
+            return
         assert len(issues) == 1
-        assert issues[0]["severity"] == "medium"
-
-    def test_temporal_drift_exactly_365_days_stays_medium(self) -> None:
-        """The 365-day boundary is exclusive: exactly 365 days is still medium."""
-        stale = datetime.now(UTC) - timedelta(days=365)
-        issues = DriftDetector._check_temporal_drift(
-            self._doc_ctx("README.md", since_date="2026-01-01"), stale
-        )
-        assert len(issues) == 1
-        assert issues[0]["severity"] == "medium"
-
-    def test_temporal_drift_past_365_days_returns_high(self) -> None:
-        """366 days stale escalates to high severity."""
-        stale = datetime.now(UTC) - timedelta(days=366)
-        issues = DriftDetector._check_temporal_drift(
-            self._doc_ctx("README.md", since_date="2026-01-01"), stale
-        )
-        assert len(issues) == 1
-        assert issues[0]["severity"] == "high"
-
-    def test_temporal_drift_naive_datetime_treated_as_utc(self) -> None:
-        """A naive datetime is assumed to be UTC rather than raising."""
-        naive = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=200)
-        issues = DriftDetector._check_temporal_drift(
-            self._doc_ctx("README.md", since_date="2026-01-01"), naive
-        )
-        assert len(issues) == 1
-        assert issues[0]["severity"] == "medium"
+        assert issues[0]["severity"] == expected_severity
 
     # --- _parse_version_part / _version_is_older ---
 
@@ -538,24 +431,18 @@ class TestDriftDetector:
     def test_parse_non_numeric(self) -> None:
         assert DriftDetector._parse_version_part("abc") == 0
 
-    def test_version_is_older_older_version_returns_true(self) -> None:
-        assert DriftDetector._version_is_older("1.0.0", "2.0.0") is True
-
-    def test_version_is_older_newer_version_returns_false(self) -> None:
-        assert DriftDetector._version_is_older("2.0.0", "1.0.0") is False
-
-    def test_version_is_older_equal_version_returns_false(self) -> None:
-        assert DriftDetector._version_is_older("1.0.0", "1.0.0") is False
-
-    def test_version_is_older_different_lengths_returns_true(self) -> None:
-        assert DriftDetector._version_is_older("1.0", "1.0.1") is True
-
-    def test_v2_shorter_than_v1(self) -> None:
-        assert DriftDetector._version_is_older("1.0.1", "1.0") is False
-
-    def test_version_is_older_with_prerelease_returns_false(self) -> None:
-        assert DriftDetector._version_is_older("1.0.0-alpha", "1.0.0") is False
-
-    def test_empty_string_is_older(self) -> None:
-        # Empty string parses to [0] which is older than [1, 0, 0]
-        assert DriftDetector._version_is_older("", "1.0.0") is True
+    @pytest.mark.parametrize(
+        ("v1", "v2", "expected"),
+        [
+            pytest.param("1.0.0", "2.0.0", True, id="older_version_is_true"),
+            pytest.param("2.0.0", "1.0.0", False, id="newer_version_is_false"),
+            pytest.param("1.0.0", "1.0.0", False, id="equal_version_is_false"),
+            pytest.param("1.0", "1.0.1", True, id="shorter_first_is_true"),
+            pytest.param("1.0.1", "1.0", False, id="shorter_second_is_false"),
+            pytest.param("1.0.0-alpha", "1.0.0", False, id="prerelease_is_false"),
+            pytest.param("", "1.0.0", True, id="empty_string_is_true"),
+        ],
+    )
+    def test_version_is_older_pair_returns_expected(self, v1: str, v2: str, expected: bool) -> None:
+        """An empty version parses to ``[0]``, so it is older than every release."""
+        assert DriftDetector._version_is_older(v1, v2) is expected
