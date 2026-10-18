@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -639,3 +640,35 @@ class TestMaxArgumentsScanner:
         assert rc == 0
         assert captured.err.count("Warning: could not parse") == 2
         assert "all clear" in captured.out
+
+    # --- Text-output contract. ---
+
+    def test_emit_text_matches_committed_contract(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The captured text is a byte-for-byte contract that must not be loosened.
+
+        A legitimate change is ``pytest --update-fixtures`` plus a reviewed diff.
+        """
+        violations = [
+            {
+                "file": "src/dto.py",
+                "function": "build",
+                "kind": "Function",
+                "line": 8,
+                "params": 9,
+                "over": 4,
+            },
+            {
+                "file": "src/service.py",
+                "function": "Service.handle",
+                "kind": "Method",
+                "line": 15,
+                "params": 7,
+                "over": 2,
+            },
+        ]
+        MaxArgumentsScanner._emit_text([Path("src")], 5, 5, violations)
+        text_contract("code_style/general/max_arguments_scanner.txt", capsys.readouterr().out)

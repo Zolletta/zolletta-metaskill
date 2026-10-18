@@ -1,0 +1,17 @@
+======================================================================
+PHP ACRONYM CASING — VALIDATION REPORT
+======================================================================
+
+Source directories: src
+Acronyms checked: API, HTTP, JSON
+Total classes scanned: 4
+Violations: 2
+
+File                                                     Line Class                               Word       Expected  
+------------------------------------------------------------------------------------------------------------------------
+src/ApiGateway.php                                         12 ApiGateway                          Api        API       
+src/HttpClientFactory.php                                   3 HttpClientFactory                   Http       HTTP      
+
+These class names contain an acronym in mixed case or lowercase.
+The convention requires acronyms to stay fully uppercase.
+Rename the class to use the uppercase acronym form.

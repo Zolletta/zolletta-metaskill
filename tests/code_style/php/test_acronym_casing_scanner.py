@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -474,3 +475,32 @@ class TestAcronymCasingScanner:
         data = json.loads(out)
         assert data["violation_count"] == 0
         assert data["skipped"] == "tree-sitter-php not installed"
+
+    # --- text-output contract (tests.4) ---
+
+    def test_emit_text_matches_committed_contract(
+        self, capsys: pytest.CaptureFixture[str], text_contract: Callable[[str, str], None]
+    ) -> None:
+        """The text report is a byte-for-byte contract that must not be loosened.
+
+        The committed fixture is the full captured stdout; a legitimate change is
+        ``pytest --update-fixtures`` plus a reviewed diff.
+        """
+        violations = [
+            {
+                "file": "src/ApiGateway.php",
+                "line": 12,
+                "class": "ApiGateway",
+                "word": "Api",
+                "expected": "API",
+            },
+            {
+                "file": "src/HttpClientFactory.php",
+                "line": 3,
+                "class": "HttpClientFactory",
+                "word": "Http",
+                "expected": "HTTP",
+            },
+        ]
+        AcronymCasingScanner._emit_text(4, violations, ["API", "HTTP", "JSON"], [Path("src")])
+        text_contract("code_style/php/acronym_casing_scanner.txt", capsys.readouterr().out)

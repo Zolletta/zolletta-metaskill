@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -698,3 +699,29 @@ class TestNamingConventionsScanner:
         (src_pkg / "user_store.py").write_text("class Vehicle:\n    pass\n")
         mismatches = NamingConventionsScanner._check_name_mismatches([src_pkg])
         assert [m["class"] for m in mismatches] == ["Vehicle"]
+
+    # --- Tests for NamingConventionsScanner._emit_text(). ---
+
+    def test_emit_text_matches_committed_contract(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The text report is a byte-for-byte contract that must not be loosened.
+
+        The captured output is the whole report — the banner, both violation
+        blocks and the result line. A legitimate change is
+        ``pytest --update-fixtures`` followed by a reviewed diff.
+        """
+        NamingConventionsScanner._emit_text(
+            [Path("src/mypkg")],
+            [Path("tests/mypkg")],
+            [{"file": "cache.py", "class": "WrongName", "expected": "Cache"}],
+            [
+                {
+                    "file": "test_orphan.py",
+                    "reason": "no source file or class matching 'orphan' in .",
+                }
+            ],
+        )
+        text_contract("code_style/general/naming_conventions_scanner.txt", capsys.readouterr().out)
