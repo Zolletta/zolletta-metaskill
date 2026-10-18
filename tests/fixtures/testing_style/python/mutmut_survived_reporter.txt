@@ -1,0 +1,25 @@
+MUTMUT SURVIVED MUTANTS — REPORT
+================================
+
+| Status   | Count |
+|----------|-------|
+| killed   |     2 |
+| survived |     1 |
+
+Mutation score: 66.7% (threshold: 80%) — FAIL
+
+Survived mutants (1 of 1 shown):
+
+| File | Line | Mutant | Status | Mutation |
+|------|------|--------|--------|----------|
+| src/m.py | 3 | m.x_f__mutmut_1 | survived | a → b |
+
+Diffs:
+
+### m.x_f__mutmut_1
+
+```diff
+--- src/m.py
++ b
+```
+

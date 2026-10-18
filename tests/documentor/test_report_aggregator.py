@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -154,3 +155,64 @@ class TestReportAggregator:
         assert "Missing sections: quality, api_doc" in report
         assert "## Links" in report
         assert "## Staleness + Drift" not in report
+
+    # --- Text contract ---
+
+    def test_generate_report_matches_committed_contract(
+        self,
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The rendered report is a byte-for-byte contract that must not be loosened.
+
+        A literal ``report_data`` pins the markdown renderer to its committed
+        output, so a legitimate change is ``pytest --update-fixtures`` plus a
+        reviewed diff — never a hand-edit or a weaker matcher. The trailing
+        newline keeps the fixture POSIX-clean while matching the rendered text.
+        """
+        report_data: dict[str, Any] = {
+            "repository": "repo",
+            "scan_date": "2026-01-01T00:00:00Z",
+            "sections": {
+                "quality": {
+                    "summary": {
+                        "aggregate_score": 72.5,
+                        "aggregate_label": "acceptable",
+                        "total_docs": 4,
+                        "drifted_docs": 2,
+                        "total_issues": 3,
+                    },
+                    "documents": [{"file": "README.md", "total_score": 80.0, "label": "fresh"}],
+                },
+                "api_doc": {
+                    "summary": {
+                        "source_signatures": 10,
+                        "documented_items": 8,
+                        "total_issues": 2,
+                        "undocumented_count": 3,
+                    },
+                },
+                "links": {
+                    "summary": {
+                        "total_links": 20,
+                        "valid": 18,
+                        "broken": 2,
+                        "skipped": 0,
+                        "duplicate_anchors": 1,
+                    },
+                },
+            },
+            "summary": {
+                "aggregate_score": 72.5,
+                "aggregate_label": "acceptable",
+                "total_docs": 4,
+                "total_drift_issues": 3,
+                "api_doc_issues": 2,
+                "api_doc_suggestions": 3,
+                "total_links": 20,
+                "broken_links": 2,
+                "duplicate_anchors": 1,
+                "missing_sections": [],
+            },
+        }
+        text = ReportAggregator._format_markdown(report_data)
+        text_contract("documentor/report_aggregator.txt", text + "\n")

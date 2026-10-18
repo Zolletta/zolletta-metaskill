@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -583,3 +584,37 @@ class TestMutmutSurvivedReporter:
         assert data["survivors_shown"] == 1
         assert data["survivors_capped"] is True
         assert data["survivors"][0]["name"] == "user.x_adult__mutmut_2"
+
+    # --- Text contract ---
+
+    def test_print_text_matches_committed_contract(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The captured text report is a byte-for-byte contract that must not be loosened.
+
+        A literal ``report`` pins the text renderer to its committed output, so a
+        legitimate change is ``pytest --update-fixtures`` plus a reviewed diff —
+        never a hand-edit or a weaker matcher.
+        """
+        report: dict[str, Any] = {
+            "counts": {"killed": 2, "survived": 1},
+            "mutation_score": 66.7,
+            "threshold": 80,
+            "status": "FAIL",
+            "survivor_count": 1,
+            "survivors": [
+                {
+                    "name": "m.x_f__mutmut_1",
+                    "status": "survived",
+                    "file": "src/m.py",
+                    "line": 3,
+                    "function": "f",
+                    "mutation": "a → b",
+                    "diff": "--- src/m.py\n+ b",
+                }
+            ],
+        }
+        MutmutSurvivedReporter._print_text(report)
+        text_contract("testing_style/python/mutmut_survived_reporter.txt", capsys.readouterr().out)
