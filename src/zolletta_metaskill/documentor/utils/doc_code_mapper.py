@@ -10,6 +10,7 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
+from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.documentor.utils.fenced_content import FencedContent
 
 
@@ -48,57 +49,22 @@ class DocCodeMapper:
     }
 
     @staticmethod
-    def _load_gitignore_patterns(repo_path: str) -> set[str]:
-        """Load directory/file names from .gitignore that should be skipped."""
-        patterns: set[str] = set()
-        gitignore = os.path.join(repo_path, ".gitignore")
-        if not os.path.exists(gitignore):
-            return patterns
-        try:
-            with open(gitignore, encoding="utf-8", errors="ignore") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line or line.startswith("#"):
-                        continue
-                    if line.startswith("!") or "*" in line or "?" in line:
-                        continue
-                    name = line.lstrip("/").rstrip("/")
-                    if "/" in name:
-                        name = name.split("/")[-1]
-                    if name:
-                        patterns.add(name)
-        except OSError:
-            pass
-        return patterns
-
-    @staticmethod
     def find_code_files(repo_path: str, scope: str = "") -> list[str]:
-        """Find all code files in the repository."""
-        code_files: list[str] = []
-        search_path = os.path.join(repo_path, scope) if scope else repo_path
-        skip_dirs = {
-            ".git",
-            "node_modules",
-            "__pycache__",
-            ".venv",
-            "venv",
-            ".tox",
-            "dist",
-            "build",
-            ".zolletta-metaskill",
-        }
-        skip_dirs |= DocCodeMapper._load_gitignore_patterns(repo_path)
+        """Find all code files in the repository.
 
-        if not os.path.isdir(search_path):
-            return code_files
-
-        for root, dirs, files in os.walk(search_path):
-            dirs[:] = [d for d in dirs if d not in skip_dirs]
-            for f in files:
-                if Path(f).suffix.lower() in DocCodeMapper.CODE_EXTENSIONS:
-                    rel_path = os.path.relpath(os.path.join(root, f), repo_path)
-                    code_files.append(rel_path)
-        return sorted(code_files)
+        Enumeration goes through ``ProjectConfig.iter_files``, so git decides
+        what is excluded: every exclude source it honours (``.gitignore``,
+        ``.git/info/exclude``, ``core.excludesFile``) rather than the subset a
+        hand-rolled reader of ``.gitignore`` could see. That reader is gone, and
+        so is its identical twin in ``FileDiscovery`` — two parsers of the same
+        file are two answers waiting to disagree.
+        """
+        root = Path(repo_path)
+        search_path = root / scope if scope else root
+        if not search_path.is_dir():
+            return []
+        found = ProjectConfig.iter_files(search_path, set(DocCodeMapper.CODE_EXTENSIONS))
+        return sorted(os.path.relpath(path, root) for path in found)
 
     @staticmethod
     def map_docs_to_code(

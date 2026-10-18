@@ -257,20 +257,15 @@ class APIDocValidator:
     ) -> dict[str, list[SourceSignature]]:
         """Extract signatures from all Python files in a directory."""
         all_sigs: dict[str, list[SourceSignature]] = {}
-        skip_dirs = {"__pycache__", ".venv", "venv", ".git", "node_modules", ".tox"}
 
-        for root, dirs, files in os.walk(source_dir):
-            dirs[:] = [d for d in dirs if d not in skip_dirs]
-            for f in files:
-                if f.endswith(".py"):
-                    full_path = os.path.join(root, f)
-                    rel_path = os.path.relpath(full_path, source_dir)
-                    sigs = APIDocValidator.extract_signatures(full_path, include_private)
-                    # Update file paths to be relative
-                    for s in sigs:
-                        s.file_path = rel_path
-                    if sigs:
-                        all_sigs[rel_path] = sigs
+        for path in ProjectConfig.iter_files(Path(source_dir), {".py"}):
+            rel_path = os.path.relpath(path, source_dir)
+            sigs = APIDocValidator.extract_signatures(str(path), include_private)
+            # Update file paths to be relative
+            for s in sigs:
+                s.file_path = rel_path
+            if sigs:
+                all_sigs[rel_path] = sigs
 
         return all_sigs
 
@@ -375,13 +370,9 @@ class APIDocValidator:
             return APIDocValidator.extract_documented_items(doc_path)
 
         if os.path.isdir(doc_path) and recursive:
-            for root, dirs, files in os.walk(doc_path):
-                dirs[:] = [d for d in dirs if d not in {".git", "node_modules"}]
-                for f in files:
-                    if f.endswith((".md", ".rst")):
-                        full_path = os.path.join(root, f)
-                        items = APIDocValidator.extract_documented_items(full_path)
-                        all_items.update(items)
+            for path in ProjectConfig.iter_files(Path(doc_path), {".md", ".rst"}):
+                items = APIDocValidator.extract_documented_items(str(path))
+                all_items.update(items)
         elif os.path.isdir(doc_path):
             # Non-recursive: just top-level files
             for f in os.listdir(doc_path):

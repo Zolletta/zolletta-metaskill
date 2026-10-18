@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 from zolletta_metaskill.documentor.utils.doc_code_mapper import DocCodeMapper
@@ -41,36 +42,17 @@ class TestDocCodeMapper:
         assert DocCodeMapper.find_code_files(str(tmp_path), scope="does-not-exist") == []
 
     def test_find_code_files_respects_gitignore_entries(self, tmp_path: Path) -> None:
-        """find_code_files skips directories and files listed in .gitignore."""
+        """find_code_files skips what git ignores, so generated stubs are excluded."""
         (tmp_path / ".gitignore").write_text("generated/\n", encoding="utf-8")
         (tmp_path / "keep.py").write_text("", encoding="utf-8")
         generated = tmp_path / "generated"
         generated.mkdir()
         (generated / "stub.py").write_text("", encoding="utf-8")
+        subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
 
         files = DocCodeMapper.find_code_files(str(tmp_path))
         assert "keep.py" in files
         assert not any("generated" in f for f in files)
-
-    # --- Gitignore Parsing ---
-
-    def test_load_gitignore_patterns_filters_and_normalizes(self, tmp_path: Path) -> None:
-        """_load_gitignore_patterns keeps literal entries and normalizes paths."""
-        (tmp_path / ".gitignore").write_text(
-            "# a comment\n\n!important\n*.log\nbuild?\n/dist\nsrc/generated\n",
-            encoding="utf-8",
-        )
-        patterns = DocCodeMapper._load_gitignore_patterns(str(tmp_path))
-        assert patterns == {"dist", "generated"}
-
-    def test_load_gitignore_patterns_unreadable_returns_empty(self, tmp_path: Path) -> None:
-        """_load_gitignore_patterns returns an empty set when opening .gitignore fails."""
-        (tmp_path / ".gitignore").mkdir()
-        assert DocCodeMapper._load_gitignore_patterns(str(tmp_path)) == set()
-
-    def test_load_gitignore_patterns_absent_returns_empty(self, tmp_path: Path) -> None:
-        """_load_gitignore_patterns returns an empty set when no .gitignore exists."""
-        assert DocCodeMapper._load_gitignore_patterns(str(tmp_path)) == set()
 
     # --- Mapping Strategies ---
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -395,16 +396,19 @@ class TestAPIDocValidator:
         assert any(s.name == "foo" for s in all_sigs["a.py"])
         assert any(s.name == "bar" for s in all_sigs["sub/b.py"])
 
-    def test_extract_all_signatures_skips_pycache_contains_a_py(self, tmp_path: Path) -> None:
+    def test_extract_all_signatures_gitignored_pycache_is_skipped(self, tmp_path: Path) -> None:
         src = tmp_path / "src"
         src.mkdir()
         (src / "a.py").write_text("def foo(): pass\n")
         pycache = src / "__pycache__"
         pycache.mkdir()
-        (pycache / "a.cpython-312.pyc").write_text("garbage")
+        (pycache / "stub.py").write_text("def cached(): pass\n")
+        (tmp_path / ".gitignore").write_text("__pycache__/\n", encoding="utf-8")
+        subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+
         all_sigs = APIDocValidator.extract_all_signatures(str(src))
         assert "a.py" in all_sigs
-        # __pycache__ files should be skipped
+        # __pycache__ is excluded by git, which is now the one deciding
         assert not any("__pycache__" in k for k in all_sigs)
 
     def test_extract_all_signatures_empty_dir_returns_empty_dict(self, tmp_path: Path) -> None:
