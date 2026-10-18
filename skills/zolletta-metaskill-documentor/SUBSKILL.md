@@ -128,6 +128,10 @@ When checking accuracy, the agent MUST:
 - **Aggregated reporting** — `documentor_cli.py` runs all three tools, each of which writes its own JSON cache file (`quality.json`, `api_doc_validator.json`, `link_checker.json`), then merges them into a single review report via `report_aggregator.py`.
 - **CI/CD integration** — JSON output, optional staleness threshold gate, GitHub Actions and pre-commit recipes for ongoing monitoring.
 
+### Scope
+
+Every tool below reads **only `documentation.dir`** (default `docs/`, from `settings.json`) and the source it documents. Markdown elsewhere in the repository is out of scope and a finding against it is a false positive by definition: `skills/` holds subagent contracts rather than documentation, root files (`README.md`, `CONTRIBUTING.md`, `AGENTS.md`, `SKILL.md`) hold contributor and routing material, and `CHANGELOG.md` is generated. Do not widen the scan to "find more markdown", and do not report a file the tools did not read. The one sanctioned way outside is `documentation.readme_focus`, which switches `quality/quality_review.py` to README-only scoring on purpose.
+
 ### Tools
 
 | Tool                           | Purpose                                                  | Command                                                                          |
@@ -135,7 +139,7 @@ When checking accuracy, the agent MUST:
 | `documentor_cli.py`            | Run all documentor tools and aggregate into one report   | `python src/zolletta_metaskill/documentor/documentor_cli.py [--json]`            |
 | `quality/quality_review.py`    | Unified drift + staleness review (writes `quality.json`) | `python src/zolletta_metaskill/documentor/quality/quality_review.py [--json]`    |
 | `api_doc/api_doc_validator.py` | Validate API docs against Python source (AST)            | `python src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py [--json]` |
-| `links/link_checker.py`        | Audit all markdown links and anchors                     | `python src/zolletta_metaskill/documentor/links/link_checker.py [--broken-only]` |
+| `links/link_checker.py`        | Audit links and anchors under `documentation.dir`        | `python src/zolletta_metaskill/documentor/links/link_checker.py [--broken-only]` |
 
 All tools: Python 3.8+ stdlib only, run from the repository root, `[--json]` and `--help`, any OS. Paths and thresholds come from `documentation.*` in `.zolletta-metaskill/settings.json` — see `../../docs/reference/settings-schema.md`. Each tool writes its JSON cache into the current run directory, `<runs_dir>/<YYYY-MM-DD-HH-MM>/cache/` — `.zolletta-metaskill/<timestamp>/cache/` with the default `runs_dir` — so each review keeps its own history instead of overwriting the last; before the first run directory exists, artifacts land in `<runs_dir>/cache/`.
 
