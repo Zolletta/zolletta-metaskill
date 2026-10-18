@@ -3,12 +3,42 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import pytest
 
 from zolletta_metaskill.documentor.quality.quality_report_writer import (
     QualityReportWriter,
 )
+
+
+def _issue_report_fixture() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """One scored document and two drift issues, one semi-fixable and one manual."""
+    scores = [
+        {
+            "file": "README.md",
+            "total_score": 70.0,
+            "label": "good",
+            "dimensions": {},
+        }
+    ]
+    issues = [
+        {
+            "file": "README.md",
+            "severity": "high",
+            "category": "factual",
+            "description": "Referenced source file changed",
+            "fix_type": "semi",
+        },
+        {
+            "file": "README.md",
+            "severity": "low",
+            "category": "temporal",
+            "description": "Documentation not updated in 200 days",
+            "fix_type": "manual",
+        },
+    ]
+    return scores, issues
 
 
 class TestQualityReportWriter:
@@ -85,30 +115,7 @@ class TestQualityReportWriter:
     def test_generate_report_with_issues(self, tmp_path_factory: pytest.TempPathFactory) -> None:
         """Drift issues are grouped by severity and include fix-type tags."""
         repo_path = tmp_path_factory.mktemp("repo")
-        scores = [
-            {
-                "file": "README.md",
-                "total_score": 70.0,
-                "label": "good",
-                "dimensions": {},
-            }
-        ]
-        issues = [
-            {
-                "file": "README.md",
-                "severity": "high",
-                "category": "factual",
-                "description": "Referenced source file changed",
-                "fix_type": "semi",
-            },
-            {
-                "file": "README.md",
-                "severity": "low",
-                "category": "temporal",
-                "description": "Documentation not updated in 200 days",
-                "fix_type": "manual",
-            },
-        ]
+        scores, issues = _issue_report_fixture()
         text = QualityReportWriter.generate_report(str(repo_path), scores, issues, as_json=False)
         assert "HIGH SEVERITY" in text
         assert "[SEMI]" in text

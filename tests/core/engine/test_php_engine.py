@@ -15,7 +15,7 @@ TS_PHP_AVAILABLE = PHPEngine._have_tree_sitter_php()
 # --- parse_module tests (require tree-sitter-php) ------------------------
 
 
-pytestmark_ts = pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+_skip_no_ts = pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
 
 
 class TestPHPEngine:
@@ -32,7 +32,7 @@ class TestPHPEngine:
     def test_file_extensions_file_extensions_returns_single_item(self) -> None:
         assert PHPEngine().file_extensions() == [".php"]
 
-    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    @_skip_no_ts
     def test_parse_simple_class(self, tmp_path: Path) -> None:
         engine = PHPEngine()
         src = """<?php
@@ -60,7 +60,7 @@ class User {
         assert "getName" in method_names
         assert "secret" in method_names
 
-    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    @_skip_no_ts
     def test_parse_class_methods_visibility_and_static(self, tmp_path: Path) -> None:
         engine = PHPEngine()
         src = """<?php
@@ -88,7 +88,7 @@ class Service {
         # PHP defaults to public when no modifier is present.
         assert by_name["defaultVis"].is_public is True
 
-    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    @_skip_no_ts
     def test_parse_method_params_and_return_type(self, tmp_path: Path) -> None:
         engine = PHPEngine()
         src = """<?php
@@ -113,7 +113,7 @@ class Calculator {
         assert maybe.return_type is not None
         assert "string" in maybe.return_type
 
-    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    @_skip_no_ts
     def test_parse_params_excludes_variadic(self, tmp_path: Path) -> None:
         """``...$args`` variadics are not counted (PLR0913 parity)."""
         engine = PHPEngine()
@@ -132,7 +132,7 @@ function f(callable $cb, int ...$nums) {}
         f = next(func for func in info.functions if func.name == "f")
         assert f.params == ["cb"]
 
-    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    @_skip_no_ts
     def test_parse_params_includes_promoted(self, tmp_path: Path) -> None:
         """Promoted constructor parameters still count as parameters."""
         engine = PHPEngine()
@@ -151,7 +151,7 @@ class Point {
         ctor = next(m for m in info.classes[0].methods if m.name == "__construct")
         assert ctor.params == ["x", "name"]
 
-    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    @_skip_no_ts
     def test_parse_abstract_class(self, tmp_path: Path) -> None:
         engine = PHPEngine()
         src = """<?php
@@ -168,7 +168,7 @@ abstract class Base {
         assert cls.name == "Base"
         assert cls.is_abstract is True
 
-    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    @_skip_no_ts
     def test_skipif_parse_interface_returns_2(self, tmp_path: Path) -> None:
         engine = PHPEngine()
         src = """<?php
@@ -187,7 +187,7 @@ interface RepositoryInterface {
         assert cls.is_abstract is True
         assert len(cls.methods) == 2
 
-    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    @_skip_no_ts
     def test_skipif_parse_trait_returns_1(self, tmp_path: Path) -> None:
         engine = PHPEngine()
         src = """<?php
@@ -207,7 +207,7 @@ trait Loggable {
         assert cls.is_abstract is False
         assert len(cls.methods) == 1
 
-    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    @_skip_no_ts
     def test_parse_class_bases(self, tmp_path: Path) -> None:
         engine = PHPEngine()
         src = """<?php
@@ -224,7 +224,7 @@ class Admin extends User implements AdminInterface, Serializable {
         assert "AdminInterface" in cls.bases
         assert "Serializable" in cls.bases
 
-    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    @_skip_no_ts
     def test_parse_test_class_heuristic(self, tmp_path: Path) -> None:
         engine = PHPEngine()
         src = """<?php
@@ -240,7 +240,7 @@ class UserTest extends TestCase {
         assert cls.name == "UserTest"
         assert cls.is_test_class is True
 
-    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    @_skip_no_ts
     def test_parse_free_functions(self, tmp_path: Path) -> None:
         engine = PHPEngine()
         src = """<?php
@@ -263,7 +263,7 @@ function add(int $a, int $b): int {
         assert greet.params == ["name"]
         assert greet.return_type == "string"
 
-    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    @_skip_no_ts
     def test_parse_use_imports(self, tmp_path: Path) -> None:
         engine = PHPEngine()
         src = """<?php
@@ -285,7 +285,7 @@ use Third\\Lib\\Thing as Alias;
         aliased = next(imp for imp in info.imports if imp.module == "Third\\Lib\\Thing")
         assert "Alias" in aliased.names
 
-    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    @_skip_no_ts
     def test_skipif_parse_throws_returns_empty_list(self, tmp_path: Path) -> None:
         engine = PHPEngine()
         src = """<?php
@@ -306,7 +306,7 @@ class Worker {
         safe = next(m for m in cls.methods if m.name == "safe")
         assert safe.raises == []
 
-    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    @_skip_no_ts
     def test_parse_raw_returns_tree_and_source(self, tmp_path: Path) -> None:
         """parse_raw returns the raw tree-sitter tree and source bytes."""
         engine = PHPEngine()
@@ -322,7 +322,7 @@ class Foo {
         assert source == src.encode("utf-8")
         assert tree.root_node.type == "program"
 
-    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    @_skip_no_ts
     def test_get_parser_cached_on_repeated_parse(self, tmp_path: Path) -> None:
         """The parser is created once and reused on subsequent calls."""
         engine = PHPEngine()
@@ -336,7 +336,7 @@ class Foo {
         engine.parse_module(path)
         assert engine._parser is cached_parser
 
-    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    @_skip_no_ts
     def test_parse_throws_variable_rethrow(self, tmp_path: Path) -> None:
         """A ``throw $var`` (rethrow) has no object creation, so no type is recorded."""
         engine = PHPEngine()
@@ -356,7 +356,7 @@ class Worker {
         # No object_creation_expression → no type name extracted.
         assert rethrow.raises == []
 
-    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    @_skip_no_ts
     def test_parse_syntax_error(self, tmp_path: Path) -> None:
         engine = PHPEngine()
         src = "<?php class { "
@@ -366,7 +366,7 @@ class Worker {
         info = engine.parse_module(path)
         assert info.has_syntax_error is True
 
-    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    @_skip_no_ts
     def test_parse_unreadable_file(self, tmp_path: Path) -> None:
         engine = PHPEngine()
         path = tmp_path / "missing.php"
@@ -375,7 +375,7 @@ class Worker {
         assert info.classes == []
         assert info.functions == []
 
-    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    @_skip_no_ts
     def test_skipif_parse_lineno_returns_4(self, tmp_path: Path) -> None:
         engine = PHPEngine()
         src = """<?php

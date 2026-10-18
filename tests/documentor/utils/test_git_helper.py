@@ -53,6 +53,13 @@ class TestGitHelper:
         with patch.object(GitHelper, "run_git", return_value="not-a-date"):
             assert GitHelper.get_file_last_commit_date(str(tmp_path), "doc.md") is None
 
+    def test_get_file_last_commit_date_passes_log_args(self, tmp_path: Path) -> None:
+        with patch.object(GitHelper, "run_git", return_value="") as mock_run:
+            GitHelper.get_file_last_commit_date(str(tmp_path), "doc.md")
+            repo, args = mock_run.call_args.args
+            assert repo == str(tmp_path)
+            assert args == ["log", "-1", "--format=%aI", "--", "doc.md"]
+
     # --- get_code_changes_since ---
 
     def test_get_code_changes_since_with_changes_returns_2(self, tmp_path: Path) -> None:
@@ -62,6 +69,18 @@ class TestGitHelper:
     def test_get_code_changes_since_empty_returns_0(self, tmp_path: Path) -> None:
         with patch.object(GitHelper, "run_git", return_value=""):
             assert GitHelper.get_code_changes_since(str(tmp_path), "2024-01-01") == 0
+
+    def test_get_code_changes_since_passes_since_and_directory(self, tmp_path: Path) -> None:
+        with patch.object(GitHelper, "run_git", return_value="") as mock_run:
+            GitHelper.get_code_changes_since(str(tmp_path), "2024-01-01", directory="src")
+            _, args = mock_run.call_args.args
+            assert args == ["log", "--since", "2024-01-01", "--oneline", "--", "src"]
+
+    def test_get_code_changes_since_defaults_directory_to_dot(self, tmp_path: Path) -> None:
+        with patch.object(GitHelper, "run_git", return_value="") as mock_run:
+            GitHelper.get_code_changes_since(str(tmp_path), "2024-01-01")
+            _, args = mock_run.call_args.args
+            assert args[-1] == "."
 
     # --- get_files_changed_since ---
 
@@ -102,6 +121,14 @@ class TestGitHelper:
         with patch.object(GitHelper, "run_git", return_value=""):
             assert GitHelper.get_renamed_files(str(tmp_path), "2024-01-01") == []
 
+    def test_get_renamed_files_passes_rename_log_args(self, tmp_path: Path) -> None:
+        with patch.object(GitHelper, "run_git", return_value="") as mock_run:
+            GitHelper.get_renamed_files(str(tmp_path), "2024-01-01")
+            _, args = mock_run.call_args.args
+            assert args[:3] == ["log", "--since", "2024-01-01"]
+            assert "--name-status" in args
+            assert args[-2:] == ["--diff-filter=R", "-M"]
+
     # --- get_latest_tag ---
 
     def test_get_latest_tag_with_tag_returns_1_2_3(self, tmp_path: Path) -> None:
@@ -111,3 +138,10 @@ class TestGitHelper:
     def test_get_latest_tag_no_tag_returns_none(self, tmp_path: Path) -> None:
         with patch.object(GitHelper, "run_git", return_value=""):
             assert GitHelper.get_latest_tag(str(tmp_path)) is None
+
+    def test_get_latest_tag_passes_describe_args(self, tmp_path: Path) -> None:
+        with patch.object(GitHelper, "run_git", return_value="") as mock_run:
+            GitHelper.get_latest_tag(str(tmp_path))
+            repo, args = mock_run.call_args.args
+            assert repo == str(tmp_path)
+            assert args == ["describe", "--tags", "--abbrev=0"]

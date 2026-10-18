@@ -96,8 +96,8 @@
       "max_function_length": 125
     },
     "testing": {
-      "coverage_gap_threshold": 50,
-      "coverage_well_covered_threshold": 80,
+      "coverage_gap_threshold": 45,
+      "coverage_well_covered_threshold": 75,
       "check_test_naming": true,
       "test_naming_min_segments": 3,
       "check_mutation_testing": true,

@@ -145,6 +145,13 @@ addopts = ["-ra", "--tb=short"]
 testpaths = ["tests"]
 minversion = "8.0"
 pythonpath = ["src"]
+# An unclosed file or socket is a leak the suite should not tolerate silently.
+filterwarnings = ["error::ResourceWarning"]
+
+[tool.coverage.run]
+# Branch coverage is the measurement the testing-style review reads; statement
+# coverage hides an untaken branch behind a fully executed line.
+branch = true
 
 [tool.vulture]
 min_confidence = 80

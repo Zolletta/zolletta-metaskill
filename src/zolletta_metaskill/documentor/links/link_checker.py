@@ -357,8 +357,12 @@ class LinkChecker:
                     return True, None
                 return False, f"HTTP {resp.status}"  # pragma: no cover
         except urllib.error.HTTPError as e:
+            # HTTPError wraps a body that defaults to a temp file, so it leaks
+            # unless closed; keep the code, then release the body.
+            code = e.code
+            e.close()
             # Some servers don't support HEAD
-            if e.code == 405:
+            if code == 405:
                 try:
                     req = urllib.request.Request(url, method="GET")
                     req.add_header("User-Agent", "zolletta-documentor/1.0")
@@ -368,8 +372,8 @@ class LinkChecker:
                             None if resp.status < 400 else f"HTTP {resp.status}",
                         )
                 except Exception:
-                    return False, f"HTTP {e.code}"
-            return False, f"HTTP {e.code}"
+                    return False, f"HTTP {code}"
+            return False, f"HTTP {code}"
         except urllib.error.URLError as e:
             return False, str(e.reason)
         except Exception as e:
