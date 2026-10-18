@@ -8,7 +8,8 @@ a missing parameter object. The scanner consumes ``MethodInfo.params``
 from the language engines (``ModuleInfo.functions`` +
 ``ClassInfo.methods``), so it needs no per-language parsing of its own.
 
-Parameter counting follows ruff ``PLR0913`` semantics: positional-only,
+Parameter counting follows pylint ``PLR0913``, which ruff implements as
+``pylint.max-args`` (both default to 5): positional-only,
 positional, and keyword-only parameters count; the receiver
 (``self``/``cls``) and variadics (``*args``/``**kwargs``/``...$args``)
 do not. Only module-level functions and class methods are visible to
@@ -320,7 +321,8 @@ class MaxArgumentsScanner:
         """Entry point for the max arguments scanner CLI."""
         parser = argparse.ArgumentParser(
             description="Flag functions and methods declaring too many "
-            "parameters (language-agnostic; PLR0913-style counting). Scan "
+            "parameters (language-agnostic; the pylint PLR0913 rule, which "
+            "ruff implements as pylint.max-args — both default to 5). Scan "
             "roots and the limit come from .zolletta-metaskill/settings.json."
         )
         parser.add_argument(

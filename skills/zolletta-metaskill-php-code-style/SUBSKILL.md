@@ -226,7 +226,7 @@ python3 ../../src/zolletta_metaskill/code_style/general/cyclomatic_complexity_sc
 python3 ../../src/zolletta_metaskill/code_style/general/function_length_scanner.py
 ```
 
-- **#37 Max arguments limit** — functions and methods must not declare more than `max_arguments` (default: `5`, read from `php.code_style.max_arguments` in `settings.json`). Variadic arguments (`...$args`) do not count toward the limit — the semantics match ruff `PLR0913` (`self`/`cls`, `*args`, `**kwargs` excluded). Long parameter lists are a classic AI-generation smell — the fix is usually a small value object or collaborator. Enforced by the language-agnostic `max_arguments_scanner.py`:
+- **#37 Max arguments limit** — functions and methods must not declare more than `max_arguments` (default: `5`, read from `php.code_style.max_arguments` in `settings.json`). Variadic arguments (`...$args`) do not count toward the limit — the semantics match pylint `PLR0913`, which ruff implements as `pylint.max-args`, both defaulting to 5 (`self`/`cls`, `*args`, `**kwargs` excluded). Long parameter lists are a classic AI-generation smell — the fix is usually a small value object or collaborator. Enforced by the language-agnostic `max_arguments_scanner.py`:
 
 ```bash
 python3 ../../src/zolletta_metaskill/code_style/general/max_arguments_scanner.py

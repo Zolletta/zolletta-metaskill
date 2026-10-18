@@ -139,14 +139,14 @@ Team processes that ensure docs are updated alongside code changes.
 
 ## Common Drift Patterns and Prevention
 
-| Pattern           | Drift                          | Prevention                                                 |
-|-------------------|--------------------------------|------------------------------------------------------------|
-| Renamed function  | API docs reference old name    | Run `api_doc/api_doc_validator.py` after refactors         |
-| Moved file        | Links point to old path        | Run `links/link_checker.py` after file moves               |
-| Removed parameter | Docs list removed params       | Run `api_doc/api_doc_validator.py` after signature changes |
-| New module        | No docs for new code           | Add docs in same PR as new code                            |
-| Version bump      | Docs reference old version     | Run `quality/quality_review.py` before release             |
-| Refactored class  | Docs describe old structure    | Update architecture docs after refactors                   |
-| Deleted feature   | Docs reference removed feature | Delete docs when removing features                         |
+| Pattern           | Drift                          | Prevention                                                                                   |
+|-------------------|--------------------------------|----------------------------------------------------------------------------------------------|
+| Renamed function  | API docs reference old name    | Run `src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py` after refactors         |
+| Moved file        | Links point to old path        | Run `src/zolletta_metaskill/documentor/links/link_checker.py` after file moves               |
+| Removed parameter | Docs list removed params       | Run `src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py` after signature changes |
+| New module        | No docs for new code           | Add docs in same PR as new code                                                              |
+| Version bump      | Docs reference old version     | Run `src/zolletta_metaskill/documentor/quality/quality_review.py` before release             |
+| Refactored class  | Docs describe old structure    | Update architecture docs after refactors                                                     |
+| Deleted feature   | Docs reference removed feature | Delete docs when removing features                                                           |
 
 ---

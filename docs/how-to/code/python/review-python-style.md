@@ -50,7 +50,7 @@ When `check_file_length` is `true`, the skill runs `src/zolletta_metaskill/code_
 
 ### Max arguments
 
-When `check_max_arguments` is `true`, the skill runs `src/zolletta_metaskill/code_style/general/max_arguments_scanner.py` to flag functions and methods declaring more than `max_arguments` parameters (default: `5`, matching ruff `PLR0913` / `max-args`; setup seeds the threshold from `python.tools.ruff.max_args` when configured). Counting includes positional-only, positional-or-keyword, and keyword-only parameters; `self`, `cls`, `*args`, and `**kwargs` are excluded. Long parameter lists usually signal a missing abstraction — extract a parameter object or a small collaborator.
+When `check_max_arguments` is `true`, the skill runs `src/zolletta_metaskill/code_style/general/max_arguments_scanner.py` to flag functions and methods declaring more than `max_arguments` parameters (default: `5`, matching pylint `PLR0913`, which ruff implements as `pylint.max-args` — both default to 5; setup seeds the threshold from `python.tools.ruff.max_args` when configured). Counting includes positional-only, positional-or-keyword, and keyword-only parameters; `self`, `cls`, `*args`, and `**kwargs` are excluded. Long parameter lists usually signal a missing abstraction — extract a parameter object or a small collaborator.
 
 ### Function length
 

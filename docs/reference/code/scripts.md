@@ -126,7 +126,7 @@ Violations are report-only — the scanner exits 0 whether or not any are found;
 
 Flags functions and methods declaring more parameters than the configured threshold — the "max number of arguments" sensor from Martin Fowler's [Maintainability sensors for coding agents](https://martinfowler.com/articles/sensors-for-coding-agents.html). Long parameter lists are a classic AI-generation smell; the fix is usually a parameter object or a small collaborator.
 
-Parameter counting matches ruff `PLR0913` (`max-args`) semantics: positional-only, positional-or-keyword, and keyword-only parameters count; `self`/`cls`, `*args`/`**kwargs`, and PHP variadics (`...$args`) do not.
+Parameter counting matches pylint `PLR0913`, which ruff implements as `pylint.max-args` (both default to 5): positional-only, positional-or-keyword, and keyword-only parameters count; `self`/`cls`, `*args`/`**kwargs`, and PHP variadics (`...$args`) do not.
 
 Languages and extensions resolve from `.zolletta-metaskill/settings.json` via the engine registry — only configured languages are scanned. Each language's `code_style.check_max_arguments` toggles the check (if it is off for every configured language the run reports SKIPPED), and `code_style.max_arguments` sets the threshold (smallest across enabled languages wins, default 5 — seeded from `python.tools.ruff.max_args` when configured). Scan roots come from `python.paths.source` / `php.autoload.psr-4` (`src` fallback); git-ignored files are skipped. Unparseable files warn and are skipped.
 

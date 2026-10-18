@@ -51,7 +51,7 @@ The review flags source files that exceed the project's configured maximum line 
 
 ### Max arguments
 
-The review flags functions and methods that declare more parameters than the configured `max_arguments` (default 5). The check is enforced by the language-agnostic `max_arguments_scanner.py`, which counts declared parameters the way ruff `PLR0913` does — positional and keyword parameters count, while `self`/`cls`, `*args`/`**kwargs`, and PHP variadics do not. Long parameter lists usually signal a missing abstraction — the fix is typically a parameter object or a small collaborator.
+The review flags functions and methods that declare more parameters than the configured `max_arguments` (default 5). The check is enforced by the language-agnostic `max_arguments_scanner.py`, which counts declared parameters the way pylint `PLR0913` (implemented by ruff as `pylint.max-args`; both default to 5) does — positional and keyword parameters count, while `self`/`cls`, `*args`/`**kwargs`, and PHP variadics do not. Long parameter lists usually signal a missing abstraction — the fix is typically a parameter object or a small collaborator.
 
 ### Function length
 

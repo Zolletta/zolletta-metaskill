@@ -211,7 +211,7 @@ python3 ../../src/zolletta_metaskill/code_style/general/function_length_scanner.
 
 **#25 — Max arguments limit** *(configurable: `check_max_arguments`, `max_arguments`)*
 
-Functions and methods must not declare more than `max_arguments` arguments (default: `5`, read from `python.code_style.max_arguments` in `settings.json` — seeded from `python.tools.ruff.max_args` when configured, matching ruff `PLR0913`). Positional-only, positional-or-keyword, and keyword-only arguments count; `self`, `cls`, `*args`, and `**kwargs` do not. Long parameter lists are a classic AI-generation smell — the fix is usually grouping them into a small value object or collaborator, not more arguments.
+Functions and methods must not declare more than `max_arguments` arguments (default: `5`, read from `python.code_style.max_arguments` in `settings.json` — seeded from `python.tools.ruff.max_args` when configured, matching pylint `PLR0913`, which ruff implements as `pylint.max-args`, both defaulting to 5). Positional-only, positional-or-keyword, and keyword-only arguments count; `self`, `cls`, `*args`, and `**kwargs` do not. Long parameter lists are a classic AI-generation smell — the fix is usually grouping them into a small value object or collaborator, not more arguments.
 
 - **Enforcement**: `max_arguments_scanner.py` from `../../src/zolletta_metaskill/code_style/general/` (deterministic, language-agnostic).
 
