@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -584,12 +585,15 @@ class TestLinkChecker:
         f.write_text("text", encoding="utf-8")
         assert LinkChecker.find_markdown_files(str(f)) == []
 
-    def test_find_markdown_files_skips_dirs_is_valid(self, tmp_path: Path) -> None:
-        (tmp_path / ".git").mkdir()
-        (tmp_path / ".git" / "README.md").write_text("git", encoding="utf-8")
+    def test_find_markdown_files_gitignored_dir_contains_no_result(self, tmp_path: Path) -> None:
+        (tmp_path / ".gitignore").write_text("build/\n", encoding="utf-8")
+        (tmp_path / "build").mkdir()
+        (tmp_path / "build" / "README.md").write_text("build", encoding="utf-8")
         (tmp_path / "README.md").write_text("# Test", encoding="utf-8")
+        subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
         result = LinkChecker.find_markdown_files(str(tmp_path))
-        assert all(".git" not in f for f in result)
+        assert any("README.md" in f for f in result)
+        assert all("build" not in f for f in result)
 
     def test_find_markdown_files_empty_dir_returns_empty_list(self, tmp_path: Path) -> None:
         assert LinkChecker.find_markdown_files(str(tmp_path)) == []

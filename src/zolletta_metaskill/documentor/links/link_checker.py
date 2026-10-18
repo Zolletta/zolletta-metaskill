@@ -31,6 +31,7 @@ from typing import Any
 from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.documentor.links.link_report_writer import LinkReportWriter
 from zolletta_metaskill.documentor.structs.link_info import LinkInfo
+from zolletta_metaskill.documentor.utils.documentation_files_finder import DocumentationFilesFinder
 from zolletta_metaskill.documentor.utils.documentor_settings import DocumentorSettings
 from zolletta_metaskill.documentor.utils.fenced_content import FencedContent
 
@@ -40,8 +41,6 @@ class LinkChecker:
 
     # --- Constants ---
 
-    SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", ".tox", "dist", "build"}
-    MARKDOWN_EXTENSIONS = {".md", ".markdown", ".mdown", ".mkd"}
     IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico", ".bmp"}
 
     # --- Link Extraction ---
@@ -245,7 +244,7 @@ class LinkChecker:
         heading_cache: dict[str, set[str]],
     ) -> None:
         """Validate anchor inside an existing resolved target file."""
-        if not resolved.endswith(tuple(LinkChecker.MARKDOWN_EXTENSIONS)):
+        if not resolved.endswith(DocumentationFilesFinder.DOC_EXTENSIONS):
             link.is_valid = True
             return
 
@@ -383,17 +382,24 @@ class LinkChecker:
 
     @staticmethod
     def find_markdown_files(path: str) -> list[str]:
-        """Find all markdown files under a path (git-ignore aware)."""
+        """Find all markdown files under a path (git-ignore aware).
+
+        Every markdown file in the repository, not only the documentation: a
+        link is broken wherever it is written, and ``markdown.4`` holds
+        ``skills/`` to the same relative-link rule as ``docs/``. Narrowing this
+        to the documentation inventory would drop the 60 links under
+        ``skills/`` and report them clean, and a false all-clear is the one
+        failure mode a link checker must not have. The *extensions* are shared
+        with :class:`DocumentationFilesFinder`; the *scope* is deliberately
+        wider than the documentation it defines.
+        """
         p = Path(path)
         if p.is_file():
-            if p.suffix.lower() in LinkChecker.MARKDOWN_EXTENSIONS:
+            if p.suffix.lower() in DocumentationFilesFinder.DOC_EXTENSIONS:
                 return [path]
             return []
-        return [
-            str(f)
-            for f in ProjectConfig.iter_files(p, LinkChecker.MARKDOWN_EXTENSIONS)
-            if not any(part in LinkChecker.SKIP_DIRS for part in f.parts)
-        ]
+        extensions = set(DocumentationFilesFinder.DOC_EXTENSIONS)
+        return [str(f) for f in ProjectConfig.iter_files(p, extensions)]
 
     # --- Main ---
 
