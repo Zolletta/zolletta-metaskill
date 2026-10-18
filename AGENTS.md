@@ -1,129 +1,186 @@
 # AGENTS.md
 
-Conventions for the zolletta-metaskill repository. Rules marked *unenforced* have no tool checking them — they are real, not optional.
+These are the conventions of this repository — one declaration per rule, so that new code is indistinguishable from the code around it.
 
-## What these rules are for
+## Context
 
-These conventions govern **the agent writing code in this repository**. They exist so that code written here reads like the code around it, and so a reviewer can check it without archaeology.
+Zolletta-metaskill is a review skill-set providing deterministic tools: the same project produces the same findings on every run, under any reviewer, with judgement reserved for what a machine cannot decide. The scanners under `src/zolletta_metaskill/` are the product — and that gives this file one hard boundary:
 
-They are not a build system for the skill. `src/zolletta_metaskill/` ships as the review product, and the reason any of it is written is to make **the review deterministic** — the same project must produce the same findings on every run, under any reviewer, with judgement reserved for what a machine genuinely cannot decide. A helper that makes writing code here easier is not a reason to write it. If it also sharpens the review, that is the reason, and it is the only one that counts.
+- You **may** run the scanners in `src/` on your own work, as a reviewer would — that is dogfooding, and the tool already exists because the product needs it.
+- You **may not** write a tool whose only purpose is enforcing a rule in this file — that belongs in your judgement, not in `src/`. The tell is a scanner no skill ever invokes. If you do end up writing such a check anyway, ask the human whether it is worth promoting into the skill's toolset as a reviewer tool before keeping it.
 
-The boundary, stated once:
-
-- An agent writing code here **may** run the scanners in `src/` to check what it has just written, exactly as a reviewer would. That is dogfooding, and it is free — the tool already exists because the product needs it.
-- **No tool is written in order to check a rule in this file.** A checker that exists only to police this repository is a rule with a program attached to it, and that belongs in the agent's judgement rather than in `src/`.
-- The tell is a scanner no skill ever invokes. If the review product has no use for it, it does not belong in `src/`, however correct it is and however much it happens to catch things here.
-
-A rule that seems to need enforcement is a signal to reconsider the rule, not an invitation to write the checker. Rules that stay unbuilt are the ones marked ❌ in the table below, and they remain so on purpose — which makes them the **ones that need your judgement most**, because nothing in this repository will tell you that you broke them.
+So a rule that "needs" enforcement is a signal to reconsider the rule, not to write the checker. The rules left unenforced on purpose are marked ❌ in the index — take them more seriously, not less: a checked rule you break announces itself; an ❌ rule you break reaches the next reader with nothing having objected.
 
 ## Before any commit
 
-Two groups, and the order matters. **Sensors** report findings and never fail — a finding is a rule you broke, not a suggestion, so fix it. **Gates** fail the build, and they run *last* because they verify the fixes: a sensor fix made carelessly breaks something the gates will catch, which is exactly what you want them there for. Both read their roots, thresholds and toggles from `.zolletta-metaskill/settings.json`; none takes a positional path.
+Two groups, in this order. **Sensors** report findings and never fail — a finding is a rule you broke, so fix it. **Gates** fail the build, and run last to verify those fixes. All read roots, thresholds and toggles from `.zolletta-metaskill/settings.json`; none takes a positional path.
 
-### Sensors
-
-**`.zolletta-metaskill/settings.json` is version-controlled**, and it is the single source of the `thresholds.*` values and the roots every sensor scans. It is the only tracked file in that directory; the cache, run folders, distiller cache and plans around it stay ignored. Check it is present before running anything — `ProjectConfig.load_settings` returns `{}` *silently* when it is missing, which changes the numbers without erroring. Measured: without it `max_function_length` falls from 125 to a built-in 100 and `function_length_scanner` reports three functions that are compliant here, which an agent would then "fix" against `thresholds.2`.
-
-If it is missing, **restore it from git** (`git checkout .zolletta-metaskill/settings.json`) — do not run the setup guard. Setup regenerates the file for the current machine, and would overwrite the reviewed `setup_timestamp`, `python.tools.*.available` and `pyproject_mtime` with that machine's values. Note that `setup/` seeds no `code_style` or `testing` thresholds (`settings_template.json` carries `"python": null`), so regenerating would also lose the 125 and the 3.
-
-Then run these. Each one names the rule it checks in the table below, so the pairing is never a guess — this list exists only so they can be run in one go. All accept `--json`.
+### Dogfooding
 
 ```bash
-uv run python src/zolletta_metaskill/code_style/general/one_class_per_file_scanner.py
-uv run python src/zolletta_metaskill/code_style/general/naming_conventions_scanner.py
-uv run python src/zolletta_metaskill/code_style/general/file_length_scanner.py
-uv run python src/zolletta_metaskill/code_style/general/function_length_scanner.py
-uv run python src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py
-uv run python src/zolletta_metaskill/code_style/general/max_arguments_scanner.py
-uv run python src/zolletta_metaskill/code_style/general/suppression_reason_scanner.py
-uv run python src/zolletta_metaskill/code_style/python/acronym_casing_scanner.py
-uv run python src/zolletta_metaskill/code_style/python/unused_all_exports_scanner.py
-uv run python src/zolletta_metaskill/testing_style/general/test_structure_scanner.py
-uv run python src/zolletta_metaskill/testing_style/python/test_naming_scanner.py
-uv run python src/zolletta_metaskill/documentor/links/link_checker.py
-uv run python src/zolletta_metaskill/documentor/quality/unwrapped_prose_scanner.py
+uv run python src/zolletta_metaskill/code_style/general/one_class_per_file_scanner.py    # classes.3, tests.2
+uv run python src/zolletta_metaskill/code_style/general/naming_conventions_scanner.py   # classes.1
+uv run python src/zolletta_metaskill/code_style/general/file_length_scanner.py          # classes.6
+uv run python src/zolletta_metaskill/code_style/general/function_length_scanner.py      # functions.2
+uv run python src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py # functions.3
+uv run python src/zolletta_metaskill/code_style/general/max_arguments_scanner.py        # functions.1
+uv run python src/zolletta_metaskill/code_style/general/suppression_reason_scanner.py   # suppressions.1
+uv run python src/zolletta_metaskill/code_style/python/acronym_casing_scanner.py        # classes.2
+uv run python src/zolletta_metaskill/code_style/python/unused_all_exports_scanner.py    # imports.3
+uv run python src/zolletta_metaskill/testing_style/general/test_structure_scanner.py    # tests.1
+uv run python src/zolletta_metaskill/testing_style/python/test_naming_scanner.py        # tests.3
+uv run python src/zolletta_metaskill/documentor/links/link_checker.py                   # documentation.4
+uv run python src/zolletta_metaskill/documentor/quality/unwrapped_prose_scanner.py      # documentation.1
 ```
 
-Three rules are checked by a command in this file rather than by a scanner. `structure.2` and `structure.3` are conventions of *this* repository and no scanner will ever be written for them — `TYPE_CHECKING` appears in `docs/reference/code/python/python-code-style.md:109` only as a thing to avoid, and module-level functions appear nowhere outside this file, so a checker would be a tool written only to police this file. `general.1` is a real POSIX rule that the scanners simply do not cover: `ruff format` handles `.py` and `MD047` handles `.md`, and nothing looks at `.json`, `.jsonc`, `.yml`, `.toml` or `.txt`. All three are as deterministic as a sensor — they answer without guessing — and all three are manual.
+### OS tools
 
 ```bash
-# structure.2 — no module-level functions; expect no output
+# classes.4 — no module-level functions; expect no output
 grep -rnE "^(async )?def " src/ --include='*.py'
-# structure.3 — no TYPE_CHECKING blocks; expect no output
+# classes.5 — no module-level constants; expect no output
+grep -rnE "^[A-Z_][A-Z0-9_]* *(:[^=]+)?= " src/ --include='*.py'
+# imports.1 — no TYPE_CHECKING blocks; expect no output
 grep -rn "TYPE_CHECKING" src/ --include='*.py'
 # general.1 — every tracked text file ends with a newline
 git ls-files | while read -r f; do
   [ -s "$f" ] || continue                      # an empty file has no last byte
-  grep -qI . "$f" 2>/dev/null || continue       # a binary never ends in \n
+  grep -qI . "$f" 2>/dev/null || continue       # skip binaries — load-bearing, or every PNG in assets/ is reported
   [ "$(tail -c1 "$f" | wc -l)" -eq 0 ] && echo "no trailing newline: $f"
 done
 ```
 
-The `grep -qI` guard on `general.1` is load-bearing: without it every PNG in `assets/` is reported and the check cries wolf on its one real finding.
-
-When an ADR changes, refresh the distiller cache and confirm it goes quiet:
-
-```bash
-PYTHONPATH=src uv run python src/zolletta_metaskill/adr/adr_cli.py
-```
-
 ### Gates
 
-Run these last. They are not a checklist of style — they are the check that your sensor fixes were correct. Renaming a test to satisfy `test_naming_scanner` can leave it asserting nothing; splitting a class to satisfy `one_class_per_file_scanner` can leave the mirror broken. Both look green to a sensor and red to `pytest`, which is the entire reason for the order.
+Run these last — they verify that your sensor fixes were correct. A careless fix (a renamed test that now asserts nothing, a split class with a broken mirror) looks green to a sensor and red to `pytest`; that is the entire reason for the order.
 
 ```bash
-uv run ruff check src tests
-uv run ruff format --check src tests
-uv run ty check .
-uv run mypy .
+uv run ruff check src tests           # docstrings.1, imports.2, suppressions.1
+uv run ruff format --check src tests  # general.1 (.py)
+uv run ty check .                     # functions.4
+uv run mypy .                         # functions.4
 uv run vulture . --min-confidence 80
-uv run pytest -q
-npx --yes markdownlint-cli2@0.23.3
+uv run pytest -q                      # the guard test behind documentation.1
+npx --yes markdownlint-cli2@0.23.3    # documentation.2
 ```
 
 ## Rules
 
-Each rule has a stable id — `markdown.3`, `tests.2` — numbered within its area, so inserting a rule does not renumber the others. Quote the id when discussing one.
+Each rule has a stable id — `documentation.3`, `tests.2` — numbered within its area, so inserting a rule does not renumber the others. Quote the id when discussing one.
 
-| Glyph | In the `Automatic` column                                                               |
+Nothing here runs by itself — ✅ and 🔧 are equally manual — and both answer without guessing.
+
+The ❌ rules — `documentation.3`, `documentation.5`, `documentation.6`, `tests.4`, `tests.5` and `structs.1` — rest on this file alone.
+
+### General
+
+- `general.1` — **Every file ends with an empty row and a newline.** The rule is POSIX, not stylistic: a file without a trailing newline breaks `git diff`, `cat`, and every POSIX tool that reads it. `ruff format` covers `.py` and `MD047` covers `.md`; the shell check in **Before any commit** covers `.json`, `.jsonc`, `.yml`, `.toml` and `.txt`.
+
+### Documentation
+
+- `documentation.1` — **Prose paragraphs stay on a single line, never wrapped at a column width**, because markdown renders a newline as a space and the wrap buys nothing but diff noise. The rule binds accepted ADRs too — the one layout edit their immutability permits — and is unconditional here: a repo guard test in `pytest` fails on any wrapped paragraph whatever `documentation.check_unwrapped_prose` says. `MD013` is off on purpose, so no built-in rule demands the wrapping this forbids.
+- `documentation.2` — **Documentation must pass markdownlint.** The rule set lives in `.markdownlint.yaml` and the file globs in `.markdownlint-cli2.jsonc`.
+- `documentation.3` — **Mermaid diagrams use the default theme only, with no fill and no background.** Nothing checks this, and no diagram exists in the repository today to check.
+- `documentation.4` — **Links in `docs/` and `skills/` are repo-root-relative**, never a hardcoded `https://github.com/Zolletta/zolletta-metaskill/...` URL, because a relative link resolves both on GitHub and from a local checkout.
+- `documentation.5` — **Architecture ADRs live in `docs/explanation/adr/architecture/`**, and activity records never enter the corpus.
+- `documentation.6` — **An Accepted ADR is immutable and is replaced only by supersession.** Immutability governs content and status rather than layout: unwrapping the prose of an accepted ADR changes no decision, so it is done by editing in place.
+- `documentation.7` — **When an ADR changes, the distiller cache is refreshed** — `PYTHONPATH=src uv run python src/zolletta_metaskill/adr/adr_cli.py` — and reports no drift.
+
+### Commits
+
+- `commits.1` — **Commits follow Conventional Commits**, and the human-facing detail belongs in `CONTRIBUTING.md` rather than the commit message. An unparseable commit produces no changelog entry under `python-semantic-release`.
+
+### Python
+
+#### Classes
+
+- `classes.1` — **A class mandates its filename** — `RawASTEngine` lives in `raw_ast_engine.py`, not the other way around; the match is case-insensitive because acronym casing is `classes.2`'s domain.
+- `classes.2` — **An acronym in a class name stays fully uppercase.**
+- `classes.3` — **Every file in `src/` defines exactly one class.**
+- `classes.4` — **No module-level functions.** Every function is a `@staticmethod` or an instance method on the class that owns it.
+- `classes.5` — **No module-level constants.** Constants are class attributes, so a name assigned at module scope means the class that should own it is missing.
+- `classes.6` — **No file in `src/` exceeds 800 lines.**
+
+#### Functions / Methods
+
+- `functions.1` — **No function or method declares more than 5 parameters.** Positional-only, positional and keyword-only parameters count; `self`, `cls`, `*args`, `**kwargs` and PHP variadics do not.
+- `functions.2` — **No function spans more than 125 lines**, measured from the signature through the end of the body, with the docstring included and decorators excluded.
+- `functions.3` — **No branch is more complex than 12.** Counting follows ruff's `C901`: every `if`, `elif`, loop, `except` handler, non-catch-all `match` case and nested `def` adds one, while boolean operators, ternaries and comprehensions add none.
+- `functions.4` — **Every function and method signature is fully annotated** — parameters and return type. `mypy --strict` and `ty check` are the check.
+
+#### Imports
+
+- `imports.1` — **No `if TYPE_CHECKING:` blocks.** If a name is needed only for annotation, `from __future__ import annotations` already makes every annotation lazy — import the name directly at module scope. A runtime-optional dependency is imported lazily inside the method that needs it.
+- `imports.2` — **Imports are absolute.** `from .conftest import x` is allowed in tests only; in `src/` a relative import breaks the ADR-0015 contract that `python3 <script>.py [--json]` runs from the project root. Ruff bans both forms with `ban-relative-imports = "all"`.
+- `imports.3` — **Every name in `__all__` has a real importer.** `__all__` is a claim about the module's public surface, and the claim is checked rather than trusted — an export nothing imports is dead code that vulture cannot see.
+
+#### Suppressions
+
+- `suppressions.1` — **Every suppression carries its reason** — `type: ignore[code]`, `# noqa: RULE`, `# pragma: no cover` — so a reader can tell a deliberate exception from a leftover.
+
+#### CLI
+
+- `cli.1` — **The command line carries no configuration.** A tool exposes `[--json]` at most; everything else — roots, toggles, thresholds — comes from `.zolletta-metaskill/settings.json` through `ProjectConfig`, so the same checkout produces the same findings regardless of how the tool was invoked.
+- `cli.2` — **A scanner's entry point is `if __name__ == "__main__": sys.exit(Cls.main())`.**
+- `cli.3` — **A scanner is report-only**: it prints its findings to stdout (`T201` is ignored because stdout *is* the interface) and exits 0 even with findings, 1 only on usage errors.
+
+#### Docstrings
+
+- `docstrings.1` — **Every module, class, function and method has a docstring**, in the repository's `Args:`/`Returns:` style. `__init__` methods and `__init__.py` files are exempt, as are all files under `tests/` — ruff's `D` rules are the check.
+
+#### Structs
+
+- `structs.1` — **A helper type is a `@dataclass(frozen=True)` in a `structs/` package**, one per file like every other class. Nothing checks this — the shape of the codebase is the convention.
+
+### Tests
+
+- `tests.1` — **Every source file has exactly one test file at the mirrored path** — `src/zolletta_metaskill/<path>/<name>.py` pairs with `tests/<path>/test_<name>.py`, path for path.
+- `tests.2` — **A test file holds one `Test*` class, named after the class it tests.** A second aspect gets its own file, named `test_<name>_<aspect>.py`.
+- `tests.3` — **A test function is named `test_<unit>_<scenario>_<expected_outcome>`** and carries at least three segments after the prefix. A `parametrize` needs explicit `ids=` of the same shape, or the generated names become `test_naming` findings.
+- `tests.4` — **A non-test file under `tests/` goes in `tests/fixtures/<subpath>/`, mirroring the source subpath, and is committed** — so that a change in output appears as a readable diff instead of a silent regeneration. The scanners ignore that directory: both enumerate through `ProjectConfig.iter_files(root, {".py"})`.
+- `tests.5` — **Tests inside a `Test*` class are grouped under `# --- section ---` comments.**
+
+### Rule index
+
+| Glyph | Meaning                                                                                 |
 |-------|-----------------------------------------------------------------------------------------|
 | ✅    | a **scanner in `src/`** checks it — the skill verifying its own work                    |
 | 🔧    | something else does: an external tool, a command in this file, or the shape of the code |
 | ⚠️    | only partly                                                                             |
 | ❌    | nothing does, and it is on you                                                          |
 
-Nothing here runs by itself — ✅ and 🔧 are equally manual — and both answer without guessing.
-
-**Take the ❌ rules more seriously than the rest, not less.** A ✅ or 🔧 rule that you break announces itself before the commit; a ❌ rule that you break survives to the next reader with nothing having objected. All three — `markdown.3`, `markdown.5` and `tests.4` — rest on this table alone: read the rule, apply it, and do not assume a later gate will notice.
-
-| #              | Rule                                                                                                                                                                                                                                                                                                                                       | Automatic | Checked by                                                                                                                                                                                                                                                                                                                                                 |
-|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `general.1`    | Every file must end with an empty row and a newline. The rule is POSIX, not stylistic: a file without a trailing newline breaks `git diff`, `cat`, and every POSIX tool that reads it.                                                                                                                                                     | 🔧        | `ruff format` for `.py` and `MD047` for `.md`; nothing covered the rest, so the shell check in **Before any commit** is the check for `.json`, `.jsonc`, `.yml`, `.toml` and `.txt`                                                                                                                                                                        |
-| `markdown.1`   | Prose paragraphs stay on a single line, never wrapped at a column width, because markdown renders a newline as a space and the wrap buys nothing but diff noise. The rule binds accepted ADRs too, which is the one layout edit their immutability permits.                                                                                | ✅        | `unwrapped_prose` — **unconditional here**: a repo guard test in `pytest` fails on any wrapped paragraph, whatever `documentation.check_unwrapped_prose` says. That toggle only governs whether the documentor skill reports it to a *skill user*, never this repository. `MD013` is off on purpose, so no built-in rule demands the wrapping this forbids |
-| `markdown.2`   | Documentation must pass markdownlint. The rule set lives in `.markdownlint.yaml` and the file globs in `.markdownlint-cli2.jsonc`.                                                                                                                                                                                                         | 🔧        | `markdownlint`                                                                                                                                                                                                                                                                                                                                             |
-| `markdown.3`   | Mermaid diagrams use the default theme only, with no fill and no background. Nothing checks this, and no diagram exists in the repository today to check.                                                                                                                                                                                  | ❌        | *none* — zero diagrams in the repo today                                                                                                                                                                                                                                                                                                                   |
-| `markdown.4`   | Links in `docs/` and `skills/` must be repo-root-relative, never a hardcoded `https://github.com/Zolletta/zolletta-metaskill/...` URL, because a relative link resolves both on GitHub and from a local checkout.                                                                                                                          | ✅        | `link_checker`                                                                                                                                                                                                                                                                                                                                             |
-| `markdown.5`   | Architecture ADRs live in `docs/explanation/adr/architecture/` and activity records never enter the corpus. An Accepted ADR is immutable and is replaced only by supersession. Immutability governs content and status rather than layout: unwrapping the prose of an accepted ADR changes no decision, so it is done by editing in place. | ❌        | *none* — `adr-distiller` reads the directory but decides nothing about placement                                                                                                                                                                                                                                                                           |
-| `commits.1`    | Commits follow Conventional Commits, and the human-facing detail belongs in `CONTRIBUTING.md` rather than the commit message.                                                                                                                                                                                                              | 🔧        | `python-semantic-release` — an unparseable commit produces no changelog entry                                                                                                                                                                                                                                                                              |
-| `structure.1`  | Every file in `src/` defines exactly one class, named after its filename in snake_case — `one_class_per_file_scanner.py` holds `OneClassPerFileScanner`. A helper type gets its own file under `structs/` or in a matching package.                                                                                                        | ✅        | `one_class_per_file`                                                                                                                                                                                                                                                                                                                                       |
-| `structure.2`  | Every function is a `@staticmethod` or an instance method on the class that owns it; module-level functions are not written here, and constants are class attributes. This is a convention of this repository rather than a rule the skill reports on, so no scanner exists for it and the grep is the check.                              | 🔧        | `grep -rnE "^(async )?def " src/ --include='*.py'` — no scanner, and none will be written: a rule only this repository holds is not a rule the skill reports on                                                                                                                                                                                            |
-| `structure.3`  | No `if TYPE_CHECKING:` blocks. Imports are direct, since `from __future__ import annotations` is already used everywhere; a runtime-optional dependency is imported lazily inside the method that needs it, as `PHPEngine._default_parser_factory` does. Like `structure.2` this is local to this repository, and the grep is the check.   | 🔧        | `grep -rn "TYPE_CHECKING" src/ --include='*.py'` — same reasoning as `structure.2`                                                                                                                                                                                                                                                                         |
-| `naming.1`     | A filename and the class it holds agree, with acronyms accounted for: `raw_ast_engine.py` holds `RawASTEngine`, not `RawAstengine`.                                                                                                                                                                                                        | ✅        | `naming_conventions`                                                                                                                                                                                                                                                                                                                                       |
-| `naming.2`     | An acronym in a class name stays fully uppercase, so `APIDocValidator` and never `ApiDocValidator`.                                                                                                                                                                                                                                        | ✅        | `acronym_casing`                                                                                                                                                                                                                                                                                                                                           |
-| `naming.3`     | Every name in an `__all__` is actually exported. The list is a claim about the module's surface, and the claim is checked rather than trusted.                                                                                                                                                                                             | ✅        | `unused_all_exports`                                                                                                                                                                                                                                                                                                                                       |
-| `naming.4`     | Every suppression carries its reason — `type: ignore[code]`, `# noqa: RULE`, `# pragma: no cover` — so a reader can tell a deliberate exception from a leftover.                                                                                                                                                                           | ✅        | `suppression_reason`                                                                                                                                                                                                                                                                                                                                       |
-| `thresholds.1` | No function or method declares more than **5** parameters. Positional-only, positional and keyword-only parameters count; `self`, `cls`, `*args`, `**kwargs` and PHP variadics do not.                                                                                                                                                     | ✅        | `max_arguments`                                                                                                                                                                                                                                                                                                                                            |
-| `thresholds.2` | No function spans more than **125** lines, measured from the signature through the end of the body, with the docstring included and decorators excluded.                                                                                                                                                                                   | ✅        | `function_length`                                                                                                                                                                                                                                                                                                                                          |
-| `thresholds.3` | No source file exceeds **800** lines.                                                                                                                                                                                                                                                                                                      | ✅        | `file_length`                                                                                                                                                                                                                                                                                                                                              |
-| `thresholds.4` | No branch is more complex than **12**. Counting follows ruff's `C901`: every `if`, `elif`, loop, `except` handler, non-catch-all `match` case and nested `def` adds one, while boolean operators, ternaries and comprehensions add none.                                                                                                   | ✅        | `cyclomatic_complexity`                                                                                                                                                                                                                                                                                                                                    |
-| `tests.1`      | Every source file has exactly one test file at the mirrored path, so `src/zolletta_metaskill/<path>/<name>.py` is paired with `tests/<path>/test_<name>.py`, path for path.                                                                                                                                                                | ✅        | `test_structure`                                                                                                                                                                                                                                                                                                                                           |
-| `tests.2`      | A test file holds one `Test*` class, named after the class it tests — `TestProjectConfig` for `ProjectConfig` — with its tests grouped under `# --- section ---` comments. A second aspect gets its own file, named `test_<name>_<aspect>.py`.                                                                                             | ✅        | `one_class_per_file`                                                                                                                                                                                                                                                                                                                                       |
-| `tests.3`      | A test function is named `test_<unit>_<scenario>_<expected_outcome>` and carries at least three segments after the prefix. A `parametrize` needs explicit `ids=` of the same shape, or the generated names become `test_naming` findings.                                                                                                  | ✅        | `test_naming`                                                                                                                                                                                                                                                                                                                                              |
-| `tests.4`      | A non-test file that lives under `tests/` goes in `tests/fixtures/<subpath>/`, mirroring the source subpath, and is committed — so that a change in output appears as a readable diff instead of a silent regeneration. The scanners ignore that directory: both enumerate through `ProjectConfig.iter_files(root, {".py"})`.              | ❌        | *none*                                                                                                                                                                                                                                                                                                                                                     |
-| `scripts.1`    | A review script takes `[--json]` and nothing else. Its roots, toggles and thresholds come from `.zolletta-metaskill/settings.json` through `ProjectConfig`, never from a positional directory or a `--src`/`--tests` flag — a script given a path on the command line has nowhere left to read configuration.                              | 🔧        | `ProjectConfig` — a positional root has nowhere to read settings from                                                                                                                                                                                                                                                                                      |
-
-### Caveats
-
-Every `thresholds.*` figure above is the value in the version-controlled `.zolletta-metaskill/settings.json` under `python.code_style`, so **changing one means changing this table**, and a disagreement between them means one of the two was edited alone. Each scanner still carries a hardcoded fallback for a missing key — `FunctionLengthScanner.DEFAULT_MAX_FUNCTION_LINES` is `100`, not the `125` configured here — which is why the file is tracked rather than regenerated. Full rule wording: `skills/zolletta-metaskill-python-code-style/SUBSKILL.md`.
-
-`documentation.check_unwrapped_prose` decides whether a *skill user* is shown wrapped prose. It has no bearing on this repository: `markdown.1` binds whoever writes code here either way, and the guard test enforces it with the toggle off or on.
+| id                | Glyph |
+|-------------------|-------|
+| `classes.1`       | ✅    |
+| `classes.2`       | ✅    |
+| `classes.3`       | ✅    |
+| `classes.4`       | 🔧    |
+| `classes.5`       | 🔧    |
+| `classes.6`       | ✅    |
+| `cli.1`           | 🔧    |
+| `cli.2`           | 🔧    |
+| `cli.3`           | 🔧    |
+| `commits.1`       | 🔧    |
+| `docstrings.1`    | 🔧    |
+| `documentation.1` | ✅    |
+| `documentation.2` | 🔧    |
+| `documentation.3` | ❌    |
+| `documentation.4` | ✅    |
+| `documentation.5` | ❌    |
+| `documentation.6` | ❌    |
+| `documentation.7` | ✅    |
+| `functions.1`     | ✅    |
+| `functions.2`     | ✅    |
+| `functions.3`     | ✅    |
+| `functions.4`     | 🔧    |
+| `general.1`       | 🔧    |
+| `imports.1`       | 🔧    |
+| `imports.2`       | 🔧    |
+| `imports.3`       | ✅    |
+| `structs.1`       | ❌    |
+| `suppressions.1`  | ✅    |
+| `tests.1`         | ✅    |
+| `tests.2`         | ✅    |
+| `tests.3`         | ✅    |
+| `tests.4`         | ❌    |
+| `tests.5`         | ❌    |
