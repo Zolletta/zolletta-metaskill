@@ -63,6 +63,13 @@ from zolletta_metaskill.testing_style.general.structs import TestStructureResult
 class TestStructureScanner:
     """Scan test directory structure for mirroring issues against source."""
 
+    #: Top-level directory under a test package that holds golden files and
+    #: sample inputs rather than tests. Excluded from every table: a fixture
+    #: committed as ``.py`` is enumerated like any other file, so without this
+    #: the directory the testing rules mandate is reported as orphaned test
+    #: directories, and a golden file named ``test_*.py`` is read as a test.
+    FIXTURE_DIR = "fixtures"
+
     @staticmethod
     def _ensure_python_engine() -> None:
         """Ensure the PythonEngine is registered."""
@@ -282,7 +289,11 @@ class TestStructureScanner:
             src_dirs.update(TestStructureScanner._collect_dirs(src_pkg))
         test_dirs: set[Path] = set()
         for test_pkg in test_pkgs:
-            test_dirs.update(TestStructureScanner._collect_dirs(test_pkg))
+            test_dirs.update(
+                d
+                for d in TestStructureScanner._collect_dirs(test_pkg)
+                if TestStructureScanner.FIXTURE_DIR not in d.parts
+            )
         test_only_dirs = sorted(test_dirs - src_dirs)
 
         # --- Build source index (merged across package roots) ---
@@ -295,11 +306,14 @@ class TestStructureScanner:
         test_files: dict[str, tuple[Path, str]] = {}
         for test_pkg in test_pkgs:
             for tp in ProjectConfig.iter_files(test_pkg, {".py"}):
+                rel_path = tp.relative_to(test_pkg)
+                if rel_path.parts[:1] == (TestStructureScanner.FIXTURE_DIR,):
+                    continue  # a golden file named test_*.py is not a test
                 if tp.name == "__init__.py":
                     continue
                 if not tp.name.startswith("test_"):
                     continue  # Skip conftest.py, fixtures.py, etc.
-                rel = str(tp.relative_to(test_pkg))
+                rel = str(rel_path)
                 try:
                     test_files[rel] = (test_pkg, tp.read_text(encoding="utf-8"))
                 except (OSError, UnicodeDecodeError):

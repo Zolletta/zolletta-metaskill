@@ -292,6 +292,59 @@ class TestTestStructureScanner:
 
     # --- Tests for TestStructureScanner.main(). ---
 
+    def _make_tree(self, root: Path) -> tuple[Path, Path]:
+        """Create a ``src/mypkg`` and ``tests/`` pair and return both roots."""
+        (root / "src" / "mypkg").mkdir(parents=True)
+        (root / "src" / "mypkg" / "widget.py").write_text(
+            "class Widget:\n    def spin(self) -> None:\n        pass\n"
+        )
+        (root / "tests").mkdir()
+        return root / "src" / "mypkg", root / "tests"
+
+    # --- fixture directories are not tests ---
+
+    def test_collect_inputs_excludes_fixture_directories(self, tmp_path: Path) -> None:
+        """``tests/fixtures/`` holds golden files, so it is never an orphaned test dir."""
+        src_pkg, test_pkg = self._make_tree(tmp_path)
+        (test_pkg / "fixtures" / "mypkg").mkdir(parents=True)
+        (test_pkg / "fixtures" / "mypkg" / "sample.py").write_text("x = 1\n")
+
+        test_only_dirs, _index, _files = TestStructureScanner._collect_inputs([src_pkg], [test_pkg])
+
+        assert all(TestStructureScanner.FIXTURE_DIR not in d.parts for d in test_only_dirs), (
+            f"fixture directory reported as orphaned: {test_only_dirs}"
+        )
+
+    def test_collect_inputs_keeps_non_fixture_test_only_dirs(self, tmp_path: Path) -> None:
+        """The exclusion is scoped to ``fixtures/``; other stray dirs still report."""
+        src_pkg, test_pkg = self._make_tree(tmp_path)
+        (test_pkg / "helpers").mkdir()
+        (test_pkg / "helpers" / "util.py").write_text("x = 1\n")
+
+        test_only_dirs, _index, _files = TestStructureScanner._collect_inputs([src_pkg], [test_pkg])
+
+        assert "helpers" in [str(d) for d in test_only_dirs]
+
+    def test_collect_inputs_skips_golden_file_named_like_a_test(self, tmp_path: Path) -> None:
+        """A committed golden file called ``test_*.py`` is not read as a test."""
+        src_pkg, test_pkg = self._make_tree(tmp_path)
+        fixture = test_pkg / "fixtures" / "mypkg" / "test_expected_output.py"
+        fixture.parent.mkdir(parents=True)
+        fixture.write_text("def test_expected_output() -> None:\n    pass\n")
+
+        _dirs, _index, test_files = TestStructureScanner._collect_inputs([src_pkg], [test_pkg])
+
+        assert "fixtures/mypkg/test_expected_output.py" not in test_files
+
+    def test_collect_inputs_keeps_real_tests_outside_fixtures(self, tmp_path: Path) -> None:
+        """The exclusion does not swallow a real test in a normal directory."""
+        src_pkg, test_pkg = self._make_tree(tmp_path)
+        (test_pkg / "test_widget.py").write_text("def test_spin() -> None:\n    pass\n")
+
+        _dirs, _index, test_files = TestStructureScanner._collect_inputs([src_pkg], [test_pkg])
+
+        assert "test_widget.py" in test_files
+
     def _write_settings(self, dirpath: Path, **overrides: object) -> Path:
         """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
         settings: dict[str, object] = {
