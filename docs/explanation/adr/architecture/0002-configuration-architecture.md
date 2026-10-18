@@ -7,9 +7,18 @@ description: "Configuration architecture: single settings.json source, setup gua
 
 # ADR-0002: Configuration architecture — settings.json, setup guard, uniform CLI, immutable structs
 
+> **Superseded.** This record is kept as history per
+> [ADR-0000](0000-adrs-record-architecture-not-activity.md). Its five rules are carried forward
+> unchanged by
+> [ADR-0011](0011-configuration-architecture-corrected.md), which corrects two **Neutral** claims
+> below. `documentation.cache_dir` is gone — it was honoured in code but declared in no schema, so
+> no valid `settings.json` could set it. And `settings.json`, while still generated and still
+> gitignored by default, may now be tracked deliberately by a project that needs its review
+> thresholds to be reproducible from a fresh clone; this repository does.
+
 ## Status
 
-Accepted
+Superseded by [ADR-0011](0011-configuration-architecture-corrected.md)
 
 ## Context
 
