@@ -6,6 +6,7 @@ import ast
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -356,3 +357,44 @@ class TestInterfaceSegregationScanner:
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
+
+    # --- Text Output Contract ---
+
+    def test_emit_text_matches_committed_contract(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The captured text report is a byte-for-byte contract.
+
+        The comparison is exact on purpose and must not be loosened to a
+        substring or regex check: a legitimate change to the rendered report is
+        ``pytest --update-fixtures`` followed by a reviewed diff.
+
+        """
+        fat_interfaces = [
+            {
+                "name": "BigProtocol",
+                "file": "pkg/mod.py",
+                "line": 3,
+                "method_count": 6,
+                "methods": ["m0", "m1", "m2", "m3", "m4", "m5"],
+            }
+        ]
+        stub_violations = [
+            {
+                "protocol": "BigProtocol",
+                "implementer": "PartialImpl",
+                "method": "m0",
+                "file": "pkg/impl.py",
+                "line": 12,
+                "issue": "raises NotImplementedError",
+            }
+        ]
+        InterfaceSegregationScanner._emit_text(
+            5, fat_interfaces, stub_violations, {"BigProtocol": ["PartialImpl"]}
+        )
+        text_contract(
+            "patterns/python/interface_segregation_scanner.txt",
+            capsys.readouterr().out,
+        )

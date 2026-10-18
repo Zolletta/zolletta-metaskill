@@ -1,0 +1,15 @@
+======================================================================
+DEPENDENCY INVERSION — VALIDATION REPORT
+======================================================================
+
+Files scanned: 3  |  Skipped (entry points): 1
+
+## Dependencies created internally instead of injected (1 found)
+
+  Service.__init__() creates GitLabClient()
+    self.client = GitLabClient(...)
+    -> pkg/service.py:4
+    Fix: pass GitLabClient as a constructor parameter:
+         def __init__(self, client: GitLabClient)
+
+Result: DI violations found (report-only mode)

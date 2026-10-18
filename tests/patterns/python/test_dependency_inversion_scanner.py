@@ -6,6 +6,7 @@ import ast
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -563,3 +564,33 @@ class TestDependencyInversionScanner:
         payload = json.loads(capsys.readouterr().out)
         assert rc == 0
         assert payload["violation_count"] == 1
+
+    # --- Text Output Contract ---
+
+    def test_emit_text_matches_committed_contract(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The captured text report is a byte-for-byte contract.
+
+        The comparison is exact on purpose and must not be loosened to a
+        substring or regex check: a legitimate change to the rendered report is
+        ``pytest --update-fixtures`` followed by a reviewed diff.
+
+        """
+        violations = [
+            {
+                "class": "Service",
+                "created": "GitLabClient",
+                "attribute": "client",
+                "method": "__init__",
+                "line": 4,
+                "file": "pkg/service.py",
+            }
+        ]
+        DependencyInversionScanner._emit_text(violations, 3, 1)
+        text_contract(
+            "patterns/python/dependency_inversion_scanner.txt",
+            capsys.readouterr().out,
+        )

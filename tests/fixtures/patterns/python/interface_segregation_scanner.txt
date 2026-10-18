@@ -1,0 +1,20 @@
+======================================================================
+INTERFACE SEGREGATION (ISP) — VALIDATION REPORT
+======================================================================
+
+## Fat interfaces (1 found, >= 5 methods)
+
+  BigProtocol (6 methods)
+    -> pkg/mod.py:3
+    Methods: m0, m1, m2, m3, m4, m5
+    Implementers: PartialImpl
+    Fix: split into smaller, focused protocols
+
+## Implementers stubbing interface methods (1 found)
+
+  PartialImpl.m0() — raises NotImplementedError
+    Protocol: BigProtocol
+    -> pkg/impl.py:12
+    Fix: split BigProtocol so PartialImpl only depends on what it needs
+
+Result: ISP violations found (report-only mode)

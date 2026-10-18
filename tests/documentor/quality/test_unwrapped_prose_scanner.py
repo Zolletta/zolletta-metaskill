@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -226,3 +227,20 @@ class TestUnwrappedProseScanner:
         )
         assert UnwrappedProseScanner.main() == 0
         assert json.loads(capsys.readouterr().out)["skipped"] is True
+
+    # --- Text contract ---
+
+    def test_emit_text_matches_committed_contract(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The captured text report is a byte-for-byte contract.
+
+        Do not loosen this assertion: it pins the exact text output. A
+        legitimate change is ``pytest --update-fixtures`` plus a reviewed
+        diff, never a hand-edit or a weaker matcher.
+        """
+        findings = UnwrappedProseScanner.scan_text("docs/guide.md", "A sentence that\nwraps.\n")
+        UnwrappedProseScanner._emit_text([Path("docs")], 3, findings)
+        text_contract("documentor/quality/unwrapped_prose_scanner.txt", capsys.readouterr().out)
