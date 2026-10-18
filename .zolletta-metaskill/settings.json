@@ -1,0 +1,183 @@
+{
+  "setup_version": "3.2.0",
+  "setup_timestamp": "2026-09-26T15:49:04",
+  "language": "python",
+  "container_name": null,
+  "tokensave_available": true,
+  "acronyms": [],
+  "python": {
+    "tools": {
+      "uv": {
+        "available": true
+      },
+      "ruff": {
+        "available": true,
+        "line_length": 100,
+        "target_version": "py312",
+        "select": [
+          "E",
+          "W",
+          "F",
+          "I",
+          "B",
+          "C4",
+          "D",
+          "UP",
+          "T20",
+          "SIM",
+          "PGH003",
+          "PGH004"
+        ],
+        "ignore": [
+          "B008",
+          "T201",
+          "D104",
+          "D107",
+          "D203",
+          "D213"
+        ]
+      },
+      "pytest": {
+        "available": true,
+        "addopts": [
+          "-ra",
+          "--tb=short"
+        ],
+        "testpaths": [
+          "tests"
+        ],
+        "minversion": "8.0"
+      },
+      "ty": {
+        "available": false,
+        "python_version": "3.12"
+      },
+      "vulture": {
+        "available": true
+      },
+      "mypy": {
+        "available": true,
+        "strict": true,
+        "python_version": "3.12"
+      },
+      "mutmut": {
+        "available": true
+      }
+    },
+    "paths": {
+      "source": [
+        "src"
+      ],
+      "tests": [
+        "tests"
+      ],
+      "package": "zolletta_metaskill"
+    },
+    "code_style": {
+      "check_acronym_casing": true,
+      "check_no_relative_imports": true,
+      "check_one_class_per_file": true,
+      "check_one_class_per_test_file": true,
+      "check_zero_class_files": true,
+      "check_filename_matches_class": true,
+      "check_public_docstrings": true,
+      "check_docstring_no_type_repeat": true,
+      "check_skip_obvious_docstrings": true,
+      "check_line_length": true,
+      "check_file_length": true,
+      "check_unused_all_exports": true,
+      "docstring_strip_private": false,
+      "docstring_strip_tests": false,
+      "docstring_strip_nested": false,
+      "docstring_strip_obvious_init": false,
+      "max_file_length": 800,
+      "vulture_min_confidence": 80,
+      "max_cyclomatic_complexity": 12,
+      "max_function_length": 125
+    },
+    "testing": {
+      "coverage_gap_threshold": 50,
+      "coverage_well_covered_threshold": 80,
+      "check_test_naming": true,
+      "test_naming_min_segments": 3,
+      "check_mutation_testing": true,
+      "mutation_score_threshold": 80,
+      "mutation_target": "changed",
+      "mutation_max_mutants": 50
+    },
+    "patterns": {
+      "check_ocp": true,
+      "check_isp": true,
+      "check_dip": true,
+      "check_lsp": true,
+      "check_test_structure": true,
+      "ocp_min_branches": 3,
+      "isp_min_methods": 5,
+      "dip_entry_points": [
+        "main",
+        "cli",
+        "app",
+        "__main__",
+        "myproject",
+        "manage",
+        "wsgi",
+        "asgi",
+        "conftest"
+      ],
+      "class_metrics_top": 30,
+      "class_metrics_min_lines": 50,
+      "test_god_classes_top": 30
+    },
+    "pyproject_mtime": 1790520830.5984225
+  },
+  "php": null,
+  "subcommands": {
+    "patterns": {
+      "model": null
+    },
+    "documentor": {
+      "model": null
+    },
+    "python-code-style": {
+      "model": null
+    },
+    "python-testing-style": {
+      "model": null
+    },
+    "php-code-style": {
+      "model": null
+    },
+    "php-testing-style": {
+      "model": null
+    }
+  },
+  "documentation": {
+    "language": "en",
+    "dir": "docs",
+    "adrs": "explanation/adr/architecture",
+    "min_severity": "high",
+    "staleness_threshold": null,
+    "readme_focus": false,
+    "readme_sections": [
+      "installation",
+      "usage",
+      "api",
+      "contributing",
+      "license"
+    ],
+    "diataxis_translations": null,
+    "staleness_weights": null,
+    "doc_patterns": [
+      "*.md",
+      "*.rst",
+      "*.txt",
+      "*.adoc"
+    ],
+    "check_external": false,
+    "include_referential": false,
+    "api_doc_recursive": true,
+    "api_doc_include_private": false,
+    "api_doc_suggest_coverage": false
+  },
+  "runs_dir": ".zolletta-metaskill"
+}
