@@ -29,7 +29,6 @@ class DocumentorSettings:
         documentation_rel_dir: Repository-relative docs root
             (``documentation.dir``).
         adrs_dir: Repository-relative ADR directory, or ``None``.
-        doc_patterns: Glob patterns for doc discovery, or ``None`` for defaults.
         include_referential: Whether referential drift checks run.
         rename_window_days: How far back rename drift is looked for.
         min_severity: Lowest severity to report.
@@ -72,7 +71,6 @@ class DocumentorSettings:
     cache_dir: Path
     documentation_rel_dir: Path
     adrs_dir: Path | None
-    doc_patterns: tuple[str, ...] | None
     include_referential: bool
     rename_window_days: int
     min_severity: str
@@ -98,12 +96,6 @@ class DocumentorSettings:
         # depends on ``utils``.
         from zolletta_metaskill.documentor.quality.quality_scorer import QualityScorer
 
-        raw_patterns = ProjectConfig.setting(settings, "documentation.doc_patterns", None)
-        doc_patterns = (
-            tuple(p for p in raw_patterns if isinstance(p, str))
-            if isinstance(raw_patterns, list)
-            else None
-        )
         # One read, two consumers: the quadrants and the required sections are both
         # derived from this file when it is configured.
         translations_path = cls._translations_path(settings)
@@ -111,7 +103,6 @@ class DocumentorSettings:
             cache_dir=cls.resolve_cache_dir(settings),
             documentation_rel_dir=ProjectConfig.docs_dir(settings),
             adrs_dir=ProjectConfig.adrs_dir(settings),
-            doc_patterns=doc_patterns,
             include_referential=bool(
                 ProjectConfig.setting(settings, "documentation.include_referential", False)
             ),

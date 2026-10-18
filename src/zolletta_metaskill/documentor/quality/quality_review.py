@@ -15,9 +15,10 @@ from zolletta_metaskill.documentor.quality.drift_detector import DriftDetector
 from zolletta_metaskill.documentor.quality.quality_report_writer import QualityReportWriter
 from zolletta_metaskill.documentor.quality.quality_scorer import QualityScorer
 from zolletta_metaskill.documentor.quality.structs import GitRunContext
+from zolletta_metaskill.documentor.structs import DocumentationInventory
 from zolletta_metaskill.documentor.utils.doc_code_mapper import DocCodeMapper
+from zolletta_metaskill.documentor.utils.documentation_files_finder import DocumentationFilesFinder
 from zolletta_metaskill.documentor.utils.documentor_settings import DocumentorSettings
-from zolletta_metaskill.documentor.utils.file_discovery import FileDiscovery
 from zolletta_metaskill.documentor.utils.git_helper import GitHelper
 
 
@@ -27,12 +28,28 @@ class QualityReview:
     CACHE_FILENAME = "quality.json"
 
     @staticmethod
-    def _configured_doc_patterns(settings: dict[str, Any]) -> list[str] | None:
-        """Resolve ``documentation.doc_patterns`` to a list of patterns."""
-        raw_patterns = ProjectConfig.setting(settings, "documentation.doc_patterns", None)
-        if isinstance(raw_patterns, list):
-            return [p for p in raw_patterns if isinstance(p, str)]
-        return None
+    def _required_sections(
+        inventory: DocumentationInventory,
+        doc_settings: DocumentorSettings,
+        doc_path: str,
+    ) -> list[str]:
+        """Return the README sections *doc_path* is scored for carrying.
+
+        README sections describe a README. Applying them to every document that
+        is not in a Diátaxis quadrant directory — which is what happens when the
+        completeness scorer is simply handed them — scored ``AGENTS.md`` 0.0 for
+        want of an installation section, and ``docs/index.md`` 80.0.
+
+        The kind comes from the inventory rather than from where the file sits,
+        so the gate is a fact about the document instead of an inference. It is
+        applied here rather than inside the scorer because ``score_document``
+        already declares five parameters and a sixth would break
+        ``thresholds.1``; the number of section sets is a property of the
+        document, which is what the inventory is for.
+        """
+        if inventory.kind_of(doc_path) == "readme":
+            return list(doc_settings.required_sections)
+        return []
 
     @staticmethod
     def run(repo_path: str, settings: dict[str, Any], cache_dir: Path) -> Path:
@@ -44,8 +61,8 @@ class QualityReview:
         cache_dir.mkdir(parents=True, exist_ok=True)
         cache_path = cache_dir / QualityReview.CACHE_FILENAME
 
-        patterns = QualityReview._configured_doc_patterns(settings)
-        doc_files = FileDiscovery.find_doc_files(repo_path, patterns=patterns)
+        inventory = DocumentationFilesFinder.find(settings, repo_path)
+        doc_files = list(inventory.all_paths)
 
         readme_focus = bool(ProjectConfig.setting(settings, "documentation.readme_focus", False))
         if readme_focus:
@@ -67,7 +84,7 @@ class QualityReview:
                 },
                 "documents": [],
                 "issues": [],
-                "skipped_reason": "No documentation files found",
+                "skipped_reason": inventory.skipped_reason or "No documentation files found",
             }
             cache_path.write_text(json.dumps(empty_data, indent=2, default=str) + "\n")
             return cache_path
@@ -121,7 +138,7 @@ class QualityReview:
                     repo_path,
                     doc,
                     doc_settings.staleness_weights,
-                    list(doc_settings.required_sections),
+                    QualityReview._required_sections(inventory, doc_settings, doc),
                     doc_settings.quadrants,
                 )
             )

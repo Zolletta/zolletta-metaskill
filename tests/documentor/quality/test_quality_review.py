@@ -14,6 +14,7 @@ from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.documentor.quality.drift_detector import DriftDetector
 from zolletta_metaskill.documentor.quality.quality_review import QualityReview
 from zolletta_metaskill.documentor.quality.quality_scorer import QualityScorer
+from zolletta_metaskill.documentor.structs import DocumentationInventory
 from zolletta_metaskill.documentor.utils.doc_code_mapper import DocCodeMapper
 from zolletta_metaskill.documentor.utils.documentor_settings import DocumentorSettings
 from zolletta_metaskill.documentor.utils.git_helper import GitHelper
@@ -63,7 +64,8 @@ class TestQualityReview:
 
     def test_readme_focus_setting(self, tmp_path: Path) -> None:
         (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
-        (tmp_path / "guide.md").write_text("# Guide\n\n" + "content\n" * 15)
+        (tmp_path / "docs").mkdir()
+        (tmp_path / "docs" / "guide.md").write_text("# Guide\n\n" + "content\n" * 15)
         cache_dir = tmp_path / "cache"
         score = {
             "file": "README.md",
@@ -155,7 +157,8 @@ class TestQualityReview:
 
     def test_include_referential_setting(self, tmp_path: Path) -> None:
         """include_referential is forwarded to DriftDetector."""
-        (tmp_path / "guide.md").write_text("# Guide\n\n" + "content\n" * 15)
+        (tmp_path / "docs").mkdir()
+        (tmp_path / "docs" / "guide.md").write_text("# Guide\n\n" + "content\n" * 15)
         cache_dir = tmp_path / "cache"
         p = self._patch_git()
         with (
@@ -189,26 +192,63 @@ class TestQualityReview:
         data = self._read_cache(cache_dir)
         assert data["summary"]["total_issues"] == 0
 
-    # --- _configured_doc_patterns ---
+    # --- _required_sections ---
 
-    def test_configured_doc_patterns_drops_non_string_entries(self) -> None:
-        """Mixed lists keep only the string glob patterns."""
-        settings = {
-            "language": "python",
-            "documentation": {"doc_patterns": ["*.md", 42, None, "*.rst"]},
-        }
-        assert QualityReview._configured_doc_patterns(settings) == ["*.md", "*.rst"]
+    def test_required_sections_applies_to_the_readme_document(self) -> None:
+        """The README is the one document scored against README sections."""
+        inventory = DocumentationInventory(root_documents={"readme": "README.md"})
+        settings = DocumentorSettings.from_settings(self._settings(readme_sections=["usage"]))
+        assert QualityReview._required_sections(inventory, settings, "README.md") == ["usage"]
 
-    def test_configured_doc_patterns_returns_none_for_non_list(self) -> None:
-        """A non-list ``doc_patterns`` value falls back to the default discovery."""
-        settings = {"language": "python", "documentation": {"doc_patterns": "*.md"}}
-        assert QualityReview._configured_doc_patterns(settings) is None
+    def test_required_sections_skip_a_root_document_that_is_not_a_readme(self) -> None:
+        """AGENTS.md is a document, but not a README, so no sections apply."""
+        inventory = DocumentationInventory(root_documents={"agents": "AGENTS.md"})
+        settings = DocumentorSettings.from_settings(self._settings(readme_sections=["usage"]))
+        assert QualityReview._required_sections(inventory, settings, "AGENTS.md") == []
 
-    def test_configured_doc_patterns_returns_none_when_unset(self) -> None:
-        """Missing ``doc_patterns`` resolves to ``None``."""
-        assert QualityReview._configured_doc_patterns({"language": "python"}) is None
+    def test_required_sections_skip_a_file_inside_the_docs_dir(self) -> None:
+        """A file under documentation.dir is documentation, not a kind of one."""
+        inventory = DocumentationInventory(documentation=("docs/index.md",))
+        settings = DocumentorSettings.from_settings(self._settings(readme_sections=["usage"]))
+        assert QualityReview._required_sections(inventory, settings, "docs/index.md") == []
 
     # --- run(): code file discovery and doc mapping ---
+
+    def test_run_counts_docs_dir_and_root_documents_together(self, tmp_path: Path) -> None:
+        """Discovery is documentation.dir plus the root documents, and nothing else."""
+        (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
+        (tmp_path / "docs").mkdir()
+        (tmp_path / "docs" / "guide.md").write_text("# Guide\n\n" + "content\n" * 15)
+        cache_dir = tmp_path / "cache"
+        p = self._patch_git()
+        with p[0], p[1], p[2], p[3], p[4]:
+            QualityReview.run(str(tmp_path), self._settings(), cache_dir)
+        data = self._read_cache(cache_dir)
+        assert data["summary"]["total_docs"] == 2
+        assert sorted(d["file"] for d in data["documents"]) == ["README.md", "docs/guide.md"]
+
+    def test_run_ignores_markdown_outside_docs_and_root_documents(self, tmp_path: Path) -> None:
+        """Markdown that is not documentation is not scored as if it were."""
+        (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
+        (tmp_path / "guide.md").write_text("# Guide\n\n" + "content\n" * 15)
+        (tmp_path / "skills" / "one").mkdir(parents=True)
+        (tmp_path / "skills" / "one" / "SKILL.md").write_text("# Skill\n")
+        cache_dir = tmp_path / "cache"
+        p = self._patch_git()
+        with p[0], p[1], p[2], p[3], p[4]:
+            QualityReview.run(str(tmp_path), self._settings(), cache_dir)
+        data = self._read_cache(cache_dir)
+        assert data["summary"]["total_docs"] == 1
+        assert data["documents"][0]["file"] == "README.md"
+
+    def test_run_reports_a_configured_docs_dir_that_is_missing(self, tmp_path: Path) -> None:
+        """A misconfigured documentation.dir is reported, not silently a zero."""
+        cache_dir = tmp_path / "cache"
+        settings: dict[str, object] = {"language": "python", "documentation": {"dir": "manual"}}
+        QualityReview.run(str(tmp_path), settings, cache_dir)
+        data = self._read_cache(cache_dir)
+        assert data["summary"]["total_docs"] == 0
+        assert data["skipped_reason"] == "documentation.dir 'manual' is not a directory"
 
     def test_duplicate_code_files_across_scopes_are_deduplicated(self, tmp_path: Path) -> None:
         """Two scopes yielding the same code files contribute each file once."""
@@ -231,7 +271,7 @@ class TestQualityReview:
 
     def test_empty_doc_mapping_falls_back_to_repository_root(self, tmp_path: Path) -> None:
         """An empty mapping for a doc falls back to the whole repository."""
-        (tmp_path / "guide.md").write_text("# Guide\n\n" + "content\n" * 15)
+        (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
         cache_dir = tmp_path / "cache"
         p = self._patch_git()
         with (
@@ -240,11 +280,11 @@ class TestQualityReview:
             p[2],
             p[3],
             p[4],
-            patch.object(DocCodeMapper, "map_docs_to_code", return_value={"guide.md": []}),
+            patch.object(DocCodeMapper, "map_docs_to_code", return_value={"README.md": []}),
             patch.object(DriftDetector, "detect_drift_for_doc", return_value=[]) as mock_detect,
         ):
             QualityReview.run(str(tmp_path), self._settings(), cache_dir)
-        assert mock_detect.call_args.args[2] == "guide.md"
+        assert mock_detect.call_args.args[2] == "README.md"
         assert mock_detect.call_args.args[3] == [""]
 
     def test_unknown_min_severity_falls_back_to_info(self, tmp_path: Path) -> None:
