@@ -28,10 +28,10 @@ class TestGitRunContext:
 
     # --- Immutability ---
 
-    def test_is_frozen(self) -> None:
+    def test_git_run_context_assign_field_when_frozen_raises(self) -> None:
         ctx = GitRunContext(repo_root="/repo")
         try:
-            ctx.repo_root = "/other"  # type: ignore[misc]
+            setattr(ctx, "repo_root", "/other")
         except dataclasses.FrozenInstanceError:
             return
         raise AssertionError("GitRunContext should be frozen")

@@ -64,10 +64,10 @@ class TestDocContext:
 
     # --- Immutability ---
 
-    def test_is_frozen(self) -> None:
+    def test_doc_context_assign_field_when_frozen_raises(self) -> None:
         ctx = DocContext(file_rel_path="docs/x.md")
         with pytest.raises(dataclasses.FrozenInstanceError):
-            ctx.file_rel_path = "other.md"  # type: ignore[misc]
+            setattr(ctx, "file_rel_path", "other.md")
 
     def test_refs_default_is_not_shared_between_instances(self) -> None:
         """A mutable default on a frozen dataclass would leak across instances."""

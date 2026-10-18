@@ -25,7 +25,7 @@ class TestLinkInfo:
         assert info.is_valid is None
         assert info.error is None
 
-    def test_to_dict(self) -> None:
+    def test_link_info_to_dict_serializes_all_keys(self) -> None:
         """to_dict serializes all expected keys."""
         info = LinkInfo(
             source_file="readme.md",

@@ -64,7 +64,7 @@ class TestSourceSignature:
         )
         assert sig.qualified_name == "MyClass.bar"
 
-    def test_is_deprecated(self) -> None:
+    def test_source_signature_is_deprecated_when_decorator_present(self) -> None:
         """is_deprecated checks for 'deprecated' in decorators."""
         sig = SourceSignature(
             name="old",
@@ -76,7 +76,7 @@ class TestSourceSignature:
         )
         assert sig.is_deprecated
 
-    def test_to_dict(self) -> None:
+    def test_source_signature_to_dict_serializes_all_keys(self) -> None:
         """to_dict serializes all expected keys."""
         sig = SourceSignature(
             name="helper",

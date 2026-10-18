@@ -36,7 +36,7 @@ from tree_sitter import Node
 
 from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
 from zolletta_metaskill.core.engine.php_engine import PHPEngine
-from zolletta_metaskill.core.engine.raw_ast_engine import RawAstEngine
+from zolletta_metaskill.core.engine.raw_ast_engine import RawASTEngine
 from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.core.structs import Finding, ModuleInfo
 
@@ -242,7 +242,7 @@ class DependencyInversionScanner:
         """
         DependencyInversionScanner._ensure_php_engine()
         engine = EngineRegistry.get_for_file(path)
-        if engine is None or not isinstance(engine, RawAstEngine):  # pragma: no cover
+        if engine is None or not isinstance(engine, RawASTEngine):  # pragma: no cover
             return []  # pragma: no cover
 
         try:

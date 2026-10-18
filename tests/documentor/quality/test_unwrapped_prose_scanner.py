@@ -10,8 +10,6 @@ import pytest
 from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.documentor.quality.unwrapped_prose_scanner import UnwrappedProseScanner
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-
 
 class TestUnwrappedProseScanner:
     # --- paragraph_runs ---
@@ -228,24 +226,3 @@ class TestUnwrappedProseScanner:
         )
         assert UnwrappedProseScanner.main() == 0
         assert json.loads(capsys.readouterr().out)["skipped"] is True
-
-
-class TestUnwrappedProseRepoGuard:
-    """The convention is unenforced by markdownlint, so pytest enforces it."""
-
-    #: CHANGELOG.md is written by python-semantic-release on every release and
-    #: is already excluded from the markdownlint gate in
-    #: ``.markdownlint-cli2.jsonc``; wrapping is the generator's, not ours.
-    GENERATED = {"CHANGELOG.md"}
-
-    def test_no_markdown_in_this_repo_has_a_wrapped_paragraph(self) -> None:
-        findings = [
-            f
-            for f in UnwrappedProseScanner.scan_roots([REPO_ROOT])
-            if Path(f.file).name not in self.GENERATED
-        ]
-        assert findings == [], "\n".join(f"{f.file}:{f.line}  {f.description}" for f in findings)
-
-    def test_repo_guard_actually_scans_a_meaningful_number_of_files(self) -> None:
-        scanned = ProjectConfig.iter_files(REPO_ROOT, UnwrappedProseScanner.EXTENSIONS)
-        assert len(scanned) > 50

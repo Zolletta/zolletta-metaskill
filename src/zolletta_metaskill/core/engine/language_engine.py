@@ -43,4 +43,3 @@ class LanguageEngine(Protocol):
     def file_extensions(self) -> list[str]:
         """Return the list of file extensions this engine handles (e.g. ``[".py"]``)."""
         ...
-

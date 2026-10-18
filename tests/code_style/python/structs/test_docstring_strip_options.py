@@ -28,10 +28,10 @@ class TestDocstringStripOptions:
 
     # --- Immutability ---
 
-    def test_is_frozen(self) -> None:
+    def test_docstring_strip_options_assign_field_when_frozen_raises(self) -> None:
         options = DocstringStripOptions()
         try:
-            options.strip_private = True  # type: ignore[misc]
+            setattr(options, "strip_private", True)
         except dataclasses.FrozenInstanceError:
             return
         raise AssertionError("DocstringStripOptions should be frozen")

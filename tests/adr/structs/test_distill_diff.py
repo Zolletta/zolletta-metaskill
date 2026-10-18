@@ -34,10 +34,10 @@ class TestDistillDiff:
 
     # --- Immutability ---
 
-    def test_is_frozen(self) -> None:
+    def test_distill_diff_assign_field_when_frozen_raises(self) -> None:
         diff = DistillDiff()
         try:
-            diff.directive_lines = ("x",)  # type: ignore[misc]
+            setattr(diff, "directive_lines", ("x",))
         except dataclasses.FrozenInstanceError:
             return
         raise AssertionError("DistillDiff should be frozen")

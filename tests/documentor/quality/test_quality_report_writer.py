@@ -25,7 +25,7 @@ class TestQualityReportWriter:
         assert QualityReportWriter.get_label(10.0) == "abandoned"
         assert QualityReportWriter.get_label(-5.0) == "unknown"
 
-    def test_score_bar(self) -> None:
+    def test_score_bar_fills_half_when_score_is_fifty(self) -> None:
         """_score_bar generates an ascii progress bar."""
         bar = QualityReportWriter._score_bar(50.0, width=10)
         assert bar == "[#####.....]"

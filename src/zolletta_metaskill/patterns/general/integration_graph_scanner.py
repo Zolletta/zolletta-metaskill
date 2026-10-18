@@ -61,7 +61,7 @@ from pathlib import Path
 from typing import Any
 
 from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
-from zolletta_metaskill.core.engine.raw_ast_engine import RawAstEngine
+from zolletta_metaskill.core.engine.raw_ast_engine import RawASTEngine
 from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.core.structs import ImportInfo, ModuleInfo
 
@@ -300,7 +300,7 @@ class IntegrationGraphScanner:
         }
         ProjectConfig.ensure_engines()
         engine = EngineRegistry.get_for_file(path)
-        if not isinstance(engine, RawAstEngine):
+        if not isinstance(engine, RawASTEngine):
             return kinds
         try:
             tree, source = engine.parse_raw(path)

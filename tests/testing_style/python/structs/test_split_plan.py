@@ -50,10 +50,10 @@ class TestSplitPlan:
 
     # --- Immutability ---
 
-    def test_is_frozen(self) -> None:
+    def test_split_plan_assign_field_when_frozen_raises(self) -> None:
         plan = SplitPlan(original_module=_module(), class_node=_class())
         try:
-            plan.original_class_name = "Other"  # type: ignore[misc]
+            setattr(plan, "original_class_name", "Other")
         except dataclasses.FrozenInstanceError:
             return
         raise AssertionError("SplitPlan should be frozen")

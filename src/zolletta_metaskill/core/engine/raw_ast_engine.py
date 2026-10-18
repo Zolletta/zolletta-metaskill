@@ -1,4 +1,4 @@
-"""The :class:`RawAstEngine` protocol — engines that expose their own parser tree.
+"""The :class:`RawASTEngine` protocol — engines that expose their own parser tree.
 
 :class:`~zolletta_metaskill.core.engine.language_engine.LanguageEngine` is
 language-neutral: it returns :class:`~zolletta_metaskill.core.structs.module_info.ModuleInfo`
@@ -23,7 +23,7 @@ from typing import Any, Protocol, runtime_checkable
 
 
 @runtime_checkable
-class RawAstEngine(Protocol):
+class RawASTEngine(Protocol):
     """An engine that can return its parser's own tree for a source file."""
 
     def parse_raw(self, path: Path) -> tuple[Any, bytes]:

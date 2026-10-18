@@ -5,8 +5,9 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
-# Aliased: the test class must be named Test<SutName> per AGENTS.md, which
-# would otherwise shadow the struct it exercises.
+# Aliased: the test class must be named Test<SutName> per tests.2, and the
+# struct's own name starts with ``Test`` — importing it directly makes pytest
+# try to collect it as a test class (PytestCollectionWarning).
 from zolletta_metaskill.testing_style.general.structs import (
     TestStructureResults as Results,
 )
@@ -18,7 +19,7 @@ def _item(**overrides: Any) -> dict[str, Any]:
     return base
 
 
-class TestStructureResults:
+class TestTestStructureResults:
     # --- Defaults ---
 
     def test_all_buckets_default_to_empty(self) -> None:
@@ -40,10 +41,10 @@ class TestStructureResults:
 
     # --- Immutability ---
 
-    def test_is_frozen(self) -> None:
+    def test_structure_results_assign_field_when_frozen_raises(self) -> None:
         results = Results()
         try:
-            results.missing = [_item()]  # type: ignore[misc]
+            setattr(results, "missing", [_item()])
         except dataclasses.FrozenInstanceError:
             return
         raise AssertionError("TestStructureResults should be frozen")
