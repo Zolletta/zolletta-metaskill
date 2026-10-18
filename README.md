@@ -51,6 +51,12 @@ For a focused review, run a single subcommand:
 
 New to Zolletta-metaskill? Read the [getting started tutorial](https://metaskill.zolletta.org/tutorials/getting-started/).
 
+## API
+
+Zolletta-metaskill exposes no library API — it is a set of agent skills driven from the command line. The interface is the `/zolletta-metaskill <subcommand>` invocation, where `<subcommand>` selects exactly one skill: `setup`, `review`, `patterns`, `documentor`, `python-code-style`, `python-testing-style`, `php-code-style`, `php-testing-style`, `adr-distiller`, or `help`.
+
+Each subcommand is self-contained: it reads its thresholds and scan roots from `.zolletta-metaskill/settings.json`, runs the scanners under `src/zolletta_metaskill/`, and writes a report into the run folder. The scanners are plain scripts with a `[--json]` flag and no positional arguments, so they can also be run directly from the repository root in CI or for dogfooding. See the [subcommands reference](https://metaskill.zolletta.org/reference/subcommands/) for the dispatch contract and the [scripts reference](https://metaskill.zolletta.org/reference/code/scripts/) for the command-line contract.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and the quality gate.
