@@ -44,7 +44,7 @@ class QualityReview:
         so the gate is a fact about the document instead of an inference. It is
         applied here rather than inside the scorer because ``score_document``
         already declares five parameters and a sixth would break
-        ``thresholds.1``; the number of section sets is a property of the
+        ``functions.1``; the number of section sets is a property of the
         document, which is what the inventory is for.
         """
         if inventory.kind_of(doc_path) == "readme":

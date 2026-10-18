@@ -385,7 +385,7 @@ class LinkChecker:
         """Find all markdown files under a path (git-ignore aware).
 
         Every markdown file in the repository, not only the documentation: a
-        link is broken wherever it is written, and ``markdown.4`` holds
+        link is broken wherever it is written, and ``documentation.4`` holds
         ``skills/`` to the same relative-link rule as ``docs/``. Narrowing this
         to the documentation inventory would drop the 60 links under
         ``skills/`` and report them clean, and a false all-clear is the one
