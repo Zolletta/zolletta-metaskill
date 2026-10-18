@@ -120,7 +120,6 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
     "readme_sections": ["installation", "usage", "api", "contributing", "license"],
     "diataxis_translations": null,
     "staleness_weights": null,
-    "doc_patterns": ["*.md", "*.rst", "*.txt", "*.adoc"],
     "check_external": false,
     "include_referential": false,
     "rename_window_days": 90,
@@ -226,7 +225,6 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
     "readme_sections": ["installation", "usage", "api", "contributing", "license"],
     "diataxis_translations": null,
     "staleness_weights": null,
-    "doc_patterns": ["*.md", "*.rst", "*.txt", "*.adoc"],
     "check_external": false,
     "include_referential": false,
     "rename_window_days": 90,
@@ -284,7 +282,7 @@ The six subcommand keys:
 | Field                                    | Type           | Default                                                       | Description                                                                                                                                                                                                                       |
 |------------------------------------------|----------------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `documentation.language`                 | string         | `"en"`                                                        | ISO 639-1 code for documentation language. When not `"en"`, the `documentor` skill translates Diátaxis signpost headings before running the staleness scorer                                                                      |
-| `documentation.dir`                      | string         | `"docs"`                                                      | Directory where project documentation lives. Used by the `documentor` skill to locate the Diátaxis docs tree for drift detection and staleness scoring                                                                            |
+| `documentation.dir`                      | string         | `"docs"`                                                      | Directory where project documentation lives, plus the root documents `README.md`, `CONTRIBUTING.md` and `AGENTS.md`. Documentation is markdown only                                                                               |
 | `documentation.adrs`                     | string \| null | `null`                                                        | Relative path within `documentation.dir` where architecture ADRs live (e.g. `"adr"` or `"adr/architecture"` when an `ACT` archive exists), `""` if scattered in docs root, or `null` if no ADRs found. Auto-detected during setup |
 | `documentation.min_severity`             | string         | `"high"`                                                      | Minimum severity reported by `quality/quality_review.py` (`critical`, `high`, `medium`, `low`, `info`)                                                                                                                            |
 | `documentation.staleness_threshold`      | number \| null | `null`                                                        | If set, `quality/quality_review.py` and `documentor_cli.py` exit 1 when the freshness score falls below this value (0–100). `null` = report-only                                                                                  |
@@ -292,7 +290,6 @@ The six subcommand keys:
 | `documentation.readme_sections`          | array          | `["installation", "usage", "api", "contributing", "license"]` | Section names a README is expected to contain (completeness dimension of `quality/quality_review.py`)                                                                                                                             |
 | `documentation.diataxis_translations`    | string \| null | `null`                                                        | Path to a JSON file mapping Diátaxis signpost headings to translations. `null` = built-in translations                                                                                                                            |
 | `documentation.staleness_weights`        | object \| null | `null`                                                        | Custom dimension weights for `quality/quality_review.py` (`last_updated`, `code_doc_alignment`, `link_health`, `completeness`, `accuracy`; normalized to sum 1.0)                                                                 |
-| `documentation.doc_patterns`             | array          | `["*.md", "*.rst", "*.txt", "*.adoc"]`                        | Glob patterns for documentation files scanned by `quality/quality_review.py`                                                                                                                                                      |
 | `documentation.check_external`           | boolean        | `false`                                                       | When `true`, `links/link_checker.py` verifies external http(s) links too                                                                                                                                                          |
 | `documentation.check_unwrapped_prose`    | boolean        | `false`                                                       | When `true`, `quality/unwrapped_prose_scanner.py` reports markdown paragraphs broken mid-sentence. Opt-in: clear the backlog first, or formatting noise buries real drift findings                                                |
 | `documentation.include_referential`      | boolean        | `false`                                                       | When `true`, `quality/quality_review.py` also reports referential drift, not just broken links                                                                                                                                    |

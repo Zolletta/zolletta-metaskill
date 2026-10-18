@@ -47,7 +47,7 @@ python src/zolletta_metaskill/documentor/quality/quality_review.py
 python src/zolletta_metaskill/documentor/quality/quality_review.py --json
 ```
 
-Doc patterns (`documentation.doc_patterns`), minimum severity (`documentation.min_severity`), and referential drift (`documentation.include_referential`) are settings, not flags.
+Minimum severity (`documentation.min_severity`) and referential drift (`documentation.include_referential`) are settings, not flags. What counts as documentation is not configurable: it is the markdown under `documentation.dir` plus the root documents `README.md`, `CONTRIBUTING.md` and `AGENTS.md`.
 
 **What it does:** Maps docs to code, compares git histories, classifies drift by category/severity/fix-type.
 

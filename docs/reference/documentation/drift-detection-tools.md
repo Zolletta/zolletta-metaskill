@@ -39,7 +39,7 @@ The aggregated report has named sections — `quality`, `api_doc`, `links` — p
 
 ## quality/quality_review.py
 
-Unified documentation quality review: combines drift detection (`quality/drift_detector.py`) and multi-dimensional staleness scoring (`quality/quality_scorer.py`) in a single pass, writes `quality.json`. Maps docs to code, compares git histories, detects renamed files, version drift, and structural gaps; classifies each drift issue by category, severity, and fix type; scores freshness 0-100 across five dimensions. Respects `.gitignore`.
+Unified documentation quality review: combines drift detection (`quality/drift_detector.py`) and multi-dimensional staleness scoring (`quality/quality_scorer.py`) in a single pass, writes `quality.json`. Maps docs to code, compares git histories, detects renamed files, version drift, and structural gaps; classifies each drift issue by category, severity, and fix type; scores freshness 0-100 across five dimensions. Respects `.gitignore`. Documentation is the markdown under `documentation.dir` plus the root documents `README.md`, `CONTRIBUTING.md` and `AGENTS.md`; `skills/`, `SKILL.md` and `CHANGELOG.md` are out of scope.
 
 ```bash
 python src/zolletta_metaskill/documentor/quality/quality_review.py [--json]
@@ -48,7 +48,6 @@ python src/zolletta_metaskill/documentor/quality/quality_review.py [--json]
 | Setting                               | Default            | Description                                       |
 |---------------------------------------|--------------------|---------------------------------------------------|
 | `documentation.dir`                   | `docs`             | Documentation directory                           |
-| `documentation.doc_patterns`          | `*.md,*.rst,*.txt` | Comma-separated doc file patterns                 |
 | `<lang>.paths.source`                 | `src`/`src/`       | Code analysis scope = union of source roots       |
 | `documentation.min_severity`          | `low`              | Minimum severity to report (high, medium, low)    |
 | `documentation.include_referential`   | false              | Include referential drift (suppressed by default) |

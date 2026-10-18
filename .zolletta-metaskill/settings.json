@@ -167,12 +167,6 @@
     ],
     "diataxis_translations": null,
     "staleness_weights": null,
-    "doc_patterns": [
-      "*.md",
-      "*.rst",
-      "*.txt",
-      "*.adoc"
-    ],
     "check_external": false,
     "include_referential": false,
     "api_doc_recursive": true,

@@ -105,7 +105,6 @@
         "readme_sections",
         "diataxis_translations",
         "staleness_weights",
-        "doc_patterns",
         "check_external",
         "include_referential",
         "api_doc_recursive",
@@ -205,19 +204,6 @@
             }
           },
           "default": null
-        },
-        "doc_patterns": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Glob patterns for documentation files scanned by quality_review.",
-          "default": [
-            "*.md",
-            "*.rst",
-            "*.txt",
-            "*.adoc"
-          ]
         },
         "check_external": {
           "type": "boolean",
