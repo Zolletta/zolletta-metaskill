@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Callable
 from pathlib import Path
+
+import pytest
 
 from zolletta_metaskill.code_style.python.docstring_report_writer import (
     DocstringReportWriter,
@@ -55,3 +58,51 @@ class TestDocstringReportWriter:
         report = FileReport(path=Path("src/b.py"), findings=[finding])
         total = DocstringReportWriter.json_report([report], ["src"], apply_mode=True)
         assert total == 1
+
+    # --- text-output contract (tests.4) ---
+
+    def test_print_report_matches_committed_contract(
+        self, capsys: pytest.CaptureFixture[str], text_contract: Callable[[str, str], None]
+    ) -> None:
+        """The text report is a byte-for-byte contract that must not be loosened.
+
+        The committed fixture is the full captured stdout; a legitimate change is
+        ``pytest --update-fixtures`` plus a reviewed diff.
+        """
+        reports = [
+            FileReport(
+                path=Path("src/a.py"),
+                findings=[
+                    Finding(
+                        file=Path("src/a.py"),
+                        line=4,
+                        kind="redundant",
+                        detail="Redundant Args/Returns section",
+                        node=ast.Pass(),
+                    ),
+                    Finding(
+                        file=Path("src/a.py"),
+                        line=9,
+                        kind="private",
+                        detail="Private function docstring",
+                        node=ast.Pass(),
+                        remove=True,
+                    ),
+                ],
+            ),
+            FileReport(
+                path=Path("src/b.py"),
+                findings=[
+                    Finding(
+                        file=Path("src/b.py"),
+                        line=2,
+                        kind="test",
+                        detail="Test function docstring",
+                        node=ast.Pass(),
+                    ),
+                ],
+            ),
+        ]
+        total = DocstringReportWriter.print_report(reports, apply_mode=False)
+        assert total == 3
+        text_contract("code_style/python/docstring_report_writer.txt", capsys.readouterr().out)

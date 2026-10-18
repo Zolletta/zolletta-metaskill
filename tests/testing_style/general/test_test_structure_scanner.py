@@ -5,11 +5,19 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 from zolletta_metaskill.core.project_config import ProjectConfig
+
+# Aliased: the struct's name starts with ``Test``, so importing it directly makes
+# pytest try to collect it as a test class (PytestCollectionWarning). The mirror
+# test uses the same alias.
+from zolletta_metaskill.testing_style.general.structs import (
+    TestStructureResults as Results,
+)
 from zolletta_metaskill.testing_style.general.test_structure_scanner import (
     TestStructureScanner,
 )
@@ -778,3 +786,52 @@ class TestTestStructureScanner:
         out = capsys.readouterr().out
         assert rc == 0
         assert "STRUCTURAL MISMATCHES" in out or "all clear" in out
+
+    # --- text-output contract (tests.4) ---
+
+    def test_emit_text_matches_committed_contract(
+        self, capsys: pytest.CaptureFixture[str], text_contract: Callable[[str, str], None]
+    ) -> None:
+        """The markdown report is a byte-for-byte contract that must not be loosened.
+
+        The committed fixture is the full captured stdout; a legitimate change is
+        ``pytest --update-fixtures`` plus a reviewed diff.
+        """
+        results = Results(
+            misnamed=[
+                {
+                    "test_file": "test_wrong_name.py",
+                    "referenced_classes": "Cache",
+                    "expected_prefix": "test_cache*.py",
+                    "expected_dir": ".",
+                }
+            ],
+            misplaced=[
+                {
+                    "test_file": "test_item.py",
+                    "source_file": "models/item.py",
+                    "test_dir": ".",
+                    "expected_dir": "models",
+                }
+            ],
+            orphaned=[{"test_file": "test_orphan.py"}],
+            orphaned_dirs=[{"test_dir": "helpers/"}],
+            missing=[
+                {
+                    "source_file": "user.py",
+                    "classes": "User",
+                    "expected_prefix": "test_user*.py",
+                    "expected_dir": ".",
+                }
+            ],
+            indirect_refs=[
+                {
+                    "test_file": "test_cache.py",
+                    "primary_source": "cache.py",
+                    "indirectly_tested_sources": "user.py",
+                    "indirectly_tested_classes": "User",
+                }
+            ],
+        )
+        TestStructureScanner._emit_text([Path("src/mypkg")], [Path("tests/mypkg")], results)
+        text_contract("testing_style/general/test_structure_scanner.txt", capsys.readouterr().out)

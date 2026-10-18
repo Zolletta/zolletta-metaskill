@@ -1,0 +1,57 @@
+# Test Structure — Validation Report
+
+**Source packages:** `src/mypkg`
+**Test packages:** `tests/mypkg`
+
+## 1. Misnamed tests (1)
+
+| Test file | Referenced classes | Expected prefix | Expected dir |
+|---|---|---|---|
+| `test_wrong_name.py` | Cache | `test_cache*.py` | `./ |
+
+## 2. Misplaced tests (1)
+
+| Test file | Source file | Current dir | Expected dir |
+|---|---|---|---|
+| `test_item.py` | `models/item.py` | `./ | `models/ |
+
+## 3. Orphaned tests (2)
+
+### Orphaned test directories
+
+| Test directory |
+|---|
+| `helpers/` |
+
+### Orphaned test files
+
+| Test file |
+|---|
+| `test_orphan.py` |
+
+## 4. Missing tests (1)
+
+| Source file | Classes | Expected prefix | Expected dir |
+|---|---|---|---|
+| `user.py` | User | `test_user*.py` | `./ |
+
+## 5. Indirect references (1) — informative only
+
+| Test file | Primary source | Indirectly tested sources | Indirectly tested classes |
+|---|---|---|---|
+| `test_cache.py` | `cache.py` | `user.py` | User |
+
+---
+
+## Summary
+
+| Category | Count | Action |
+|---|---|---|
+| Misnamed tests | 1 | Rename |
+| Misplaced tests | 1 | Move |
+| Orphaned tests | 2 | Delete or investigate |
+| Missing tests | 1 | Write new tests |
+| Indirect references | 1 | Informative only |
+
+**Result:** STRUCTURAL MISMATCHES FOUND
+

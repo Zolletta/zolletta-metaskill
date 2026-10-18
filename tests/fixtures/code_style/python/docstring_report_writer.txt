@@ -1,0 +1,20 @@
+======================================================================
+DOCSTRING STREAMLINE — REPORT
+======================================================================
+
+## Redundant Args/Returns sections (1 finding)
+
+  src/a.py:4
+    Redundant Args/Returns section
+
+## Private function docstrings (docstring_strip_private) (1 finding)
+
+  src/a.py:9
+    Private function docstring
+
+## Test function docstrings (docstring_strip_tests) (1 finding)
+
+  src/b.py:2
+    Test function docstring
+
+Result: 3 finding(s) (dry-run mode). Use --apply to fix.

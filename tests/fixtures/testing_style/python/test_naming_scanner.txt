@@ -1,0 +1,19 @@
+======================================================================
+TEST FUNCTION NAMING — VALIDATION REPORT
+======================================================================
+
+Test directories: tests
+Minimum segments after test_: 3
+Total test functions scanned: 5
+Violations: 2
+Violation rate: 40.0%
+
+File                                                     Line Function                                       Segs
+-------------------------------------------------------------------------------------------------------------------
+test_bad.py                                                 1 test_init                                         1
+subdir/test_other.py                                        7 test_to_dict                                      2
+
+These test functions have fewer than 3 segments
+after the test_ prefix. The convention expects:
+  test_<unit>_<scenario>_<expected_outcome>
+Rename to include the scenario and expected outcome.

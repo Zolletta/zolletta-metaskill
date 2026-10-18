@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -671,3 +672,32 @@ class TestTestNamingScanner:
         )
         findings = TestNamingScanner.scan_file(f)
         assert findings == []
+
+    # --- text-output contract (tests.4) ---
+
+    def test_emit_text_matches_committed_contract(
+        self, capsys: pytest.CaptureFixture[str], text_contract: Callable[[str, str], None]
+    ) -> None:
+        """The text report is a byte-for-byte contract that must not be loosened.
+
+        The committed fixture is the full captured stdout; a legitimate change is
+        ``pytest --update-fixtures`` plus a reviewed diff.
+        """
+        violations = [
+            {
+                "file": "test_bad.py",
+                "line": 1,
+                "function": "test_init",
+                "segments": 1,
+                "min_required": 3,
+            },
+            {
+                "file": "subdir/test_other.py",
+                "line": 7,
+                "function": "test_to_dict",
+                "segments": 2,
+                "min_required": 3,
+            },
+        ]
+        TestNamingScanner._emit_text(["tests"], 5, 3, violations)
+        text_contract("testing_style/python/test_naming_scanner.txt", capsys.readouterr().out)
