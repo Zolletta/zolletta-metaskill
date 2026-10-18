@@ -16,7 +16,7 @@ A unified documentation review skill that combines:
 Derived from the [Diátaxis Documentation Expert](https://github.com/github/awesome-copilot/blob/main/skills/documentation-writer/SKILL.md) skill (MIT, github/awesome-copilot) and the [Doc Drift Detector](https://github.com/borghei/Claude-Skills/blob/main/engineering/doc-drift-detector/SKILL.md) (MIT + Commons Clause, borghei/Claude-Skills), merged into a single review pipeline.
 
 > This file narrows down any eventual general rule about code exploration and documentation, i.e. `code-exploration-rules.md`, `tokensave-rules.md`, `documentation-rules.md`. If you maintain rules as part of your agent configuration, those are the single source of truth for their domain.
-
+>
 > **Execution protocol**: when running a review, follow `../../docs/reference/code/scripts-first-protocol.md` — run `documentor_cli.py`, which executes the quality review (drift + staleness), API doc validation, and link checking, persisting each tool's output to `cache/` (`quality.json`, `api_doc_validator.json`, `link_checker.json`) and printing an aggregated report. Assemble deterministic report sections from cached output, then run only the judgment pass items (false-positive filtering for known FP patterns — only open source files for FP candidates). Write your report to `reports/documentor.md`. Do not re-read source files the drift tools already validated.
 
 ## Shared resources
@@ -67,18 +67,21 @@ Diátaxis defines four quadrants. Each document must belong to exactly one:
 
 For each document, verify:
 
-**Type correctness**
+#### Type correctness
+
 - Document is placed in the correct Diátaxis quadrant
 - Content matches the quadrant's purpose (no explanation in reference, no tutorial in how-to, etc.)
 - No hybrid content that blurs quadrant boundaries
 
-**Audience clarity**
+#### Audience clarity
+
 - Tutorials include "What we will learn" and "Prerequisites"
 - How-to guides include "Prerequisites" or "Before Starting"
 - Reference docs are factual and structure-focused
 - Explanation docs provide context and design rationale
 
-**Accuracy**
+#### Accuracy
+
 - Code snippets match the actual codebase (verify via tokensave first, `read` only as fallback)
 - Field names, types, and signatures match the source
 - File paths and directory trees reflect the actual repository structure
@@ -86,13 +89,15 @@ For each document, verify:
 - No documented fields/features that don't exist in the code
 - No undocumented fields/features that exist in the code but are missing from docs
 
-**Consistency**
+#### Consistency
+
 - Voice convention is followed (check AGENTS.md for project-specific voice rules)
 - Terminology is consistent across documents (same concept = same term)
 - Cross-references and links point to the correct targets
 - Flag/option documentation matches across tutorial and reference docs
 
-**Structural**
+#### Structural
+
 - Cross-linking between quadrants is present and correct
 - No orphaned documents (every doc is reachable from nav or cross-references)
 - No orphaned assets (images, diagrams referenced somewhere)
@@ -198,8 +203,8 @@ For each issue that requires verifying a doc claim against source code, choose t
 
 ### Phase 3: Report
 
-6. **Check previous review issues** (if any) against current file state.
-7. **Produce a structured report** with grade, issues, and resolved items.
+1. **Check previous review issues** (if any) against current file state.
+2. **Produce a structured report** with grade, issues, and resolved items.
 
 ---
 
@@ -241,6 +246,7 @@ Findings: 3 medium, 5 low — see per-file table below.
 ## Scope & Limitations
 
 **Covers:**
+
 - Diátaxis compliance, accuracy, consistency, and structure review
 - Detection of documentation drift against git history for any git repository
 - AST-based validation of Python API documentation
@@ -248,6 +254,7 @@ Findings: 3 medium, 5 low — see per-file table below.
 - Multi-dimensional staleness scoring with configurable weights and CI/CD threshold enforcement
 
 **Does NOT cover:**
+
 - Non-Python source code API validation — the AST-based validator only parses Python
 - External URL uptime monitoring — `documentation.check_external` performs one-shot HEAD requests only
 - Automatic documentation rewriting — tools classify issues but do not generate replacement text

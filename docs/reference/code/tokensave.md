@@ -30,7 +30,7 @@ Follow the global no-explore-agents rule from `AGENTS.md` — use tokensave MCP 
 - Pass `seen_node_ids` from each response to the next call's `exclude_node_ids` for session deduplication.
 - When the 3-call budget is exhausted, synthesize from what you have — do not make more calls.
 - If a question cannot be answered by the tools, query the SQLite graph directly at `.tokensave/tokensave.db` (tables: `nodes`, `edges`, `files`).
-- If you discover a gap where an extractor, schema, or tool could be improved, propose opening an issue at https://github.com/aovestdipaperino/tokensave. **Remind the user to strip sensitive/proprietary code from the bug description.**
+- If you discover a gap where an extractor, schema, or tool could be improved, propose opening an issue at <https://github.com/aovestdipaperino/tokensave>. **Remind the user to strip sensitive/proprietary code from the bug description.**
 
 ## When you spawn an Explore agent anyway
 

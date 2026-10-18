@@ -10,9 +10,9 @@ description: >
 Review skill for Python test code: test isolation, naming, coverage gaps, mocking patterns, fixture design, and AAA structure.
 
 > **Configuration source**: all project-level configuration (tool availability, effective pytest/coverage config) is read from `settings.json` — specifically the `python.tools.*` objects. Rule toggles are in `python.testing`. See the parent `SKILL.md` for the setup guard and the shared "Running tools" convention.
-
+>
 > **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../../docs/reference/code/review-mode.md`](../../docs/reference/code/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
-
+>
 > **Execution protocol**: when running a review, follow `../../docs/reference/code/scripts-first-protocol.md` — batch-run the scripts listed in the per-subcommand table (`pytest --cov --cov-report=term-missing`, `test_naming_scanner.py --json`, plus `mutmut run` and `mutmut_survived_reporter.py` when `python.tools.mutmut.available` and `python.testing.check_mutation_testing`), persist their output to `cache/`, assemble deterministic report sections (coverage gaps from `cache/pytest_cov.txt`, naming violations from `cache/test_naming.json`, mutation results from `cache/mutmut_survived.txt`) from cached output, then run only the judgment pass items (indirect-coverage tracing for modules below the gap threshold, survived-mutant → suggested-test-name recommendations). Write your report to `reports/python-testing-patterns.md`. Do not re-read source files the scripts already parsed.
 
 ## When to Use This Skill
@@ -53,6 +53,7 @@ If a class has no direct test file but coverage is non-zero, trace the call chai
 ### Step 3 — Only flag as a gap if coverage is genuinely low
 
 Only report a coverage gap when:
+
 - Coverage is **below `coverage_gap_threshold`** (from `python.testing`, default `50`) AND
 - There are no direct test references AND
 - All callers are mocked in tests (no real instances)
@@ -62,6 +63,7 @@ If any of these conditions is false, the class has adequate coverage — do not 
 ### Step 4 — For genuine gaps, check callers' test style
 
 If you find a genuine gap, check whether the caller's tests mock the class or use a real instance. This determines the fix:
+
 - If callers mock the class → recommend a direct unit test file for the class itself
 - If callers use real instances but don't exercise all branches → recommend adding edge-case tests
 
@@ -129,6 +131,7 @@ Severity mapping: mutation score below `mutation_score_threshold` → high findi
 ### #1 — AAA pattern (always-on)
 
 Each test follows the Arrange-Act-Assert structure:
+
 - **Arrange**: set up test data and preconditions
 - **Act**: execute the code under test
 - **Assert**: verify the results

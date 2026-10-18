@@ -71,7 +71,7 @@ uv run mypy .
 - Never use `# type: ignore` unless explicitly asked by the human.
 - Exception: in tests that deliberately exercise edge cases by passing invalid values (e.g. `None` where a non-nullable type is expected, reassigning dunder methods on a `Mock`, or `json.load` returning `Any`), `# type: ignore[...]` is allowed. In these cases:
   1. Do not change the implementation method signatures to accommodate the test — the type mismatch is intentional.
-  2. Add a comment on the line above explaining _why_ the ignore is necessary (what edge case is being tested).
+  2. Add a comment on the line above explaining *why* the ignore is necessary (what edge case is being tested).
 - Exception (judgment call): when a specific type would add noise without value — generic plugin data, truly dynamic payloads — `Any` is acceptable. If a checker diagnostic results, suppress it with `# type: ignore[<code>]` plus a reason on the same line or the line above:
 
   ```python
@@ -123,7 +123,7 @@ Avoid:
 
 Prefer:
 
-- Comments that explain _why_ a non-obvious choice was made.
+- Comments that explain *why* a non-obvious choice was made.
 - Comments that document edge cases, workarounds, or assumptions.
 - Comments that keep multi-step algorithms readable when the steps themselves are not obvious from the names.
 
@@ -176,7 +176,7 @@ with open(input_path) as fin, open(output_path, "w") as fout:
     fout.write(fin.read())
 ```
 
-8.4. **Exception — "save previous state" guards must stay nested.** When the inner `if` flushes or saves _previous_ state before the outer block sets up _new_ state, the nesting is intentional and must not be coalesced. Coalescing would skip the save step.
+8.4. **Exception — "save previous state" guards must stay nested.** When the inner `if` flushes or saves *previous* state before the outer block sets up *new* state, the nesting is intentional and must not be coalesced. Coalescing would skip the save step.
 
 ```python
 # Correct — DO NOT coalesce: the inner if saves the previous item's
@@ -265,7 +265,7 @@ def test_get_user_returns_user_when_found(self) -> None:
 
 - The docstring already describes the scenario — `test_<unit>_<scenario>_<expected>` and the first line tell the reader what is being tested.
 - `assert` statements are self-documenting; they don't need a `# Assert` label.
-- If a test needs an inline comment, write a comment that explains _why_ — not _what step_ you're on. `# macOS default FS is case-insensitive` is useful; `# Arrange` is not.
+- If a test needs an inline comment, write a comment that explains *why* — not *what step* you're on. `# macOS default FS is case-insensitive` is useful; `# Arrange` is not.
 - This applies to all AAA-style annotations: `# Arrange`, `# Act`, `# Assert`, `# Act + Assert`, `# Arrange — ...`, `# Act — ...`, `# Assert — ...`.
 
 ## 12. Coverage

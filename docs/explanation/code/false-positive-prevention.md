@@ -56,7 +56,7 @@ Someone has to create the container — that is not a violation. The composition
 Before reporting a coverage-ignore annotation as a finding:
 
 1. **Is there a project-level policy?** Look in `AGENTS.md`, `CONTRIBUTING.md`, or the review settings.
-2. **Does the annotated code match the policy?** If yes, do not flag — note "excluded per <policy>".
+2. **Does the annotated code match the policy?** If yes, do not flag — note "excluded per policy".
 3. **If no policy exists**, report it as a *process* finding once: "Coverage-ignore annotation present but no documented criterion. Either document the criterion or remove the annotation."
 
 **Why this matters**: judgement that lives only in the author's head is not reproducible — the next reviewer cannot reproduce the decision. See [coverage.py — excluding code](https://coverage.readthedocs.io/en/latest/excluding.html), [PHPUnit — @codeCoverageIgnore](https://docs.phpunit.de/en/main/annotations.html#codecoverageignore).

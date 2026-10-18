@@ -10,7 +10,6 @@ Short description definitions of the patterns and anti-patterns from [Augmented 
 
 **Source**: <https://github.com/lexler/augmented-coding-patterns> (lexler)
 
-
 ## Patterns (followed)
 
 | Pattern                  | Short description                                                                                                         | Link                                                                                        |

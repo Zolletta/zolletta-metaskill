@@ -108,9 +108,11 @@ This step ensures the tokensave index is fresh before any subagent uses it. Stal
 1. Read `documentation.adrs` and `documentation.dir` from `settings.json`.
 2. If `documentation.adrs` is `null`, skip this step — no ADRs in the project.
 3. Run the `adr-distiller` subcommand:
-   ```
+
+```text
    /zolletta-metaskill adr-distiller
    ```
+
    Read `skills/zolletta-metaskill-adr-distiller/SUBSKILL.md` and execute its procedure. The distiller uses the `adrs` field to locate ADRs, compares mtimes against the cache, and refreshes `adr-distilled.md`. On first run (no cache), it creates the file and cache from scratch.
 4. Parse the JSON report. If `has_adrs` is false, skip ADR directives for this review.
 5. For each ADR in `stale` and `new`: read the source ADR file, refine the mechanically-extracted directive in `adr-distilled.md` into a concise one-liner. Preserve category headings if present.
@@ -129,7 +131,7 @@ This step deduplicates work that every subagent would otherwise repeat: reading 
      - `../../docs/explanation/code/general-principles.md` — God class detection procedure + "What is NOT a God class" criteria
      - `../../docs/explanation/code/structural-conventions.md` — one-class-per-file + test mirroring rules
      - `../../docs/reference/code/review-mode.md` — two-bucket classification (auto-fixable vs findings)
-    - `../../docs/explanation/code/balanced-coupling.md` — balance rule + strength/distance/volatility summaries
+     - `../../docs/explanation/code/balanced-coupling.md` — balance rule + strength/distance/volatility summaries
      Keep this to ~30 lines — only the criteria, not the full prose. Subagents that need more context can drill down to the full docs.
 
 2. **Run shared scripts once** and persist to `cache/` (these are used by multiple subagents):
@@ -188,7 +190,7 @@ Launch **one subagent per command**, all in parallel as background subagents (`i
 
 **Subagent task template** (adapt for each):
 
-```
+```text
 You are performing a code review on a <language> project.
 
 First, invoke the skill "<skill-name>" using the skill tool to load its guidelines.

@@ -18,7 +18,7 @@ Scripts produce deterministic findings. The LLM consumes their cached output and
 
 Every review run (standalone or orchestrated) creates a timestamped run folder:
 
-```
+```text
 <runs_dir>/<YYYY-MM-DD-HH-MM>/
 ├── reports/          ← LLM judgment (subcommand reports, SUMMARY.md, TODO.md)
 └── cache/            ← deterministic artifacts (script outputs + shared context)

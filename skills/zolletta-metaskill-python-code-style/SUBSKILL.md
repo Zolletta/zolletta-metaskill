@@ -10,9 +10,9 @@ description: >
 Consistent code style and clear documentation make codebases maintainable and collaborative. This skill covers modern Python tooling, naming conventions, and documentation standards.
 
 > **Configuration source**: all project-level configuration (line length, target Python version, linting rules, type checking strictness, tool availability) is read from `settings.json` — specifically the `python.tools.*` objects (availability + effective config), `python.code_style` (rule toggles), and the top-level `acronyms` array. These are populated by `setup` from `pyproject.toml`. Do not read `pyproject.toml` directly; do not hardcode fallback defaults. See the parent `SKILL.md` for the setup guard and the shared "Running tools" convention.
-
+>
 > **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../../docs/reference/code/review-mode.md`](../../docs/reference/code/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
-
+>
 > **Execution protocol**: when running a review, follow `../../docs/reference/code/scripts-first-protocol.md` — batch-run the scripts listed in the per-subcommand table (ruff, ty, mypy, vulture, acronym_casing_scanner, unused_all_exports_scanner, one_class_per_file_scanner, file_length_scanner, function_length_scanner, max_arguments_scanner, cyclomatic_complexity_scanner, suppression_reason_scanner), persist their output to `cache/`, assemble deterministic report sections from cached output, then run only the judgment pass items (vulture false-positive review for dynamically-accessed methods). Write your report to `reports/python-code-style.md`. Do not re-read source files the scripts already parsed.
 
 ## When to Use This Skill
@@ -89,10 +89,12 @@ python3 ../../src/zolletta_metaskill/code_style/python/acronym_casing_scanner.py
 ```
 
 The acronym list is built additively:
+
 1. **Shipped base**: `python-code-style/assets/acronyms.json` (common SE acronyms: CI, CD, CICD, HTTP, HTTPS, JSON, SQL, URL, etc.) — always loaded
 2. **Project-specific**: the top-level `acronyms` array in `settings.json` — merged with the shipped list (additive, not replacing). Use this for domain-specific acronyms not in the shipped list (e.g. `XML`, `SVG`)
 
 To configure project-specific acronyms, add them to `settings.json`:
+
 ```json
 "acronyms": ["CI", "MR", "AST", "DI"]
 ```
@@ -124,6 +126,7 @@ MaxRetries = 3  # should be MAX_RETRIES
 ```
 
 **Decision rule for reviewers:**
+
 - If the right-hand side is an enum member access (`Enum.MEMBER`), a class, or another PascalCase alias → `PascalCase` is valid. **Do not flag.**
 - If the right-hand side is a plain value (string, int, float, tuple, list, dict, `True`/`False`/`None`) → `SCREAMING_SNAKE_CASE` is required. **Flag PascalCase as a finding.**
 - Dead-code detection (unused aliases) is **vulture's responsibility**, not this rule's. Do not flag an alias as unused under rule #5 — flag it under rule #22 (vulture) if vulture detects it.

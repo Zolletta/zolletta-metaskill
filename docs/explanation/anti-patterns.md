@@ -33,7 +33,6 @@ This document audits Zolletta-metaskill against the 13 anti-patterns catalogued 
 
 - ~~No "decision log" for suppressed findings.~~ Out of scope — persisting team decisions across reviews is a workflow concern, not a review skill concern. The suppression reasoning is already in the report; whether the team chooses to persist it is their decision.
 
-
 ## 2. AI Slop
 
 > *Using AI output without adding human judgment — if anyone with your prompt gets the same result, it's slop.*
@@ -65,7 +64,6 @@ The slop test inverts for a review tool: "could anyone with your prompt get the 
 
 - ~~The slop test applies to Zolletta-metaskill itself — the judgment sections are not reproducible.~~ Addressed by documenting the boundary: [determinism.md](code/determinism.md) lists what is deterministic (Phase A scripts, cache, Phase B assembly, two-bucket classification) and what is not (Phase C findings, severity, grade, suggested fixes), so readers know what to treat as measurement and what to read as judgment.
 
-
 ## 3. Answer Injection
 
 > *Putting solutions in questions limits AI to your preconceived approach instead of leveraging its breadth.*
@@ -92,7 +90,6 @@ For a review skill, decided constraints driving findings is the design, not an a
 
 - ~~Suggested fixes in findings can inject solutions.~~ A suggested fix is advisory output, not an injected premise. The finding carries the evidence; the developer decides whether and how to act. The existing "Do not suggest architectural changes for style-level findings" rule already scopes fix suggestions appropriately.
 
-
 ## 4. Big Chunk Working
 
 > *AI generates sweeping changes that are hard to review and easy to merge with hidden damage.*
@@ -116,7 +113,6 @@ For a review skill, decided constraints driving findings is the design, not an a
 - ~~The full `review` re-scans the entire codebase every time.~~ Re-scanning is correct by design — code changes between reviews, so a full scan is necessary to catch new issues. The previous review comparison (`skills/zolletta-metaskill-review/SUBSKILL.md` Step 6) already handles the "what changed" question by checking which previous findings were fixed or are still open. An incremental review mode would duplicate Step 6's carry-forward logic without adding value.
 
 - ~~No slicing guidance for the report writer (group findings by theme within priority groups).~~ Priority grouping + sequential numbering already gives the reader enough structure to scan and mentally group findings. Adding a theme-classification rule would introduce a new judgment step (the AI must classify each finding into a theme), risk inconsistency between reviews (different theme names for the same concept — "Type safety" vs "Typing" vs "Type annotations"), and add clutter to short lists. The one case where grouping is clearly valuable — drift items by sub-tree — is already handled by `false-positive-prevention.md` §5. Adding a general theme-grouping rule would feed the Obsess Over Rules anti-pattern for marginal benefit.
-
 
 ## 5. Cognitive Overload
 
@@ -143,7 +139,6 @@ For a review skill, decided constraints driving findings is the design, not an a
 
 - ~~No WIP limit on parallel subagents.~~ The polyglot scenario (6 simultaneous subagents) is unreachable through the normal flow: `language_detector.py` returns a single primary language (first marker match), and the review reads that one `language` field to select the subcommand set — at most 4 subagents (two general + two language-specific). Even hypothetically, parallel subagents have isolated contexts — each has one narrow scope, and the orchestrator launches and waits, so no single agent juggles the parallel work. Fragmented attention cannot occur in isolated workers. A user with a genuinely polyglot repository who wants per-language reviews can run them separately; nothing in the design forces one giant run.
 
-
 ## 6. Distracted Agent
 
 > *One agent doing everything stays shallow and misses what matters.*
@@ -166,7 +161,6 @@ For a review skill, decided constraints driving findings is the design, not an a
 - ~~The orchestrator itself could be a "distracted agent."~~ The orchestrator coordinates but does not review — its 9 steps are sequential coordination, not parallel responsibilities competing for attention. Each subagent has one scope, one set of scripts, and one report to write.
 
 The architecture is a direct implementation of the **Focused Agent** pattern, and the docs cite it where it matters: the dispatch section of `SKILL.md` and Step 4 of `skills/zolletta-metaskill-review/SUBSKILL.md` both name the pattern and the anti-pattern, linking to the distilled definitions in [`docs/reference/augmented-coding-patterns.md`](../reference/augmented-coding-patterns.md).
-
 
 ## 7. Flying Blind
 
@@ -193,7 +187,6 @@ The architecture is a direct implementation of the **Focused Agent** pattern, an
 - ~~No "confidence" field on findings.~~ A finding's evidence is the deterministic scanner output, included verbatim in the report — a fact. What the LLM contributes is the emit/suppress verdict on items the scripts defer and the severity label. A confidence field would reintroduce the borderline category that `review-mode.md` explicitly eliminates ("No borderline category — emit or suppress, never hedge"): a finding that wouldn't survive as confident is suppressed, not published with a hedge.
 
 - ~~The review is read-only by design, so it cannot *prevent* Flying Blind.~~ Read-only is exactly what removes the danger: the review never writes code, so no AI-unvetted code can enter through it. Acting on findings is the author's job — like a peer reviewer who comments but never commits to your branch.
-
 
 ## 8. Obsess Over Rules
 
@@ -224,7 +217,6 @@ The architecture is a direct implementation of the **Focused Agent** pattern, an
 
 - ~~The general-principles.md is 545+ lines — a context rot risk if read in full, and standalone subcommand runs still read the full doc.~~ That premise no longer holds: the original "you MUST read them before starting any review" wording conflicted with the scripts-first protocol's section-only rule, and was fixed to "you MUST consult the relevant sections" (in both `skills/zolletta-metaskill-patterns/SUBSKILL.md` and the review subagent task table). No instruction path reads the doc in full anymore — orchestrator runs get the ~30-line digest, standalone runs consult relevant sections. Splitting the file into topic-specific references would be structural polish with no behavioral change.
 
-
 ## 9. Perfect Recall Fallacy
 
 > *Expecting AI to remember library details from training — give it tools to discover instead.*
@@ -252,7 +244,6 @@ The architecture is a direct implementation of the **Focused Agent** pattern, an
 - ~~The "reason to change" test relies on the LLM's understanding of the class — library behavior assumptions could be wrong.~~ Acceptable: the same risk applies to human reviewers, who can equally misremember a framework decorator's behavior. The test is run against the actual code (not memory), and the safeguards — scanner evidence, stated suppression reasoning, no-hedge — are the ones a human review relies on. Peer review has never required infallible library recall; it requires reasoned judgment on read evidence.
 
 - ~~No reference docs for the project's own conventions.~~ The project's own documentation is already in scope: setup detects `documentation.dir` (default `docs`, `.backstage/…` layouts included) and the ADR folder (Steps 9-10), and even extracts naming conventions from the project's `AGENTS.md` into `acronyms`. The documentor reviews that tree with drift detection and staleness scoring against the codebase — so conventions docs are read where they live and kept honest. ADR directives cover architectural decisions. A separate "conventions reference" would duplicate docs that are already discovered, reviewed, and drift-checked.
-
 
 ## 10. Silent Misalignment
 
@@ -282,7 +273,6 @@ The architecture is a direct implementation of the **Focused Agent** pattern, an
 
 - ~~The review doesn't ask clarifying questions.~~ By design — the review is not interactive; it is a batch run over a fixed scope. Questions belong to configuration time, and there the design does ask (setup Step 3 and review Step 1 both use `ask_user_question` when the language is undetermined). At review time the scope is already fixed by the subcommand, so there is nothing left to clarify.
 
-
 ## 11. Sunk Cost
 
 > *Pushing AI past diminishing returns — code gets messier with each iteration.*
@@ -309,7 +299,6 @@ The architecture is a direct implementation of the **Focused Agent** pattern, an
 
 - ~~Previous review comparison could create sunk cost pressure — a finding carried forward 5 times is still in the TODO; a "drop stale findings" rule is needed.~~ The mechanism doesn't support the scenario. Step 6 compares only the current run with the *newest* previous run (Step 3) — there is no history chain and no appearance counter, so pressure cannot accumulate by construction; the 2nd and the 10th carry-forward are treated identically. More decisively, each carried item is re-verified against the actual codebase and git history every run ("search the codebase for the files/areas; `git log`/`git diff`") — an item persists only because it is still real in the current code, and a finding that stops being real vanishes naturally when the current scan no longer produces it. The TODO is regenerated from current reality, not accumulated from history. Dropping a still-real finding would hide information (the rejected "top N cap") and pre-empt the team's decision to accept a risk (the rejected suppression log) — the reviewer reports what's true; the team decides what to do about it.
 
-
 ## 12. Tell Me a Lie
 
 > *Forced premises make AI fabricate plausible nonsense to meet an arbitrary requirement.*
@@ -335,7 +324,6 @@ The architecture is a direct implementation of the **Focused Agent** pattern, an
 - ~~The grading system (0-100) could pressure the AI to fabricate findings to justify a non-perfect score.~~ The causal direction is inverted: grading happens at the end, after the findings exist. Each subagent produces findings first (Phase A/B scanner output + bounded Phase C judgment), assigns severity, then computes the grade *from* what it found — the grade is an output of the findings, never an input, so there is no step where a grade target could precede and motivate a finding. A fabricated finding would also need evidence it doesn't have: findings are grounded in cached scanner output and code references, and the no-hedge rule suppresses anything uncertain. The clean outcome is first-class — the report template says "If no issues are found, state that explicitly with a brief explanation of what was checked," and the scale's top band explicitly covers "minimal *or no issues*": zero findings is a legitimate outcome squarely in the 90-100 band, not a template failure to fill.
 
 - ~~The report template requires findings grouped by severity — empty tables feel incomplete, creating pressure to fill them.~~ Not a real issue: an LLM follows the explicit instruction ("If no issues are found, state that explicitly with a brief explanation of what was checked"), and the no-hedge rule plus FP suppression make a clean report a first-class outcome. The "empty tables feel incomplete" pressure was the same anthropomorphic speculation as the grading-pressure claim, rephrased — an LLM does not experience template-completion anxiety, and a "No findings — clean" template variant would duplicate an instruction that already exists.
-
 
 ## 13. Unvalidated Leaps
 

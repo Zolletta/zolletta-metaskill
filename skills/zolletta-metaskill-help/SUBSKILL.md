@@ -32,7 +32,7 @@ This is the **single source of truth** for the subcommand list. The root `SKILL.
 2. Print the subcommand table above verbatim.
 3. Print a one-line usage reminder:
 
-   ```
+```text
    Usage: /zolletta-metaskill <subcommand>
    ```
 

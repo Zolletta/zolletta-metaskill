@@ -24,7 +24,7 @@ metadata:
 Review PHP code for type safety, modern PHP feature adoption, PSR-12 compliance, naming conventions, error handling, performance, and security. Rules are version-gated by the detected `php_version` from `settings.json`.
 
 > **Configuration source**: all project-level configuration (tool availability, rule toggles, PHP version) is read from `settings.json` — specifically the `php.tools.*` objects (availability + effective config), `php.code_style` (rule toggles), and `php.php_version`. These are populated by `setup` from `composer.json` and declarative config files. Do not read `composer.json` directly; do not hardcode fallback defaults. See the parent `SKILL.md` for the setup guard and the shared "Running tools" convention.
-
+>
 > **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../../docs/reference/code/review-mode.md`](../../docs/reference/code/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
 
 ## When to Use This Skill
@@ -105,6 +105,7 @@ Review checklist:
 ### Step 1 — Read configuration
 
 Read `settings.json`:
+
 - `php.php_version` — target PHP version (e.g. `"8.2"`)
 - `php.code_style` — configurable rule toggles (Table 2)
 - `php.tools.*` — tool availability (phpstan, psalm, php_cs_fixer, phpcs)
@@ -121,6 +122,7 @@ For each available tool, run it and collect output:
 | phpcs        | `phpcs --report=emacs`                                |
 
 Classify tool output:
+
 - **Auto-fixable** (formatting, import order, style) → informational, not graded
 - **Not auto-fixable** (type errors, missing declarations, logic issues) → findings with severity
 
@@ -147,12 +149,14 @@ Write the report to `<runs_dir>/<timestamp>/reports/php-code-style.md` using the
 - **#5 Nullable types** — use `?Type` explicitly instead of `Type|null` in unions for single nullable types.
 - **#6 `void`/`never`** — use `void` for methods that return nothing, `never` for methods that never return (throw or exit). PHP 8.1+ for `never`.
 - **#7 Avoid `mixed`** — when a specific type or union is possible, use it instead of `mixed`. `mixed` is acceptable only for genuinely dynamic values (e.g. decoded JSON). Judgment call: when a specific type would add noise without value, `mixed` may be kept if the resulting PHPStan/Psalm diagnostic is suppressed with an identifier **and** a reason explaining why the type is deliberately broad:
+
   ```php
   /** @phpstan-ignore-next-line decoded JSON payload — typed at the consumer boundary */
   public function getPayload(): mixed { ... }
   // or Psalm:
   /** @psalm-suppress MixedReturnStatement decoded JSON payload — typed at the consumer boundary */
   ```
+
   `suppression_reason_scanner.py` flags suppressions missing an identifier or a reason — those are findings under this rule; do not manually flag suppressions the scanner does not flag.
 - **#22 Union types** — prefer union types (`A|B`) over `mixed` when the value can be one of several known types. PHP 8.0+.
 - **#23 Intersection types** — use intersection types (`A&B`) when a value must implement multiple interfaces. PHP 8.1+.

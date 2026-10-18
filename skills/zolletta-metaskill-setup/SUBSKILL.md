@@ -65,9 +65,9 @@ If `.zolletta-metaskill/settings.json` already exists, read it and check `setup_
 > **What changed in v3.0.0**: every review script now resolves scan roots and rule knobs from `settings.json` instead of CLI flags (see ADR-0002, formerly ADR-0015). New keys: `python.paths` (source/test roots + package — the PHP-autoload equivalent Python lacked), `python.patterns` and `php.patterns` (SOLID-check toggles and thresholds), new `python.code_style`/`python.testing`/`php.code_style` toggles, and the `documentation.*` options that drive the documentor tools. Backfill is additive: user-customized values are preserved, only absent keys are added.
 >
 > **What changed in v3.1.0**: `one_class_per_file_scanner.py` also scans test roots (one test class per test file, named after its stem) — gated by the new `python.code_style.check_one_class_per_test_file` toggle (default `true`, set `false` to skip test files). Its name check is now case-insensitive, so acronym-cased classes (`ADRCache`, `TestADRCLI`) match their lowercase filenames instead of being reported as false positives.
-
+>
 > **What changed in v3.2.0**: conditional mutation-testing sensor (issue #47). New `python.tools.mutmut` / `php.tools.infection` availability keys, and four `testing` keys per language (`check_mutation_testing`, `mutation_score_threshold`, `mutation_target`, `mutation_max_mutants`). Backfill is additive: the tool-detection steps re-run so `available` reflects the real installation state, user-customized values are preserved, only absent keys are added.
-
+>
 > **What changed in v2.0.0**: the `external_review_model` scalar (for the removed `external-review` subcommand) and the `subagent_profile` scalar (all review subagents) are replaced by `subcommands` — a per-subcommand map where each entry has a `model` field. The `external-review` subcommand is removed; `external_review_model` is not migrated. This lets the user configure a different model per subcommand (e.g. a strong model for `patterns`/`documentor`, a cheap one for `*-code-style`). See `../../docs/reference/settings-schema.md` for the full schema.
 
 ### Step 1 — Create the .zolletta-metaskill directory

@@ -37,6 +37,7 @@ python3 ../../src/zolletta_metaskill/adr/adr_orchestrator.py --json
 `documentation.dir`, `documentation.adrs`, and `runs_dir` are read from `settings.json` — no path flags.
 
 The orchestrator:
+
 1. Discovers ADR files in `<docs_dir>/<adrs_path>/` — files with `# ADR-NNNN: Title` headings only.
 2. Compares mtimes against the cache at `.zolletta-metaskill/adr-cache.json`.
 3. Re-distills **new** and **stale** ADRs (Accepted status only).
@@ -78,7 +79,7 @@ The mechanical extraction pulls the first sentence from the Decision section —
 
 Print a summary:
 
-```
+```text
 ADR Directives Refreshed
 ========================
 New:      2  (0007-async-event-bus, 0009-cqrs-read-models)

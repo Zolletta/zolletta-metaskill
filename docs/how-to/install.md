@@ -24,7 +24,7 @@ curl -fsSL https://raw.githubusercontent.com/Zolletta/zolletta-metaskill/main/in
 The `install.sh` script:
 
 1. Clones the **latest git tag** into a temp directory
-2. Copies only the files listed in `install-manifest.txt` 
+2. Copies only the files listed in `install-manifest.txt`
 3. Symlinks it into every detected AI agent tool's skills directory
 
 Supported tools (auto-detected — only installed tools are linked):
@@ -72,7 +72,7 @@ ln -s /path/to/zolletta-metaskill ~/.agents/skills/zolletta-metaskill
 
 The skill should appear in the agent's available skills list. Invoke it with:
 
-```
+```text
 /zolletta-metaskill
 ```
 

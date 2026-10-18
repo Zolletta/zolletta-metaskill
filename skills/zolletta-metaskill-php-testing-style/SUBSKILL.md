@@ -25,7 +25,7 @@ metadata:
 Review skill for PHP test code: test isolation, naming, coverage gaps, mocking patterns, data providers, test doubles, and AAA structure.
 
 > **Configuration source**: all project-level configuration (tool availability, effective PHPUnit config) is read from `settings.json` — specifically the `php.tools.*` objects (availability + effective config for `phpunit`). Rule toggles are in `php.testing`. See the parent `SKILL.md` for the setup guard and the shared "Running tools" convention.
-
+>
 > **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../../docs/reference/code/review-mode.md`](../../docs/reference/code/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
 
 ## When to Use This Skill
@@ -66,6 +66,7 @@ If a class has no direct test file but coverage is non-zero, trace the call chai
 ### Step 3 — Only flag as a gap if coverage is genuinely low
 
 Only report a coverage gap when:
+
 - Coverage is **below `coverage_gap_threshold`** (from `php.testing`, default `50`) AND
 - There are no direct test references AND
 - All callers are mocked in tests (no real instances)
@@ -75,6 +76,7 @@ If any of these conditions is false, the class has adequate coverage — do not 
 ### Step 4 — For genuine gaps, check callers' test style
 
 If you find a genuine gap, check whether the caller's tests mock the class or use a real instance. This determines the fix:
+
 - If callers mock the class → recommend a direct unit test class for the class itself
 - If callers use real instances but don't exercise all branches → recommend adding edge-case tests
 
@@ -137,6 +139,7 @@ Severity mapping: MSI below `mutation_score_threshold` → high finding; each es
 ### #1 — AAA pattern (always-on)
 
 Each test follows the Arrange-Act-Assert structure:
+
 - **Arrange**: set up test data and preconditions (fixtures, mocks, factories)
 - **Act**: execute the code under test
 - **Assert**: verify the results with PHPUnit assertions (`assertSame`, `assertTrue`, `assertCount`, etc.)
@@ -291,6 +294,7 @@ Name each dataset with a descriptive key so failures are easy to identify in PHP
 ### Step 1 — Read configuration
 
 Read `settings.json`:
+
 - `php.testing` — configurable rule toggles (Table above)
 - `php.tools.phpunit` — PHPUnit availability and effective config
 
@@ -305,6 +309,7 @@ phpunit --coverage-text
 Follow the shared "Running tools" convention (container detection) from the parent `SKILL.md`.
 
 Classify output:
+
 - **Auto-fixable** (formatting, style) → informational, not graded
 - **Not auto-fixable** (missing tests, low coverage, broken isolation) → findings with severity
 

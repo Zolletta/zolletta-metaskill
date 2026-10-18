@@ -18,7 +18,7 @@ Initialize a project for use with Zolletta-metaskill review skills. Setup create
 
 ### Step 1 — Run setup
 
-```
+```text
 /zolletta-metaskill setup
 ```
 

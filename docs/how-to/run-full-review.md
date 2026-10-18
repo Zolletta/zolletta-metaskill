@@ -18,7 +18,7 @@ Run a comprehensive code review that combines all available review skills in par
 
 ### Step 1 — Invoke the review
 
-```
+```text
 /zolletta-metaskill review
 ```
 

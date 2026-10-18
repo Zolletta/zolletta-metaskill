@@ -31,7 +31,7 @@ git clone https://github.com/Zolletta/zolletta-metaskill.git ~/.agents/skills/zo
 
 Verify the installation by invoking the skill with no arguments:
 
-```
+```text
 /zolletta-metaskill
 ```
 
@@ -45,7 +45,7 @@ Navigate to the project to review and run setup:
 cd /path/to/our/project
 ```
 
-```
+```text
 /zolletta-metaskill setup
 ```
 
@@ -59,7 +59,7 @@ cat .zolletta-metaskill/settings.json
 
 ## Step 3 — Run a full review
 
-```
+```text
 /zolletta-metaskill review
 ```
 
@@ -83,7 +83,7 @@ Then open `TODO.md` for the aggregated action items sorted by priority (P1 = cri
 
 Run any skill individually for a focused review:
 
-```
+```text
 /zolletta-metaskill patterns       # God classes and SOLID only
 /zolletta-metaskill documentor     # Documentation review only
 /zolletta-metaskill python-code-style    # Python code style only
