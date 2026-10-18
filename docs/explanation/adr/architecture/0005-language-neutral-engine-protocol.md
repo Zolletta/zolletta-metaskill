@@ -7,9 +7,16 @@ description: "Language-neutral engine protocol: scanners consume ModuleInfo from
 
 # ADR-0005: Language-neutral engine protocol
 
+> **Superseded.** This record is kept as history per
+> [ADR-0000](0000-adrs-record-architecture-not-activity.md). Its central decision — scanners consume
+> a language-neutral `ModuleInfo` — is carried forward by
+> [ADR-0010](0010-engine-capabilities-are-separate-protocols.md), which also narrows the protocol and
+> adds `RawAstEngine`. The "bypass the protocol" note under **Negative** below describes the coupling
+> ADR-0010 removed, so it no longer describes this codebase.
+
 ## Status
 
-Accepted
+Superseded by [ADR-0010](0010-engine-capabilities-are-separate-protocols.md)
 
 ## Context
 
