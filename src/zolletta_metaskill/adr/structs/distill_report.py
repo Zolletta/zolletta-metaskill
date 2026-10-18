@@ -17,6 +17,7 @@ class DistillReport:
     stale: list[str] = field(default_factory=list)
     removed: list[str] = field(default_factory=list)
     dropped: list[str] = field(default_factory=list)
+    lead_ins: list[str] = field(default_factory=list)
     has_adrs: bool = False
 
     def to_dict(self) -> dict[str, Any]:
@@ -26,5 +27,6 @@ class DistillReport:
             "stale": self.stale,
             "removed": self.removed,
             "dropped": self.dropped,
+            "lead_ins": self.lead_ins,
             "has_adrs": self.has_adrs,
         }

@@ -17,6 +17,7 @@ class ADRDistiller:
 
     _DISTILLED_FILENAME = "adr-distilled.md"
     _DIRECTIVE_RE = re.compile(r"^-\s+\[(ADR-\d+)\]\(")
+    _LEAD_IN_RE = re.compile(r"^-\s+\[(ADR-\d+)\]\([^)]+\)\s+(.+?):$")
 
     @staticmethod
     def filename() -> str:
@@ -45,6 +46,35 @@ class ADRDistiller:
                 key = match.group(1)
                 directives[key] = line
         return directives
+
+    @staticmethod
+    def find_lead_ins(directive_lines: list[str]) -> list[str]:
+        """Return the ADR numbers whose directive text ends in a colon.
+
+        A directive that ends in ``:`` is a lead-in, not a decision — the ADR
+        opened its Decision section with "we adopt the following:" and put the
+        rule in the list beneath it. ``docs/explanation/documentation/adr.md``
+        tells authors to state the complete rule on the first line, and
+        ADR-0006 records the dependency as a known risk whose mitigation is
+        hand-refinement. This surfaces the case where that refinement did not
+        happen, including a stub carried over from an earlier run: the mtime
+        cache preserves whatever is on disk, so an unreffined directive is
+        otherwise indistinguishable from a good one.
+
+        Reported, never repaired. Rewriting the extraction would change the
+        output of a published skill to tolerate a mistake the documentation
+        tells authors not to make.
+
+        Returns:
+            ADR numbers in the order their directives appear, deduplicated.
+
+        """
+        keys: list[str] = []
+        for line in directive_lines:
+            match = ADRDistiller._LEAD_IN_RE.match(line.rstrip("\n"))
+            if match and match.group(1) not in keys:
+                keys.append(match.group(1))
+        return keys
 
     @staticmethod
     def update_in_place(

@@ -29,3 +29,34 @@ class TestADRDistiller:
 
     def test_parse_directives_none_content_returns_empty_dict(self) -> None:
         assert ADRDistiller.parse_directives(None) == {}
+
+    # --- Tests for ADRDistiller.find_lead_ins(). ---
+
+    def test_find_lead_ins_returns_adr_numbers_for_colon_terminated(self) -> None:
+        lines = [
+            "- [ADR-001](adr/001.md) Add a conditional mutation-testing sensor:",
+            "- [ADR-002](adr/002.md) Use Postgres.",
+        ]
+        assert ADRDistiller.find_lead_ins(lines) == ["ADR-001"]
+
+    def test_find_lead_ins_returns_empty_for_complete_sentences(self) -> None:
+        lines = [
+            "- [ADR-001](adr/001.md) Use Postgres.",
+            "- [ADR-002](adr/002.md) Configuration is resolved once per run.",
+        ]
+        assert ADRDistiller.find_lead_ins(lines) == []
+
+    def test_find_lead_ins_ignores_lines_that_are_not_directives(self) -> None:
+        lines = ["# Header", "Some prose ending in a colon:", "", "---"]
+        assert ADRDistiller.find_lead_ins(lines) == []
+
+    def test_find_lead_ins_deduplicates_repeated_numbers(self) -> None:
+        lines = [
+            "- [ADR-001](a.md) First lead-in:",
+            "- [ADR-001](b.md) Same ADR again:",
+        ]
+        assert ADRDistiller.find_lead_ins(lines) == ["ADR-001"]
+
+    def test_find_lead_ins_tolerates_trailing_newline(self) -> None:
+        lines = ["- [ADR-001](adr/001.md) A lead-in:\n"]
+        assert ADRDistiller.find_lead_ins(lines) == ["ADR-001"]

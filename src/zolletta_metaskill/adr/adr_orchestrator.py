@@ -59,7 +59,8 @@ class ADROrchestrator:
 
         Returns:
             A :class:`DistillReport` with lists of new, stale, removed, and
-            dropped ADR numbers, and whether any ADRs exist.
+            dropped ADR numbers, the numbers of directives that look like a
+            lead-in, and whether any ADRs exist.
 
         """
         records = ADRDiscovery.find_files(self.docs_dir, self.adrs_path)
@@ -111,6 +112,10 @@ class ADROrchestrator:
         # Sort by ADR number for deterministic output
         sorted_keys = sorted(merged, key=lambda k: int(k.split("-")[1]))
         directive_lines = [merged[k] for k in sorted_keys]
+
+        # Scanned over the merged set, not just this run's output, so a stub
+        # preserved by the cache is still reported rather than passing as good.
+        report.lead_ins = ADRDistiller.find_lead_ins(directive_lines)
 
         self._write_distilled(
             distilled_path,

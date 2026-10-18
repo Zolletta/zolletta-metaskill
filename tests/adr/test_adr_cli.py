@@ -56,6 +56,26 @@ class TestADRCLI:
         assert "1 stale" in result
         assert "1 removed" in result
 
+    def test_format_report_plain_lead_ins_appends_warning(self) -> None:
+        """format_report names the ADRs whose directive looks like a lead-in."""
+        report = DistillReport(has_adrs=True, lead_ins=["ADR-0006", "ADR-0015"])
+        result = ADRCLI.format_report(report, as_json=False)
+        assert "ADR-0006" in result
+        assert "ADR-0015" in result
+        assert "lead-in" in result
+
+    def test_format_report_plain_without_lead_ins_has_no_warning(self) -> None:
+        """format_report omits the warning when every directive is a sentence."""
+        report = DistillReport(new=["a.md"], has_adrs=True)
+        result = ADRCLI.format_report(report, as_json=False)
+        assert "lead-in" not in result
+
+    def test_format_report_json_includes_lead_ins(self) -> None:
+        """format_report carries lead_ins through to JSON output."""
+        report = DistillReport(has_adrs=True, lead_ins=["ADR-0006"])
+        data = json.loads(ADRCLI.format_report(report, as_json=True))
+        assert data["lead_ins"] == ["ADR-0006"]
+
     def test_format_report_plain_no_adrs_returns_no_adrs_message(self) -> None:
         """format_report returns 'no ADRs found' when has_adrs is False."""
         report = DistillReport(has_adrs=False)

@@ -15,6 +15,7 @@ class TestDistillReport:
         assert report.stale == []
         assert report.removed == []
         assert report.dropped == []
+        assert report.lead_ins == []
         assert report.has_adrs is False
 
     # --- Tests for DistillReport.to_dict. ---
@@ -28,6 +29,7 @@ class TestDistillReport:
             "stale": [],
             "removed": [],
             "dropped": [],
+            "lead_ins": [],
             "has_adrs": False,
         }
 
@@ -38,6 +40,7 @@ class TestDistillReport:
             stale=["adr-002.md"],
             removed=["adr-003.md"],
             dropped=["adr-004.md"],
+            lead_ins=["ADR-0006"],
             has_adrs=True,
         )
         d = report.to_dict()
@@ -45,6 +48,7 @@ class TestDistillReport:
         assert d["stale"] == ["adr-002.md"]
         assert d["removed"] == ["adr-003.md"]
         assert d["dropped"] == ["adr-004.md"]
+        assert d["lead_ins"] == ["ADR-0006"]
         assert d["has_adrs"] is True
 
     def test_to_dict_returns_json_serializable_types(self) -> None:

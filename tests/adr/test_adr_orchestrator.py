@@ -144,6 +144,52 @@ class TestADROrchestrator:
         result = (docs / "adr" / "adr-distilled.md").read_text(encoding="utf-8")
         assert "We now do Z." in result
 
+    def test_lead_in_decision_reported_in_report(self, tmp_path: Path) -> None:
+        """A colon-terminated first line is a lead-in, and the report says so."""
+        docs = tmp_path / "docs"
+        write_adr(
+            docs / "adr" / "0001-test.md",
+            "001",
+            "Test",
+            "Accepted",
+            "We adopt the following:\n\n- the first rule",
+        )
+        distiller = ADROrchestrator(docs, "adr", tmp_path / "cache.json")
+        report = distiller.refresh()
+        assert report.lead_ins == ["ADR-001"]
+
+    def test_lead_in_preserved_by_cache_still_reported(self, tmp_path: Path) -> None:
+        """A stub the cache carries forward is still reported, not passed as good.
+
+        The mtime cache records a mechanical extraction as current whether or
+        not refinement happened, so the second run classifies the ADR as
+        up-to-date and reuses the line on disk. Without scanning the merged
+        set the stub would be indistinguishable from a curated directive.
+        """
+        docs = tmp_path / "docs"
+        write_adr(
+            docs / "adr" / "0001-test.md",
+            "001",
+            "Test",
+            "Accepted",
+            "We adopt the following:\n\n- the first rule",
+        )
+        cache_path = tmp_path / "cache.json"
+        distiller = ADROrchestrator(docs, "adr", cache_path)
+        distiller.refresh()
+        second = distiller.refresh()
+        assert second.stale == []
+        assert second.new == []
+        assert second.lead_ins == ["ADR-001"]
+
+    def test_complete_sentence_decision_not_reported(self, tmp_path: Path) -> None:
+        """A first line that is a whole sentence is not a lead-in."""
+        docs = tmp_path / "docs"
+        write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted", "We do X.")
+        distiller = ADROrchestrator(docs, "adr", tmp_path / "cache.json")
+        report = distiller.refresh()
+        assert report.lead_ins == []
+
     def test_new_adr_added(self, tmp_path: Path) -> None:
         docs = tmp_path / "docs"
         write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted", "We do X.")

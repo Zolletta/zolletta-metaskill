@@ -58,6 +58,11 @@ class ADRCLI:
             )
             if report.dropped:
                 counts += f", {len(report.dropped)} dropped"
+            if report.lead_ins:
+                counts += (
+                    f", {len(report.lead_ins)} ending in ':' and likely a lead-in"
+                    f" rather than a decision: {', '.join(report.lead_ins)}"
+                )
             return counts
         return "ADR distiller: no ADRs found"
 
@@ -71,6 +76,7 @@ class ADRCLI:
                     "stale": [],
                     "removed": [],
                     "dropped": [],
+                    "lead_ins": [],
                     "has_adrs": False,
                 }
             )
