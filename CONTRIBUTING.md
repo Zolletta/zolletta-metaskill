@@ -32,7 +32,7 @@ This installs all optional dependency groups: `dev` (pytest, ruff, mypy, ty, vul
    uv run vulture .
    ```
 
-   These are the same checks CI runs (see `.github/workflows/ci.yml`). All four must pass.
+   These are the same checks CI runs (see the [Tests workflow](.github/workflows/tests.yml)). All five must pass.
 
 4. **Commit and push** your branch, then open a pull request against `main`.
 
@@ -71,7 +71,7 @@ Findings from a self-review don't need to be resolved if they're informational, 
 - Test files live in `tests/`, mirroring the `src/zolletta_metaskill/` structure.
 - Run the full suite: `uv run pytest`
 - Run a single module: `uv run pytest tests/setup/`
-- Coverage target: every file ≥92%. The setup package aims for 100%.
+- Coverage target: 100% project-wide (both project and patch), enforced by [`codecov.yml`](codecov.yml).
 
 ## Versioning
 

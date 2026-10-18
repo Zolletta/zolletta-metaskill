@@ -12,15 +12,15 @@ GitHub Actions workflows that automate testing, releasing, and documentation dep
 
 | Workflow         | File                                     | Trigger                            | Scope                                                                                |
 |------------------|------------------------------------------|------------------------------------|--------------------------------------------------------------------------------------|
-| Tests            | `.github/workflows/tests.yml`            | Push (all branches), pull request  | pytest + coverage, ruff, ty, mypy, vulture                                           |
+| Tests            | `.github/workflows/tests.yml`            | Push to `main`, pull request       | pytest + coverage, ruff, ty, mypy, vulture                                           |
 | Semantic Release | `.github/workflows/semantic-release.yml` | Push to `main`                     | Calls Tests, then creates a version tag + GitHub Release via python-semantic-release |
 | Docs (Pages)     | `.github/workflows/docs-pages.yml`       | Push to `main` (docs changes only) | Builds MkDocs Material site and deploys to GitHub Pages                              |
 
 ## Tests
 
-Runs on every push and pull request. Executes the full test suite with coverage reporting, followed by static analysis (ruff, ty, mypy, vulture). Also callable as a reusable workflow by Semantic Release.
+Runs on every push to `main` and on every pull request. Executes the full test suite with coverage reporting, followed by static analysis (ruff, ty, mypy, vulture). Also callable as a reusable workflow by Semantic Release.
 
-- **Triggers**: `push` (all branches), `pull_request`, `workflow_call`
+- **Triggers**: `push` (main), `pull_request`, `workflow_call`
 - **Jobs**: `pytest` → `quality` (quality depends on pytest passing)
 - **Coverage**: Uploaded to Codecov
 
