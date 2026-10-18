@@ -17,7 +17,7 @@ Derived from the [Diátaxis Documentation Expert](https://github.com/github/awes
 
 > This file narrows down any eventual general rule about code exploration and documentation, i.e. `code-exploration-rules.md`, `tokensave-rules.md`, `documentation-rules.md`. If you maintain rules as part of your agent configuration, those are the single source of truth for their domain.
 >
-> **Execution protocol**: when running a review, follow `../../docs/reference/code/scripts-first-protocol.md` — run `documentor_cli.py`, which executes the quality review (drift + staleness), API doc validation, and link checking, persisting each tool's output to `cache/` (`quality.json`, `api_doc_validator.json`, `link_checker.json`) and printing an aggregated report. Assemble deterministic report sections from cached output, then run only the judgment pass items (false-positive filtering for known FP patterns — only open source files for FP candidates). Write your report to `reports/documentor.md`. Do not re-read source files the drift tools already validated.
+> **Execution protocol**: when running a review, follow `../../docs/reference/code/scripts-first-protocol.md` — run `documentor_cli.py`, which executes the quality review (drift + staleness), API doc validation, and link checking, persisting each tool's output to `cache/` (`quality.json`, `api_doc_validator.json`, `link_checker.json`) and printing an aggregated report. Run `quality/unwrapped_prose_scanner.py` separately when `documentation.check_unwrapped_prose` is on — it is opt-in and is **not** part of `documentor_cli.py`, so redirect its JSON to `cache/unwrapped_prose.json` yourself. Assemble deterministic report sections from cached output, then run only the judgment pass items (false-positive filtering for known FP patterns — only open source files for FP candidates). Write your report to `reports/documentor.md`. Do not re-read source files the drift tools already validated.
 
 ## Shared resources
 
@@ -57,8 +57,7 @@ Local scripts and references are in these locations:
 
 Diátaxis defines four quadrants. Each document must belong to exactly one:
 
-- **Tutorials:** Learning-oriented, practical steps to guide a newcomer to a
-  successful outcome. A lesson.
+- **Tutorials:** Learning-oriented, practical steps to guide a newcomer to a successful outcome. A lesson.
 - **How-to Guides:** Problem-oriented, steps to solve a specific problem. A recipe.
 - **Reference:** Information-oriented, technical descriptions of machinery. A dictionary.
 - **Explanation:** Understanding-oriented, clarifying a particular topic. A discussion.
@@ -126,6 +125,7 @@ When checking accuracy, the agent MUST:
 - **Link integrity audit** — validate local files, anchors, cross-document anchors, images, case-sensitivity, and duplicate anchors; optional external URL checks (`documentation.check_external`).
 - **Drift classification** — structural, factual, referential, temporal categories (semantic removed as unreliable), each tagged `[AUTO]`/`[SEMI]`/`[MANUAL]` for fix routing.
 - **Aggregated reporting** — `documentor_cli.py` runs all three tools, each of which writes its own JSON cache file (`quality.json`, `api_doc_validator.json`, `link_checker.json`), then merges them into a single review report via `report_aggregator.py`.
+- **Prose formatting audit (opt-in)** — `quality/unwrapped_prose_scanner.py` reports markdown paragraphs broken mid-sentence, one finding per paragraph naming the line span. Enable `documentation.check_unwrapped_prose` to include it; it prints SKIPPED and exits 0 while off, and it is deliberately **not** wired into `documentor_cli.py` because an unwrapped-paragraph backlog can be long and would drown the drift report until cleared.
 - **CI/CD integration** — JSON output, optional staleness threshold gate, GitHub Actions and pre-commit recipes for ongoing monitoring.
 
 ### Scope
@@ -134,12 +134,13 @@ Every tool below reads **only `documentation.dir`** (default `docs/`, from `sett
 
 ### Tools
 
-| Tool                           | Purpose                                                  | Command                                                                          |
-|--------------------------------|----------------------------------------------------------|----------------------------------------------------------------------------------|
-| `documentor_cli.py`            | Run all documentor tools and aggregate into one report   | `python src/zolletta_metaskill/documentor/documentor_cli.py [--json]`            |
-| `quality/quality_review.py`    | Unified drift + staleness review (writes `quality.json`) | `python src/zolletta_metaskill/documentor/quality/quality_review.py [--json]`    |
-| `api_doc/api_doc_validator.py` | Validate API docs against Python source (AST)            | `python src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py [--json]` |
-| `links/link_checker.py`        | Audit links and anchors under `documentation.dir`        | `python src/zolletta_metaskill/documentor/links/link_checker.py [--broken-only]` |
+| Tool                                 | Purpose                                                                            | Command                                                                                |
+|--------------------------------------|------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
+| `documentor_cli.py`                  | Run all documentor tools and aggregate into one report                             | `python src/zolletta_metaskill/documentor/documentor_cli.py [--json]`                  |
+| `quality/quality_review.py`          | Unified drift + staleness review (writes `quality.json`)                           | `python src/zolletta_metaskill/documentor/quality/quality_review.py [--json]`          |
+| `api_doc/api_doc_validator.py`       | Validate API docs against Python source (AST)                                      | `python src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py [--json]`       |
+| `links/link_checker.py`              | Audit links and anchors under `documentation.dir`                                  | `python src/zolletta_metaskill/documentor/links/link_checker.py [--broken-only]`       |
+| `quality/unwrapped_prose_scanner.py` | Flag paragraphs hard-wrapped across lines (opt-in, not run by `documentor_cli.py`) | `python src/zolletta_metaskill/documentor/quality/unwrapped_prose_scanner.py [--json]` |
 
 All tools: Python 3.8+ stdlib only, run from the repository root, `[--json]` and `--help`, any OS. Paths and thresholds come from `documentation.*` in `.zolletta-metaskill/settings.json` — see `../../docs/reference/settings-schema.md`. Each tool writes its JSON cache into the current run directory, `<runs_dir>/<YYYY-MM-DD-HH-MM>/cache/` — `.zolletta-metaskill/<timestamp>/cache/` with the default `runs_dir` — so each review keeps its own history instead of overwriting the last; before the first run directory exists, artifacts land in `<runs_dir>/cache/`.
 
@@ -154,6 +155,7 @@ When running automated tools, filter out these known false positive patterns:
 - **Completeness=0 for Diátaxis docs** — `quality/quality_scorer.py` detects Diátaxis quadrant directories and applies quadrant-specific completeness checks. If a doc scores 0 on completeness despite being in a quadrant directory, verify the directory name matches the expected signposts (see `documentation.diataxis_translations` for non-English docs).
 - **Illustrative paths in docs** — template placeholders (`<verifier_name>_result.py`), example file names, and glob patterns are intentional, not missing files.
 - **adr-distilled.md** — auto-generated by the ADR distiller during review, lives in the ADR directory. Do not flag it for drift or staleness.
+- **Prose wrapping inside generated or quoted material** — `quality/unwrapped_prose_scanner.py` skips fenced code, frontmatter, tables, blockquotes and nested lists by design. A paragraph broken mid-sentence inside a ```text template or a quoted sample is not reported; if you see one, the text is a code block the tool correctly left alone.
 
 ### References
 
@@ -183,6 +185,7 @@ Load on demand — keep this file lean:
    - `quality/quality_review.py` — unified drift analysis + freshness score (`cache/quality.json`)
    - `api_doc/api_doc_validator.py` — API doc accuracy against source (AST) (`cache/api_doc_validator.json`)
    - `links/link_checker.py` — broken links and duplicate anchors (`cache/link_checker.json`)
+   - `quality/unwrapped_prose_scanner.py` — only when `documentation.check_unwrapped_prose` is `true` in `settings.json`; redirect to `cache/unwrapped_prose.json`. It reports SKIPPED and exits 0 otherwise, so an unconfigured project is unaffected.
    - **Non-English documentation**: if `documentation.language` in `settings.json` is not `"en"`, translate the English signpost headings and directory names before running the quality review. Write a JSON file (see `documentation.diataxis_translations` in `docs/reference/code/scripts.md` for the format) with the translated equivalents and set it via `documentation.diataxis_translations` in `settings.json`. The English signposts (e.g. `"tutorials"`, `"prerequisites"`, `"what we will learn"`) are the keys — translate each to the documentation language. Also translate the README section defaults (`installation`, `usage`, `api`, `contributing`, `license`) and include them as `readme_sections` in the JSON.
 3. **Filter false positives** using the rules above.
 4. **Inventory docs:** List all `.md` files in the documentation directory (`documentation.dir` from `settings.json`, default `docs/`) and classify by Diátaxis quadrant.
@@ -256,6 +259,7 @@ Findings: 3 medium, 5 low — see per-file table below.
 - AST-based validation of Python API documentation
 - Internal link validation including local files, anchors, cross-document anchors, images
 - Multi-dimensional staleness scoring with configurable weights and CI/CD threshold enforcement
+- Hard-wrapped prose paragraph detection across `documentation.dir` (opt-in via `documentation.check_unwrapped_prose`)
 
 **Does NOT cover:**
 

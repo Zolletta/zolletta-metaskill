@@ -224,6 +224,11 @@
           "description": "When true, link_checker verifies external http(s) links too (default: false \u2014 external links are skipped).",
           "default": false
         },
+        "check_unwrapped_prose": {
+          "type": "boolean",
+          "description": "When true, quality/unwrapped_prose_scanner.py reports markdown paragraphs broken mid-sentence. Opt-in (default: false): an existing documentation tree can carry a long backlog, and the rule is a formatting convention, so clear the backlog before turning it on.",
+          "default": false
+        },
         "include_referential": {
           "type": "boolean",
           "description": "When true, quality_review also reports referential drift (docs referencing symbols that moved), not just broken links.",
