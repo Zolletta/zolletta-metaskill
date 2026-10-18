@@ -1,3 +1,9 @@
+---
+audience: ai
+status: stable
+skills: [python-code-style]
+---
+
 # Python Code Style Review Report
 
 - **Project:** {{project_name}}

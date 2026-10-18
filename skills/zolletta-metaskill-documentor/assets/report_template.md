@@ -1,3 +1,9 @@
+---
+audience: ai
+status: stable
+skills: [documentor]
+---
+
 # Documentation Drift Report
 
 - **Repository:** {{repository_path}}

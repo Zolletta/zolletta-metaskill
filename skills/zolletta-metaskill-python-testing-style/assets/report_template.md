@@ -1,3 +1,9 @@
+---
+audience: ai
+status: stable
+skills: [python-testing-style]
+---
+
 # Python Testing Style Review Report
 
 - **Project:** {{project_name}}

@@ -1,3 +1,9 @@
+---
+audience: ai
+status: stable
+skills: [php-testing-style]
+---
+
 # PHP Testing Style Review Report
 
 - **Project:** {{project_name}}

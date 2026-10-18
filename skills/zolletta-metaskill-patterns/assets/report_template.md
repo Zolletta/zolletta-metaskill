@@ -1,3 +1,9 @@
+---
+audience: ai
+status: stable
+skills: [patterns]
+---
+
 # Design Patterns Review Report
 
 - **Project:** {{project_name}}

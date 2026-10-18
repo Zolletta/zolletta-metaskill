@@ -1,3 +1,9 @@
+---
+audience: ai
+status: stable
+skills: [php-code-style]
+---
+
 # PHP Code Style Review Report
 
 - **Project:** {{project_name}}

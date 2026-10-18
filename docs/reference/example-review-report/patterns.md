@@ -1,3 +1,9 @@
+---
+audience: human
+status: stable
+skills: [review]
+---
+
 # Design Patterns Review Report
 
 - **Project:** zolletta-metaskill

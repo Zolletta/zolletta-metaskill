@@ -1,3 +1,9 @@
+---
+audience: ai
+status: stable
+skills: [review]
+---
+
 # TODO — Review {{timestamp}}
 
 - **Project:** {{project_name}}

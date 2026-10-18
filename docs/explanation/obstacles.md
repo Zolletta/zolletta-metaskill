@@ -1,3 +1,9 @@
+---
+audience: human, ai
+status: stable
+skills: [review, patterns, documentor, python-*, php-*]
+---
+
 # Obstacles survey
 
 The [Augmented Coding Patterns](https://lexler.github.io/augmented-coding-patterns/) catalog lists 15 [obstacles](https://lexler.github.io/augmented-coding-patterns/obstacles/) — inherent limitations of LLMs that no prompt or tool can fully eliminate. The review skill cannot *solve* these obstacles (they are properties of the model, not the workflow), but its architecture is designed to *work around* them. This survey marks each obstacle as **addressed** (the architecture mitigates it, with links to evidence), **partial** (mitigated in some cases but not structurally), or **not applicable** (the obstacle doesn't arise in a read-only batch review).

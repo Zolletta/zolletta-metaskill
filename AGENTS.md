@@ -1,3 +1,9 @@
+---
+audience: ai, human
+status: stable
+skills: [setup, review, patterns, documentor, python-*, php-*]
+---
+
 # AGENTS.md
 
 These are the conventions of this repository — one declaration per rule, so that new code is indistinguishable from the code around it.

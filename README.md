@@ -1,3 +1,9 @@
+---
+audience: human, ai
+status: stable
+skills: [setup, review, patterns, documentor, python-*, php-*]
+---
+
 # Zolletta-metaskill
 
 ![zolletta-metaskill](assets/zolletta-meta-skill-192.png)

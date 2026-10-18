@@ -1,3 +1,9 @@
+---
+audience: human
+status: stable
+skills: [review]
+---
+
 # Executive Summary — Review 2026-08-06-19-41
 
 - **Project:** zolletta-metaskill

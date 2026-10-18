@@ -1,3 +1,9 @@
+---
+audience: human, ai
+status: stable
+skills: [setup, review, patterns, documentor, python-*, php-*]
+---
+
 # Contributing to Zolletta-metaskill
 
 Thanks for your interest in contributing! This guide covers the practical steps to get a change merged.

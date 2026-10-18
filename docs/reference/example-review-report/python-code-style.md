@@ -1,3 +1,9 @@
+---
+audience: human
+status: stable
+skills: [review]
+---
+
 # Python Code Style Review Report
 
 - **Project:** zolletta-metaskill

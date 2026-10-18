@@ -1,3 +1,9 @@
+---
+audience: human
+status: stable
+skills: [review]
+---
+
 # Documentation Drift Report
 
 - **Repository:** /Users/veronica.bolognesi/.agents/skills/zolletta-metaskill
