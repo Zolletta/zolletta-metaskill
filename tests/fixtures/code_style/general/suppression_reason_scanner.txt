@@ -1,0 +1,14 @@
+======================================================================
+SUPPRESSION REASON — VALIDATION REPORT
+======================================================================
+
+Scanned 1 files under src
+Suppressions must carry the checker code/identifier and a reason.
+
+## Suppressions missing code/reason (1)
+
+  src/mod.py:1  # type: ignore missing error code and reason
+
+  Fix: add the specific error code/identifier and a reason explaining why the type is deliberately broad.
+
+Result: violations found (report-only mode)

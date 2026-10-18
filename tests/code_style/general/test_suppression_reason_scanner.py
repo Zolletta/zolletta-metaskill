@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -360,3 +361,22 @@ class TestSuppressionReasonScanner:
         rc = _run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
         assert json.loads(capsys.readouterr().out)["violation_count"] == 0
+
+    def test_main_matches_committed_contract(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The text report is a byte-for-byte contract that must not be loosened.
+
+        The captured output is the whole report — the banner, the ``Scanned N
+        files`` line, the violation block with its ``Fix:`` paragraph and the
+        result line. A legitimate change is ``pytest --update-fixtures``
+        followed by a reviewed diff.
+        """
+        _write_settings(tmp_path)
+        _write_source(tmp_path, "src/mod.py", "x = f()  # type: ignore\n")
+        _run_scan(tmp_path, monkeypatch, [])
+        text_contract("code_style/general/suppression_reason_scanner.txt", capsys.readouterr().out)

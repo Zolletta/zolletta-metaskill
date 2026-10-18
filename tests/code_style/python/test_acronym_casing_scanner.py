@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
 
@@ -395,3 +396,32 @@ class TestAcronymCasingScanner:
         data = json.loads(capsys.readouterr().out)
         assert rc == 0
         assert data["violation_count"] == 0
+
+    # --- AcronymCasingScanner._emit_text ---
+
+    def test_emit_text_matches_committed_contract(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The text report is a byte-for-byte contract that must not be loosened.
+
+        The captured output is the whole report — the banner, the counters, the
+        aligned violation table and the closing guidance. A legitimate change is
+        ``pytest --update-fixtures`` followed by a reviewed diff.
+        """
+        AcronymCasingScanner._emit_text(
+            1,
+            [
+                {
+                    "file": "mod.py",
+                    "line": 1,
+                    "class": "ApiGateway",
+                    "word": "Api",
+                    "expected": "API",
+                }
+            ],
+            ["API", "CLI"],
+            [Path("src")],
+        )
+        text_contract("code_style/python/acronym_casing_scanner.txt", capsys.readouterr().out)

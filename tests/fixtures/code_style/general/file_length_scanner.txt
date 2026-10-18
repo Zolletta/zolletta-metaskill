@@ -1,0 +1,13 @@
+======================================================================
+FILE LENGTH — VALIDATION REPORT
+======================================================================
+
+Scanned 1 files under src (max 10 lines)
+
+## Files exceeding the limit (1 files)
+
+      20 lines  src/long.py  (over by 10)
+
+  Fix: split the file by responsibility, or raise max_file_length in settings.json if the size is justified.
+
+Result: violations found (report-only mode)

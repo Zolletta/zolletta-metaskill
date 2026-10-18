@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -615,3 +616,26 @@ class TestFileLengthScanner:
         assert rc == 0
         assert captured.err.count("Warning: could not read") == 2
         assert "all clear" in captured.out
+
+    def test_main_matches_committed_contract(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The text report is a byte-for-byte contract that must not be loosened.
+
+        The captured output is the whole report — the banner, the ``Scanned N
+        files`` line, the violation block with its ``Fix:`` paragraph and the
+        result line. A legitimate change is ``pytest --update-fixtures``
+        followed by a reviewed diff.
+        """
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
+        root = tmp_path / "src"
+        root.mkdir()
+        _write_lines(root / "long.py", 20)
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        FileLengthScanner.main()
+        text_contract("code_style/general/file_length_scanner.txt", capsys.readouterr().out)
