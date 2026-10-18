@@ -335,10 +335,7 @@ Keep the summary concise. The full details are in the report files.
 
 ## Error handling
 
-- If a subagent fails or times out, note it in the corresponding report file and continue
-  with the next subagent in the sequence. Do not abort the entire review.
-- If the documentation directory does not exist, the `documentor` subagent should report
-  that there is nothing to review (not an error).
-- If `src/` or `tests/` directories don't exist, adapt the scope to whatever source
-  directories are present in the project.
+- If a subagent fails or times out, note it in the corresponding report file and continue with the next subagent in the sequence. Do not abort the entire review.
+- If the documentation directory does not exist, the `documentor` subagent should report that there is nothing to review (not an error).
+- If `src/` or `tests/` directories don't exist, adapt the scope to whatever source directories are present in the project.
 - If the project language cannot be determined automatically, ask the user before proceeding.

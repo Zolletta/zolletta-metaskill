@@ -15,10 +15,8 @@ The distiller uses an mtime cache so only **new**, **stale** (modified), and **r
 
 ## When to run
 
-- **During review** — the `review` orchestrator calls this subcommand at
-  Step 3.5 to refresh `adr-distilled.md` before launching review subagents.
-- **Standalone** — run `/zolletta-metaskill adr-distiller` to refresh
-  directives without a full review (e.g. after adding a new ADR).
+- **During review** — the `review` orchestrator calls this subcommand at Step 3.5 to refresh `adr-distilled.md` before launching review subagents.
+- **Standalone** — run `/zolletta-metaskill adr-distiller` to refresh directives without a full review (e.g. after adding a new ADR).
 
 ## Prerequisites
 
@@ -69,8 +67,7 @@ For each ADR in `new` and `stale`:
 
 1. Read the source ADR file.
 2. Read the mechanically-extracted directive in `adr-distilled.md`.
-3. Refine it into a concise one-liner that captures the architectural
-   decision. Preserve category headings if present.
+3. Refine it into a concise one-liner that captures the architectural decision. Preserve category headings if present.
 4. Write the refined directive back to `adr-distilled.md`.
 
 The mechanical extraction pulls the first sentence from the Decision section — it is a starting point, not the final form. A human-readable one-liner is more useful for review subagents.

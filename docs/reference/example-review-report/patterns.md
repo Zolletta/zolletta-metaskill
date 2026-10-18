@@ -57,8 +57,7 @@ All 15 classes are suppressed per "What is NOT a God class": static helper colle
 
 ### Test Structure Scanner Output
 
-**Source package:** `src/zolletta_metaskill`
-**Test package:** `tests`
+**Source package:** `src/zolletta_metaskill` **Test package:** `tests`
 
 #### 1. Misnamed tests (0)
 
