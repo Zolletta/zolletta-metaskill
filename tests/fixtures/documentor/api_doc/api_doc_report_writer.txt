@@ -1,0 +1,28 @@
+API Documentation Validation Report
+============================================================
+Source signatures found: 5
+Documented items found:  4
+Issues found:            1
+Undocumented items:      1
+  by priority:           high=1
+
+HIGH (1 issues):
+----------------------------------------
+  [missing_param_in_docs] Parameter x missing from doc
+    Source: src/foo.py:15
+
+
+DOCUMENTATION SUGGESTIONS:
+----------------------------------------
+  [HIGH] (1 items):
+    bar (function) — Public function has no docstring
+      Source: src/bar.py:20
+
+
+ISSUES BY TYPE:
+----------------------------------------
+  Missing parameters in docs: 1
+
+Undocumented items: 1 (not counted as issues)
+  by priority: high=1
+  Use --suggest-coverage to see prioritized documentation suggestions.

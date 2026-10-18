@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from typing import Any
 
 import pytest
@@ -126,3 +127,67 @@ class TestQualityReportWriter:
         assert data["summary"]["total_issues"] == 2
         assert data["summary"]["by_severity"]["high"] == 1
         assert data["summary"]["by_severity"]["low"] == 1
+
+    # --- Text contract ---
+
+    def test_generate_report_matches_committed_contract(
+        self,
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The rendered report is a byte-for-byte contract that must not be loosened.
+
+        A literal ``report_data`` pins the markdown renderer to its committed
+        output, so a legitimate change is ``pytest --update-fixtures`` plus a
+        reviewed diff — never a hand-edit or a weaker matcher. The trailing
+        newline keeps the fixture POSIX-clean while matching the rendered text.
+        """
+        report_data: dict[str, Any] = {
+            "repository": "repo",
+            "scan_date": "2026-01-01T00:00:00Z",
+            "summary": {
+                "total_docs": 2,
+                "aggregate_score": 77.5,
+                "aggregate_label": "acceptable",
+                "drifted_docs": 1,
+                "total_issues": 2,
+                "by_severity": {"high": 1, "low": 1},
+                "by_category": {"factual": 1, "temporal": 1},
+                "by_fix_type": {"manual": 1, "semi": 1},
+            },
+            "documents": [
+                {
+                    "file": "README.md",
+                    "total_score": 70.0,
+                    "label": "aging",
+                    "dimensions": {
+                        "temporal": {"score": 50.0, "weight": 0.20, "weighted": 10.0},
+                    },
+                },
+                {
+                    "file": "docs/guide.md",
+                    "total_score": 85.0,
+                    "label": "acceptable",
+                    "dimensions": {
+                        "factual": {"score": 90.0, "weight": 0.15, "weighted": 13.5},
+                    },
+                },
+            ],
+            "issues": [
+                {
+                    "file": "README.md",
+                    "severity": "high",
+                    "category": "factual",
+                    "description": "Referenced source file changed",
+                    "fix_type": "semi",
+                },
+                {
+                    "file": "docs/guide.md",
+                    "severity": "low",
+                    "category": "temporal",
+                    "description": "Documentation not updated in 200 days",
+                    "fix_type": "manual",
+                },
+            ],
+        }
+        text = QualityReportWriter._format_markdown(report_data)
+        text_contract("documentor/quality/quality_report_writer.txt", text + "\n")

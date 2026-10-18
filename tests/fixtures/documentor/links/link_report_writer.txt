@@ -1,0 +1,25 @@
+Link Check Report
+============================================================
+Total links:      3
+Valid:            1
+Broken:           1
+Skipped:          1
+Duplicate anchors: 1
+
+BROKEN LINKS:
+------------------------------------------------------------
+
+  docs/guide.md:
+    Line 12: [API reference](missing.md)
+      Error: File not found
+
+DUPLICATE ANCHORS:
+------------------------------------------------------------
+
+  docs/guide.md:
+    Line 30: duplicate anchor '#duplicate-anchor'
+
+LINK TYPE BREAKDOWN:
+----------------------------------------
+  external                     1 total,    0 broken
+  local_file                   2 total,    1 broken

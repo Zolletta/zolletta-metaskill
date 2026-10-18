@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 
 from zolletta_metaskill.documentor.links.link_report_writer import LinkReportWriter
 from zolletta_metaskill.documentor.structs.link_info import LinkInfo
@@ -92,3 +93,30 @@ class TestLinkReportWriter:
         assert data["summary"]["total_links"] == 1
         assert data["summary"]["valid"] == 1
         assert "all_links" in data
+
+    # --- Text Output Contract ---
+
+    def test_generate_report_matches_committed_contract(
+        self,
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The rendered report is a byte-for-byte contract.
+
+        The comparison is exact on purpose and must not be loosened to a
+        substring or regex check: a legitimate change to the rendered report is
+        ``pytest --update-fixtures`` followed by a reviewed diff. The trailing
+        newline keeps the committed fixture a POSIX text file.
+
+        """
+        valid_link = LinkInfo("docs/guide.md", 3, "Home", "index.md", "local_file")
+        valid_link.is_valid = True
+        broken_link = LinkInfo("docs/guide.md", 12, "API reference", "missing.md", "local_file")
+        broken_link.is_valid = False
+        broken_link.error = "File not found"
+        skipped_link = LinkInfo("docs/guide.md", 20, "Docs", "https://example.com", "external")
+        report = LinkReportWriter.generate_report(
+            [valid_link, broken_link, skipped_link],
+            {"docs/guide.md": [("duplicate-anchor", 30)]},
+            as_json=False,
+        )
+        text_contract("documentor/links/link_report_writer.txt", f"{report}\n")

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from typing import Any
 
 from zolletta_metaskill.documentor.api_doc.api_doc_report_writer import APIDocReportWriter
@@ -73,3 +74,23 @@ class TestAPIDocReportWriter:
         assert data["summary"]["total_issues"] == 1
         assert len(data["suggestions"]) == 1
         assert data["suggestions"][0]["name"] == "bar"
+
+    # --- Text Output Contract ---
+
+    def test_generate_report_matches_committed_contract(
+        self,
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The rendered report is a byte-for-byte contract.
+
+        The comparison is exact on purpose and must not be loosened to a
+        substring or regex check: a legitimate change to the rendered report is
+        ``pytest --update-fixtures`` followed by a reviewed diff. The trailing
+        newline keeps the committed fixture a POSIX text file.
+
+        """
+        issues, suggestions = _issues_and_suggestions_fixture()
+        report = APIDocReportWriter.generate_report(
+            issues, suggestions, APIDocReportOptions(5, 4, as_json=False, suggest_coverage=True)
+        )
+        text_contract("documentor/api_doc/api_doc_report_writer.txt", f"{report}\n")
