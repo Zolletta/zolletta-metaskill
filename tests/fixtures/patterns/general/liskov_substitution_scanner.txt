@@ -1,0 +1,12 @@
+======================================================================
+LISKOV SUBSTITUTION (LSP) — VALIDATION REPORT
+======================================================================
+
+## LSP violations (1 found)
+
+  [extra_required_params] Dog.speak() — requires 2 params, parent requires 1
+    Parent: Animal
+    -> src/animal.py:5
+    Fix: remove extra required params or make them optional
+
+Result: LSP violations found (report-only mode)

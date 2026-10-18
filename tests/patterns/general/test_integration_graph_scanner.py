@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -607,3 +608,35 @@ class TestIntegrationGraphScanner:
         out = capsys.readouterr().out
         assert rc == 0
         assert "internal edges" in out
+
+    # --- Text contract ---
+
+    def test_emit_text_matches_committed_contract(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The captured text report is a byte-for-byte contract.
+
+        Do not loosen this assertion: it pins the exact text output. A
+        legitimate change is ``pytest --update-fixtures`` plus a reviewed
+        diff, never a hand-edit or a weaker matcher.
+        """
+        result = {
+            "scanned": 2,
+            "external_imports": 1,
+            "edges": [
+                {
+                    "from": "src/a.py",
+                    "to": "src/t.py",
+                    "line": 1,
+                    "names": [{"name": "T", "usage": "call"}],
+                },
+            ],
+            "modules": [
+                {"module": "src/a.py", "fan_in": 0, "fan_out": 1},
+                {"module": "src/t.py", "fan_in": 1, "fan_out": 0},
+            ],
+        }
+        IntegrationGraphScanner._emit_text(result, [Path("src")])
+        text_contract("patterns/general/integration_graph_scanner.txt", capsys.readouterr().out)

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -734,3 +735,30 @@ class TestLiskovSubstitutionScanner:
         out = capsys.readouterr().out
         assert rc == 0
         assert "extra_required_params" in out
+
+    # --- Text contract ---
+
+    def test_emit_text_matches_committed_contract(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The captured text report is a byte-for-byte contract.
+
+        Do not loosen this assertion: it pins the exact text output. A
+        legitimate change is ``pytest --update-fixtures`` plus a reviewed
+        diff, never a hand-edit or a weaker matcher.
+        """
+        violations = [
+            {
+                "type": "extra_required_params",
+                "class": "Dog",
+                "method": "speak",
+                "line": 5,
+                "detail": "requires 2 params, parent requires 1",
+                "parent": "Animal",
+                "file": "src/animal.py",
+            },
+        ]
+        LiskovSubstitutionScanner._emit_text(violations)
+        text_contract("patterns/general/liskov_substitution_scanner.txt", capsys.readouterr().out)

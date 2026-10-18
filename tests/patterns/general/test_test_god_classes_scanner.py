@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -320,3 +321,30 @@ class TestTestGodClassesScanner:
         err = capsys.readouterr().err
         assert rc == 0
         assert "No test classes found" in err
+
+    # --- Text contract ---
+
+    def test_emit_text_matches_committed_contract(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The captured text report is a byte-for-byte contract.
+
+        Do not loosen this assertion: it pins the exact text output. A
+        legitimate change is ``pytest --update-fixtures`` plus a reviewed
+        diff, never a hand-edit or a weaker matcher.
+        """
+        top = [
+            {
+                "file": "tests/test_alpha.py",
+                "class": "TestAlpha",
+                "lines": 42,
+                "methods": 7,
+                "method_names": ["test_a", "test_b"],
+                "start": 10,
+                "end": 51,
+            },
+        ]
+        TestGodClassesScanner._emit_text(top, show_methods=False)
+        text_contract("patterns/general/test_god_classes_scanner.txt", capsys.readouterr().out)
