@@ -157,19 +157,28 @@ class ADROrchestrator:
                 directive = self.distill_adr(record)
                 if directive is not None:
                     new_directives[key] = directive
-            elif cached.get("mtime") != record.mtime or was_accepted != is_accepted:
-                # Stale (mtime changed or status changed)
+                refined = directive is None or not ADRDistiller.is_lead_in(directive)
+            elif (
+                cached.get("mtime") != record.mtime
+                or was_accepted != is_accepted
+                or cached.get("refined") is False
+            ):
+                # Stale (mtime changed, status changed, or cached as unrefined)
                 report.stale.append(key)
                 directive = self.distill_adr(record)
                 if directive is not None:
                     new_directives[key] = directive
-            # else: up-to-date — preserve existing directive
+                refined = directive is None or not ADRDistiller.is_lead_in(directive)
+            else:
+                # Up-to-date — preserve existing directive and its flag
+                refined = bool(cached.get("refined", True))
 
             # Update cache entry
             new_cache[key] = {
                 "path": str(record.file_path.relative_to(self.docs_dir).as_posix()),
                 "mtime": record.mtime,
                 "status": record.status,
+                "refined": refined,
             }
 
         return current_keys, new_directives, new_cache

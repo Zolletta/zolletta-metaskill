@@ -48,6 +48,11 @@ class ADRDistiller:
         return directives
 
     @staticmethod
+    def is_lead_in(directive_line: str) -> bool:
+        """Return True when a directive line ends in a colon lead-in."""
+        return ADRDistiller._LEAD_IN_RE.match(directive_line.rstrip("\n")) is not None
+
+    @staticmethod
     def find_lead_ins(directive_lines: list[str]) -> list[str]:
         """Return the ADR numbers whose directive text ends in a colon.
 

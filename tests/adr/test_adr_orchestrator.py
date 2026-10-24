@@ -158,13 +158,14 @@ class TestADROrchestrator:
         report = distiller.refresh()
         assert report.lead_ins == ["ADR-001"]
 
-    def test_lead_in_preserved_by_cache_still_reported(self, tmp_path: Path) -> None:
-        """A stub the cache carries forward is still reported, not passed as good.
+    def test_unrefined_directive_cached_stale_and_redistilled(self, tmp_path: Path) -> None:
+        """A lead-in stub is never cached as final: refined:false marks it stale.
 
-        The mtime cache records a mechanical extraction as current whether or
-        not refinement happened, so the second run classifies the ADR as
-        up-to-date and reuses the line on disk. Without scanning the merged
-        set the stub would be indistinguishable from a curated directive.
+        The first run extracts a colon-terminated lead-in and caches the
+        record with ``refined: false``, so the second run reclassifies the
+        ADR as stale and re-distills it — a stub cannot settle into the
+        cache as if it were a curated directive. It is still reported as a
+        lead-in either way.
         """
         docs = tmp_path / "docs"
         write_adr(
@@ -178,7 +179,7 @@ class TestADROrchestrator:
         distiller = ADROrchestrator(docs, "adr", cache_path)
         distiller.refresh()
         second = distiller.refresh()
-        assert second.stale == []
+        assert second.stale == ["ADR-001"]
         assert second.new == []
         assert second.lead_ins == ["ADR-001"]
 
