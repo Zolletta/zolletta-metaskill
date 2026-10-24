@@ -29,16 +29,20 @@ documentation directory is missing on disk.
 """
 
 import argparse
-import ast
 import json
 import os
-import re
 import sys
 from pathlib import Path
 from typing import Any
 
 from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.documentor.api_doc.api_doc_report_writer import APIDocReportWriter
+from zolletta_metaskill.documentor.api_doc.documented_item_extractor import (
+    DocumentedItemExtractor,
+)
+from zolletta_metaskill.documentor.api_doc.source_signature_extractor import (
+    SourceSignatureExtractor,
+)
 from zolletta_metaskill.documentor.structs import APIDocReportOptions
 from zolletta_metaskill.documentor.structs.source_signature import SourceSignature
 from zolletta_metaskill.documentor.utils.documentor_settings import DocumentorSettings
@@ -46,342 +50,6 @@ from zolletta_metaskill.documentor.utils.documentor_settings import DocumentorSe
 
 class APIDocValidator:
     """API Documentation Validator."""
-
-    # --- AST Source Extraction ---
-
-    @staticmethod
-    def _annotation_to_str(node: ast.expr | None) -> str | None:
-        """Convert an AST annotation node to a string representation."""
-        if node is None:
-            return None
-        try:
-            return ast.unparse(node)
-        except AttributeError:  # pragma: no cover
-            # Python < 3.9 fallback
-            if isinstance(node, ast.Name):
-                return node.id
-            elif isinstance(node, ast.Constant):
-                return repr(node.value)
-            elif isinstance(node, ast.Attribute):
-                return f"{APIDocValidator._annotation_to_str(node.value)}.{node.attr}"
-            elif isinstance(node, ast.Subscript):
-                value = APIDocValidator._annotation_to_str(node.value)
-                slice_ = APIDocValidator._annotation_to_str(node.slice)
-                return f"{value}[{slice_}]"
-            return str(type(node).__name__)
-
-    @staticmethod
-    def _extract_decorator_names(decorator_list: list[ast.expr]) -> list[str]:
-        """Extract decorator names from AST decorator list."""
-        names = []
-        for dec in decorator_list:
-            if isinstance(dec, ast.Name):
-                names.append(dec.id)
-            elif isinstance(dec, ast.Attribute):
-                names.append(f"{APIDocValidator._annotation_to_str(dec.value)}.{dec.attr}")
-            elif isinstance(dec, ast.Call):
-                if isinstance(dec.func, ast.Name):
-                    names.append(dec.func.id)
-                elif isinstance(dec.func, ast.Attribute):
-                    names.append(
-                        f"{APIDocValidator._annotation_to_str(dec.func.value)}.{dec.func.attr}"
-                    )
-        return names
-
-    @staticmethod
-    def _extract_parameters(
-        func_node: ast.FunctionDef | ast.AsyncFunctionDef,
-    ) -> list[dict[str, Any]]:
-        """Extract parameter information from a function definition."""
-        params: list[dict[str, Any]] = []
-        args = func_node.args
-
-        # Calculate defaults offset
-        num_args = len(args.args)
-        num_defaults = len(args.defaults)
-        default_offset = num_args - num_defaults
-
-        for i, arg in enumerate(args.args):
-            if arg.arg == "self" or arg.arg == "cls":
-                continue
-            param: dict[str, Any] = {
-                "name": arg.arg,
-                "annotation": APIDocValidator._annotation_to_str(arg.annotation),
-                "has_default": False,
-                "default": None,
-            }
-            # Check if this arg has a default
-            default_idx = i - default_offset
-            if default_idx >= 0 and default_idx < len(args.defaults):
-                param["has_default"] = True
-                try:
-                    param["default"] = ast.unparse(args.defaults[default_idx])
-                except AttributeError:  # pragma: no cover
-                    param["default"] = "..."
-            params.append(param)
-
-        # *args
-        if args.vararg:
-            params.append(
-                {
-                    "name": f"*{args.vararg.arg}",
-                    "annotation": APIDocValidator._annotation_to_str(args.vararg.annotation),
-                    "has_default": False,
-                    "default": None,
-                }
-            )
-
-        # keyword-only args
-        for i, arg in enumerate(args.kwonlyargs):
-            param = {
-                "name": arg.arg,
-                "annotation": APIDocValidator._annotation_to_str(arg.annotation),
-                "has_default": False,
-                "default": None,
-            }
-            kw_default = args.kw_defaults[i] if i < len(args.kw_defaults) else None
-            if kw_default is not None:
-                param["has_default"] = True
-                try:
-                    param["default"] = ast.unparse(kw_default)
-                except AttributeError:  # pragma: no cover
-                    param["default"] = "..."
-            params.append(param)
-
-        # **kwargs
-        if args.kwarg:
-            params.append(
-                {
-                    "name": f"**{args.kwarg.arg}",
-                    "annotation": APIDocValidator._annotation_to_str(args.kwarg.annotation),
-                    "has_default": False,
-                    "default": None,
-                }
-            )
-
-        return params
-
-    @staticmethod
-    def _extract_function_signature(
-        node: ast.FunctionDef | ast.AsyncFunctionDef,
-        tree: ast.AST,
-        rel_path: str,
-        include_private: bool,
-    ) -> SourceSignature | None:
-        """Extract a single function or method signature."""
-        is_private = node.name.startswith("_")
-        if is_private and not include_private:
-            return None
-
-        parent_class = None
-        kind = "function"
-        for parent in ast.walk(tree):
-            if isinstance(parent, ast.ClassDef):
-                for item in parent.body:
-                    if item is node:
-                        parent_class = parent.name
-                        kind = "method"
-                        break
-
-        return SourceSignature(
-            name=node.name,
-            kind=kind,
-            file_path=rel_path,
-            line_number=node.lineno,
-            parameters=APIDocValidator._extract_parameters(node),
-            return_annotation=APIDocValidator._annotation_to_str(node.returns),
-            decorators=APIDocValidator._extract_decorator_names(node.decorator_list),
-            docstring=ast.get_docstring(node),
-            is_private=is_private,
-            parent_class=parent_class,
-        )
-
-    @staticmethod
-    def _extract_class_signature(
-        node: ast.ClassDef, rel_path: str, include_private: bool
-    ) -> SourceSignature | None:
-        """Extract a single class signature."""
-        is_private = node.name.startswith("_")
-        if is_private and not include_private:
-            return None
-
-        init_params: list[dict[str, Any]] = []
-        for item in node.body:
-            if isinstance(item, ast.FunctionDef) and item.name == "__init__":
-                init_params = APIDocValidator._extract_parameters(item)
-                break
-
-        return SourceSignature(
-            name=node.name,
-            kind="class",
-            file_path=rel_path,
-            line_number=node.lineno,
-            parameters=init_params,
-            decorators=APIDocValidator._extract_decorator_names(node.decorator_list),
-            docstring=ast.get_docstring(node),
-            is_private=is_private,
-        )
-
-    @staticmethod
-    def extract_signatures(
-        source_path: str, include_private: bool = False
-    ) -> list[SourceSignature]:
-        """Extract all function and class signatures from a Python file."""
-        signatures: list[SourceSignature] = []
-        try:
-            with open(source_path, encoding="utf-8", errors="ignore") as f:
-                source = f.read()
-            tree = ast.parse(source, filename=source_path)
-        except (SyntaxError, OSError):
-            return signatures
-
-        for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                sig = APIDocValidator._extract_function_signature(
-                    node, tree, source_path, include_private
-                )
-                if sig:
-                    signatures.append(sig)
-            elif isinstance(node, ast.ClassDef):
-                cls_sig = APIDocValidator._extract_class_signature(
-                    node, source_path, include_private
-                )
-                if cls_sig:
-                    signatures.append(cls_sig)
-
-        return signatures
-
-    @staticmethod
-    def extract_all_signatures(
-        source_dir: str, include_private: bool = False
-    ) -> dict[str, list[SourceSignature]]:
-        """Extract signatures from all Python files in a directory."""
-        all_sigs: dict[str, list[SourceSignature]] = {}
-
-        for path in ProjectConfig.iter_files(Path(source_dir), {".py"}):
-            rel_path = os.path.relpath(path, source_dir)
-            sigs = APIDocValidator.extract_signatures(str(path), include_private)
-            # Update file paths to be relative
-            for s in sigs:
-                s.file_path = rel_path
-            if sigs:
-                all_sigs[rel_path] = sigs
-
-        return all_sigs
-
-    # --- Documentation Parsing ---
-
-    @staticmethod
-    def _parse_inline_param_list(param_str: str) -> list[dict[str, Any]]:
-        """Parse parameter names from an inline function signature string."""
-        params: list[dict[str, Any]] = []
-        if not param_str:
-            return params
-        for p in param_str.split(","):
-            p = p.strip()
-            if p and p not in ("self", "cls", "..."):
-                parts = p.split(":")
-                param_name = parts[0].strip().split("=")[0].strip()
-                if param_name and param_name.replace("*", "").isidentifier():
-                    params.append({"name": param_name})
-        return params
-
-    @staticmethod
-    def _collect_inline_funcs(
-        line: str, line_no: int, doc_path: str, items: dict[str, dict[str, Any]]
-    ) -> None:
-        """Find inline function references like `func(param1, param2)` in line."""
-        inline_func = re.compile(r"`(\w+(?:\.\w+)*)\(([^)]*)\)`")
-        for match in inline_func.finditer(line):
-            func_name = match.group(1)
-            if func_name not in items:
-                params = APIDocValidator._parse_inline_param_list(match.group(2))
-                items[func_name] = {
-                    "name": func_name,
-                    "line": line_no,
-                    "kind": "function",
-                    "file": doc_path,
-                    "parameters": params,
-                }
-
-    @staticmethod
-    def extract_documented_items(doc_path: str) -> dict[str, dict[str, Any]]:
-        """Extract function/class references from markdown documentation."""
-        items: dict[str, dict[str, Any]] = {}
-
-        try:
-            with open(doc_path, encoding="utf-8", errors="ignore") as f:
-                content = f.read()
-        except OSError:
-            return items
-
-        lines = content.splitlines()
-
-        heading_func = re.compile(r"^#{1,6}\s+`?(\w+(?:\.\w+)*)\(`?.*\)?`?\s*$")
-        param_pattern = re.compile(r"^\s*[-*]\s+`(\w+)`\s*(?:\(([^)]+)\))?\s*(?::|--)?\s*(.*)")
-
-        current_item = None
-        current_params: list[dict[str, Any]] = []
-
-        for i, line in enumerate(lines):
-            match = heading_func.match(line)
-            if match:
-                if current_item and current_item in items:
-                    items[current_item]["parameters"] = current_params
-
-                func_name = match.group(1)
-                items[func_name] = {
-                    "name": func_name,
-                    "line": i + 1,
-                    "kind": "function",
-                    "file": doc_path,
-                    "parameters": [],
-                }
-                current_item = func_name
-                current_params = []
-                continue
-
-            APIDocValidator._collect_inline_funcs(line, i + 1, doc_path, items)
-
-            param_match = param_pattern.match(line)
-            if param_match and current_item:
-                param_name = param_match.group(1)
-                param_type = param_match.group(2)
-                current_params.append(
-                    {
-                        "name": param_name,
-                        "annotation": param_type,
-                    }
-                )
-
-        if current_item and current_item in items:
-            items[current_item]["parameters"] = current_params
-
-        return items
-
-    @staticmethod
-    def extract_all_documented_items(
-        doc_path: str, recursive: bool = False
-    ) -> dict[str, dict[str, Any]]:
-        """Extract documented items from one or more markdown files."""
-        all_items: dict[str, dict[str, Any]] = {}
-
-        if os.path.isfile(doc_path):
-            return APIDocValidator.extract_documented_items(doc_path)
-
-        if os.path.isdir(doc_path) and recursive:
-            for path in ProjectConfig.iter_files(Path(doc_path), {".md", ".rst"}):
-                items = APIDocValidator.extract_documented_items(str(path))
-                all_items.update(items)
-        elif os.path.isdir(doc_path):
-            # Non-recursive: just top-level files
-            for f in os.listdir(doc_path):
-                if f.endswith((".md", ".rst")):
-                    full_path = os.path.join(doc_path, f)
-                    items = APIDocValidator.extract_documented_items(full_path)
-                    all_items.update(items)
-
-        return all_items
 
     # --- Validation ---
 
@@ -644,13 +312,13 @@ class APIDocValidator:
 
         source_sigs: dict[str, list[SourceSignature]] = {}
         for root in source_roots:
-            for rel, sigs in APIDocValidator.extract_all_signatures(
+            for rel, sigs in SourceSignatureExtractor.extract_all_signatures(
                 str(root), include_private
             ).items():
                 key = str(root / rel)
                 source_sigs[key] = sigs
 
-        documented_items = APIDocValidator.extract_all_documented_items(
+        documented_items = DocumentedItemExtractor.extract_all_documented_items(
             str(doc_path), recursive=recursive
         )
 
