@@ -2,6 +2,27 @@
 
 <!-- version list -->
 
+## v3.7.0 (2026-09-27)
+
+### Features
+
+- **skill**: Add version subcommand ([#67](https://github.com/Zolletta/zolletta-metaskill/pull/67),
+  [`e4c28f5`](https://github.com/Zolletta/zolletta-metaskill/commit/e4c28f54354e45c13b350de78fd04fd7742e2d26))
+
+
+## v3.6.0 (2026-09-27)
+
+### Features
+
+- **patterns**: Add balanced-coupling model and integration-graph scanner
+  ([#66](https://github.com/Zolletta/zolletta-metaskill/pull/66),
+  [`8341bb5`](https://github.com/Zolletta/zolletta-metaskill/commit/8341bb54c8cd49ce1cdd81208b79c4207e924a21))
+
+- **patterns**: Add balanced-coupling model and integration-graph scanner (#46)
+  ([#66](https://github.com/Zolletta/zolletta-metaskill/pull/66),
+  [`8341bb5`](https://github.com/Zolletta/zolletta-metaskill/commit/8341bb54c8cd49ce1cdd81208b79c4207e924a21))
+
+
 ## v3.5.0 (2026-09-27)
 
 ### Features
