@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
@@ -213,3 +214,15 @@ class TestDocumentorCLI:
         ):
             exit_code = DocumentorCLI.main()
         assert exit_code == 0
+
+    def test_below_threshold_returns_one(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        monkeypatch.setattr(
+            "zolletta_metaskill.core.project_config.ProjectConfig.load_settings",
+            staticmethod(lambda *a, **k: {"documentation": {"staleness_threshold": 100}}),
+        )
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        rc = DocumentorCLI.main()
+        assert rc == 1
+        assert "below threshold" in capsys.readouterr().err

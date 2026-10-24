@@ -133,3 +133,9 @@ class TestDocumentedItemExtractor:
         p.write_text("Call `noop()` first.\n")
         items = DocumentedItemExtractor.extract_documented_items(str(p))
         assert items["noop"]["parameters"] == []
+
+    def test_collect_inline_funcs_duplicate_name_keeps_first(self, tmp_path: Path) -> None:
+        p = tmp_path / "api.md"
+        p.write_text("`foo(a)` then `foo(b)`\n")
+        items = DocumentedItemExtractor.extract_documented_items(str(p))
+        assert [x["name"] for x in items["foo"]["parameters"]] == ["a"]

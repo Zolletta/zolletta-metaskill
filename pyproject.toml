@@ -127,7 +127,7 @@ strict = true
 python_version = "3.12"
 python_executable = ".venv/bin/python"
 mypy_path = "src"
-exclude = ["zolletta-metaskill/"]
+exclude = ["zolletta-metaskill/", "playground/"]
 
 [[tool.mypy.overrides]]
 # Scoped to the optional grammar only (ADR-0004). `tree_sitter` itself is a hard
@@ -176,3 +176,7 @@ exclude_commit_patterns = ["chore.*", "docs.*"]
 [tool.semantic_release.remote]
 name = "origin"
 type = "github"
+
+[tool.ty.src]
+# playground/ is intentionally defective scanner dogfooding input.
+exclude = ["playground"]

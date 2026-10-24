@@ -1,0 +1,14 @@
+{
+    "name": "playground/deliberately-bad",
+    "description": "Intentionally poor-quality PHP for scanner dogfooding.",
+    "autoload": {
+        "psr-4": {
+            "App\\": "src-php/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests-php/"
+        }
+    }
+}

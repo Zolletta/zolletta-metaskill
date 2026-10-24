@@ -20,6 +20,11 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 #: its wrapping is the generator's, not ours.
 GENERATED = {"CHANGELOG.md"}
 
+#: playground/ is intentionally defective input for scanner dogfooding — its
+#: markdown carries wrapped prose on purpose, so findings there are expected,
+#: not violations.
+EXCLUDED_DIRS = {"playground"}
+
 
 class TestUnwrappedProseScannerRepoGuard:
     # --- repo-wide guard ---
@@ -29,6 +34,7 @@ class TestUnwrappedProseScannerRepoGuard:
             f
             for f in UnwrappedProseScanner.scan_roots([REPO_ROOT])
             if Path(f.file).name not in GENERATED
+            and not EXCLUDED_DIRS.intersection(Path(f.file).parts)
         ]
         assert findings == [], "\n".join(f"{f.file}:{f.line}  {f.description}" for f in findings)
 
