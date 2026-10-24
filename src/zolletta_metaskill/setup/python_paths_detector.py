@@ -31,11 +31,11 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-_IGNORED_FLAT_DIRS = {"tests", "docs", "doc", "examples", "scripts"}
-
 
 class PythonPathsDetector:
     """Detect Python source roots, test roots, and the package name."""
+
+    _IGNORED_FLAT_DIRS = {"tests", "docs", "doc", "examples", "scripts"}
 
     @staticmethod
     def _load_pyproject(project_root: Path) -> dict[str, Any]:
@@ -121,7 +121,7 @@ class PythonPathsDetector:
             for child in sorted(project_root.iterdir()):
                 if (
                     child.is_dir()
-                    and child.name not in _IGNORED_FLAT_DIRS
+                    and child.name not in PythonPathsDetector._IGNORED_FLAT_DIRS
                     and not child.name.startswith(".")
                     and (child / "__init__.py").exists()
                 ):
