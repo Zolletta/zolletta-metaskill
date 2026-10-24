@@ -135,7 +135,7 @@ class PythonPathsDetector:
         tool_raw = pyproject.get("tool")
         tool: dict[str, Any] = tool_raw if isinstance(tool_raw, dict) else {}
         pytest_cfg = tool.get("pytest", {}).get("ini_options", {})
-        if isinstance(pytest_cfg, dict):
+        if isinstance(pytest_cfg, dict):  # pragma: no branch — pytest cfg is a table
             testpaths = PythonPathsDetector._str_list(pytest_cfg.get("testpaths"))
             if testpaths:
                 return testpaths

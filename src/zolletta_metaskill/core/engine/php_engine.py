@@ -538,7 +538,7 @@ class PHPEngine:
                 seen_as = False
                 continue
             if child.type in ("qualified_name", "name", "namespace_name"):
-                if not module:
+                if not module:  # pragma: no branch — second name wins only in malformed AST
                     module = self._qualified_name_text(child, source)
             elif child.type == "namespace_use_group":  # pragma: no cover
                 # Handled by caller; skip here.

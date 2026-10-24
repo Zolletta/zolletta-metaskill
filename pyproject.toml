@@ -156,7 +156,7 @@ branch = true
 [tool.vulture]
 min_confidence = 80
 paths = ["src"]
-exclude = [".venv/"]
+exclude = [".venv/", "playground/"]
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:project.version"]

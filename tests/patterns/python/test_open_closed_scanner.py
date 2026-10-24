@@ -546,3 +546,23 @@ class TestOpenClosedScanner:
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
+
+    # --- AST guard paths ---
+
+    def test_is_string_collection_non_literal_node_returns_false(self) -> None:
+        import ast as _ast
+
+        node = _ast.parse("x", mode="eval").body
+        assert OpenClosedScanner._is_string_collection(node) is False
+
+    def test_is_syntax_vocabulary_non_isinstance_call_returns_false(self) -> None:
+        import ast as _ast
+
+        node = _ast.parse("foo(x)", mode="eval").body
+        assert OpenClosedScanner._is_syntax_vocabulary(node) is False
+
+    def test_is_syntax_vocabulary_string_call_non_isinstance_false(self) -> None:
+        import ast as _ast
+
+        node = _ast.parse("isinstance()", mode="eval").body
+        assert OpenClosedScanner._is_syntax_vocabulary(node) is False

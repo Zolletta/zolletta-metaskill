@@ -234,3 +234,7 @@ class TestADRCLI:
         assert rc == 1
         data = json.loads(out)
         assert data["has_adrs"] is False
+
+    def test_format_report_plain_with_dropped_appends_count(self) -> None:
+        report = DistillReport(has_adrs=True, dropped=["ADR-0001"])
+        assert "1 dropped" in ADRCLI.format_report(report, as_json=False)
