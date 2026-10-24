@@ -69,8 +69,8 @@ class OneClassPerFileScanner:
         """Return True when *class_name* corresponds to *stem*.
 
         The comparison is case-insensitive: acronym-cased classes such as
-        ``ADRCache`` or ``TestADRCLI`` match ``adr_cache.py`` /
-        ``test_adr_cli.py``, while structurally different names
+        ``ADRCache`` or ``TestADRClient`` match ``adr_cache.py`` /
+        ``test_adr_client.py``, while structurally different names
         (``WrongName`` vs ``user.py``) still mismatch.
         """
         expected = OneClassPerFileScanner._snake_to_pascal(stem)

@@ -350,7 +350,7 @@ class PHPEngine:
         for child in clause.children:
             if child.type in ("name", "qualified_name", "namespace_name"):
                 text = self._qualified_name_text(child, source)
-                if text:
+                if text:  # pragma: no branch — a name node always yields text
                     names.append(text)
         return names
 
@@ -363,7 +363,8 @@ class PHPEngine:
         for child in body.children:
             if child.type == "method_declaration":
                 info = self._build_method(child, source)
-                if info is not None:
+                # _build_method returns None only for a missing name, pragma'd there
+                if info is not None:  # pragma: no branch
                     methods.append(info)
         return methods
 
@@ -419,7 +420,7 @@ class PHPEngine:
         if vis is None:
             return True
         for child in vis.children:
-            if child.type in ("public", "protected", "private"):
+            if child.type in ("public", "protected", "private"):  # pragma: no branch
                 return bool(child.type == "public")
         return True  # pragma: no cover
 
@@ -441,7 +442,7 @@ class PHPEngine:
                 if descendant.parent is not None and descendant.parent.type == "variadic_parameter":
                     continue
                 name_child = self._child_by_type(descendant, "name")
-                if name_child is not None:
+                if name_child is not None:  # pragma: no branch — always carries a name
                     names.append(self._node_text(name_child, source))
         return names
 
@@ -456,7 +457,8 @@ class PHPEngine:
                 if child.type == ":":
                     found_colon = True
                 continue
-            if child.type in {
+            # only type nodes follow the colon in a signature
+            if child.type in {  # pragma: no branch
                 "primitive_type",
                 "optional_type",
                 "named_type",
@@ -514,11 +516,13 @@ class PHPEngine:
         if group_node is not None:
             for group_clause in self._children_by_type(group_node, "namespace_use_clause"):
                 info = self._import_from_clause(group_clause, source, lineno, prefix=prefix)
-                if info is not None:
+                # None only for a module-less clause, already pragma'd
+                if info is not None:  # pragma: no branch
                     imports.append(info)
         for clause in standalone_clauses:
             info = self._import_from_clause(clause, source, lineno, prefix="")
-            if info is not None:
+            # None only for a module-less clause, already pragma'd
+            if info is not None:  # pragma: no branch
                 imports.append(info)
         return imports
 

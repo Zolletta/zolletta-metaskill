@@ -229,6 +229,14 @@ class TestMutmutSurvivedReporter:
             ("mod.", ("mod", None)),
             ("x_alone__mutmut_1", ("", "alone")),
         ],
+        ids=[
+            "utf8_name_returns_module_and_function",
+            "special_chars_returns_module_and_function",
+            "dotted_package_returns_full_module",
+            "no_marker_returns_module_and_name",
+            "trailing_dot_returns_module_and_none",
+            "no_module_returns_empty_and_function",
+        ],
     )
     def test_split_mutant_name_returns_module_and_function(
         self, name: str, expected: tuple[str, str | None]
@@ -335,6 +343,19 @@ class TestMutmutSurvivedReporter:
         assert entry["line"] is None
         assert entry["mutation"] is None
         assert entry["diff"] is None
+
+    def test_survivor_entry_show_without_file_header_keeps_resolved_file(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "pkg.py").write_text("def f():\n    return 1\n")
+        stdout = "# pkg.x_f__mutmut_1: survived\n@@ -3 +3 @@\n- a\n+ b\n"
+        _install_mutmut(monkeypatch, {("show", "pkg.x_f__mutmut_1"): _proc(stdout)})
+        entry = MutmutSurvivedReporter._survivor_entry("pkg.x_f__mutmut_1", "survived", ["src"])
+        assert entry is not None
+        assert entry["file"] == "src/pkg.py"
+        assert entry["line"] == 3
 
     def test_survivor_entry_file_outside_roots_drops_entry(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

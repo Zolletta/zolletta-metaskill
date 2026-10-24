@@ -109,6 +109,19 @@ class TestAcronymCasingScanner:
             ("V2Client", ["V", "2", "Client"]),
             ("MyClass2", ["My", "Class", "2"]),
         ],
+        ids=[
+            "acronym_prefix_returns_acronym_then_words",
+            "two_acronyms_returns_both",
+            "mixed_case_returns_mixed",
+            "mid_acronym_returns_parts",
+            "mr_acronym_returns_parts",
+            "two_words_returns_both",
+            "single_word_returns_single",
+            "acronym_only_returns_single",
+            "acronym_digit_returns_split",
+            "leading_digit_splits_digit",
+            "trailing_digit_splits_digit",
+        ],
     )
     def test_split_pascal_case_known_splits(self, name: str, expected: list[str]) -> None:
         assert AcronymCasingScanner._split_pascal_case(name) == expected

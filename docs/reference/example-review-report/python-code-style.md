@@ -74,7 +74,7 @@ No high findings.
 
 | # | File                                       | Symbol   | Rule ID             | Issue                                                                                                                                                                                              | Suggested Fix                                                                                                                                                                                                                                                                                                |
 |---|--------------------------------------------|----------|---------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 1 | `src/zolletta_metaskill/adr/adr_cli.py:21` | `ADRCli` | #3 (acronym casing) | Class name `ADRCli` keeps the `CLI` acronym in mixed case (`Cli`). The configured acronym list includes `CLI`; the convention requires acronyms to stay fully uppercase in PascalCase class names. | Rename the class to `ADRCLI`. The filename `adr_cli.py` already follows the "acronym lowercase in filename" convention and will then match the renamed class. Update the two internal references in `adr_cli.py` (`ADRCli.build_parser`, `ADRCli.run`, `ADRCli.missing_docs_error`, `ADRCli.format_report`). |
+| 1 | `src/zolletta_metaskill/adr/adr_client.py:21` | `ADRCli` | #3 (acronym casing) | Class name `ADRCli` keeps the `CLI` acronym in mixed case (`Cli`). The configured acronym list includes `CLI`; the convention requires acronyms to stay fully uppercase in PascalCase class names. | Rename the class to `ADRCLI`. The filename `adr_client.py` already follows the "acronym lowercase in filename" convention and will then match the renamed class. Update the two internal references in `adr_client.py` (`ADRCli.build_parser`, `ADRCli.run`, `ADRCli.missing_docs_error`, `ADRCli.format_report`). |
 
 ### Low
 
@@ -113,7 +113,7 @@ No architectural directive violations observed.
 
 ## Recommendations
 
-1. Rename `ADRCli` to `ADRCLI` in `src/zolletta_metaskill/adr/adr_cli.py` to satisfy the acronym-casing convention (rule #3). This is the only outstanding style issue; resolving it would bring the codebase to a clean pass on all enabled rules.
+1. Rename `ADRCli` to `ADRCLI` in `src/zolletta_metaskill/adr/adr_client.py` to satisfy the acronym-casing convention (rule #3). This is the only outstanding style issue; resolving it would bring the codebase to a clean pass on all enabled rules.
 
 ---
 

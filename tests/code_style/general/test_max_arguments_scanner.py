@@ -199,6 +199,21 @@ class TestMaxArgumentsScanner:
         assert len(findings) == 1
         assert "Method 'Foo.bar' has 7 parameters (max 5)" in findings[0].description
 
+    def test_scan_module_method_under_limit_ignored(self, tmp_path: Path) -> None:
+        module = ModuleInfo(
+            path=tmp_path / "m.py",
+            language="python",
+            classes=[
+                ClassInfo(
+                    name="Foo",
+                    lineno=1,
+                    end_lineno=5,
+                    methods=[self._function("bar", 3, lineno=2)],
+                )
+            ],
+        )
+        assert MaxArgumentsScanner.scan_module(module, max_args=5) == []
+
     def test_scan_module_dataclass_over_limit_flagged(self, tmp_path: Path) -> None:
         module = ModuleInfo(
             path=tmp_path / "m.py",

@@ -12,6 +12,8 @@ from zolletta_metaskill.core.structs import Finding
 class TestFinding:
     """Tests for the Finding dataclass."""
 
+    # --- construction ---
+
     def test_construction_with_defaults(self) -> None:
         """Finding uses default fix_type when not specified."""
         f = Finding(
@@ -40,6 +42,8 @@ class TestFinding:
         )
         assert f.fix_type == "auto"
 
+    # --- immutability ---
+
     def test_finding_frozen_raises_frozeninstanceerror(self) -> None:
         """Finding is immutable."""
         f = Finding(
@@ -51,6 +55,8 @@ class TestFinding:
         )
         with pytest.raises(FrozenInstanceError):
             setattr(f, "line", 20)
+
+    # --- equality ---
 
     def test_finding_equality_returns_f2(self) -> None:
         """Two Findings with the same fields are equal."""

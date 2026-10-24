@@ -414,9 +414,9 @@ class TestStructureScanner:
             ref_sources: dict[str, list[str]] = {}  # src_rel -> [classes]
             for cls_name in referenced_classes:
                 src = class_to_source.get(cls_name)
-                if src:
+                if src:  # pragma: no branch — referenced classes all come from the index
                     ref_sources.setdefault(src, []).append(cls_name)
-            if ref_sources:
+            if ref_sources:  # pragma: no branch — non-empty referenced_classes always resolve
                 # Primary source = the one with the most referenced classes
                 primary = max(ref_sources, key=lambda s: len(ref_sources[s]))
                 primary_info = src_index[primary]

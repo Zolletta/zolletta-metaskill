@@ -100,7 +100,7 @@ Team processes that ensure docs are updated alongside code changes.
 
 ```yaml
 - name: Full drift analysis
-  run: python src/zolletta_metaskill/documentor/documentor_cli.py --json > drift-report.json
+  run: python src/zolletta_metaskill/documentor/documentor_client.py --json > drift-report.json
   # Generates aggregated report as release artifact
 ```
 

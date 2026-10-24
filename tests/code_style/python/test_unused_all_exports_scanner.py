@@ -54,6 +54,11 @@ class TestUnusedAllExportsScanner:
         f.write_text("__all__ = [\n", encoding="utf-8")
         assert UnusedAllExportsScanner._extract_all_entries(f) == []
 
+    def test_augmented_assignment_non_string_entries_ignored(self, tmp_path: Path) -> None:
+        f = tmp_path / "mod.py"
+        f.write_text('__all__ = ["foo"]\n__all__ += ["bar", 123]\n', encoding="utf-8")
+        assert UnusedAllExportsScanner._extract_all_entries(f) == ["foo", "bar"]
+
     def test_non_string_entries_ignored(self, tmp_path: Path) -> None:
         f = tmp_path / "mod.py"
         f.write_text('__all__ = ["foo", 123, None, "bar"]\n', encoding="utf-8")

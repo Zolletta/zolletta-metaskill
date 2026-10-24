@@ -26,7 +26,7 @@ Review project documentation for [Diátaxis](https://diataxis.fr/) compliance, d
 ### Step 1 — Run the documentor CLI
 
 ```bash
-python3 src/zolletta_metaskill/documentor/documentor_cli.py
+python3 src/zolletta_metaskill/documentor/documentor_client.py
 ```
 
 This runs all three documentor tools and prints one aggregated report. Each tool also writes its own JSON cache into the current run folder, `<runs_dir>/<YYYY-MM-DD-HH-MM>/cache/` — `.zolletta-metaskill/<timestamp>/cache/` with the default `runs_dir` — so each review keeps its own history instead of overwriting the last; before the first run folder exists, artifacts land in `<runs_dir>/cache/`:
@@ -38,7 +38,7 @@ This runs all three documentor tools and prints one aggregated report. Each tool
 Use `--json` for machine-readable output:
 
 ```bash
-python3 src/zolletta_metaskill/documentor/documentor_cli.py --json > drift-report.json
+python3 src/zolletta_metaskill/documentor/documentor_client.py --json > drift-report.json
 ```
 
 ### Step 2 — (Optional) Run individual tools

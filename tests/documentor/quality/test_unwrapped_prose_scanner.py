@@ -27,6 +27,10 @@ class TestUnwrappedProseScanner:
         text = "First.\n\nA sentence that\nwraps over\nthree lines.\n"
         assert UnwrappedProseScanner.paragraph_runs(text) == [(3, 5)]
 
+    def test_paragraph_running_to_eof_returns_run(self) -> None:
+        runs = UnwrappedProseScanner.paragraph_runs("A sentence that\nwraps at EOF")
+        assert runs == [(1, 2)]
+
     def test_blank_line_separates_runs(self) -> None:
         text = "One that\nwraps.\n\nTwo that\nalso wraps.\n"
         assert UnwrappedProseScanner.paragraph_runs(text) == [(1, 2), (4, 5)]

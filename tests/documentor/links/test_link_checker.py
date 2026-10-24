@@ -290,7 +290,7 @@ class TestLinkChecker:
     def test_external_check_success(self) -> None:
         link = LinkInfo("README.md", 1, "text", "https://example.com", "external")
         with patch(
-            "zolletta_metaskill.documentor.links.link_checker.ExternalUrlChecker.validate",
+            "zolletta_metaskill.documentor.links.link_checker.ExternalURLChecker.validate",
             autospec=True,
             return_value=(True, None),
         ):
@@ -300,7 +300,7 @@ class TestLinkChecker:
     def test_external_check_failure(self) -> None:
         link = LinkInfo("README.md", 1, "text", "https://example.com", "external")
         with patch(
-            "zolletta_metaskill.documentor.links.link_checker.ExternalUrlChecker.validate",
+            "zolletta_metaskill.documentor.links.link_checker.ExternalURLChecker.validate",
             autospec=True,
             return_value=(False, "HTTP 404"),
         ):
@@ -605,6 +605,10 @@ class TestLinkChecker:
         assert "all_links" not in data
         assert data["summary"]["broken"] == 1
 
+    def test_write_settings_without_documentation_override(self, tmp_path: Path) -> None:
+        path = self._write_settings(tmp_path)
+        assert '"documentation"' in path.read_text(encoding="utf-8")
+
     def test_check_external_setting(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -613,7 +617,7 @@ class TestLinkChecker:
             "# Title\n[link](https://example.com)\n", encoding="utf-8"
         )
         with patch(
-            "zolletta_metaskill.documentor.links.link_checker.ExternalUrlChecker.validate",
+            "zolletta_metaskill.documentor.links.link_checker.ExternalURLChecker.validate",
             autospec=True,
             return_value=(True, None),
         ) as mock_validate:
@@ -628,7 +632,7 @@ class TestLinkChecker:
             "# Title\n[link](https://example.com)\n", encoding="utf-8"
         )
         with patch(
-            "zolletta_metaskill.documentor.links.link_checker.ExternalUrlChecker.validate",
+            "zolletta_metaskill.documentor.links.link_checker.ExternalURLChecker.validate",
             autospec=True,
             return_value=(True, None),
         ) as mock_validate:

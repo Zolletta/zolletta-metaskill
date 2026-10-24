@@ -166,6 +166,17 @@ class TestPythonEngine:
         m = next(meth for meth in cls.methods if meth.name == "bar")
         assert m.raises == ["ValueError"]
 
+    def test_class_with_bare_raise(self, tmp_path: Path) -> None:
+        path = _write(
+            tmp_path,
+            "mod.py",
+            "class Foo:\n    def bar(self):\n        raise ValueError\n",
+        )
+        info = PythonEngine().parse_module(path)
+        cls = _classes(info)["Foo"]
+        m = next(meth for meth in cls.methods if meth.name == "bar")
+        assert m.raises == ["ValueError"]
+
     def test_class_lineno_and_end_lineno(self, tmp_path: Path) -> None:
         path = _write(
             tmp_path,
@@ -175,7 +186,7 @@ class TestPythonEngine:
         info = PythonEngine().parse_module(path)
         cls = _classes(info)["Foo"]
         assert cls.lineno == 3
-        assert cls.end_lineno >= cls.lineno
+        assert cls.end_lineno == 5
 
     # --- parse_module — functions ---
 
@@ -335,6 +346,11 @@ class TestPythonEngine:
         info = PythonEngine().parse_module(path)
         assert info.all_exports is None
 
+    def test_all_exports_non_string_element_skipped(self, tmp_path: Path) -> None:
+        path = _write(tmp_path, "mod.py", '__all__ = ["Foo", other_name]\n')
+        info = PythonEngine().parse_module(path)
+        assert info.all_exports == ["Foo"]
+
     # --- parse_module — docstring ---
 
     def test_module_with_docstring(self, tmp_path: Path) -> None:
@@ -344,6 +360,11 @@ class TestPythonEngine:
 
     def test_module_without_docstring(self, tmp_path: Path) -> None:
         path = _write(tmp_path, "mod.py", "x = 1\n")
+        info = PythonEngine().parse_module(path)
+        assert info.docstring is None
+
+    def test_module_expression_first_statement_docstring_none(self, tmp_path: Path) -> None:
+        path = _write(tmp_path, "mod.py", 'print("hi")\n\nx = 1\n')
         info = PythonEngine().parse_module(path)
         assert info.docstring is None
 

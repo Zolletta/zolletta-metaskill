@@ -102,7 +102,9 @@ class ADROrchestrator:
                 and key not in existing_directives
             ):
                 directive = self.distill_adr(record)
-                if directive is not None:
+                # distill_adr returns None only for non-Accepted records,
+                # and this loop already filters for them
+                if directive is not None:  # pragma: no branch
                     new_directives[key] = directive
 
         accepted_keys = {ADRCache.key(r) for r in records if self._is_accepted(r.status)}
@@ -319,18 +321,18 @@ class ADROrchestrator:
         """Parse args, run the distiller, and print the report.
 
         Returns the CLI exit code (0 on success, 1 on error).
-        Delegates to ADRCLI for argument parsing and output formatting.
+        Delegates to ADRClient for argument parsing and output formatting.
         """
-        from zolletta_metaskill.adr.adr_cli import ADRCLI
+        from zolletta_metaskill.adr.adr_client import ADRClient
 
-        return ADRCLI.run(argv)
+        return ADRClient.run(argv)
 
     @staticmethod
     def main() -> int:
         """Entry point for the ADR distiller CLI."""
-        from zolletta_metaskill.adr.adr_cli import ADRCLI
+        from zolletta_metaskill.adr.adr_client import ADRClient
 
-        return ADRCLI.run()
+        return ADRClient.run()
 
 
 if __name__ == "__main__":  # pragma: no cover

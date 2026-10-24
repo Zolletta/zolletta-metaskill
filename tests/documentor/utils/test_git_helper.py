@@ -105,12 +105,22 @@ class TestGitHelper:
         with patch.object(GitHelper, "run_git", return_value=""):
             assert GitHelper.get_files_changed_since(str(tmp_path), "2024-01-01") == []
 
+    def test_get_files_changed_since_skips_malformed_lines(self, tmp_path: Path) -> None:
+        with patch.object(GitHelper, "run_git", return_value="orphan\nM\tsrc/a.py\n"):
+            changes = GitHelper.get_files_changed_since(str(tmp_path), "2024-01-01")
+            assert changes == [{"status": "M", "file": "src/a.py"}]
+
     # --- get_renamed_files ---
 
     def test_get_renamed_files_parses_renames(self, tmp_path: Path) -> None:
         with patch.object(GitHelper, "run_git", return_value="R100\told.py\tnew.py\n"):
             renames = GitHelper.get_renamed_files(str(tmp_path), "2024-01-01")
             assert ("old.py", "new.py") in renames
+
+    def test_get_renamed_files_skips_non_rename_lines(self, tmp_path: Path) -> None:
+        with patch.object(GitHelper, "run_git", return_value="M\tsrc/a.py\nR100\told.py\tnew.py\n"):
+            renames = GitHelper.get_renamed_files(str(tmp_path), "2024-01-01")
+            assert renames == [("old.py", "new.py")]
 
     def test_get_renamed_files_skips_blank_lines(self, tmp_path: Path) -> None:
         with patch.object(GitHelper, "run_git", return_value="\n\nR100\told.py\tnew.py\n\n"):

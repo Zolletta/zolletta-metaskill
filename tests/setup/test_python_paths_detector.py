@@ -97,6 +97,18 @@ class TestPythonPathsDetector:
         result = PythonPathsDetector.detect_python_paths(tmp_path)
         assert result["source"] == ["src"]
 
+    def test_setuptools_package_dir_without_empty_key_falls_through(self, tmp_path: Path) -> None:
+        _write_pyproject(tmp_path, '[tool.setuptools.package-dir]\n"foo" = "src"\n')
+        _make_package(tmp_path / "src", "realpkg")
+        result = PythonPathsDetector.detect_python_paths(tmp_path)
+        assert result["source"] == ["src"]
+
+    def test_setuptools_find_without_where_falls_through(self, tmp_path: Path) -> None:
+        _write_pyproject(tmp_path, "[tool.setuptools.packages.find]\n")
+        _make_package(tmp_path / "src", "realpkg")
+        result = PythonPathsDetector.detect_python_paths(tmp_path)
+        assert result["source"] == ["src"]
+
     def test_poetry_packages_from(self, tmp_path: Path) -> None:
         _write_pyproject(
             tmp_path,
@@ -139,6 +151,10 @@ class TestPythonPathsDetector:
         result = PythonPathsDetector.detect_python_paths(tmp_path)
         assert result["source"] == ["src"]
         assert result["package"] is None
+
+    def test_missing_project_root_defaults_src(self, tmp_path: Path) -> None:
+        result = PythonPathsDetector._detect_source({}, tmp_path / "missing")
+        assert result == ["src"]
 
     # --- DetectTests ---
 

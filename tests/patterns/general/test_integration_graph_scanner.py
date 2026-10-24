@@ -7,6 +7,7 @@ import subprocess
 import sys
 from collections.abc import Callable
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -245,6 +246,23 @@ class TestIntegrationGraphScanner:
         assert result["edges"][0]["names"] == [{"name": "X", "usage": "attribute"}]
 
     # --- Tests for usage-hint classification (Python). ---
+
+    def test_record_call_usage_subscript_func_records_nothing(self) -> None:
+        import ast
+
+        node = cast(ast.Call, ast.parse("handlers[0]()", mode="eval").body)
+        kinds: dict[str, set[str]] = {"call": set(), "attribute": set()}
+        IntegrationGraphScanner._record_call_usage(node, kinds)
+        assert kinds == {"call": set(), "attribute": set()}
+
+    def test_record_call_usage_call_root_attribute(self) -> None:
+        import ast
+
+        node = cast(ast.Call, ast.parse("make().run()", mode="eval").body)
+        kinds: dict[str, set[str]] = {"call": set(), "attribute": set()}
+        IntegrationGraphScanner._record_call_usage(node, kinds)
+        assert "run" in kinds["call"]
+        assert kinds["attribute"] == set()
 
     def test_usage_call_attribute_root(self, tmp_path: Path) -> None:
         """``mod.func()`` marks the ``mod`` import as a call."""

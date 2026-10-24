@@ -633,6 +633,16 @@ class TestNamingConventionsScanner:
 
     # --- acronym-aware filename↔class matching ---
 
+    def test_known_acronyms_empty_list_falls_back_to_default(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        path = tmp_path / "acronyms.json"
+        path.write_text('{"acronyms": []}')
+        monkeypatch.setattr(NamingConventionsScanner, "_ACRONYMS_JSON", path)
+        assert NamingConventionsScanner._known_acronyms() == frozenset(
+            {"ADR", "API", "CLI", "HTTP", "JSON", "PHP", "URL"}
+        )
+
     def test_acceptable_names_include_leading_acronym(self) -> None:
         acronyms = NamingConventionsScanner._known_acronyms()
         names = NamingConventionsScanner._acceptable_class_names("adr_cache", acronyms)

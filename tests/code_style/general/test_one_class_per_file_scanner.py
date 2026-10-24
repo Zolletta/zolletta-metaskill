@@ -548,7 +548,7 @@ class TestOneClassPerFileScanner:
     def test_main_test_root_acronym_class_name_accepted(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """TestADRCLI in test_adr_cli.py passes the case-insensitive name check."""
+        """TestADRClient in test_adr_client.py passes the case-insensitive name check."""
         monkeypatch.chdir(tmp_path)
         _write_settings(tmp_path)
         root = tmp_path / "src"
@@ -558,7 +558,7 @@ class TestOneClassPerFileScanner:
         tests = tmp_path / "tests"
         tests.mkdir()
         (tests / "__init__.py").write_text("")
-        (tests / "test_adr_cli.py").write_text("class TestADRCLI:\n    pass\n")
+        (tests / "test_adr_client.py").write_text("class TestADRClient:\n    pass\n")
         monkeypatch.setattr(sys, "argv", ["prog", "--json"])
         rc = OneClassPerFileScanner.main()
         report = json.loads(capsys.readouterr().out)

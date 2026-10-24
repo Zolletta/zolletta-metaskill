@@ -13,6 +13,8 @@ from zolletta_metaskill.core.structs import ClassInfo, ImportInfo, MethodInfo, M
 class TestModuleInfo:
     """Tests for the ModuleInfo dataclass."""
 
+    # --- construction ---
+
     def test_moduleinfo_minimal_construction_returns_false(self) -> None:
         """ModuleInfo can be constructed with only path and language."""
         mi = ModuleInfo(path=Path("/tmp/foo.py"), language="python")
@@ -47,11 +49,15 @@ class TestModuleInfo:
         assert mi.docstring == "A module."
         assert mi.has_syntax_error is False
 
+    # --- immutability ---
+
     def test_moduleinfo_frozen_raises_frozeninstanceerror(self) -> None:
         """ModuleInfo is immutable."""
         mi = ModuleInfo(path=Path("/tmp/foo.py"), language="python")
         with pytest.raises(FrozenInstanceError):
             setattr(mi, "language", "php")
+
+    # --- default fields ---
 
     def test_default_lists_are_independent(self) -> None:
         """Each instance gets its own default list."""

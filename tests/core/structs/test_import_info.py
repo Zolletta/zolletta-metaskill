@@ -12,6 +12,8 @@ from zolletta_metaskill.core.structs import ImportInfo
 class TestImportInfo:
     """Tests for the ImportInfo dataclass."""
 
+    # --- construction ---
+
     def test_importinfo_minimal_construction_returns_false(self) -> None:
         """ImportInfo can be constructed with only the module name."""
         imp = ImportInfo(module="os.path")
@@ -31,6 +33,8 @@ class TestImportInfo:
         assert imp.names == ["path", "getenv"]
         assert imp.lineno == 5
         assert imp.is_relative is True
+
+    # --- immutability ---
 
     def test_importinfo_frozen_raises_frozeninstanceerror(self) -> None:
         """ImportInfo is immutable."""

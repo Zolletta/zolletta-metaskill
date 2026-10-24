@@ -159,7 +159,7 @@ class DependencyInversionScanner:
                                 "utf-8", errors="replace"
                             )
                         )
-                if parts:
+                if parts:  # pragma: no branch — qualified_name always has names
                     return "\\".join(parts)
         return None  # pragma: no cover
 

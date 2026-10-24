@@ -94,7 +94,7 @@ This step ensures the tokensave index is fresh before any subagent uses it. Stal
 1. Read `runs_dir` from `settings.json` (default `.zolletta-metaskill`).
 2. Generate a timestamp in `YYYY-MM-DD-HH-MM` format. Use `date +%Y-%m-%d-%H-%M` to get this.
 3. Create the run directory structure:
-   - `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/` — for LLM judgment (subcommand reports, SUMMARY.md, TODO.md)
+   - `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/` — for LLM judgment (subcommand reports, SUMMARY.md)
    - `<runs_dir>/<YYYY-MM-DD-HH-MM>/cache/` — for deterministic artifacts (script outputs + shared context)
 
 ### Step 3 — Check for previous reviews
@@ -236,7 +236,7 @@ Follow the report template for this skill (linked in the skill's "Output" sectio
 The report must include:
 - A **grade** section at the top with a numeric score from 0 to 100 for the project's performance in the scope you reviewed. Justify the score with a brief breakdown of what earned points and what lost points.
 - The skill-specific sections from the report template (tool results, coverage tables, scanning script results, etc. as applicable)
-- Findings grouped by severity (critical/high/medium/low) using the template's table format
+- Findings grouped by severity (critical/high/medium/low) using the template's table format, **numbered with a single progressive sequence across all severities**. All four sections are always present — an empty section reads `*None.*`, never disappears — `S1`, `S2`, `S3`… for code-style, `T1`, `T2`… for testing, `P1`, `P2`… for patterns, `D1`, `D2`… for documentor. The id never resets when the section changes and carries no severity letter, so `[T7]` is unambiguous across the whole run. Each finding row includes its id in the first column so the orchestrator's TODO can link it.
 - If no issues are found, state that explicitly with a brief explanation of what was checked
 
 **Grading scale** (0-100):
@@ -259,15 +259,20 @@ If a subagent fails or times out, create its report file with a note explaining 
 
 If a previous review directory was found in Step 3:
 
-1. Read the previous `TODO.md`.
+1. Read the previous `SUMMARY.md` (the `Open`/`Done`/`Previous review status` sections).
 2. For each item in the previous TODO, check whether it has been addressed:
-   - Search the codebase for the files/areas mentioned in the item
-   - Use `git log --oneline -20` and `git diff` to see recent changes
-   - Determine if the issue described has been fixed, partially fixed, or is still open
-3. Create a section in the new TODO.md called "## Previous review status" that lists each previous TODO item with its status: ✅ Done / ⚠️ Partially done / ❌ Not done.
+   - **A previous "❌ Not done" is a claim to verify, not a fact.** Never carry an item forward on the strength of its checkbox alone — items are fixed between reviews without the TODO being updated, and an unchecked box is only evidence that nobody marked it done.
+   - Run `git log --oneline -- <files the item names>` and `git log --grep=<keywords>` over the item's file paths and symbols. A fix commit often names the defect it closes (e.g. "do not flag parser vocabulary", "a rename that was undone is not a stale reference").
+   - Read the current implementation of the named functions/classes. If the mechanism the item asked for exists in code — the exemption, the extra state, the shared helper — the item is ✅ Done regardless of what the old TODO says, and you cite the commit or the code as evidence.
+   - Re-run the relevant scanner/tool when one exists. Silent/clean output means "no violations", not "still broken" — do not interpret an empty report as a residual defect.
+   - Only then decide: ✅ Done (with evidence) / ⚠️ Partially done / ❌ Not done.
+3. Create a section in the new SUMMARY.md called "## Previous review status" that lists each previous TODO item with its status: ✅ Done / ⚠️ Partially done / ❌ Not done.
+   - **Group items by status** — three tables (✅ Done, ⚠️ Partially done, ❌ Not done), each ordered by the item's number in the **previous** TODO. The `#` column always refers to the previous numbering, never the new one.
+   - **Every ⚠️ or ❌ row must name where it was carried forward** — a "Carried into" column reading `→ new #N`, so a reader can jump straight from the old item to its new TODO entry without searching.
+   - ✅ rows carry a short evidence column (commit hash, code symbol, or check that proved it done); ⚠️ rows name what remains; ❌ rows name the evidence that it is still unfixed.
 4. Any items that are ❌ Not done or ⚠️ Partially done should be carried forward into the new TODO as high-priority items (they were already identified and not resolved).
 
-If no previous review exists, skip this step (note in the TODO that this is the first review).
+If no previous review exists, skip this step (note in SUMMARY.md that this is the first review).
 
 ### Step 7 — Create the executive summary (SUMMARY.md)
 
@@ -295,11 +300,11 @@ If the project has no documentation directory, redistribute the documentation we
 
 If a previous review exists, include a "Trend vs previous review" subsection noting whether the overall grade improved, worsened, or stayed the same, and by how many points.
 
-### Step 8 — Create the aggregated TODO.md
+### Step 8 — Create the aggregated SUMMARY.md
 
-Read all report files produced by the subagents. Create `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/TODO.md` following the TODO template (`assets/todo_template.md`).
+Read all report files produced by the subagents. Create `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/SUMMARY.md` following the summary template (`assets/summary_template.md`).
 
-The TODO.md is a prioritized action list — it does **not** duplicate the full findings from the specialist reports. Each item links to the relevant specialist report for full details (file path, line numbers, impact, suggested fix).
+SUMMARY.md is both the executive summary and the prioritized action list — it does **not** duplicate the full findings from the specialist reports. Each item links to the relevant specialist report for full details (file path, line numbers, impact, suggested fix).
 
 **Organization rules** (in this exact order):
 
@@ -315,11 +320,15 @@ The TODO.md is a prioritized action list — it does **not** duplicate the full 
 
 6. **Previous review status** — the carry-forward section from Step 6 (if applicable).
 
+**Recommendations must not restate findings** — that section carries only process/tooling advice the findings do not imply directly (heuristic gaps to feed back, workflow notes). If a recommendation is just "fix the finding," drop it.
+
 **Numbering**: Assign each issue a unique sequential number starting from 1, counting continuously across all sections (Critical → High → Medium → Low). Do NOT restart numbering per section. The number goes before the priority tag.
+
+**Format**: each severity section is a table `# | Reported in | Description` — not a checklist. **Reported in** links every item to the source findings in the specialist reports using per-report prefixes defined in the template (`PA` patterns, `D` documentor, `CS` python-code-style, `TP` python-testing-patterns), e.g. `[CS-M1](python-code-style.md#findings)`. Carried-forward items use `prev-#N`. Completed items move to a **Done** table at the bottom of their section.
 
 ### Step 9 — Summary response
 
-After all files are saved and the SUMMARY.md and TODO.md are created, respond to the user with:
+After all files are saved and the SUMMARY.md is created, respond to the user with:
 
 1. The project language (from `settings.json`)
 2. A brief summary of what was reviewed and where the reports are saved
@@ -329,7 +338,7 @@ After all files are saved and the SUMMARY.md and TODO.md are created, respond to
 6. The number of items carried forward from the previous review (if any) and their status
 7. The top 3 strengths and top 3 weaknesses (from SUMMARY.md)
 8. The top 3 priority items from the TODO
-9. The paths to the SUMMARY.md and TODO.md files
+9. The path to SUMMARY.md files
 
 Keep the summary concise. The full details are in the report files.
 

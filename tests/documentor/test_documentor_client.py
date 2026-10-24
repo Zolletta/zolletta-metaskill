@@ -1,4 +1,4 @@
-"""Tests for documentor_cli.py."""
+"""Tests for documentor_client.py."""
 
 from __future__ import annotations
 
@@ -11,12 +11,12 @@ from unittest.mock import patch
 import pytest
 
 from zolletta_metaskill.documentor.api_doc.api_doc_validator import APIDocValidator
-from zolletta_metaskill.documentor.documentor_cli import DocumentorCLI
+from zolletta_metaskill.documentor.documentor_client import DocumentorClient
 from zolletta_metaskill.documentor.links.link_checker import LinkChecker
 from zolletta_metaskill.documentor.quality.quality_review import QualityReview
 
 
-class TestDocumentorCLI:
+class TestDocumentorClient:
     def _patch_main_inputs(
         self,
         tmp_path: Path,
@@ -40,11 +40,11 @@ class TestDocumentorCLI:
 
         return (
             patch(
-                "zolletta_metaskill.documentor.documentor_cli.ProjectConfig.load_settings",
+                "zolletta_metaskill.documentor.documentor_client.ProjectConfig.load_settings",
                 return_value=settings if settings is not None else {},
             ),
             patch(
-                "zolletta_metaskill.documentor.documentor_cli.DocumentorSettings.resolve_cache_dir",
+                "zolletta_metaskill.documentor.documentor_client.DocumentorSettings.resolve_cache_dir",
                 return_value=cache_dir,
             ),
             patch.object(
@@ -56,7 +56,7 @@ class TestDocumentorCLI:
             patch.object(APIDocValidator, "_write_cache", return_value=None),
             patch.object(LinkChecker, "run", return_value=None),
             patch.object(
-                DocumentorCLI,
+                DocumentorClient,
                 "_python_configured",
                 return_value=python_configured,
             ),
@@ -80,7 +80,7 @@ class TestDocumentorCLI:
         self._layout(tmp_path, src=True, docs=True)
         monkeypatch.chdir(tmp_path)
         settings = {"language": "python", "documentation": {"dir": "docs"}}
-        assert DocumentorCLI._python_configured(settings) is True
+        assert DocumentorClient._python_configured(settings) is True
 
     def test_python_configured_false_when_source_root_missing(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -89,7 +89,7 @@ class TestDocumentorCLI:
         self._layout(tmp_path, src=False, docs=True)
         monkeypatch.chdir(tmp_path)
         settings = {"language": "python", "documentation": {"dir": "docs"}}
-        assert DocumentorCLI._python_configured(settings) is False
+        assert DocumentorClient._python_configured(settings) is False
 
     def test_python_configured_false_when_docs_dir_missing(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -98,7 +98,7 @@ class TestDocumentorCLI:
         self._layout(tmp_path, src=True, docs=False)
         monkeypatch.chdir(tmp_path)
         settings = {"language": "python", "documentation": {"dir": "docs"}}
-        assert DocumentorCLI._python_configured(settings) is False
+        assert DocumentorClient._python_configured(settings) is False
 
     def test_python_configured_false_for_non_python_language(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -107,7 +107,7 @@ class TestDocumentorCLI:
         self._layout(tmp_path, src=True, docs=True)
         monkeypatch.chdir(tmp_path)
         settings = {"language": "php", "documentation": {"dir": "docs"}}
-        assert DocumentorCLI._python_configured(settings) is False
+        assert DocumentorClient._python_configured(settings) is False
 
     def test_python_configured_uses_custom_docs_dir(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -117,7 +117,7 @@ class TestDocumentorCLI:
         (tmp_path / "guide").mkdir()
         monkeypatch.chdir(tmp_path)
         settings = {"language": "python", "documentation": {"dir": "guide"}}
-        assert DocumentorCLI._python_configured(settings) is True
+        assert DocumentorClient._python_configured(settings) is True
 
     # --- main ---
 
@@ -126,7 +126,7 @@ class TestDocumentorCLI:
     ) -> None:
         patches = self._patch_main_inputs(tmp_path)
         with (
-            patch("sys.argv", ["documentor_cli.py"]),
+            patch("sys.argv", ["documentor_client.py"]),
             patches[0],
             patches[1],
             patches[2] as mock_q,
@@ -135,7 +135,7 @@ class TestDocumentorCLI:
             patches[5] as mock_link,
             patches[6],
         ):
-            exit_code = DocumentorCLI.main()
+            exit_code = DocumentorClient.main()
         assert exit_code == 0
         mock_q.assert_called_once()
         mock_api.assert_called_once()
@@ -148,7 +148,7 @@ class TestDocumentorCLI:
     ) -> None:
         patches = self._patch_main_inputs(tmp_path, python_configured=False)
         with (
-            patch("sys.argv", ["documentor_cli.py"]),
+            patch("sys.argv", ["documentor_client.py"]),
             patches[0],
             patches[1],
             patches[2],
@@ -157,7 +157,7 @@ class TestDocumentorCLI:
             patches[5],
             patches[6],
         ):
-            exit_code = DocumentorCLI.main()
+            exit_code = DocumentorClient.main()
         assert exit_code == 0
         mock_api.assert_not_called()
         mock_skip.assert_called_once()
@@ -166,7 +166,7 @@ class TestDocumentorCLI:
         patches = self._patch_main_inputs(tmp_path)
         printed: list[str] = []
         with (
-            patch("sys.argv", ["documentor_cli.py", "--json"]),
+            patch("sys.argv", ["documentor_client.py", "--json"]),
             patches[0],
             patches[1],
             patches[2],
@@ -176,7 +176,7 @@ class TestDocumentorCLI:
             patches[6],
             patch("builtins.print", side_effect=printed.append),
         ):
-            exit_code = DocumentorCLI.main()
+            exit_code = DocumentorClient.main()
         assert exit_code == 0
         data = json.loads(printed[0])
         assert set(data["sections"]) == {"quality", "api_doc", "links"}
@@ -186,7 +186,7 @@ class TestDocumentorCLI:
         settings = {"documentation": {"staleness_threshold": 90}}
         patches = self._patch_main_inputs(tmp_path, aggregate_score=50.0, settings=settings)
         with (
-            patch("sys.argv", ["documentor_cli.py"]),
+            patch("sys.argv", ["documentor_client.py"]),
             patches[0],
             patches[1],
             patches[2],
@@ -196,13 +196,30 @@ class TestDocumentorCLI:
             patches[6],
             patch("builtins.print"),
         ):
-            exit_code = DocumentorCLI.main()
+            exit_code = DocumentorClient.main()
+        assert exit_code == 1
+
+    def test_main_threshold_gate_json_mode_exits_1(self, tmp_path: Path) -> None:
+        settings = {"documentation": {"staleness_threshold": 90}}
+        patches = self._patch_main_inputs(tmp_path, aggregate_score=50.0, settings=settings)
+        with (
+            patch("sys.argv", ["documentor_client.py", "--json"]),
+            patches[0],
+            patches[1],
+            patches[2],
+            patches[3],
+            patches[4],
+            patches[5],
+            patches[6],
+            patch("builtins.print"),
+        ):
+            exit_code = DocumentorClient.main()
         assert exit_code == 1
 
     def test_main_no_score_exits_0(self, tmp_path: Path) -> None:
         patches = self._patch_main_inputs(tmp_path, aggregate_score=None)
         with (
-            patch("sys.argv", ["documentor_cli.py"]),
+            patch("sys.argv", ["documentor_client.py"]),
             patches[0],
             patches[1],
             patches[2],
@@ -212,7 +229,7 @@ class TestDocumentorCLI:
             patches[6],
             patch("builtins.print"),
         ):
-            exit_code = DocumentorCLI.main()
+            exit_code = DocumentorClient.main()
         assert exit_code == 0
 
     def test_below_threshold_returns_one(
@@ -223,6 +240,6 @@ class TestDocumentorCLI:
             staticmethod(lambda *a, **k: {"documentation": {"staleness_threshold": 100}}),
         )
         monkeypatch.setattr(sys, "argv", ["prog"])
-        rc = DocumentorCLI.main()
+        rc = DocumentorClient.main()
         assert rc == 1
         assert "below threshold" in capsys.readouterr().err

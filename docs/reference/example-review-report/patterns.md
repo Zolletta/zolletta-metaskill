@@ -111,7 +111,7 @@ All 15 classes are suppressed per "What is NOT a God class": static helper colle
 
 | Integration (from → to)                            | Strength   | Distance | Volatility             | Balanced? | Verdict                                               |
 |----------------------------------------------------|------------|----------|------------------------|-----------|-------------------------------------------------------|
-| `adr/adr_cli.py` → `adr/adr_orchestrator.py`       | intrusive  | low      | supporting *(assumed)* | yes       | tolerable debt — same subtree, likely re-set together |
+| `adr/adr_client.py` → `adr/adr_orchestrator.py`       | intrusive  | low      | supporting *(assumed)* | yes       | tolerable debt — same subtree, likely re-set together |
 | `patterns/*` scanners → `core/project_config.py`   | functional | medium   | supporting *(assumed)* | yes       | stable — low-strength leg of the balance rule         |
 | `adr/*` → `core/engine` (`LanguageEngine` imports) | contract   | medium   | core *(assumed)*       | yes       | stable — contracts exist precisely for core modules   |
 

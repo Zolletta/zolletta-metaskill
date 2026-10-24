@@ -37,18 +37,52 @@ skills: [review]
 
 {{grade_rationale}}
 
-## Detailed reports
+## Detailed reports and finding references
 
-For full findings, see the specialist reports:
+For full findings (file paths, line numbers, impact, suggested fixes), see the specialist reports. Every action item names its source findings in a **Reported in** column using the per-report prefixes below:
 
-| Area            | Report file                                |
-| --------------- | ------------------------------------------ |
-| Design patterns | [patterns.md](patterns.md)                 |
-| Documentation   | [documentor.md](documentor.md)             |
-| {{lang_area_1}} | [{{lang_skill_1}}.md]({{lang_skill_1}}.md) |
-| {{lang_area_2}} | [{{lang_skill_2}}.md]({{lang_skill_2}}.md) |
+| Prefix | Area | Report file |
+|--------|------|-------------|
+| `P`    | Design patterns | [patterns.md](patterns.md) |
+| `D`    | Documentation   | [documentor.md](documentor.md) |
+| `{{lang_prefix_1}}` | {{lang_area_1}} | [{{lang_skill_1}}.md]({{lang_skill_1}}.md) |
+| `{{lang_prefix_2}}` | {{lang_area_2}} | [{{lang_skill_2}}.md]({{lang_skill_2}}.md) |
 
-> Only include rows for skills that were actually run.
+> For a Python project: `S` = python-code-style, `T` = python-testing-patterns. Finding ids are a single progressive sequence per report across severities (`T7` is unambiguous). `[prev-#N]` links to the Previous review status table; `[→ new #N]` there links back to the item's table here.
+
+## Open
+
+| # | Priority | Reported in | Action |
+|---|----------|-------------|--------|
+| {{N}} | {{P}} | {{links}} | {{action_one_line}} |
+
+## Done
+
+| # | Reported in | What was done |
+|---|-------------|---------------|
+| {{N}} | {{links}} | {{fix_one_line}} |
+
+## Previous review status
+
+From `{{previous_run_timestamp}}` — **{{done_count}} ✅ done · {{partial_count}} ⚠️ partial · {{not_done_count}} ❌ not done**. `#` refers to the previous TODO numbering; grouped by status, ordered by previous number.
+
+### ✅ Done
+
+| # | Item | Evidence |
+|---|------|----------|
+| {{prev_n}} | {{prev_title}} | {{commit_or_code_evidence}} |
+
+### ⚠️ Partially done
+
+| # | Item | What remains | Carried into |
+|---|------|--------------|--------------|
+| {{prev_n}} | {{prev_title}} | {{remaining_work}} | → new {{N}} |
+
+### ❌ Not done
+
+| # | Item | Why still open | Carried into |
+|---|------|----------------|--------------|
+| {{prev_n}} | {{prev_title}} | {{evidence_unfixed}} | → new {{N}} |
 
 ## Trend vs previous review
 

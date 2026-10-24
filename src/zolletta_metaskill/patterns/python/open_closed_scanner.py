@@ -146,7 +146,9 @@ class OpenClosedScanner:
         """Count how many branches in an if/elif chain do application type checks."""
         count = 0
         current = node
-        while isinstance(current, ast.If):
+        # the loop exits via ``break`` — ``current`` is only ever rebound to
+        # orelse[0] nodes already checked ``isinstance(..., ast.If)``
+        while isinstance(current, ast.If):  # pragma: no branch
             test = current.test
             is_domain_branch = not OpenClosedScanner._is_syntax_vocabulary(test) and (
                 OpenClosedScanner._is_type_check(test)

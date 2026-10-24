@@ -11,7 +11,7 @@ Shared rules for running documentation drift detection. These rules apply when t
 ## Tool invocation
 
 - **Always run the tools from the project root** — they analyze the repository at the current working directory. Source code paths in docs (e.g., `src/myproject/...`) are relative to the project root.
-- `documentor_cli.py` runs all three tools and aggregates their cache files into one report; run individual tools only when you need a single category of findings.
+- `documentor_client.py` runs all three tools and aggregates their cache files into one report; run individual tools only when you need a single category of findings.
 - Referential drift is off by default (`documentation.include_referential: false`). It is suppressed because `links/link_checker.py` covers it more reliably — enable it only when specifically auditing file renames.
 - `links/link_checker.py` audits the repository at cwd; link resolution follows `documentation.dir`.
 - `api_doc/api_doc_validator.py` reads source roots from `python.paths.source` and docs from `documentation.dir`.
@@ -42,7 +42,7 @@ Shared rules for running documentation drift detection. These rules apply when t
 
 ## Workflow
 
-1. Run `documentor_cli.py --json` — it executes all three tools (quality review, API doc validation, link checking), writes their cache files, and prints the aggregated report.
+1. Run `documentor_client.py --json` — it executes all three tools (quality review, API doc validation, link checking), writes their cache files, and prints the aggregated report.
 2. Filter out the false positive patterns listed above from each section.
 3. For deeper per-tool inspection, read the individual cache files or re-run a single tool:
    - `links/link_checker.py` — the most reliable (fewest false positives).

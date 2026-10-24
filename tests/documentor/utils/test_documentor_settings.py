@@ -132,6 +132,13 @@ class TestDocumentorSettings:
             == DocumentorSettings.DEFAULT_README_SECTIONS
         )
 
+    def test_resolve_required_sections_explicit_translations_path(self, tmp_path: Path) -> None:
+        trans_file = tmp_path / "translations.json"
+        trans_file.write_text('{"readme_sections": ["x"], "quadrants": {}}', encoding="utf-8")
+        assert DocumentorSettings._resolve_required_sections(
+            {}, translations_path=str(trans_file)
+        ) == ("x",)
+
     def test_required_sections_is_a_tuple(self) -> None:
         """Frozen blocks rebinding; a list attribute would stay mutable through it."""
         assert isinstance(DocumentorSettings._resolve_required_sections({}), tuple)

@@ -389,6 +389,14 @@ class TestDocstringStreamliner:
         entries = DocstringStreamliner._parse_args_entries(body)
         assert len(entries) == 2
 
+    def test_parse_args_entries_leading_blank_line_ignored(self) -> None:
+        entries = DocstringStreamliner._parse_args_entries(["", "    x: the x"])
+        assert entries == [("x", "the x")]
+
+    def test_parse_args_entries_leading_continuation_without_entry_ignored(self) -> None:
+        entries = DocstringStreamliner._parse_args_entries(["        stray", "    x: the x"])
+        assert entries == [("x", "the x")]
+
     # --- _args_section_is_redundant / _returns_section_is_redundant ---
 
     def test_args_section_is_redundant_all_trivial_returns_true(self) -> None:

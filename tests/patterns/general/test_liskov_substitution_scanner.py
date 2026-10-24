@@ -152,6 +152,14 @@ class TestLiskovSubstitutionScanner:
         info = LiskovSubstitutionScanner._build_class_info(cls)
         assert info["methods"]["bar"]["sig"]["has_vararg"] is False
 
+    # --- CheckAllViolations ---
+
+    def test_check_all_violations_external_base_skipped(self) -> None:
+        all_classes = {
+            "Child": {"bases": ["ExternalBase"], "file": "c.py", "methods": {}},
+        }
+        assert LiskovSubstitutionScanner._check_all_violations(all_classes) == []
+
     # --- CheckLspViolations ---
 
     def test_no_override_no_violation(self) -> None:

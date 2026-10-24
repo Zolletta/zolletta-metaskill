@@ -252,6 +252,23 @@ class TestTestStructureScanner:
         index = TestStructureScanner._build_source_index(pkg)
         assert index["cache.py"]["abs_path"] == pkg / "cache.py"
 
+    # --- Tests for TestStructureScanner._find_indirect_refs(). ---
+
+    def test_find_indirect_refs_skips_directly_covered_source(self) -> None:
+        test_refs = [
+            {
+                "test_file": "test_a.py",
+                "primary_source": "a.py",
+                "primary_classes": {"A"},
+                "referenced_classes": ["A", "B"],
+            }
+        ]
+        refs, covered = TestStructureScanner._find_indirect_refs(
+            test_refs, {"A": "a.py", "B": "b.py"}, {"b.py"}
+        )
+        assert refs == []
+        assert covered == set()
+
     # --- Tests for TestStructureScanner._match_test_to_source(). ---
 
     def test_match_test_to_source_exact_match_returns_cache_py(self) -> None:
@@ -287,6 +304,15 @@ class TestTestStructureScanner:
         }
         result = TestStructureScanner._match_test_to_source("test_cache.py", index, test_dir="b")
         assert result == "b/cache.py"
+
+    def test_same_dir_winner_not_replaced_by_other_dir(self) -> None:
+        """An equal-length prefix in a different dir must not displace the same-dir match."""
+        index = {
+            "a/cache.py": {"prefixes": {"test_cache"}, "dir": "a"},
+            "b/cache.py": {"prefixes": {"test_cache"}, "dir": "b"},
+        }
+        result = TestStructureScanner._match_test_to_source("test_cache.py", index, test_dir="a")
+        assert result == "a/cache.py"
 
     def test_match_test_to_source_empty_index_returns_none(self) -> None:
         assert TestStructureScanner._match_test_to_source("test_cache.py", {}) is None

@@ -25,6 +25,8 @@
           "UP",
           "T20",
           "SIM",
+          "N",
+          "TID",
           "PGH003",
           "PGH004"
         ],
@@ -49,7 +51,7 @@
         "minversion": "8.0"
       },
       "ty": {
-        "available": false,
+        "available": true,
         "python_version": "3.12"
       },
       "vulture": {
@@ -129,7 +131,7 @@
       "class_metrics_min_lines": 50,
       "test_god_classes_top": 30
     },
-    "pyproject_mtime": 1790520830.5984225
+    "pyproject_mtime": 1792858986.3395753
   },
   "php": null,
   "subcommands": {
@@ -172,7 +174,8 @@
     "include_referential": false,
     "api_doc_recursive": true,
     "api_doc_include_private": false,
-    "api_doc_suggest_coverage": false
+    "api_doc_suggest_coverage": false,
+    "check_unwrapped_prose": true
   },
   "runs_dir": ".zolletta-metaskill"
 }

@@ -116,6 +116,14 @@ class TestDependencyInversionScanner:
         node = _parse_class("class Foo:\n    def __init__(self):\n        pass\n")
         assert DependencyInversionScanner._is_data_class(node) is False
 
+    def test_attribute_base_not_data_class(self) -> None:
+        node = _parse_class("class Foo(mod.Base):\n    pass\n")
+        assert DependencyInversionScanner._is_data_class(node) is False
+
+    def test_regular_name_base_not_data_class(self) -> None:
+        node = _parse_class("class Foo(SomeBase):\n    pass\n")
+        assert DependencyInversionScanner._is_data_class(node) is False
+
     def test_parse_class_regular_decorator_returns_false(self) -> None:
         node = _parse_class("@property\nclass Foo:\n    pass\n")
         assert DependencyInversionScanner._is_data_class(node) is False

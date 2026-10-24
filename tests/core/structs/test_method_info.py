@@ -12,6 +12,8 @@ from zolletta_metaskill.core.structs import MethodInfo
 class TestMethodInfo:
     """Tests for the MethodInfo dataclass."""
 
+    # --- construction ---
+
     def test_methodinfo_minimal_construction_returns_empty_list(self) -> None:
         """MethodInfo can be constructed with only required fields."""
         m = MethodInfo(name="foo", lineno=1, end_lineno=5)
@@ -43,11 +45,15 @@ class TestMethodInfo:
         assert m.return_type == "int"
         assert m.raises == ["ValueError", "TypeError"]
 
+    # --- immutability ---
+
     def test_methodinfo_frozen_raises_frozeninstanceerror(self) -> None:
         """MethodInfo is immutable."""
         m = MethodInfo(name="foo", lineno=1, end_lineno=5)
         with pytest.raises(FrozenInstanceError):
             setattr(m, "name", "bar")
+
+    # --- default fields ---
 
     def test_default_lists_are_independent(self) -> None:
         """Each instance gets its own default list (no shared mutable default)."""
@@ -55,6 +61,8 @@ class TestMethodInfo:
         m2 = MethodInfo(name="b", lineno=3, end_lineno=4)
         m1.params.append("x")
         assert m2.params == []
+
+    # --- equality ---
 
     def test_methodinfo_equality_returns_m2(self) -> None:
         """Two MethodInfos with the same fields are equal."""

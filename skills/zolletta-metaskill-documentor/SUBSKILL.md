@@ -17,7 +17,7 @@ Derived from the [Diátaxis Documentation Expert](https://github.com/github/awes
 
 > This file narrows down any eventual general rule about code exploration and documentation, i.e. `code-exploration-rules.md`, `tokensave-rules.md`, `documentation-rules.md`. If you maintain rules as part of your agent configuration, those are the single source of truth for their domain.
 >
-> **Execution protocol**: when running a review, follow `../../docs/reference/code/scripts-first-protocol.md` — run `documentor_cli.py`, which executes the quality review (drift + staleness), API doc validation, and link checking, persisting each tool's output to `cache/` (`quality.json`, `api_doc_validator.json`, `link_checker.json`) and printing an aggregated report. Run `quality/unwrapped_prose_scanner.py` separately when `documentation.check_unwrapped_prose` is on — it is opt-in and is **not** part of `documentor_cli.py`, so redirect its JSON to `cache/unwrapped_prose.json` yourself. Assemble deterministic report sections from cached output, then run only the judgment pass items (false-positive filtering for known FP patterns — only open source files for FP candidates). Write your report to `reports/documentor.md`. Do not re-read source files the drift tools already validated.
+> **Execution protocol**: when running a review, follow `../../docs/reference/code/scripts-first-protocol.md` — run `documentor_client.py`, which executes the quality review (drift + staleness), API doc validation, and link checking, persisting each tool's output to `cache/` (`quality.json`, `api_doc_validator.json`, `link_checker.json`) and printing an aggregated report. Run `quality/unwrapped_prose_scanner.py` separately when `documentation.check_unwrapped_prose` is on — it is opt-in and is **not** part of `documentor_client.py`, so redirect its JSON to `cache/unwrapped_prose.json` yourself. Assemble deterministic report sections from cached output, then run only the judgment pass items (false-positive filtering for known FP patterns — only open source files for FP candidates). Write your report to `reports/documentor.md`. Do not re-read source files the drift tools already validated.
 
 ## Shared resources
 
@@ -124,8 +124,8 @@ When checking accuracy, the agent MUST:
 - **Staleness scoring** — weighted 0-100 freshness score across five dimensions with an optional `documentation.staleness_threshold` CI gate and README-focused mode. Respects `.gitignore`.
 - **Link integrity audit** — validate local files, anchors, cross-document anchors, images, case-sensitivity, and duplicate anchors; optional external URL checks (`documentation.check_external`).
 - **Drift classification** — structural, factual, referential, temporal categories (semantic removed as unreliable), each tagged `[AUTO]`/`[SEMI]`/`[MANUAL]` for fix routing.
-- **Aggregated reporting** — `documentor_cli.py` runs all three tools, each of which writes its own JSON cache file (`quality.json`, `api_doc_validator.json`, `link_checker.json`), then merges them into a single review report via `report_aggregator.py`.
-- **Prose formatting audit (opt-in)** — `quality/unwrapped_prose_scanner.py` reports markdown paragraphs broken mid-sentence, one finding per paragraph naming the line span. Enable `documentation.check_unwrapped_prose` to include it; it prints SKIPPED and exits 0 while off, and it is deliberately **not** wired into `documentor_cli.py` because an unwrapped-paragraph backlog can be long and would drown the drift report until cleared.
+- **Aggregated reporting** — `documentor_client.py` runs all three tools, each of which writes its own JSON cache file (`quality.json`, `api_doc_validator.json`, `link_checker.json`), then merges them into a single review report via `report_aggregator.py`.
+- **Prose formatting audit (opt-in)** — `quality/unwrapped_prose_scanner.py` reports markdown paragraphs broken mid-sentence, one finding per paragraph naming the line span. Enable `documentation.check_unwrapped_prose` to include it; it prints SKIPPED and exits 0 while off, and it is deliberately **not** wired into `documentor_client.py` because an unwrapped-paragraph backlog can be long and would drown the drift report until cleared.
 - **CI/CD integration** — JSON output, optional staleness threshold gate, GitHub Actions and pre-commit recipes for ongoing monitoring.
 
 ### Scope
@@ -136,11 +136,11 @@ Every tool below reads **only the documentation** — the markdown under `docume
 
 | Tool                                 | Purpose                                                                            | Command                                                                                |
 |--------------------------------------|------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
-| `documentor_cli.py`                  | Run all documentor tools and aggregate into one report                             | `python src/zolletta_metaskill/documentor/documentor_cli.py [--json]`                  |
+| `documentor_client.py`                  | Run all documentor tools and aggregate into one report                             | `python src/zolletta_metaskill/documentor/documentor_client.py [--json]`                  |
 | `quality/quality_review.py`          | Unified drift + staleness review (writes `quality.json`)                           | `python src/zolletta_metaskill/documentor/quality/quality_review.py [--json]`          |
 | `api_doc/api_doc_validator.py`       | Validate API docs against Python source (AST)                                      | `python src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py [--json]`       |
 | `links/link_checker.py`              | Audit links and anchors in every markdown file                                     | `python src/zolletta_metaskill/documentor/links/link_checker.py [--broken-only]`       |
-| `quality/unwrapped_prose_scanner.py` | Flag paragraphs hard-wrapped across lines (opt-in, not run by `documentor_cli.py`) | `python src/zolletta_metaskill/documentor/quality/unwrapped_prose_scanner.py [--json]` |
+| `quality/unwrapped_prose_scanner.py` | Flag paragraphs hard-wrapped across lines (opt-in, not run by `documentor_client.py`) | `python src/zolletta_metaskill/documentor/quality/unwrapped_prose_scanner.py [--json]` |
 
 All tools: Python 3.8+ stdlib only, run from the repository root, `[--json]` and `--help`, any OS. Paths and thresholds come from `documentation.*` in `.zolletta-metaskill/settings.json` — see `../../docs/reference/settings-schema.md`. Each tool writes its JSON cache into the current run directory, `<runs_dir>/<YYYY-MM-DD-HH-MM>/cache/` — `.zolletta-metaskill/<timestamp>/cache/` with the default `runs_dir` — so each review keeps its own history instead of overwriting the last; before the first run directory exists, artifacts land in `<runs_dir>/cache/`.
 
@@ -181,7 +181,7 @@ Load on demand — keep this file lean:
 ### Phase 1: Automated tools (fast — run first)
 
 1. **Read project rules:** `AGENTS.md` and any documentation rules in your agent configuration.
-2. **Run `documentor_cli.py`** — fast (seconds), finds most issues, requires no graph index. It runs all three tools, each writing its own `cache/` artifact, and prints the aggregated report:
+2. **Run `documentor_client.py`** — fast (seconds), finds most issues, requires no graph index. It runs all three tools, each writing its own `cache/` artifact, and prints the aggregated report:
    - `quality/quality_review.py` — unified drift analysis + freshness score (`cache/quality.json`)
    - `api_doc/api_doc_validator.py` — API doc accuracy against source (AST) (`cache/api_doc_validator.json`)
    - `links/link_checker.py` — broken links and duplicate anchors (`cache/link_checker.json`)

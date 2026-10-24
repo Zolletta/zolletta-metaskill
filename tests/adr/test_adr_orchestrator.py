@@ -422,7 +422,7 @@ class TestADROrchestrator:
         assert report.has_adrs is True
         assert (docs / "adr" / "adr-distilled.md").exists()
 
-    # --- Tests for ADROrchestrator.run() — delegates to ADRCLI.run(). ---
+    # --- Tests for ADROrchestrator.run() — delegates to ADRClient.run(). ---
 
     def test_run_with_valid_adrs_returns_0(
         self,
@@ -458,7 +458,7 @@ class TestADROrchestrator:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """When argv is None, ADRCLI.run reads from sys.argv."""
+        """When argv is None, ADRClient.run reads from sys.argv."""
         write_settings(tmp_path)
         docs = tmp_path / "docs"
         write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted", "We do X.")

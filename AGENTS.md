@@ -90,7 +90,7 @@ The ❌ rules — `documentation.3`, `documentation.5`, `documentation.6`, `test
 - `documentation.4` — **Links in `docs/` and `skills/` are repo-root-relative**, never a hardcoded `https://github.com/Zolletta/zolletta-metaskill/...` URL, because a relative link resolves both on GitHub and from a local checkout.
 - `documentation.5` — **Architecture ADRs live in `docs/explanation/adr/architecture/`**, and activity records never enter the corpus.
 - `documentation.6` — **An Accepted ADR is immutable and is replaced only by supersession.** Immutability governs content and status rather than layout: unwrapping the prose of an accepted ADR changes no decision, so it is done by editing in place.
-- `documentation.7` — **When an ADR changes, the distiller cache is refreshed** — `PYTHONPATH=src uv run python src/zolletta_metaskill/adr/adr_cli.py` — and reports no drift.
+- `documentation.7` — **When an ADR changes, the distiller cache is refreshed** — `PYTHONPATH=src uv run python src/zolletta_metaskill/adr/adr_client.py` — and reports no drift.
 
 ### Commits
 

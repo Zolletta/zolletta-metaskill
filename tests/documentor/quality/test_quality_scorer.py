@@ -6,6 +6,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from zolletta_metaskill.documentor.quality.quality_scorer import QualityScorer
 from zolletta_metaskill.documentor.utils.documentor_settings import DocumentorSettings
 from zolletta_metaskill.documentor.utils.git_helper import GitHelper
@@ -80,7 +82,7 @@ class TestQualityScorer:
         dt = datetime.now(UTC) - timedelta(days=500)
         with patch.object(GitHelper, "get_file_last_commit_date", return_value=dt):
             score, details = QualityScorer.score_last_updated(str(tmp_path), "doc.md")
-            assert score >= 0
+            assert score == pytest.approx(7.3)
 
     def test_now_naive_datetime_returns_100_0(self, tmp_path: Path) -> None:
         recent = datetime.now() - timedelta(days=3)

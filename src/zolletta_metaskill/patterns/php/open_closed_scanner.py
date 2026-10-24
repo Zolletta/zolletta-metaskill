@@ -99,7 +99,8 @@ class OpenClosedScanner:
         count = 0
 
         # Check the initial ``if`` condition.
-        for child in if_node.children:
+        # an if_statement always has a parenthesized condition
+        for child in if_node.children:  # pragma: no branch
             if child.type == "parenthesized_expression":
                 if OpenClosedScanner._contains_instanceof(child):
                     count += 1
@@ -108,7 +109,8 @@ class OpenClosedScanner:
         # Check each ``else_if_clause`` condition.
         for child in if_node.children:
             if child.type == "else_if_clause":
-                for sub in child.children:
+                # an else_if_clause always has a condition
+                for sub in child.children:  # pragma: no branch
                     if sub.type == "parenthesized_expression":
                         if OpenClosedScanner._contains_instanceof(sub):
                             count += 1

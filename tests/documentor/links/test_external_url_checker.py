@@ -6,11 +6,11 @@ import email.message
 import urllib.error
 from unittest.mock import MagicMock, patch
 
-from zolletta_metaskill.documentor.links.external_url_checker import ExternalUrlChecker
+from zolletta_metaskill.documentor.links.external_url_checker import ExternalURLChecker
 
 
-class TestExternalUrlChecker:
-    """ExternalUrlChecker validates external URLs over HTTP."""
+class TestExternalURLChecker:
+    """ExternalURLChecker validates external URLs over HTTP."""
 
     # --- validate_external_url ---
 
@@ -20,7 +20,7 @@ class TestExternalUrlChecker:
         mock_resp.__enter__ = MagicMock(return_value=mock_resp)
         mock_resp.__exit__ = MagicMock(return_value=False)
         with patch("urllib.request.urlopen", return_value=mock_resp):
-            valid, error = ExternalUrlChecker.validate("https://example.com")
+            valid, error = ExternalURLChecker.validate("https://example.com")
         assert valid is True
         assert error is None
 
@@ -43,7 +43,7 @@ class TestExternalUrlChecker:
                 ),
                 mock_resp,
             ]
-            valid, error = ExternalUrlChecker.validate("https://example.com")
+            valid, error = ExternalURLChecker.validate("https://example.com")
         assert valid is True
 
     def test_http_error_404(self) -> None:
@@ -57,7 +57,7 @@ class TestExternalUrlChecker:
                 None,
             ),
         ):
-            valid, error = ExternalUrlChecker.validate("https://example.com")
+            valid, error = ExternalURLChecker.validate("https://example.com")
         assert valid is False
         assert error is not None
         assert "404" in error
@@ -66,14 +66,14 @@ class TestExternalUrlChecker:
         err = urllib.error.URLError("connection refused")
         err.reason = "connection refused"
         with patch("urllib.request.urlopen", side_effect=err):
-            valid, error = ExternalUrlChecker.validate("https://example.com")
+            valid, error = ExternalURLChecker.validate("https://example.com")
         assert valid is False
         assert error is not None
         assert "connection refused" in error
 
     def test_validate_external_url_generic_exception_contains_boom(self) -> None:
         with patch("urllib.request.urlopen", side_effect=Exception("boom")):
-            valid, error = ExternalUrlChecker.validate("https://example.com")
+            valid, error = ExternalURLChecker.validate("https://example.com")
         assert valid is False
         assert error is not None
         assert "boom" in error
@@ -90,5 +90,5 @@ class TestExternalUrlChecker:
                 None,
             ),
         ):
-            valid, error = ExternalUrlChecker.validate("https://example.com")
+            valid, error = ExternalURLChecker.validate("https://example.com")
         assert valid is False

@@ -48,14 +48,29 @@ Docs-as-code, README structure, API docs, changelogs, ADRs, and drift prevention
 
 Standing architectural decisions and their rationale. The A in ADR is *Architecture*, not activity — non-architecture records live in `adr/activity/` (an AI-facing log, not published here), and the [ADR directory guide](adr/README.md) routes records to the right folder. The pre-reform ADR-0001–0017 records were consolidated into this corpus or removed, and stay decodable through git history.
 
-| Document                                                                                            | Description                                                        |
-|-----------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|
-| [ADR-0000 ADRs record architecture](adr/architecture/0000-adrs-record-architecture-not-activity.md) | ADR semantics, status lifecycle, corpus layout                     |
-| [ADR-0001 Meta-skill architecture](adr/architecture/0001-meta-skill-architecture.md)                | Meta-skill dispatch, sub-skill grouping, parallel review           |
-| [ADR-0002 Configuration architecture](adr/architecture/0002-configuration-architecture.md)          | Single settings source, setup guard, `[--json]` CLIs, immutability |
-| [ADR-0003 Diátaxis documentation](adr/architecture/0003-diataxis-documentation-structure.md)        | Diátaxis framework for documentation structure                     |
-| [ADR-0004 Scanner constraints](adr/architecture/0004-scanner-constraints.md)                        | Scanners use Python stdlib only and are testable modules           |
-| [ADR-0005 Language-neutral engine](adr/architecture/0005-language-neutral-engine-protocol.md)       | LanguageEngine protocol with ModuleInfo model                      |
-| [ADR-0006 ADR governance pipeline](adr/architecture/0006-adr-governance-pipeline.md)                | Distillation of Accepted ADRs into review directives               |
-| [ADR-0007 Sensor adoption criteria](adr/architecture/0007-sensor-adoption-criteria.md)              | Standing criteria for integrating tools into the pipeline          |
-| [ADR-0008 Balanced coupling model](adr/architecture/0008-balanced-coupling-model.md)                | Balanced Coupling model for the patterns review                    |
+| Document                                                                                                          | Description                                                          |
+|-------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------|
+| [ADR-0000 ADRs record architecture](adr/architecture/0000-adrs-record-architecture-not-activity.md)               | ADR semantics, status lifecycle, corpus layout                       |
+| [ADR-0001 Meta-skill architecture](adr/architecture/0001-meta-skill-architecture.md)                              | Meta-skill dispatch, sub-skill grouping, parallel review             |
+| [ADR-0002 Configuration architecture](adr/architecture/0002-configuration-architecture.md)                        | Single settings source, setup guard, `[--json]` CLIs, immutability   |
+| [ADR-0003 Diátaxis documentation](adr/architecture/0003-diataxis-documentation-structure.md)                      | Diátaxis framework for documentation structure                       |
+| [ADR-0004 Scanner constraints](adr/architecture/0004-scanner-constraints.md)                                      | Scanners use Python stdlib only and are testable modules             |
+| [ADR-0005 Language-neutral engine](adr/architecture/0005-language-neutral-engine-protocol.md)                     | LanguageEngine protocol with ModuleInfo model                        |
+| [ADR-0006 ADR governance pipeline](adr/architecture/0006-adr-governance-pipeline.md)                              | Distillation of Accepted ADRs into review directives                 |
+| [ADR-0007 Sensor adoption criteria](adr/architecture/0007-sensor-adoption-criteria.md)                            | Standing criteria for integrating tools into the pipeline            |
+| [ADR-0008 Balanced coupling model](adr/architecture/0008-balanced-coupling-model.md)                              | Balanced Coupling model for the patterns review                      |
+| [ADR-0009 Parameter limits are two numbers](adr/architecture/0009-parameter-limits-are-two-numbers.md)            | Dataclass fields count as parameters; separate field limit           |
+| [ADR-0010 Engine capabilities are protocols](adr/architecture/0010-engine-capabilities-are-separate-protocols.md) | Separate narrow protocols per engine capability                      |
+| [ADR-0011 Configuration architecture](adr/architecture/0011-configuration-architecture-corrected.md)              | settings.json single config source; supersedes ADR-0002              |
+| [ADR-0012 Thresholds are skill defaults](adr/architecture/0012-thresholds-are-skill-defaults.md)                  | Complexity 12 / length 125 are skill defaults, not ruff parity       |
+| [ADR-0013 CLI modules are clients](adr/architecture/0013-cli-modules-are-clients.md)                              | `*_client.py` entry points; `cli` is prose, never a filename suffix  |
+
+## Augmented Coding Patterns
+
+How the skill applies the [Augmented Coding Patterns](https://lexler.github.io/augmented-coding-patterns/) catalog — which patterns it uses, which inherent LLM obstacles it works around, and which anti-patterns it is designed to avoid.
+
+| Document                                | Description                                                                 |
+|-----------------------------------------|-----------------------------------------------------------------------------|
+| [Patterns in use](patterns.md)          | The catalog patterns the architecture applies, with evidence per pattern    |
+| [Obstacles audit](obstacles.md)         | Survey of the 15 LLM obstacles and how the architecture works around them   |
+| [Anti-patterns audit](anti-patterns.md) | Audit of the catalog anti-patterns against the review workflow              |

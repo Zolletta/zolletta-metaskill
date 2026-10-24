@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any
 
 from zolletta_metaskill.core.project_config import ProjectConfig
-from zolletta_metaskill.documentor.links.external_url_checker import ExternalUrlChecker
+from zolletta_metaskill.documentor.links.external_url_checker import ExternalURLChecker
 from zolletta_metaskill.documentor.links.link_report_writer import LinkReportWriter
 from zolletta_metaskill.documentor.structs.link_info import LinkInfo
 from zolletta_metaskill.documentor.utils.documentation_files_finder import DocumentationFilesFinder
@@ -271,7 +271,7 @@ class LinkChecker:
 
         if link.link_type == "external":
             if check_external:
-                link.is_valid, link.error = ExternalUrlChecker.validate(link.link_target)
+                link.is_valid, link.error = ExternalURLChecker.validate(link.link_target)
             else:
                 link.is_valid = True
             return

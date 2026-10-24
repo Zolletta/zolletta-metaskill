@@ -149,7 +149,7 @@
           ],
           "minimum": 0,
           "maximum": 100,
-          "description": "If set, quality_review and documentor_cli exit 1 when the freshness score falls below this value. null = report-only (default).",
+          "description": "If set, quality_review and documentor_client exit 1 when the freshness score falls below this value. null = report-only (default).",
           "default": null
         },
         "readme_focus": {

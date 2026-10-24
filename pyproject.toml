@@ -158,6 +158,18 @@ min_confidence = 80
 paths = ["src"]
 exclude = [".venv/", "playground/"]
 
+[tool.mutmut]
+# skills/ ships runtime assets (e.g. acronym lists) that tests assert on; the
+# mutants/ sandbox must contain them or the baseline run fails.
+also_copy = ["skills/"]
+# The unwrapped-prose repo guard uses `git ls-files` on the real repository;
+# inside mutants/ (a git-ignored, non-repo copy) it can only see 0 files, so it
+# is deselected for mutation runs only — it still runs in CI.
+pytest_add_cli_args = [
+    "--deselect",
+    "tests/documentor/quality/test_unwrapped_prose_scanner_repo_guard.py",
+]
+
 [tool.semantic_release]
 version_toml = ["pyproject.toml:project.version"]
 build_command = "uv build"

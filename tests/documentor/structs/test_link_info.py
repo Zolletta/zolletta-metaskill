@@ -8,6 +8,8 @@ from zolletta_metaskill.documentor.structs.link_info import LinkInfo
 class TestLinkInfo:
     """Tests for the LinkInfo dataclass."""
 
+    # --- construction ---
+
     def test_construction_and_defaults(self) -> None:
         """LinkInfo sets fields and default status properly."""
         info = LinkInfo(
@@ -24,6 +26,8 @@ class TestLinkInfo:
         assert info.link_type == "external"
         assert info.is_valid is None
         assert info.error is None
+
+    # --- serialization ---
 
     def test_link_info_to_dict_serializes_all_keys(self) -> None:
         """to_dict serializes all expected keys."""

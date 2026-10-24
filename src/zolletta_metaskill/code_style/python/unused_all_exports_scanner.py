@@ -108,7 +108,7 @@ class UnusedAllExportsScanner:
                 elif isinstance(node, ast.Import):
                     for alias in node.names:
                         # import a.b.c -> track "c" as the imported name
-                        if alias.name:
+                        if alias.name:  # pragma: no branch — never empty in ast.Import
                             top = alias.name.split(".")[-1]
                             index.setdefault(top, []).append(py)
         return index

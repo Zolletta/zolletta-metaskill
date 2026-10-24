@@ -121,11 +121,11 @@ For PHP projects, run the PHP equivalents from `src/zolletta_metaskill/patterns/
 
 ### `documentor`
 
-`documentor_cli.py` runs all three tools and prints the aggregated report; each tool writes its own cache file:
+`documentor_client.py` runs all three tools and prints the aggregated report; each tool writes its own cache file:
 
 | Script                         | Cache file                     | Condition |
 |--------------------------------|--------------------------------|-----------|
-| `documentor_cli.py --json`     | (aggregates all caches)        | always    |
+| `documentor_client.py --json`     | (aggregates all caches)        | always    |
 | `quality/quality_review.py`    | `cache/quality.json`           | always    |
 | `api_doc/api_doc_validator.py` | `cache/api_doc_validator.json` | always    |
 | `links/link_checker.py`        | `cache/link_checker.json`      | always    |

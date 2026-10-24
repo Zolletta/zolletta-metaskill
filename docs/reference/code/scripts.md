@@ -415,7 +415,7 @@ python3 src/zolletta_metaskill/code_style/python/acronym_casing_scanner.py [--js
 
 The acronym list is built additively:
 
-1. **Shipped base**: `python-code-style/assets/acronyms.json` (common SE acronyms: CI, CD, CICD, HTTP, HTTPS, JSON, SQL, URL, etc.) — always loaded
+1. **Shipped base**: `skills/zolletta-metaskill-python-code-style/assets/acronyms.json` (common SE acronyms: CI, CD, CICD, HTTP, HTTPS, JSON, SQL, URL, etc.) — always loaded
 2. **Project-specific**: the top-level `acronyms` array in `settings.json` — merged with the shipped list (additive, not replacing)
 
 ## Mutation Testing

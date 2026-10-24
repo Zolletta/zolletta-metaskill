@@ -20,3 +20,5 @@ description: "Auto-generated architectural directives distilled from Accepted AD
 - [ADR-0009](0009-parameter-limits-are-two-numbers.md) A dataclass's annotated fields count as constructor parameters, with a separate limit, code_style.max_dataclass_fields, set per language and defaulting to 10.
 - [ADR-0010](0010-engine-capabilities-are-separate-protocols.md) An engine's capabilities are stated by separate, narrow protocols.
 - [ADR-0011](0011-configuration-architecture-corrected.md) .zolletta-metaskill/settings.json is the single configuration source, guarded for freshness, read via [--json]-only CLIs, and resolved once into immutable structs.
+- [ADR-0012](0012-thresholds-are-skill-defaults.md) max_cyclomatic_complexity defaults to 12 and max_function_length to 125 as this skill's own defaults, deliberately above ruff's C901 default of 10 and not claimed to mirror any external tool.
+- [ADR-0013](0013-cli-modules-are-clients.md) Entry-point modules that wrap an orchestrator's argument handling are named <domain>_client.py, and their classes DomainClient: adr_client.py → ADRClient, documentor_client.py → DocumentorClient.

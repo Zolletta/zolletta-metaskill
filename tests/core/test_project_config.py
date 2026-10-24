@@ -270,6 +270,10 @@ class TestProjectConfig:
         settings = {"php": {"autoload": {"psr-4": {"App\\": ["app/", 5]}}}}
         assert ProjectConfig.source_dirs(settings, "php") == ["app/"]
 
+    def test_source_dirs_php_non_string_value_skipped(self) -> None:
+        settings = {"php": {"autoload": {"psr-4": {"App\\": 5, "Lib\\": "lib/"}}}}
+        assert ProjectConfig.source_dirs(settings, "php") == ["lib/"]
+
     def test_source_dirs_unknown_language_fallback(self) -> None:
         assert ProjectConfig.source_dirs({}, "go") == ["src"]
 

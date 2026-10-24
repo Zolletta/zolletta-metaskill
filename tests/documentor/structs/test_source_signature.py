@@ -10,6 +10,8 @@ from zolletta_metaskill.documentor.structs.source_signature import SourceSignatu
 class TestSourceSignature:
     """Tests for the SourceSignature dataclass."""
 
+    # --- construction ---
+
     def test_construction_with_defaults(self) -> None:
         """SourceSignature sets default values properly."""
         sig = SourceSignature(
@@ -52,6 +54,8 @@ class TestSourceSignature:
         assert sig.decorators == []
         assert not sig.is_deprecated
 
+    # --- derived attributes ---
+
     def test_qualified_name_with_parent_class(self) -> None:
         """qualified_name includes parent class if present."""
         sig = SourceSignature(
@@ -75,6 +79,8 @@ class TestSourceSignature:
             decorators=["deprecated", "override"],
         )
         assert sig.is_deprecated
+
+    # --- serialization ---
 
     def test_source_signature_to_dict_serializes_all_keys(self) -> None:
         """to_dict serializes all expected keys."""

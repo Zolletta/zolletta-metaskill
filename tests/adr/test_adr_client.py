@@ -1,4 +1,4 @@
-"""Tests for ADRCLI — argument parsing and report formatting."""
+"""Tests for ADRClient — argument parsing and report formatting."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from zolletta_metaskill.adr.adr_cli import ADRCLI
+from zolletta_metaskill.adr.adr_client import ADRClient
 from zolletta_metaskill.adr.structs.distill_report import DistillReport
 
 from .conftest import write_adr
@@ -23,27 +23,27 @@ def write_settings(tmp_path: Path, adrs: str | None = "adr") -> None:
     )
 
 
-class TestADRCLI:
-    # --- Tests for ADRCLI.build_parser. ---
+class TestADRClient:
+    # --- Tests for ADRClient.build_parser. ---
 
     def test_build_parser_returns_parser_with_defaults(self) -> None:
         """build_parser returns a parser with default values."""
-        parser = ADRCLI.build_parser()
+        parser = ADRClient.build_parser()
         args = parser.parse_args([])
         assert args.json is False
 
     def test_build_parser_accepts_json_flag(self) -> None:
         """build_parser parses the --json flag."""
-        parser = ADRCLI.build_parser()
+        parser = ADRClient.build_parser()
         args = parser.parse_args(["--json"])
         assert args.json is True
 
-    # --- Tests for ADRCLI.format_report. ---
+    # --- Tests for ADRClient.format_report. ---
 
     def test_format_report_json_returns_json_string(self) -> None:
         """format_report returns JSON when as_json=True."""
         report = DistillReport(new=["a.md"], has_adrs=True)
-        result = ADRCLI.format_report(report, as_json=True)
+        result = ADRClient.format_report(report, as_json=True)
         data = json.loads(result)
         assert data["new"] == ["a.md"]
         assert data["has_adrs"] is True
@@ -51,7 +51,7 @@ class TestADRCLI:
     def test_format_report_plain_with_adrs_returns_summary(self) -> None:
         """format_report returns plain text summary when adrs exist."""
         report = DistillReport(new=["a.md"], stale=["b.md"], removed=["c.md"], has_adrs=True)
-        result = ADRCLI.format_report(report, as_json=False)
+        result = ADRClient.format_report(report, as_json=False)
         assert "1 new" in result
         assert "1 stale" in result
         assert "1 removed" in result
@@ -59,7 +59,7 @@ class TestADRCLI:
     def test_format_report_plain_lead_ins_appends_warning(self) -> None:
         """format_report names the ADRs whose directive looks like a lead-in."""
         report = DistillReport(has_adrs=True, lead_ins=["ADR-0006", "ADR-0015"])
-        result = ADRCLI.format_report(report, as_json=False)
+        result = ADRClient.format_report(report, as_json=False)
         assert "ADR-0006" in result
         assert "ADR-0015" in result
         assert "lead-in" in result
@@ -67,37 +67,37 @@ class TestADRCLI:
     def test_format_report_plain_without_lead_ins_has_no_warning(self) -> None:
         """format_report omits the warning when every directive is a sentence."""
         report = DistillReport(new=["a.md"], has_adrs=True)
-        result = ADRCLI.format_report(report, as_json=False)
+        result = ADRClient.format_report(report, as_json=False)
         assert "lead-in" not in result
 
     def test_format_report_json_includes_lead_ins(self) -> None:
         """format_report carries lead_ins through to JSON output."""
         report = DistillReport(has_adrs=True, lead_ins=["ADR-0006"])
-        data = json.loads(ADRCLI.format_report(report, as_json=True))
+        data = json.loads(ADRClient.format_report(report, as_json=True))
         assert data["lead_ins"] == ["ADR-0006"]
 
     def test_format_report_plain_no_adrs_returns_no_adrs_message(self) -> None:
         """format_report returns 'no ADRs found' when has_adrs is False."""
         report = DistillReport(has_adrs=False)
-        result = ADRCLI.format_report(report, as_json=False)
+        result = ADRClient.format_report(report, as_json=False)
         assert "no ADRs found" in result
 
-    # --- Tests for ADRCLI.missing_docs_error. ---
+    # --- Tests for ADRClient.missing_docs_error. ---
 
     def test_missing_docs_error_plain_returns_error_message(self) -> None:
         """missing_docs_error returns plain text error."""
-        result = ADRCLI.missing_docs_error(Path("/tmp/nope"), as_json=False)
+        result = ADRClient.missing_docs_error(Path("/tmp/nope"), as_json=False)
         assert "/tmp/nope" in result
         assert "not a directory" in result
 
     def test_missing_docs_error_json_returns_json_dict(self) -> None:
         """missing_docs_error returns JSON with empty fields."""
-        result = ADRCLI.missing_docs_error(Path("/tmp/nope"), as_json=True)
+        result = ADRClient.missing_docs_error(Path("/tmp/nope"), as_json=True)
         data = json.loads(result)
         assert data["new"] == []
         assert data["has_adrs"] is False
 
-    # --- Tests for ADRCLI.run. ---
+    # --- Tests for ADRClient.run. ---
 
     def test_run_with_nonexistent_docs_dir_returns_1(
         self,
@@ -107,7 +107,7 @@ class TestADRCLI:
     ) -> None:
         """Run returns 1 when documentation.dir does not exist."""
         monkeypatch.chdir(tmp_path)
-        rc = ADRCLI.run([])
+        rc = ADRClient.run([])
         assert rc == 1
         err = capsys.readouterr().err
         assert "not a directory" in err
@@ -120,7 +120,7 @@ class TestADRCLI:
     ) -> None:
         """Run returns 1 and prints JSON when docs dir missing and --json."""
         monkeypatch.chdir(tmp_path)
-        rc = ADRCLI.run(["--json"])
+        rc = ADRClient.run(["--json"])
         assert rc == 1
         out = capsys.readouterr().out
         data = json.loads(out)
@@ -136,7 +136,7 @@ class TestADRCLI:
     ) -> int:
         monkeypatch.chdir(tmp_path)
         monkeypatch.setattr(sys, "argv", argv)
-        return ADRCLI.main()
+        return ADRClient.main()
 
     def test_main_with_adrs(
         self,
@@ -237,4 +237,4 @@ class TestADRCLI:
 
     def test_format_report_plain_with_dropped_appends_count(self) -> None:
         report = DistillReport(has_adrs=True, dropped=["ADR-0001"])
-        assert "1 dropped" in ADRCLI.format_report(report, as_json=False)
+        assert "1 dropped" in ADRClient.format_report(report, as_json=False)

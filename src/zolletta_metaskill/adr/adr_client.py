@@ -2,7 +2,7 @@
 
 Extracted from ADROrchestrator to separate orchestration logic from CLI
 concerns.  ADROrchestrator handles ADR discovery, distillation, and cache
-management; ADRCLI handles argument parsing, output formatting, and the
+management; ADRClient handles argument parsing, output formatting, and the
 ``__main__`` entry point.
 
 Directories come from ``.zolletta-metaskill/settings.json``:
@@ -28,7 +28,7 @@ from zolletta_metaskill.adr.structs.distill_report import DistillReport
 from zolletta_metaskill.core.project_config import ProjectConfig
 
 
-class ADRCLI:
+class ADRClient:
     """CLI wrapper for the ADR distiller."""
 
     @staticmethod
@@ -88,13 +88,13 @@ class ADRCLI:
 
         Returns the CLI exit code (0 on success, 1 on error).
         """
-        parser = ADRCLI.build_parser()
+        parser = ADRClient.build_parser()
         args = parser.parse_args(argv)
 
         settings = ProjectConfig.load_settings()
         docs_dir = ProjectConfig.docs_dir(settings)
         if not docs_dir.is_dir():
-            msg = ADRCLI.missing_docs_error(docs_dir, args.json)
+            msg = ADRClient.missing_docs_error(docs_dir, args.json)
             if args.json:
                 print(msg)
             else:
@@ -106,14 +106,14 @@ class ADRCLI:
         orchestrator = ADROrchestrator(docs_dir, adrs_path, cache_path)
         report = orchestrator.refresh()
 
-        print(ADRCLI.format_report(report, args.json))
+        print(ADRClient.format_report(report, args.json))
         return 0
 
     @staticmethod
     def main() -> int:
         """Entry point for the ADR distiller CLI."""
-        return ADRCLI.run()
+        return ADRClient.run()
 
 
 if __name__ == "__main__":  # pragma: no cover
-    sys.exit(ADRCLI.main())
+    sys.exit(ADRClient.main())

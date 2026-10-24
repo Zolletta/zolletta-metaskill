@@ -98,7 +98,7 @@ class NamingConventionsScanner:
 
         Each snake word is either a plain capitalised word, or — when it matches
         a known acronym case-insensitively — the acronym's own spelling. So
-        ``adr_cli`` legitimately yields ``ADRCLI``, ``AdrCLI`` and ``ADRCli``,
+        ``adr_client`` legitimately yields ``ADRClient``, ``AdrCLI`` and ``ADRCli``,
         and ``php_engine`` yields ``PHPEngine`` and ``PhpEngine``.
 
         Narrowing must stay narrow: a class that matches none of these is still

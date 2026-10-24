@@ -192,6 +192,21 @@ class TestFunctionLengthScanner:
         assert "'Big.run'" in findings[0].description
         assert "Method" in findings[0].description
 
+    def test_method_inside_class_under_limit_ignored(self, tmp_path: Path) -> None:
+        module = ModuleInfo(
+            path=tmp_path / "mod.py",
+            language="python",
+            classes=[
+                ClassInfo(
+                    name="Small",
+                    lineno=1,
+                    end_lineno=50,
+                    methods=[self._method("run", 20, 40)],
+                )
+            ],
+        )
+        assert FunctionLengthScanner.scan_module(module, max_lines=100) == []
+
     def test_syntax_error_module_produces_no_findings(self, tmp_path: Path) -> None:
         module = ModuleInfo(
             path=tmp_path / "bad.py",

@@ -105,6 +105,11 @@ class TestInterfaceSegregationScanner:
         info = InterfaceSegregationScanner._get_class_info(node)
         assert info["bases"] == ["ABC"]
 
+    def test_class_with_subscript_base(self) -> None:
+        node = _parse_class("class Foo(Generic[T]):\n    pass\n")
+        info = InterfaceSegregationScanner._get_class_info(node)
+        assert info["bases"] == []
+
     def test_class_with_async_method(self) -> None:
         node = _parse_class("class Foo:\n    async def bar(self):\n        pass\n")
         info = InterfaceSegregationScanner._get_class_info(node)
@@ -220,6 +225,29 @@ class TestInterfaceSegregationScanner:
         assert InterfaceSegregationScanner._is_protocol_or_abc(info) is True
 
     # --- Main ---
+
+    def test_stubs_for_protocol_fully_implemented_returns_empty(self) -> None:
+        proto_info = {"methods": [{"name": "a"}, {"name": "b"}]}
+        implementers = {"Proto": ["Impl"]}
+        all_classes = {
+            "Impl": {
+                "file": "x.py",
+                "methods": [
+                    {
+                        "name": "a",
+                        "line": 1,
+                        "raises_not_implemented": False,
+                        "returns_none": False,
+                    }
+                ],
+            }
+        }
+        assert (
+            InterfaceSegregationScanner._stubs_for_protocol(
+                "Proto", proto_info, implementers, all_classes
+            )
+            == []
+        )
 
     def test_main_no_violations(
         self,

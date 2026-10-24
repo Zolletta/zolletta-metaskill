@@ -11,7 +11,7 @@ import urllib.error
 import urllib.request
 
 
-class ExternalUrlChecker:
+class ExternalURLChecker:
     """Validates external URLs over HTTP."""
 
     @staticmethod

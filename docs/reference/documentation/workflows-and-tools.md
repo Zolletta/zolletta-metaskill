@@ -12,10 +12,10 @@ Read this when running a drift analysis end-to-end, wiring tools into CI, or loo
 
 ```bash
 # Run everything: quality review + API doc validation + link check, aggregated into one report
-python src/zolletta_metaskill/documentor/documentor_cli.py
+python src/zolletta_metaskill/documentor/documentor_client.py
 
 # JSON output
-python src/zolletta_metaskill/documentor/documentor_cli.py --json
+python src/zolletta_metaskill/documentor/documentor_client.py --json
 
 # Or run individual tools (each writes its own cache/<tool>.json):
 # 1. Unified drift + staleness quality review
@@ -28,7 +28,7 @@ python src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py
 python src/zolletta_metaskill/documentor/links/link_checker.py
 
 # Failure threshold for CI: set documentation.staleness_threshold in settings.json
-python src/zolletta_metaskill/documentor/documentor_cli.py
+python src/zolletta_metaskill/documentor/documentor_client.py
 ```
 
 All tools run from the repository root, take `[--json]` (plus `--broken-only` on the link checker), and read configuration from `.zolletta-metaskill/settings.json`. Each writes its JSON cache into the current run folder, `<runs_dir>/<YYYY-MM-DD-HH-MM>/cache/` — `.zolletta-metaskill/<timestamp>/cache/` with the default `runs_dir` — so each review keeps its own history instead of overwriting the last; before the first run folder exists, artifacts land in `<runs_dir>/cache/`. `--help` shows usage.
@@ -37,7 +37,7 @@ All tools run from the repository root, take `[--json]` (plus `--broken-only` on
 
 ### Workflow 1: Full Drift Analysis
 
-Scan all documentation against code changes since each doc was last updated. This is the primary entry point for understanding the overall drift state of a repository. Drift detection is part of the unified quality review — run it directly or via `documentor_cli.py`.
+Scan all documentation against code changes since each doc was last updated. This is the primary entry point for understanding the overall drift state of a repository. Drift detection is part of the unified quality review — run it directly or via `documentor_client.py`.
 
 ```bash
 # Basic analysis
@@ -154,11 +154,11 @@ jobs:
 
       - name: Run full doc review
         # runs quality review + API doc validation + link check, prints aggregated report
-        run: python engineering/zolletta-documentor/src/zolletta_metaskill/documentor/documentor_cli.py --json > drift-report.json
+        run: python engineering/zolletta-documentor/src/zolletta_metaskill/documentor/documentor_client.py --json > drift-report.json
 
       - name: Check staleness score
         # set documentation.staleness_threshold: 50 in .zolletta-metaskill/settings.json
-        run: python engineering/zolletta-documentor/src/zolletta_metaskill/documentor/documentor_cli.py
+        run: python engineering/zolletta-documentor/src/zolletta_metaskill/documentor/documentor_client.py
 
       - name: Upload drift report
         if: always()

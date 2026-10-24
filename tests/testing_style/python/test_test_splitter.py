@@ -306,6 +306,12 @@ class TestTestSplitter:
         result = TestSplitter._build_split_file(_plan(module, cls, [], [], "TestOriginal"), "Cache")
         assert "pytestmark" in result
 
+    def test_parse_module_non_pytestmark_assignment_ignored(self) -> None:
+        module = _parse_module("LIMIT = 10\nclass TestOriginal:\n    pass\n")
+        cls = _parse_class("class TestOriginal:\n    pass\n")
+        result = TestSplitter._build_split_file(_plan(module, cls, [], [], "TestOriginal"), "Cache")
+        assert "LIMIT" not in result
+
     def test_new_class_name(self) -> None:
         module = _parse_module("class TestOriginal:\n    pass\n")
         cls = _parse_class("class TestOriginal:\n    pass\n")

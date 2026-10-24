@@ -350,6 +350,43 @@ class TestDriftDetector:
 
     # --- check_readme_structure ---
 
+    def test_version_drift_same_version_not_flagged(self, tmp_path: Path) -> None:
+        (tmp_path / "README.md").write_text("Requires v2.0.0", encoding="utf-8")
+        doc_modified = datetime.now(UTC) - timedelta(days=10)
+        p = self._patch_git(doc_modified)
+        with p[0], p[1]:
+            issues = DriftDetector.detect_drift_for_doc(
+                self._git_ctx(str(tmp_path), (), "2.0.0"),
+                self._settings(),
+                "README.md",
+                [],
+            )
+        version_issues = [i for i in issues if "version" in i["description"].lower()]
+        assert len(version_issues) == 0
+
+    def test_version_drift_newer_doc_version_not_flagged(self, tmp_path: Path) -> None:
+        (tmp_path / "README.md").write_text("Requires v3.0.0", encoding="utf-8")
+        doc_modified = datetime.now(UTC) - timedelta(days=10)
+        p = self._patch_git(doc_modified)
+        with p[0], p[1]:
+            issues = DriftDetector.detect_drift_for_doc(
+                self._git_ctx(str(tmp_path), (), "2.0.0"),
+                self._settings(),
+                "README.md",
+                [],
+            )
+        version_issues = [i for i in issues if "version" in i["description"].lower()]
+        assert len(version_issues) == 0
+
+    def test_check_readme_structure_substring_heading_match_returns_0(self, tmp_path: Path) -> None:
+        (tmp_path / "README.md").write_text(
+            "# Project\n## Installation\n## Reusage\n## License\n", encoding="utf-8"
+        )
+        issues = DriftDetector.check_readme_structure(
+            self._git_ctx(str(tmp_path)), self._doc_ctx("README.md")
+        )
+        assert len(issues) == 0
+
     def test_check_readme_structure_missing_sections_contains_license(self, tmp_path: Path) -> None:
         (tmp_path / "README.md").write_text("# Project\n\nSome text.", encoding="utf-8")
         issues = DriftDetector.check_readme_structure(

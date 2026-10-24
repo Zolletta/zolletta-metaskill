@@ -12,7 +12,7 @@ The `documentor` skill includes a top-level orchestrator plus three domain tools
 
 | Tool                                                             | Purpose                                                  | Command                                                                          |
 |------------------------------------------------------------------|----------------------------------------------------------|----------------------------------------------------------------------------------|
-| `src/zolletta_metaskill/documentor/documentor_cli.py`            | Run all tools and aggregate into one report              | `python src/zolletta_metaskill/documentor/documentor_cli.py [--json]`            |
+| `src/zolletta_metaskill/documentor/documentor_client.py`            | Run all tools and aggregate into one report              | `python src/zolletta_metaskill/documentor/documentor_client.py [--json]`            |
 | `src/zolletta_metaskill/documentor/quality/quality_review.py`    | Unified drift + staleness review (writes `quality.json`) | `python src/zolletta_metaskill/documentor/quality/quality_review.py [--json]`    |
 | `src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py` | Validate API docs against Python source (AST)            | `python src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py [--json]` |
 | `src/zolletta_metaskill/documentor/links/link_checker.py`        | Audit all markdown links and anchors                     | `python src/zolletta_metaskill/documentor/links/link_checker.py [--broken-only]` |
@@ -27,12 +27,12 @@ Each tool writes its own JSON cache artifact into the current run folder, `<runs
 | `api_doc_validator.json` | `src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py` |
 | `link_checker.json`      | `src/zolletta_metaskill/documentor/links/link_checker.py`        |
 
-## src/zolletta_metaskill/documentor/documentor_cli.py
+## src/zolletta_metaskill/documentor/documentor_client.py
 
 Top-level orchestrator. Runs the quality review, API doc validation, and link checking, then merges their cache files into a single report via `report_aggregator.py`. Prints Markdown by default, JSON with `--json`. Respects settings and skips gracefully when a tool has no applicable work (the tool still writes a skip cache record so the aggregate report includes the section).
 
 ```bash
-python src/zolletta_metaskill/documentor/documentor_cli.py [--json]
+python src/zolletta_metaskill/documentor/documentor_client.py [--json]
 ```
 
 The aggregated report has named sections — `quality`, `api_doc`, `links` — plus a high-level summary (aggregate quality score/label, totals for documents, drift issues, API-doc issues/suggestions, links checked, broken links, duplicate anchors, and any missing cache sections). Enforces `documentation.staleness_threshold` on the aggregate quality score.
@@ -94,4 +94,4 @@ python src/zolletta_metaskill/documentor/links/link_checker.py [--broken-only] [
 
 ## Exit codes
 
-All tools are report-only and exit 0 on findings; exit 1 is reserved for usage errors (e.g. no configured docs/source directories on disk). The one exception is the quality review (`src/zolletta_metaskill/documentor/quality/quality_review.py` and `src/zolletta_metaskill/documentor/documentor_cli.py`): when `documentation.staleness_threshold` is set it exits 1 if the aggregate score drops below the threshold, preserving the CI gate.
+All tools are report-only and exit 0 on findings; exit 1 is reserved for usage errors (e.g. no configured docs/source directories on disk). The one exception is the quality review (`src/zolletta_metaskill/documentor/quality/quality_review.py` and `src/zolletta_metaskill/documentor/documentor_client.py`): when `documentation.staleness_threshold` is set it exits 1 if the aggregate score drops below the threshold, preserving the CI gate.

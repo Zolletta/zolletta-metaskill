@@ -127,6 +127,24 @@ class TestTestNamingScanner:
             ("test", 0),
             ("", 0),
         ],
+        ids=[
+            "long_name_returns_six",
+            "longer_name_returns_eight",
+            "medium_name_returns_six",
+            "minimum_compliant_returns_five",
+            "three_segments_returns_three",
+            "four_segments_returns_four",
+            "one_segment_returns_one",
+            "one_segment_add_returns_one",
+            "bare_prefix_returns_zero",
+            "double_underscore_returns_one",
+            "triple_underscores_returns_two",
+            "no_prefix_returns_zero",
+            "plain_name_returns_zero",
+            "capitalized_returns_zero",
+            "no_underscore_returns_zero",
+            "empty_returns_zero",
+        ],
     )
     def test_count_segments_segment_counts_returns_expected(self, name: str, expected: int) -> None:
         """Parametrized check of segment counts across naming patterns."""
@@ -662,6 +680,14 @@ class TestTestNamingScanner:
         findings = TestNamingScanner.scan_file(f)
         assert len(findings) == 1
         assert "test_init" in findings[0].description
+
+    def test_compliant_test_method_in_class_not_flagged(self, tmp_path: Path) -> None:
+        f = tmp_path / "test_class_ok.py"
+        write_test_file(
+            f,
+            "class TestFoo:\n    def test_init_with_valid_stores(self):\n        assert True\n",
+        )
+        assert TestNamingScanner.scan_file(f) == []
 
     def test_test_method_in_non_test_class_skipped(self, tmp_path: Path) -> None:
         """Methods named test_* on non-Test* classes are not flagged by scan_module."""

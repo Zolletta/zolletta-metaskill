@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""DocumentorCLI runs the full documentation review and aggregates the results.
+"""DocumentorClient runs the full documentation review and aggregates the results.
 
 It coordinates three domain tools:
 - ``quality/quality_review.py`` — unified drift + staleness review
@@ -10,7 +10,7 @@ Each tool writes its own JSON cache file under the configured cache directory,
 and ``ReportAggregator`` combines those caches into a single report.
 
 Usage:
-    python documentor_cli.py [--json]
+    python documentor_client.py [--json]
 
 Exit code: 0 normally; 1 if ``documentation.staleness_threshold`` is configured and
 the aggregate staleness score is below it.
@@ -31,7 +31,7 @@ from zolletta_metaskill.documentor.report_aggregator import ReportAggregator
 from zolletta_metaskill.documentor.utils.documentor_settings import DocumentorSettings
 
 
-class DocumentorCLI:
+class DocumentorClient:
     """Main CLI entry point for the documentor review."""
 
     @staticmethod
@@ -60,7 +60,7 @@ class DocumentorCLI:
 
         QualityReview.run(repo_path, settings, cache_dir)
 
-        if DocumentorCLI._python_configured(settings):
+        if DocumentorClient._python_configured(settings):
             APIDocValidator.run(settings, cache_dir)
         else:
             APIDocValidator._write_cache(
@@ -99,4 +99,4 @@ class DocumentorCLI:
 
 
 if __name__ == "__main__":  # pragma: no cover
-    sys.exit(DocumentorCLI.main())
+    sys.exit(DocumentorClient.main())

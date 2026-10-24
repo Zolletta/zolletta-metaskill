@@ -110,6 +110,24 @@ class TestSourceSignatureExtractor:
             "deprecated"
         ]
 
+    def test_extract_decorator_names_exotic_decorator_skipped(self) -> None:
+        import ast
+
+        src = "@registry[0]\ndef f(): pass\n"
+        tree = ast.parse(src)
+        func = tree.body[0]
+        assert isinstance(func, ast.FunctionDef)
+        assert SourceSignatureExtractor._extract_decorator_names(func.decorator_list) == []
+
+    def test_extract_decorator_names_call_with_exotic_func_skipped(self) -> None:
+        import ast
+
+        src = '@registry["k"]()\ndef f(): pass\n'
+        tree = ast.parse(src)
+        func = tree.body[0]
+        assert isinstance(func, ast.FunctionDef)
+        assert SourceSignatureExtractor._extract_decorator_names(func.decorator_list) == []
+
     def test_extract_decorator_names_empty_input_returns_empty_list(self) -> None:
         import ast
 
@@ -227,6 +245,13 @@ class TestSourceSignatureExtractor:
         assert sigs[0].kind == "function"
         assert sigs[0].docstring == "Doc."
 
+    def test_function_beside_class_keeps_function_kind(self, tmp_path: Path) -> None:
+        p = tmp_path / "mod.py"
+        p.write_text("class A:\n    pass\n\ndef foo():\n    return 1\n")
+        sigs = SourceSignatureExtractor.extract_signatures(str(p))
+        foo = next(s for s in sigs if s.name == "foo")
+        assert foo.kind == "function"
+
     def test_extract_signatures_extract_method_returns_myclass(self, tmp_path: Path) -> None:
         p = tmp_path / "mod.py"
         p.write_text("class MyClass:\n    def method(self, x):\n        return x\n")
@@ -306,6 +331,15 @@ class TestSourceSignatureExtractor:
         assert "_Private" in names
 
     # --- extract_all_signatures ---
+
+    def test_extract_all_signatures_file_without_signatures_skipped(self, tmp_path: Path) -> None:
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "empty.py").write_text("x = 1\n")
+        (src / "a.py").write_text("def foo(): pass\n")
+        all_sigs = SourceSignatureExtractor.extract_all_signatures(str(src))
+        assert all_sigs == {"a.py": all_sigs["a.py"]}
+        assert "empty.py" not in all_sigs
 
     def test_extract_all_signatures_walks_directory_is_valid(self, tmp_path: Path) -> None:
         src = tmp_path / "src"

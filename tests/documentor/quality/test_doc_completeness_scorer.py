@@ -117,6 +117,13 @@ class TestDocCompletenessScorer:
         quadrants = DocCompletenessScorer.merged_quadrants({"quadrants": {"recipes": "not-a-dict"}})
         assert "recipes" not in quadrants
 
+    def test_merge_translations_quadrant_without_dir_names_keeps_defaults(self) -> None:
+        quadrants = DocCompletenessScorer.merged_quadrants(
+            {"quadrants": {"recipes": {"required_sections": ["steps"]}}}
+        )
+        assert quadrants["recipes"]["required_sections"] == ["steps"]
+        assert quadrants["recipes"]["dir_names"] == set()
+
     def test_merged_quadrants_lowercases_required_sections(self) -> None:
         """Translated required sections are lower-cased into the returned mapping."""
         quadrants = DocCompletenessScorer.merged_quadrants(

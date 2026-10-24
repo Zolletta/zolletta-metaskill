@@ -561,6 +561,21 @@ class TestOpenClosedScanner:
         node = _ast.parse("foo(x)", mode="eval").body
         assert OpenClosedScanner._is_syntax_vocabulary(node) is False
 
+    def test_is_syntax_vocabulary_name_node_returns_false(self) -> None:
+        import ast as _ast
+
+        node = _ast.parse("flag", mode="eval").body
+        assert OpenClosedScanner._is_syntax_vocabulary(node) is False
+
+    def test_match_with_few_class_cases_not_flagged(self, tmp_path: Path) -> None:
+        f = tmp_path / "mod.py"
+        f.write_text(
+            "def f(x):\n    match x:\n        case int():\n            pass\n"
+            "        case str():\n            pass\n"
+        )
+        violations = OpenClosedScanner.scan_file(f)
+        assert [v for v in violations if v["type"] == "match_on_type"] == []
+
     def test_is_syntax_vocabulary_string_call_non_isinstance_false(self) -> None:
         import ast as _ast
 

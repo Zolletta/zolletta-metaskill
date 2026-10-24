@@ -42,6 +42,30 @@ def _issue_report_fixture() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]
     return scores, issues
 
 
+def _populated_scores_fixture() -> list[dict[str, Any]]:
+    """Two scored documents with distinct labels for populated-report tests."""
+    return [
+        {
+            "file": "docs/guide.md",
+            "total_score": 85.0,
+            "label": "acceptable",
+            "dimensions": {
+                "last_updated": {"score": 90.0, "weight": 0.2, "weighted": 18.0},
+                "accuracy": {"score": 80.0, "weight": 0.15, "weighted": 12.0},
+            },
+        },
+        {
+            "file": "README.md",
+            "total_score": 95.0,
+            "label": "fresh",
+            "dimensions": {
+                "last_updated": {"score": 100.0, "weight": 0.2, "weighted": 20.0},
+                "accuracy": {"score": 90.0, "weight": 0.15, "weighted": 13.5},
+            },
+        },
+    ]
+
+
 class TestQualityReportWriter:
     """Tests for QualityReportWriter report generation."""
 
@@ -81,26 +105,7 @@ class TestQualityReportWriter:
     ) -> None:
         """Populated scores emit valid markdown table and structured JSON."""
         repo_path = tmp_path_factory.mktemp("repo")
-        scores = [
-            {
-                "file": "docs/guide.md",
-                "total_score": 85.0,
-                "label": "acceptable",
-                "dimensions": {
-                    "last_updated": {"score": 90.0, "weight": 0.2, "weighted": 18.0},
-                    "accuracy": {"score": 80.0, "weight": 0.15, "weighted": 12.0},
-                },
-            },
-            {
-                "file": "README.md",
-                "total_score": 95.0,
-                "label": "fresh",
-                "dimensions": {
-                    "last_updated": {"score": 100.0, "weight": 0.2, "weighted": 20.0},
-                    "accuracy": {"score": 90.0, "weight": 0.15, "weighted": 13.5},
-                },
-            },
-        ]
+        scores = _populated_scores_fixture()
 
         text = QualityReportWriter.generate_report(str(repo_path), scores, [], as_json=False)
         assert "Documentation Staleness + Drift Report" in text
