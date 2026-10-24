@@ -290,7 +290,8 @@ class TestLinkChecker:
     def test_external_check_success(self) -> None:
         link = LinkInfo("README.md", 1, "text", "https://example.com", "external")
         with patch(
-            "zolletta_metaskill.documentor.links.link_checker.LinkChecker.validate_external_url",
+            "zolletta_metaskill.documentor.links.link_checker.ExternalUrlChecker.validate",
+            autospec=True,
             return_value=(True, None),
         ):
             LinkChecker.validate_link(link, "/repo", {}, check_external=True)
@@ -299,7 +300,8 @@ class TestLinkChecker:
     def test_external_check_failure(self) -> None:
         link = LinkInfo("README.md", 1, "text", "https://example.com", "external")
         with patch(
-            "zolletta_metaskill.documentor.links.link_checker.LinkChecker.validate_external_url",
+            "zolletta_metaskill.documentor.links.link_checker.ExternalUrlChecker.validate",
+            autospec=True,
             return_value=(False, "HTTP 404"),
         ):
             LinkChecker.validate_link(link, "/repo", {}, check_external=True)
@@ -471,98 +473,6 @@ class TestLinkChecker:
         with patch("os.listdir", side_effect=PermissionError("denied")):
             assert LinkChecker._check_case_insensitive(str(tmp_path / "guide.md")) is None
 
-    # --- validate_external_url ---
-
-    def test_magicmock_success_returns_none(self) -> None:
-        from unittest.mock import MagicMock
-
-        mock_resp = MagicMock()
-        mock_resp.status = 200
-        mock_resp.__enter__ = MagicMock(return_value=mock_resp)
-        mock_resp.__exit__ = MagicMock(return_value=False)
-        with patch("urllib.request.urlopen", return_value=mock_resp):
-            valid, error = LinkChecker.validate_external_url("https://example.com")
-        assert valid is True
-        assert error is None
-
-    def test_http_error_405_fallback_get(self) -> None:
-        import email.message
-        import urllib.error
-        from unittest.mock import MagicMock
-
-        mock_resp = MagicMock()
-        mock_resp.status = 200
-        mock_resp.__enter__ = MagicMock(return_value=mock_resp)
-        mock_resp.__exit__ = MagicMock(return_value=False)
-        with patch("urllib.request.urlopen") as mock_urlopen:
-            mock_urlopen.side_effect = [
-                urllib.error.HTTPError(
-                    "url",
-                    405,
-                    "Method Not Allowed",
-                    email.message.Message(),
-                    None,
-                ),
-                mock_resp,
-            ]
-            valid, error = LinkChecker.validate_external_url("https://example.com")
-        assert valid is True
-
-    def test_http_error_404(self) -> None:
-        import email.message
-        import urllib.error
-
-        with patch(
-            "urllib.request.urlopen",
-            side_effect=urllib.error.HTTPError(
-                "url",
-                404,
-                "Not Found",
-                email.message.Message(),
-                None,
-            ),
-        ):
-            valid, error = LinkChecker.validate_external_url("https://example.com")
-        assert valid is False
-        assert error is not None
-        assert "404" in error
-
-    def test_urlerror_url_error_contains_connection_refused(self) -> None:
-        import urllib.error
-
-        err = urllib.error.URLError("connection refused")
-        err.reason = "connection refused"
-        with patch("urllib.request.urlopen", side_effect=err):
-            valid, error = LinkChecker.validate_external_url("https://example.com")
-        assert valid is False
-        assert error is not None
-        assert "connection refused" in error
-
-    def test_validate_external_url_generic_exception_contains_boom(self) -> None:
-        with patch("urllib.request.urlopen", side_effect=Exception("boom")):
-            valid, error = LinkChecker.validate_external_url("https://example.com")
-        assert valid is False
-        assert error is not None
-        assert "boom" in error
-
-    def test_405_get_fallback_failure(self) -> None:
-        import email.message
-        import urllib.error
-
-        # Both HEAD and GET fallback raise 405
-        with patch(
-            "urllib.request.urlopen",
-            side_effect=urllib.error.HTTPError(
-                "url",
-                405,
-                "Method Not Allowed",
-                email.message.Message(),
-                None,
-            ),
-        ):
-            valid, error = LinkChecker.validate_external_url("https://example.com")
-        assert valid is False
-
     # --- find_markdown_files ---
 
     def test_find_markdown_files_directory_is_valid(self, tmp_path: Path) -> None:
@@ -703,7 +613,8 @@ class TestLinkChecker:
             "# Title\n[link](https://example.com)\n", encoding="utf-8"
         )
         with patch(
-            "zolletta_metaskill.documentor.links.link_checker.LinkChecker.validate_external_url",
+            "zolletta_metaskill.documentor.links.link_checker.ExternalUrlChecker.validate",
+            autospec=True,
             return_value=(True, None),
         ) as mock_validate:
             rc = self._run(tmp_path, monkeypatch, ["prog"])
@@ -717,7 +628,8 @@ class TestLinkChecker:
             "# Title\n[link](https://example.com)\n", encoding="utf-8"
         )
         with patch(
-            "zolletta_metaskill.documentor.links.link_checker.LinkChecker.validate_external_url",
+            "zolletta_metaskill.documentor.links.link_checker.ExternalUrlChecker.validate",
+            autospec=True,
             return_value=(True, None),
         ) as mock_validate:
             rc = self._run(tmp_path, monkeypatch, ["prog"])
