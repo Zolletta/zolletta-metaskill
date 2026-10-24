@@ -42,9 +42,9 @@ skills: [review]
 For full findings (file paths, line numbers, impact, suggested fixes), see the specialist reports. Every action item names its source findings in a **Reported in** column using the per-report prefixes below:
 
 | Prefix | Area | Report file |
-|--------|------|-------------|
-| `P`    | Design patterns | [patterns.md](patterns.md) |
-| `D`    | Documentation   | [documentor.md](documentor.md) |
+| -------- | ------ | ------------- |
+| `P` | Design patterns | [patterns.md](patterns.md) |
+| `D` | Documentation | [documentor.md](documentor.md) |
 | `{{lang_prefix_1}}` | {{lang_area_1}} | [{{lang_skill_1}}.md]({{lang_skill_1}}.md) |
 | `{{lang_prefix_2}}` | {{lang_area_2}} | [{{lang_skill_2}}.md]({{lang_skill_2}}.md) |
 

@@ -503,7 +503,7 @@ class CyclomaticComplexityScanner:
             print("Result: all clear")
 
     @staticmethod
-    def main() -> int:
+    def main() -> int:  # pragma: no mutate — help text is not a tested contract
         """Entry point for the cyclomatic complexity scanner CLI."""
         parser = argparse.ArgumentParser(
             description="Flag functions and methods with high cyclomatic "
@@ -513,7 +513,7 @@ class CyclomaticComplexityScanner:
         parser.add_argument(
             "--json",
             action="store_true",
-            help="Output as JSON instead of text",
+            help="Output as JSON instead of text",  # pragma: no mutate — help text untested
         )
         args = parser.parse_args()
 

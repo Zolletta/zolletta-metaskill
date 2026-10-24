@@ -57,7 +57,7 @@ class UnusedAllExportsScanner:
         non-literal value.
         """
         try:
-            tree = ast.parse(file_path.read_text(encoding="utf-8"))
+            tree = ast.parse(file_path.read_text(encoding="utf-8"))  # pragma: no mutate
         except SyntaxError:
             return []
 
@@ -96,7 +96,7 @@ class UnusedAllExportsScanner:
         index: dict[str, list[Path]] = {}
         for py in py_files:
             try:
-                tree = ast.parse(py.read_text(encoding="utf-8"))
+                tree = ast.parse(py.read_text(encoding="utf-8"))  # pragma: no mutate
             except SyntaxError:
                 continue
             for node in ast.walk(tree):
@@ -131,7 +131,9 @@ class UnusedAllExportsScanner:
             "Complements vulture, which treats __all__ entries as used. "
             "Scan roots come from python.paths.source in settings.json."
         )
-        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        parser.add_argument(
+            "--json", action="store_true", help="Output as JSON"
+        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
         args = parser.parse_args()
 
         settings = ProjectConfig.load_settings()

@@ -72,11 +72,15 @@ class TestTestStructureScannerCollection:
         monkeypatch.setattr(sys, "argv", argv)
         return TestStructureScanner.main()
 
+    # --- Tests for TestStructureScanner._auto_detect_package(). ---
+
     def test_without_init_fallback(self, tmp_path: Path) -> None:
         src = tmp_path / "src"
         pkg = src / "mypkg"
         pkg.mkdir(parents=True)
         assert TestStructureScanner._auto_detect_package(src) == "mypkg"
+
+    # --- Tests for TestStructureScanner._build_source_index(). ---
 
     def test_no_classes_skipped(self, tmp_path: Path) -> None:
         pkg = tmp_path / "mypkg"
@@ -104,12 +108,16 @@ class TestTestStructureScannerCollection:
         index = TestStructureScanner._build_source_index(pkg)
         assert index["cache.py"]["abs_path"] == pkg / "cache.py"
 
+    # --- Tests for TestStructureScanner._match_test_to_source(). ---
+
     def test_class_based_prefix(self) -> None:
         index = {"user_service.py": {"prefixes": {"test_user_service"}, "dir": "."}}
         assert (
             TestStructureScanner._match_test_to_source("test_user_service.py", index)
             == "user_service.py"
         )
+
+    # --- Tests for TestStructureScanner._collect_inputs(). ---
 
     def test_collect_inputs_excludes_fixture_directories(self, tmp_path: Path) -> None:
         """``tests/fixtures/`` holds golden files, so it is never an orphaned test dir."""
@@ -145,6 +153,8 @@ class TestTestStructureScannerCollection:
         _dirs, _index, test_files = TestStructureScanner._collect_inputs([src_pkg], [test_pkg])
         assert "test_widget.py" in test_files
 
+    # --- Tests for the _write_settings test helper. ---
+
     def test_write_settings_replaces_non_dict_python_value(self, tmp_path: Path) -> None:
         """A non-dict ``python`` override value replaces the base value."""
         path = self._write_settings(tmp_path, python={"tools": "none"})
@@ -152,6 +162,8 @@ class TestTestStructureScannerCollection:
         python = written["python"]
         assert isinstance(python, dict)
         assert python["tools"] == "none"
+
+    # --- Tests for TestStructureScanner._emit_text(). ---
 
     def test_emit_text_matches_committed_contract(
         self, capsys: pytest.CaptureFixture[str], text_contract: Callable[[str, str], None]

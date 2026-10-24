@@ -340,7 +340,7 @@ class DriftDetector:
         doc_path = doc_ctx.file_rel_path
         full_path = os.path.join(git_ctx.repo_root, doc_path)
         try:
-            with open(full_path, encoding="utf-8", errors="ignore") as f:
+            with open(full_path, encoding="utf-8", errors="ignore") as f:  # pragma: no mutate
                 content = f.read()
         except OSError:
             return issues

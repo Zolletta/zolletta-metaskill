@@ -14,7 +14,6 @@ All review reports are saved to a timestamped run directory under the runs path 
 <runs_dir>/<YYYY-MM-DD-HH-MM>/
 ├── reports/                  ← LLM judgment (subcommand reports + aggregates)
 │   ├── SUMMARY.md
-│   ├── TODO.md
 │   ├── patterns.md
 │   ├── documentor.md
 │   └── ...
@@ -28,7 +27,7 @@ The timestamp format (`YYYY-MM-DD-HH-MM`) is lexicographically sortable, so find
 
 ### `reports/` vs `cache/`
 
-- **`reports/`** — what a human reads: findings, severity, grades, TODOs. Written by the LLM.
+- **`reports/`** — what a human reads: findings, severity, grades, and the prioritized action list. Written by the LLM.
 - **`cache/`** — deterministic artifacts: script outputs and shared context. Written by the scripts-first protocol's Phase A. See [scripts-first-protocol.md](code/scripts-first-protocol.md) for the per-subcommand cache file list.
 
 ## Report files
@@ -40,29 +39,28 @@ Each subcommand writes its own report file:
 | `patterns`             | `patterns.md`             | God class findings, SOLID violations, coupling analysis, structural convention results  |
 | `documentor`           | `documentor.md`           | Diátaxis compliance findings, drift detection results, staleness scores, link integrity |
 | `python-code-style`    | `python-code-style.md`    | Linting findings, formatting issues, naming violations, docstring gaps, type errors     |
-| `python-testing-style` | `python-testing-style.md` | Coverage gaps, test isolation issues, naming violations, fixture design findings        |
+| `python-testing-style` | `python-testing-patterns.md` | Coverage gaps, test isolation issues, naming violations, fixture design findings        |
 
 ## Orchestrator output
 
-When running `/zolletta-metaskill review`, the orchestrator produces two additional files:
+When running `/zolletta-metaskill review`, the orchestrator produces one additional file:
 
-| File         | Content                                                                                                         |
-|--------------|-----------------------------------------------------------------------------------------------------------------|
-| `SUMMARY.md` | Graded summary of all sub-reviews, with links to each specialist report                                         |
-| `TODO.md`    | Aggregated, prioritized TODO list organized by functional priority (dependency changes first, then by severity) |
+| File         | Content                                                                                                                                        |
+|--------------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| `SUMMARY.md` | Graded summary of all sub-reviews, links to each specialist report, and the aggregated action list (`Open`/`Done` tables ordered by severity) |
 
 ## Report format
 
 Each report follows the [report template](../../skills/zolletta-metaskill-review/assets/summary_template.md) structure:
 
-1. **Grade** at the top (A–F or numeric score)
+1. **Grade** at the top (numeric 0–100, computed per the grading rule in [review-mode.md](code/review-mode.md))
 2. **Scanning script results** (tables of raw output)
 3. **Findings** grouped by severity (critical, high, medium, low)
 4. Each finding includes: file, line, issue, principle violated, suggested fix
 
 ## Previous review comparison
 
-The orchestrator reads the previous review's `TODO.md` (if it exists) and compares it with the current one. Items that were in the previous TODO but are no longer found are marked as "completed" in the new SUMMARY.md. This provides a feedback loop for tracking review-driven improvements over time.
+The orchestrator reads the previous review's `SUMMARY.md` (if it exists) and verifies each `Open` item against git history and the current code. Verified items move to `Done`; unresolved ones are carried forward as high-priority entries, and a "Previous review status" section records each item as ✅ Done / ⚠️ Partially done / ❌ Not done. This provides a feedback loop for tracking review-driven improvements over time.
 
 ## Report conventions
 

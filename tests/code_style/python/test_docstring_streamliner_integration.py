@@ -47,8 +47,12 @@ class TestDocstringStreamlinerIntegration:
         monkeypatch.setattr(sys, "argv", argv)
         return DocstringStreamliner.main()
 
+    # --- Tests for DocstringStreamliner.is_trivial_arg_desc(). ---
+
     def test_no_annotation_keeps_section(self) -> None:
         assert DocstringStreamliner.is_trivial_arg_desc("x", "some desc", None) is False
+
+    # --- Tests for DocstringStreamliner.get_arg_annotations(). ---
 
     def test_get_arg_annotations_simple_function_returns_dict(self) -> None:
         tree = ast.parse("def f(x: int, y: str) -> bool: ...")
@@ -71,6 +75,8 @@ class TestDocstringStreamlinerIntegration:
         anns = DocstringStreamliner.get_arg_annotations(node)
         assert anns == {"x": "int", "y": "str"}
 
+    # --- Tests for DocstringStreamliner.get_return_annotation(). ---
+
     def test_get_return_annotation_return_annotation_returns_bool(self) -> None:
         tree = ast.parse("def f(x: int) -> bool: ...")
         node = tree.body[0]
@@ -83,12 +89,16 @@ class TestDocstringStreamlinerIntegration:
         assert isinstance(node, ast.FunctionDef)
         assert DocstringStreamliner.get_return_annotation(node) is None
 
+    # --- Tests for DocstringStreamliner._detect_prefix_quote(). ---
+
     def test_no_match_returns_default(self) -> None:
         result = DocstringStreamliner._detect_prefix_quote("pass")
         assert result is not None
         prefix, quote = result
         assert prefix == ""
         assert quote == '"""'
+
+    # --- Tests for DocstringStreamliner._init_is_obvious(). ---
 
     def test_init_is_obvious_all_annotated_returns_true(self) -> None:
         assert DocstringStreamliner._init_is_obvious({"self": None, "x": "int", "y": "str"}) is True
@@ -102,6 +112,8 @@ class TestDocstringStreamlinerIntegration:
     def test_init_is_obvious_cls_skipped_returns_true(self) -> None:
         assert DocstringStreamliner._init_is_obvious({"cls": None, "x": "int"}) is True
 
+    # --- Tests for DocstringReportWriter.print_report(). ---
+
     def test_print_report_no_findings_contains_all_clear(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -109,6 +121,8 @@ class TestDocstringStreamlinerIntegration:
         captured = capsys.readouterr()
         assert total == 0
         assert "all clear" in captured.out
+
+    # --- Tests for DocstringStreamliner.main(). ---
 
     def test_check_disabled_reports_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch

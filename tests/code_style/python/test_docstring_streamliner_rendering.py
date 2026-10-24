@@ -29,6 +29,8 @@ class TestDocstringStreamlinerRendering:
         monkeypatch.setattr(sys, "argv", argv)
         return DocstringStreamliner.main()
 
+    # --- Tests for DocstringStreamliner.parse_docstring(). ---
+
     def test_summary_and_args(self) -> None:
         text = "Summary line.\n\nArgs:\n    x: the x"
         summary, sections = DocstringStreamliner.parse_docstring(text)
@@ -43,6 +45,8 @@ class TestDocstringStreamlinerRendering:
         assert "Summary." in summary
         assert len(sections) == 1
 
+    # --- Tests for DocstringStreamliner.rebuild_docstring(). ---
+
     def test_rebuild_docstring_summary_only_returns_summary(self) -> None:
         result = DocstringStreamliner.rebuild_docstring(["Summary."], [])
         assert result == "Summary."
@@ -54,8 +58,12 @@ class TestDocstringStreamlinerRendering:
         assert "    x: the x" in result
         assert result.endswith("")
 
+    # --- Tests for DocstringStreamliner._arg_name_from_entry(). ---
+
     def test_star_star_kwargs(self) -> None:
         assert DocstringStreamliner._arg_name_from_entry("**kwargs") == "kwargs"
+
+    # --- Tests for DocstringStreamliner.is_trivial_arg_desc(). ---
 
     def test_desc_equals_arg_name(self) -> None:
         assert DocstringStreamliner.is_trivial_arg_desc("x", "x", "int") is True
@@ -69,6 +77,8 @@ class TestDocstringStreamlinerRendering:
     def test_desc_an_arg_name(self) -> None:
         assert DocstringStreamliner.is_trivial_arg_desc("x", "an x", "int") is True
 
+    # --- Tests for DocstringStreamliner.is_trivial_returns_desc(). ---
+
     def test_returns_empty_desc_with_annotation(self) -> None:
         assert DocstringStreamliner.is_trivial_returns_desc("", "int") is True
 
@@ -80,6 +90,8 @@ class TestDocstringStreamlinerRendering:
 
     def test_returns_desc_with_trailing_period(self) -> None:
         assert DocstringStreamliner.is_trivial_returns_desc("int.", "int") is True
+
+    # --- Tests for DocstringStreamliner._annotation_str(). ---
 
     def test_annotation_str_none_annotation_returns_none(self) -> None:
         assert DocstringStreamliner._annotation_str(None) is None
@@ -98,6 +110,8 @@ class TestDocstringStreamlinerRendering:
         ann = stmt.annotation
         assert DocstringStreamliner._annotation_str(ann) == "list[int]"
 
+    # --- Tests for DocstringStreamliner.get_arg_annotations(). ---
+
     def test_vararg_and_kwarg(self) -> None:
         tree = ast.parse("def f(*args: int, **kwargs: str) -> None: ...")
         node = tree.body[0]
@@ -106,11 +120,15 @@ class TestDocstringStreamlinerRendering:
         assert anns["args"] == "int"
         assert anns["kwargs"] == "str"
 
+    # --- Tests for DocstringStreamliner._is_private(). ---
+
     def test_dunder_not_private(self) -> None:
         assert DocstringStreamliner._is_private("__init__") is False
 
     def test_dunder_custom_not_private(self) -> None:
         assert DocstringStreamliner._is_private("__custom__") is False
+
+    # --- Tests for DocstringStreamliner._annotate_parents() and _is_nested(). ---
 
     def test_annotate_parents_nested_function_returns_true(self) -> None:
         tree = ast.parse("def outer():\n    def inner():\n        pass\n")
@@ -121,12 +139,16 @@ class TestDocstringStreamlinerRendering:
         assert isinstance(inner, ast.FunctionDef)
         assert DocstringStreamliner._is_nested(inner) is True
 
+    # --- Tests for DocstringStreamliner._detect_prefix_quote(). ---
+
     def test_simple_triple_quote(self) -> None:
         result = DocstringStreamliner._detect_prefix_quote('    """doc"""')
         assert result is not None
         prefix, quote = result
         assert prefix == ""
         assert quote == '"""'
+
+    # --- Tests for DocstringStreamliner.render_docstring(). ---
 
     def test_render_docstring_single_line_returns_a_summary(self) -> None:
         result = DocstringStreamliner.render_docstring("    ", "", '"""', "A summary.")
@@ -148,6 +170,8 @@ class TestDocstringStreamlinerRendering:
         result = DocstringStreamliner.render_docstring("    ", "r", '"""', "raw doc")
         assert result == '    r"""raw doc"""'
 
+    # --- Tests for DocstringStreamliner._returns_section_is_redundant(). ---
+
     def test_returns_section_is_redundant_trivial_empty_returns_true(self) -> None:
         assert DocstringStreamliner._returns_section_is_redundant([], "int") is True
 
@@ -156,6 +180,8 @@ class TestDocstringStreamlinerRendering:
 
     def test_returns_section_is_redundant_no_annotation_returns_false(self) -> None:
         assert DocstringStreamliner._returns_section_is_redundant(["some desc"], None) is False
+
+    # --- Tests for DocstringStreamliner._analyze_function(). ---
 
     def test_annotate_parents_strip_nested_returns_nested(self) -> None:
         src = 'def outer():\n    def inner():\n        """Nested."""\n        pass\n'
@@ -170,6 +196,8 @@ class TestDocstringStreamlinerRendering:
         )
         assert finding is not None
         assert finding.kind == "nested"
+
+    # --- Tests for DocstringReportWriter.print_report(). ---
 
     def test_annotate_parents_with_findings_contains_redundant(
         self, capsys: pytest.CaptureFixture[str]

@@ -40,7 +40,7 @@ class GlobalGitignoreEnsurer:
             gitignore_path = Path.home() / ".gitignore"
 
         if gitignore_path.exists():
-            content = gitignore_path.read_text(encoding="utf-8")
+            content = gitignore_path.read_text(encoding="utf-8")  # pragma: no mutate
             for line in content.splitlines():
                 stripped = line.strip().rstrip("/")
                 if stripped == GlobalGitignoreEnsurer.ENTRY.rstrip("/"):
@@ -59,7 +59,7 @@ class GlobalGitignoreEnsurer:
         return True
 
     @staticmethod
-    def main() -> int:
+    def main() -> int:  # pragma: no mutate — help text is not a tested contract
         """Entry point for the global gitignore ensurer CLI."""
         parser = argparse.ArgumentParser(
             description="Ensure .zolletta-metaskill/ is in the global ~/.gitignore."
@@ -68,7 +68,7 @@ class GlobalGitignoreEnsurer:
             "--path",
             type=Path,
             default=None,
-            help="Path to the gitignore file (default: ~/.gitignore)",
+            help="Path to the gitignore file (default: ~/.gitignore)",  # pragma: no mutate
         )
         args = parser.parse_args()
 

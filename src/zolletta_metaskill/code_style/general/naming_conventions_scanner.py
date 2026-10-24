@@ -79,7 +79,9 @@ class NamingConventionsScanner:
         reported as a violation against an expected ``AdrCache``.
         """
         try:
-            data = json.loads(NamingConventionsScanner._ACRONYMS_JSON.read_text(encoding="utf-8"))
+            data = json.loads(
+                NamingConventionsScanner._ACRONYMS_JSON.read_text(encoding="utf-8")
+            )  # pragma: no mutate — equivalent on UTF-8 locales  # noqa: E501
             acronyms = data.get("acronyms", [])
             if isinstance(acronyms, list) and acronyms:
                 return frozenset(a.upper() for a in acronyms if isinstance(a, str))
@@ -195,7 +197,9 @@ class NamingConventionsScanner:
             "test files named test_<source_stem><suffix>.py. Roots and package "
             "come from .zolletta-metaskill/settings.json."
         )
-        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        parser.add_argument(
+            "--json", action="store_true", help="Output as JSON"
+        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
         args = parser.parse_args()
 
         settings = ProjectConfig.load_settings()

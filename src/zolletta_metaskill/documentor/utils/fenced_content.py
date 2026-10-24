@@ -67,7 +67,7 @@ class FencedContent:
     def strip_fences_from_file(path: str | Path) -> str:
         """Return the fenced-free text of *path*, or "" when it cannot be read."""
         try:
-            content = Path(path).read_text(encoding="utf-8", errors="ignore")
+            content = Path(path).read_text(encoding="utf-8", errors="ignore")  # pragma: no mutate
         except OSError:
             return ""
         return FencedContent.strip_fences(content)

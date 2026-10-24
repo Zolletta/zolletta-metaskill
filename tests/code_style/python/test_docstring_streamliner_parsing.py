@@ -47,8 +47,12 @@ class TestDocstringStreamlinerParsing:
         monkeypatch.setattr(sys, "argv", argv)
         return DocstringStreamliner.main()
 
+    # --- Tests for DocstringStreamliner._is_section_header(). ---
+
     def test_indented_header_is_not_section(self) -> None:
         assert DocstringStreamliner._is_section_header("    Args:") is False
+
+    # --- Tests for DocstringStreamliner.parse_docstring(). ---
 
     def test_parse_docstring_summary_only_returns_empty_list(self) -> None:
         summary, sections = DocstringStreamliner.parse_docstring("A short summary.")
@@ -72,6 +76,8 @@ class TestDocstringStreamlinerParsing:
         assert summary == [""]
         assert sections == []
 
+    # --- Tests for DocstringStreamliner.rebuild_docstring(). ---
+
     def test_leading_blanks_stripped(self) -> None:
         result = DocstringStreamliner.rebuild_docstring(["", "", "Summary."], [])
         assert result == "Summary."
@@ -94,11 +100,15 @@ class TestDocstringStreamlinerParsing:
         assert "    x: the x" in result
         assert result == "Summary.\n\nArgs:\n    x: the x\n"
 
+    # --- Tests for DocstringStreamliner._arg_name_from_entry(). ---
+
     def test_arg_name_from_entry_plain_name_returns_x(self) -> None:
         assert DocstringStreamliner._arg_name_from_entry("x") == "x"
 
     def test_arg_name_from_entry_star_args_returns_args(self) -> None:
         assert DocstringStreamliner._arg_name_from_entry("*args") == "args"
+
+    # --- Tests for DocstringStreamliner.is_trivial_arg_desc(). ---
 
     def test_arg_empty_desc_with_annotation(self) -> None:
         assert DocstringStreamliner.is_trivial_arg_desc("x", "", "int") is True
@@ -112,6 +122,8 @@ class TestDocstringStreamlinerParsing:
     def test_arg_desc_with_trailing_period(self) -> None:
         assert DocstringStreamliner.is_trivial_arg_desc("x", "the x.", "int") is True
 
+    # --- Tests for DocstringStreamliner._detect_prefix_quote(). ---
+
     def test_detect_prefix_quote_raw_prefix_returns_empty(self) -> None:
         result = DocstringStreamliner._detect_prefix_quote('    r"""doc"""')
         assert result is not None
@@ -124,6 +136,8 @@ class TestDocstringStreamlinerParsing:
         assert result is not None
         prefix, quote = result
         assert quote == "'''"
+
+    # --- Tests for DocstringStreamliner._parse_args_entries(). ---
 
     def test_parse_args_entries_single_entry_returns_single_item(self) -> None:
         entries = DocstringStreamliner._parse_args_entries(["    x: the x value"])
@@ -162,6 +176,8 @@ class TestDocstringStreamlinerParsing:
         entries = DocstringStreamliner._parse_args_entries(["        stray", "    x: the x"])
         assert entries == [("x", "the x")]
 
+    # --- Tests for DocstringStreamliner._args_section_is_redundant(). ---
+
     def test_args_section_is_redundant_all_trivial_returns_true(self) -> None:
         body = ["    x: int", "    y: str"]
         anns: dict[str, str | None] = {"x": "int", "y": "str"}
@@ -184,6 +200,8 @@ class TestDocstringStreamlinerParsing:
 
     def test_empty_args_section(self) -> None:
         assert DocstringStreamliner._args_section_is_redundant([], {}) is True
+
+    # --- Tests for DocstringStreamliner._analyze_function(). ---
 
     def test_parse_no_docstring_returns_none(self) -> None:
         src = "def f(x: int) -> int:\n    return x\n"
@@ -222,6 +240,8 @@ class TestDocstringStreamlinerParsing:
         )
         assert finding is not None
         assert finding.kind == "test"
+
+    # --- Tests for DocstringStreamliner.main(). ---
 
     def test_empty_directory_contains_all_clear(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch

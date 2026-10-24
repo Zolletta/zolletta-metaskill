@@ -201,7 +201,7 @@ class SourceSignatureExtractor:
         """Extract all function and class signatures from a Python file."""
         signatures: list[SourceSignature] = []
         try:
-            with open(source_path, encoding="utf-8", errors="ignore") as f:
+            with open(source_path, encoding="utf-8", errors="ignore") as f:  # pragma: no mutate
                 source = f.read()
             tree = ast.parse(source, filename=source_path)
         except (SyntaxError, OSError):

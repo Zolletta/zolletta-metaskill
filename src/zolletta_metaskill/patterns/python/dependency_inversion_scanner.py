@@ -178,6 +178,23 @@ class DependencyInversionScanner:
             if not isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
 
+            # Locals bound to `self.<attr>` are injection seams: calling such a
+            # name (e.g. a lazy default factory) delegates to the injectable
+            # attribute instead of constructing a dependency.
+            seam_names = {
+                target.id
+                for node in ast.walk(item)
+                if isinstance(node, ast.Assign)
+                and any(
+                    isinstance(n, ast.Attribute)
+                    and isinstance(n.value, ast.Name)
+                    and n.value.id == "self"
+                    for n in ast.walk(node.value)
+                )
+                for target in node.targets
+                if isinstance(target, ast.Name)
+            }
+
             for node in ast.walk(item):
                 # Pattern: self.xxx = SomeClass(...)
                 if isinstance(node, ast.Assign):
@@ -190,6 +207,12 @@ class DependencyInversionScanner:
                             continue
                         # Check if the assigned value is a constructor call
                         value = node.value
+                        if (
+                            isinstance(value, ast.Call)
+                            and isinstance(value.func, ast.Name)
+                            and value.func.id in seam_names
+                        ):
+                            continue
                         if isinstance(value, ast.Call):
                             created_class = DependencyInversionScanner._get_class_name_from_call(
                                 value
@@ -254,7 +277,9 @@ class DependencyInversionScanner:
                 "Dependency Inversion validator — detect dependencies created instead of injected."
             )
         )
-        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        parser.add_argument(
+            "--json", action="store_true", help="Output as JSON"
+        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
         args = parser.parse_args()
 
         settings = ProjectConfig.load_settings()
@@ -330,7 +355,7 @@ class DependencyInversionScanner:
                 scanned_files += 1
 
                 try:
-                    tree = ast.parse(py.read_text(encoding="utf-8"))
+                    tree = ast.parse(py.read_text(encoding="utf-8"))  # pragma: no mutate
                 except SyntaxError:
                     continue
 

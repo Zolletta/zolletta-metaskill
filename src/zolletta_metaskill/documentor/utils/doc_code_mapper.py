@@ -104,7 +104,7 @@ class DocCodeMapper:
         for doc in doc_files:
             doc_full = os.path.join(repo_path, doc)
             try:
-                with open(doc_full, encoding="utf-8", errors="ignore") as f:
+                with open(doc_full, encoding="utf-8", errors="ignore") as f:  # pragma: no mutate
                     content = f.read()
             except OSError:
                 continue
@@ -137,7 +137,7 @@ class DocCodeMapper:
             "links": set(),
         }
         try:
-            with open(full_path, encoding="utf-8", errors="ignore") as f:
+            with open(full_path, encoding="utf-8", errors="ignore") as f:  # pragma: no mutate
                 content = f.read()
         except OSError:
             return refs

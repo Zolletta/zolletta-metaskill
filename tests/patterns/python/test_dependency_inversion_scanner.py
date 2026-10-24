@@ -200,6 +200,29 @@ class TestDependencyInversionScanner:
         assert deps[0]["attribute"] == "client"
         assert deps[0]["method"] == "__init__"
 
+    def test_extract_created_dependencies_seam_local_not_flagged(self) -> None:
+        source = (
+            "class Engine:\n"
+            "    def _get_parser(self):\n"
+            "        factory = self._parser_factory or Engine._default_factory\n"
+            "        self._parser = factory()\n"
+        )
+        node = _parse_class(source)
+        deps = DependencyInversionScanner._extract_created_dependencies(node)
+        assert len(deps) == 0
+
+    def test_extract_created_dependencies_plain_local_still_flagged(self) -> None:
+        source = (
+            "class Service:\n"
+            "    def run(self):\n"
+            "        factory = make_factory()\n"
+            "        self.client = factory()\n"
+        )
+        node = _parse_class(source)
+        deps = DependencyInversionScanner._extract_created_dependencies(node)
+        assert len(deps) == 1
+        assert deps[0]["created"] == "factory"
+
     def test_parse_class_multiple_deps_returns_2(self) -> None:
         source = (
             "class Service:\n"

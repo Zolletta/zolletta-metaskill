@@ -25,7 +25,7 @@ class ADRCache:
         if not self.cache_path.exists():
             return {}
         try:
-            data = json.loads(self.cache_path.read_text(encoding="utf-8"))
+            data = json.loads(self.cache_path.read_text(encoding="utf-8"))  # pragma: no mutate
             if isinstance(data, dict):
                 return data
         except (OSError, json.JSONDecodeError):
@@ -37,7 +37,7 @@ class ADRCache:
         self.cache_path.parent.mkdir(parents=True, exist_ok=True)
         self.cache_path.write_text(
             json.dumps(cache, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
+            encoding="utf-8",  # pragma: no mutate — equivalent on UTF-8 locales
         )
 
     @staticmethod

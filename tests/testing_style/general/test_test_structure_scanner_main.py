@@ -71,6 +71,8 @@ class TestTestStructureScannerMain:
         monkeypatch.setattr(sys, "argv", argv)
         return TestStructureScanner.main()
 
+    # --- Tests for TestStructureScanner.main(). ---
+
     def test_main_check_disabled_reports_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:

@@ -57,7 +57,9 @@ class CompanionSkillDetector:
     @staticmethod
     def main() -> int:
         """Entry point for the companion skills detector CLI."""
-        parser = argparse.ArgumentParser(description="Detect companion implementation skills.")
+        parser = argparse.ArgumentParser(
+            description="Detect companion implementation skills."
+        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
         parser.parse_args()
 
         result = CompanionSkillDetector.detect_companion_skills()

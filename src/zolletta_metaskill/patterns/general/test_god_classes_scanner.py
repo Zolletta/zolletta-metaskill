@@ -184,7 +184,7 @@ class TestGodClassesScanner:
                 )
 
     @staticmethod
-    def main() -> int:
+    def main() -> int:  # pragma: no mutate — help text is not a tested contract
         """Entry point for the test God class scanner CLI."""
         parser = argparse.ArgumentParser(
             description="Scan Python test classes for size and mixed-SUT detection. "
@@ -193,9 +193,11 @@ class TestGodClassesScanner:
         parser.add_argument(
             "--show-methods",
             action="store_true",
-            help="List all method names per class (helps spot mixed SUTs)",
+            help="List all method names per class (helps spot mixed SUTs)",  # pragma: no mutate
         )
-        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        parser.add_argument(
+            "--json", action="store_true", help="Output as JSON"
+        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
         args = parser.parse_args()
 
         TestGodClassesScanner._ensure_python_engine()

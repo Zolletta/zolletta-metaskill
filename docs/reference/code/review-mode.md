@@ -32,6 +32,20 @@ There is **no third bucket** between "finding" and "not a finding." Every diagno
 
 **How to emit correctly**: if a finding is real, emit it with a severity, a concrete file/line reference, and a specific suggested fix. Do not qualify it with "may be" or "could be considered." If you're not sure whether it's real, the rule definition is not precise enough — that's a skill bug to fix, not a reason to hedge in the report. Make the emit-or-suppress call with your best judgment, then record the skill bug in the report — name the imprecise rule and the case that exposed it — with a link to file it: <https://github.com/Zolletta/zolletta-metaskill/issues/new>. The review surfaces the bug; filing it is the reader's call.
 
+## Grading
+
+**Zero findings means 100.** If every check in scope passed clean, the report's grade is 100 — do not deduct points to signal humility or uncertainty. A grade below 100 must be traceable to a specific finding in the report; an unexplained deduction is the same class of defect as a hedged finding: it costs the reader a triage pass and drives no action.
+
+**The grade is computed, not felt.** Start from the deterministic baseline:
+
+```text
+grade = 100 − Σ weight(finding)
+  critical −40 · high −15 · medium −5 · low −2
+  informational / suppressed findings weigh 0
+```
+
+The baseline may be adjusted by **at most ±5 points**, and only when the justification names the finding(s) that justify the deviation and why — e.g. a low finding that is systemic across 40 files (adjust up the deduction), or a high finding already mitigated by a compensating control (adjust down). A deviation without a named finding is a report defect. Severity labels themselves are part of the finding and follow the emit-or-suppress discipline above — do not inflate a severity to make a felt score come out.
+
 ## Tool-specific notes (Python)
 
 ### ruff

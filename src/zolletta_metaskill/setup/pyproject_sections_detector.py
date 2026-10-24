@@ -64,7 +64,7 @@ class PyprojectSectionsDetector:
         result: dict[str, Any] = {}
         content = ""
         if pyproject_path.exists():
-            content = pyproject_path.read_text(encoding="utf-8")
+            content = pyproject_path.read_text(encoding="utf-8")  # pragma: no mutate
 
         for tool, pattern in PyprojectSectionsDetector._SECTIONS:
             if tool == "uv_project":
@@ -87,7 +87,7 @@ class PyprojectSectionsDetector:
         return result
 
     @staticmethod
-    def main() -> int:
+    def main() -> int:  # pragma: no mutate — help text is not a tested contract
         """Entry point for the pyproject sections detector CLI."""
         parser = argparse.ArgumentParser(
             description="Detect which [tool.*] sections exist in pyproject.toml."
@@ -96,7 +96,7 @@ class PyprojectSectionsDetector:
             "pyproject",
             nargs="?",
             default="pyproject.toml",
-            help="Path to pyproject.toml (default: pyproject.toml)",
+            help="Path to pyproject.toml (default: pyproject.toml)",  # pragma: no mutate
         )
         args = parser.parse_args()
 

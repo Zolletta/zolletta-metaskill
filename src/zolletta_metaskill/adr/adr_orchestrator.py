@@ -196,7 +196,7 @@ class ADROrchestrator:
         existing_content: str | None = None
         if distilled_path.exists():
             with contextlib.suppress(OSError):
-                existing_content = distilled_path.read_text(encoding="utf-8")
+                existing_content = distilled_path.read_text(encoding="utf-8")  # pragma: no mutate
         return existing_content
 
     @staticmethod

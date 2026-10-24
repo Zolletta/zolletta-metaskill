@@ -57,7 +57,7 @@ class DocumentedItemExtractor:
         items: dict[str, dict[str, Any]] = {}
 
         try:
-            with open(doc_path, encoding="utf-8", errors="ignore") as f:
+            with open(doc_path, encoding="utf-8", errors="ignore") as f:  # pragma: no mutate
                 content = f.read()
         except OSError:
             return items

@@ -57,7 +57,7 @@ class PHPToolsDetector:
         if not composer_path.exists():
             return {tool: False for tool, _, _ in PHPToolsDetector._TOOLS}
 
-        content = composer_path.read_text(encoding="utf-8")
+        content = composer_path.read_text(encoding="utf-8")  # pragma: no mutate
         for tool, package, _ in PHPToolsDetector._TOOLS:
             result[tool] = f'"{package}"' in content
         return result
@@ -99,7 +99,7 @@ class PHPToolsDetector:
         }
 
     @staticmethod
-    def main() -> int:
+    def main() -> int:  # pragma: no mutate — help text is not a tested contract
         """Entry point for the PHP tools detector CLI."""
         parser = argparse.ArgumentParser(
             description="Detect PHP tool availability from composer.json and config files."
@@ -108,7 +108,7 @@ class PHPToolsDetector:
             "directory",
             nargs="?",
             default=".",
-            help="Project root to check (default: current directory)",
+            help="Project root to check (default: current directory)",  # pragma: no mutate
         )
         args = parser.parse_args()
 

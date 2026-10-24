@@ -239,12 +239,11 @@ The report must include:
 - Findings grouped by severity (critical/high/medium/low) using the template's table format, **numbered with a single progressive sequence across all severities**. All four sections are always present — an empty section reads `*None.*`, never disappears — `S1`, `S2`, `S3`… for code-style, `T1`, `T2`… for testing, `P1`, `P2`… for patterns, `D1`, `D2`… for documentor. The id never resets when the section changes and carries no severity letter, so `[T7]` is unambiguous across the whole run. Each finding row includes its id in the first column so the orchestrator's TODO can link it.
 - If no issues are found, state that explicitly with a brief explanation of what was checked
 
-**Grading scale** (0-100):
-- 90-100: Excellent — minimal or no issues, follows best practices consistently
-- 75-89: Good — a few issues, overall solid quality
-- 60-74: Fair — several issues that should be addressed, quality is acceptable but needs work
-- 40-59: Poor — many issues, significant quality gaps
-- 0-39: Failing — critical issues throughout, major rework needed
+**Grading** (0-100) — computed, not felt (see `../../docs/reference/code/review-mode.md` → "Grading" for the full rule):
+- **Zero findings means 100** — if every check in scope passed clean, the grade is 100. Do not deduct points "just in case" or to signal humility: a grade below 100 must name the finding that cost the points.
+- Baseline: `100 − Σ weight(finding)` with `critical −40 · high −15 · medium −5 · low −2` (informational/suppressed weigh 0).
+- Judgment adjustment: at most **±5** off the baseline, and only when the justification names the finding(s) and why (e.g. a low that is systemic across many files; a high already mitigated by a compensating control).
+- Interpretation bands: 90-100 Excellent · 75-89 Good · 60-74 Fair · 40-59 Poor · 0-39 Failing
 
 Write the report to <output_file_path> using the write tool. Do NOT return the report as your final output — write it to the file. Return only a one-line confirmation that the file was written, along with the grade you assigned.
 ```

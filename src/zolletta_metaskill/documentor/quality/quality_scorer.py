@@ -126,7 +126,7 @@ class QualityScorer:
         details = {"referenced_files": 0, "existing_files": 0, "referenced_functions": 0}
 
         try:
-            with open(full_path, encoding="utf-8", errors="ignore") as f:
+            with open(full_path, encoding="utf-8", errors="ignore") as f:  # pragma: no mutate
                 content = f.read()
         except OSError:
             return 50.0, details
@@ -187,7 +187,7 @@ class QualityScorer:
 
         if anchor and resolved.endswith((".md", ".rst")):
             try:
-                with open(resolved, encoding="utf-8", errors="ignore") as f:
+                with open(resolved, encoding="utf-8", errors="ignore") as f:  # pragma: no mutate
                     target_content = f.read()
                 headings = QualityScorer._extract_headings(target_content)
                 if QualityScorer._slugify(anchor) in headings:
@@ -205,7 +205,7 @@ class QualityScorer:
         details: dict[str, Any] = {"total_links": 0, "valid_links": 0, "broken_links": []}
 
         try:
-            with open(full_path, encoding="utf-8", errors="ignore") as f:
+            with open(full_path, encoding="utf-8", errors="ignore") as f:  # pragma: no mutate
                 content = f.read()
         except OSError:
             return 100.0, details

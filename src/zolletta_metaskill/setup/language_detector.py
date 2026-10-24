@@ -71,7 +71,7 @@ class LanguageDetector:
         return None
 
     @staticmethod
-    def main() -> int:
+    def main() -> int:  # pragma: no mutate — help text is not a tested contract
         """Entry point for the language detector CLI."""
         parser = argparse.ArgumentParser(
             description="Detect the project's primary language from marker files."
@@ -80,7 +80,7 @@ class LanguageDetector:
             "directory",
             nargs="?",
             default=".",
-            help="Project root to check (default: current directory)",
+            help="Project root to check (default: current directory)",  # pragma: no mutate
         )
         args = parser.parse_args()
 

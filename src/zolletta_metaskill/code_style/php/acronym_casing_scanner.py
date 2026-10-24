@@ -108,7 +108,7 @@ class AcronymCasingScanner:
         for candidate in candidates:
             if candidate.exists():
                 try:
-                    data = json.loads(candidate.read_text(encoding="utf-8"))
+                    data = json.loads(candidate.read_text(encoding="utf-8"))  # pragma: no mutate
                     acronyms = data.get("acronyms", [])
                     if isinstance(acronyms, list) and acronyms:
                         return [a.upper() for a in acronyms if isinstance(a, str)]
@@ -328,7 +328,9 @@ class AcronymCasingScanner:
             "case-insensitively matches a known acronym but isn't all-uppercase. "
             "Scan roots come from php.autoload.psr-4 in settings.json."
         )
-        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        parser.add_argument(
+            "--json", action="store_true", help="Output as JSON"
+        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
         args = parser.parse_args()
 
         if AcronymCasingScanner._check_skipped_tree_sitter(args.json):

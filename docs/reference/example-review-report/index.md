@@ -6,18 +6,17 @@ skills: [review]
 
 # Example Review Report
 
-This is a real output from `/zolletta-metaskill review` run on the zolletta-metaskill project itself (dogfooding). The report was generated on 2026-08-06 and is preserved here as a reference for what the review output looks like.
+This is a real output from `/zolletta-metaskill review` run on `playground/` — a seeded-defect fixture inside this repository — so every report contains genuine findings at all severities (overall grade 46/100, "Poor"). The report was generated on 2026-10-24 and is preserved here as a reference for what the review output looks like when the code under review has real problems.
 
 ## Files
 
-| File                                               | Description                                                                                               |
-|----------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
-| [SUMMARY.md](SUMMARY.md)                           | Executive summary with overall grade, grades by area, strengths, weaknesses, and trend vs previous review |
-| [TODO.md](TODO.md)                                 | Prioritized action items (critical, high, medium, low) with source, files, problem, and fix               |
-| [patterns.md](patterns.md)                         | Design pattern review — God classes, SOLID, coupling, composition vs inheritance                          |
-| [documentor.md](documentor.md)                     | Documentation review — Diátaxis compliance, drift detection, broken links, API validation                 |
-| [python-code-style.md](python-code-style.md)       | Python source code style — ruff, mypy, naming, docstrings, type annotations                               |
-| [python-testing-style.md](python-testing-style.md) | Python test code review — isolation, naming, coverage gaps, mocking, fixtures                             |
+| File                                                           | Description                                                                                                                    |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| [SUMMARY.md](SUMMARY.md)                                       | Executive summary: overall grade, grades by area, strengths, weaknesses, prioritized Open/Done items, previous-review status   |
+| [patterns.md](patterns.md)                                     | Design pattern review — God classes, SOLID, coupling, composition vs inheritance                                               |
+| [documentor.md](documentor.md)                                 | Documentation review — Diátaxis compliance, drift detection, broken links, API validation                                      |
+| [python-code-style.md](python-code-style.md)                   | Python source code style — ruff, mypy, naming, docstrings, type annotations                                                    |
+| [python-testing-patterns.md](python-testing-patterns.md)       | Python test code review — isolation, naming, coverage gaps, mutation testing, mocking, fixtures                                |
 
 ## Report structure
 

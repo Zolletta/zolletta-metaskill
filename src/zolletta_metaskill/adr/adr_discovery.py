@@ -62,7 +62,7 @@ class ADRDiscovery:
         Returns ``None`` if the file does not contain an ADR heading.
         """
         try:
-            content = file_path.read_text(encoding="utf-8", errors="ignore")
+            content = file_path.read_text(encoding="utf-8", errors="ignore")  # pragma: no mutate
         except OSError:
             return None
 

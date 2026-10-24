@@ -21,7 +21,9 @@ class ReportAggregator:
         if not path.exists():
             return ReportAggregator._missing_record("quality")
         try:
-            return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
+            return cast(
+                dict[str, Any], json.loads(path.read_text(encoding="utf-8"))
+            )  # pragma: no mutate — equivalent on UTF-8 locales  # noqa: E501
         except (OSError, json.JSONDecodeError):
             return ReportAggregator._missing_record("quality")
 
@@ -32,7 +34,9 @@ class ReportAggregator:
         if not path.exists():
             return ReportAggregator._missing_record("api_doc")
         try:
-            return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
+            return cast(
+                dict[str, Any], json.loads(path.read_text(encoding="utf-8"))
+            )  # pragma: no mutate — equivalent on UTF-8 locales  # noqa: E501
         except (OSError, json.JSONDecodeError):
             return ReportAggregator._missing_record("api_doc")
 
@@ -43,7 +47,9 @@ class ReportAggregator:
         if not path.exists():
             return ReportAggregator._missing_record("links")
         try:
-            return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
+            return cast(
+                dict[str, Any], json.loads(path.read_text(encoding="utf-8"))
+            )  # pragma: no mutate — equivalent on UTF-8 locales  # noqa: E501
         except (OSError, json.JSONDecodeError):
             return ReportAggregator._missing_record("links")
 

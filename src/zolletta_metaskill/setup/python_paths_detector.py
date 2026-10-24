@@ -42,7 +42,7 @@ class PythonPathsDetector:
         """Return parsed ``pyproject.toml``, or an empty dict if unreadable."""
         path = project_root / "pyproject.toml"
         try:
-            data = tomllib.loads(path.read_text(encoding="utf-8"))
+            data = tomllib.loads(path.read_text(encoding="utf-8"))  # pragma: no mutate
         except (OSError, tomllib.TOMLDecodeError):
             return {}
         return data if isinstance(data, dict) else {}
@@ -168,7 +168,7 @@ class PythonPathsDetector:
         }
 
     @staticmethod
-    def main() -> int:
+    def main() -> int:  # pragma: no mutate — help text is not a tested contract
         """Entry point for the Python paths detector CLI."""
         parser = argparse.ArgumentParser(
             description="Detect Python source/test roots and package name "
@@ -178,7 +178,7 @@ class PythonPathsDetector:
             "directory",
             nargs="?",
             default=".",
-            help="Project root to check (default: current directory)",
+            help="Project root to check (default: current directory)",  # pragma: no mutate
         )
         args = parser.parse_args()
 

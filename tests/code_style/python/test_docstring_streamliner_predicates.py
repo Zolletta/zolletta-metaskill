@@ -48,6 +48,8 @@ class TestDocstringStreamlinerPredicates:
         monkeypatch.setattr(sys, "argv", argv)
         return DocstringStreamliner.main()
 
+    # --- Tests for DocstringStreamliner._is_section_header(). ---
+
     def test_is_section_header_args_header_returns_true(self) -> None:
         assert DocstringStreamliner._is_section_header("Args:") is True
 
@@ -69,14 +71,22 @@ class TestDocstringStreamlinerPredicates:
     def test_is_section_header_tab_indented_returns_false(self) -> None:
         assert DocstringStreamliner._is_section_header("\tArgs:") is False
 
+    # --- Tests for DocstringStreamliner._arg_name_from_entry(). ---
+
     def test_name_with_type(self) -> None:
         assert DocstringStreamliner._arg_name_from_entry("x (int)") == "x"
+
+    # --- Tests for DocstringStreamliner.is_trivial_arg_desc(). ---
 
     def test_is_trivial_arg_desc_meaningful_desc_returns_false(self) -> None:
         assert DocstringStreamliner.is_trivial_arg_desc("x", "the number of items", "int") is False
 
+    # --- Tests for DocstringStreamliner.is_trivial_returns_desc(). ---
+
     def test_is_trivial_returns_desc_meaningful_desc_returns_false(self) -> None:
         assert DocstringStreamliner.is_trivial_returns_desc("the count", "int") is False
+
+    # --- Tests for DocstringStreamliner._is_private(). ---
 
     def test_is_private_private_name_returns_true(self) -> None:
         assert DocstringStreamliner._is_private("_helper") is True
@@ -84,11 +94,15 @@ class TestDocstringStreamlinerPredicates:
     def test_is_private_public_name_returns_false(self) -> None:
         assert DocstringStreamliner._is_private("helper") is False
 
+    # --- Tests for DocstringStreamliner._is_test_function(). ---
+
     def test_is_test_function_test_function_returns_true(self) -> None:
         assert DocstringStreamliner._is_test_function("test_foo") is True
 
     def test_not_test_function(self) -> None:
         assert DocstringStreamliner._is_test_function("foo") is False
+
+    # --- Tests for DocstringStreamliner._is_test_file(). ---
 
     def test_test_file_by_name(self) -> None:
         assert DocstringStreamliner._is_test_file(Path("test_foo.py")) is True
@@ -99,6 +113,8 @@ class TestDocstringStreamlinerPredicates:
     def test_not_test_file(self) -> None:
         assert DocstringStreamliner._is_test_file(Path("src/foo.py")) is False
 
+    # --- Tests for DocstringStreamliner._is_nested(). ---
+
     def test_top_level_not_nested(self) -> None:
         tree = ast.parse("def f(): pass")
         DocstringStreamliner._annotate_parents(tree)
@@ -106,8 +122,12 @@ class TestDocstringStreamlinerPredicates:
         assert isinstance(node, ast.FunctionDef)
         assert DocstringStreamliner._is_nested(node) is False
 
+    # --- Tests for DocstringStreamliner._returns_section_is_redundant(). ---
+
     def test_trivial_equals_annotation(self) -> None:
         assert DocstringStreamliner._returns_section_is_redundant(["int"], "int") is True
+
+    # --- Tests for DocstringStreamliner._analyze_function(). ---
 
     def test_protected_sections_kept(self) -> None:
         src = (
@@ -121,6 +141,8 @@ class TestDocstringStreamlinerPredicates:
         assert finding is not None
         assert "Args" in finding.detail
         assert "Raises" not in finding.detail
+
+    # --- Tests for DocstringStreamliner.process_file(). ---
 
     def test_file_with_findings(self, tmp_path: Path) -> None:
         src = tmp_path / "mod.py"
@@ -158,6 +180,8 @@ class TestDocstringStreamlinerPredicates:
         )
         assert len(report.findings) == 0
 
+    # --- Tests for DocstringReportWriter._rel(). ---
+
     def test_rel_relative_path_returns_foo_py(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -169,6 +193,8 @@ class TestDocstringStreamlinerPredicates:
     ) -> None:
         monkeypatch.chdir(tmp_path)
         assert DocstringReportWriter._rel(Path("/other/foo.py")) == "/other/foo.py"
+
+    # --- Tests for DocstringStreamliner.main(). ---
 
     def test_missing_src_reports_error(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch

@@ -44,6 +44,7 @@ Settings, subcommands, CI/CD, frontmatter, reports, and tool messages.
 | [Frontmatter](frontmatter.md)         | SKILL.md frontmatter fields                           |
 | [Reports](reports.md)                 | Report file format and templates                      |
 | [Tool messages](tool-messages.md)     | "Not installed" messages for the tool-failure handler |
+| [Augmented coding patterns](augmented-coding-patterns.md) | Distilled pattern/anti-pattern definitions cited by the skills |
 
 ## Example review report
 
@@ -52,9 +53,8 @@ A real review output from dogfooding — see what the reports look like.
 | Document                                                                 | Description                                               |
 |--------------------------------------------------------------------------|-----------------------------------------------------------|
 | [Overview](example-review-report/index.md)                               | Real review output from dogfooding — overview and files   |
-| [SUMMARY.md](example-review-report/SUMMARY.md)                           | Executive summary with overall grade and trend            |
-| [TODO.md](example-review-report/TODO.md)                                 | Prioritized action items (critical, high, medium, low)    |
-| [patterns.md](example-review-report/patterns.md)                         | Design pattern review — God classes, SOLID, coupling      |
-| [documentor.md](example-review-report/documentor.md)                     | Documentation review — Diátaxis compliance, drift         |
-| [python-code-style.md](example-review-report/python-code-style.md)       | Python source code style — ruff, mypy, naming, docstrings |
-| [python-testing-style.md](example-review-report/python-testing-style.md) | Python test code review — isolation, naming, coverage     |
+| [SUMMARY.md](example-review-report/SUMMARY.md)                                  | Executive summary with overall grade, trend, and prioritized items |
+| [patterns.md](example-review-report/patterns.md)                                | Design pattern review — God classes, SOLID, coupling               |
+| [documentor.md](example-review-report/documentor.md)                            | Documentation review — Diátaxis compliance, drift                  |
+| [python-code-style.md](example-review-report/python-code-style.md)              | Python source code style — ruff, mypy, naming, docstrings          |
+| [python-testing-patterns.md](example-review-report/python-testing-patterns.md)  | Python test code review — isolation, naming, coverage, mutation    |

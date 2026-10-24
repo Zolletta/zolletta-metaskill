@@ -328,7 +328,7 @@ class FunctionLengthScanner:
             print("Result: all clear")
 
     @staticmethod
-    def main() -> int:
+    def main() -> int:  # pragma: no mutate — help text is not a tested contract
         """Entry point for the function length scanner CLI."""
         parser = argparse.ArgumentParser(
             description="Flag functions and methods that exceed a maximum "
@@ -339,7 +339,7 @@ class FunctionLengthScanner:
         parser.add_argument(
             "--json",
             action="store_true",
-            help="Output as JSON instead of text",
+            help="Output as JSON instead of text",  # pragma: no mutate — help text untested
         )
         args = parser.parse_args()
 

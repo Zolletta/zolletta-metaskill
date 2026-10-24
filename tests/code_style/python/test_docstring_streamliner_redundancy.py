@@ -47,6 +47,8 @@ class TestDocstringStreamlinerRedundancy:
         monkeypatch.setattr(sys, "argv", argv)
         return DocstringStreamliner.main()
 
+    # --- Tests for DocstringStreamliner._analyze_function(). ---
+
     def test_redundant_args_removed(self) -> None:
         src = 'def f(x: int) -> None:\n    """Summary.\n\nArgs:\n    x: int"""\n    pass\n'
         node = self._parse(src)
@@ -115,6 +117,8 @@ class TestDocstringStreamlinerRedundancy:
         )
         assert finding is None
 
+    # --- Tests for DocstringStreamliner.process_file(). ---
+
     def test_strip_private_in_file(self, tmp_path: Path) -> None:
         src = tmp_path / "mod.py"
         src.write_text('def _helper() -> None:\n    """Helper."""\n    pass\n', encoding="utf-8")
@@ -123,6 +127,8 @@ class TestDocstringStreamlinerRedundancy:
         )
         assert len(report.findings) == 1
         assert report.findings[0].kind == "private"
+
+    # --- Tests for DocstringStreamliner.apply_edits(). ---
 
     def test_remove_redundant_args(self, tmp_path: Path) -> None:
         src = tmp_path / "mod.py"
@@ -197,6 +203,8 @@ class TestDocstringStreamlinerRedundancy:
         assert "Summary." in result
         assert not result.endswith("\n")
 
+    # --- Tests for DocstringStreamliner.main(). ---
+
     def test_strip_private_setting(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -248,7 +256,7 @@ class TestDocstringStreamlinerRedundancy:
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text(
-            'class C:\n    def __init__(self, x: int) -> None:\n'
+            "class C:\n    def __init__(self, x: int) -> None:\n"
             '        """Init."""\n        pass\n',
             encoding="utf-8",
         )

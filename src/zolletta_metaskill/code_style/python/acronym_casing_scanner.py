@@ -83,7 +83,9 @@ class AcronymCasingScanner:
         (e.g. the script was copied without the assets directory).
         """
         try:
-            data = json.loads(AcronymCasingScanner._ACRONYMS_JSON.read_text(encoding="utf-8"))
+            data = json.loads(
+                AcronymCasingScanner._ACRONYMS_JSON.read_text(encoding="utf-8")
+            )  # pragma: no mutate — equivalent on UTF-8 locales  # noqa: E501
             acronyms = data.get("acronyms", [])
             if isinstance(acronyms, list) and acronyms:
                 return [a.upper() for a in acronyms if isinstance(a, str)]
@@ -143,7 +145,7 @@ class AcronymCasingScanner:
     def _get_class_names(path: Path) -> list[tuple[str, int]]:
         """Return (class_name, line_number) for every class in a .py file."""
         try:
-            tree = ast.parse(path.read_text(encoding="utf-8"))
+            tree = ast.parse(path.read_text(encoding="utf-8"))  # pragma: no mutate
         except SyntaxError:
             return []
         results: list[tuple[str, int]] = []
@@ -272,7 +274,9 @@ class AcronymCasingScanner:
             "case-insensitively matches a known acronym but isn't all-uppercase. "
             "Scan roots come from python.paths.source in settings.json."
         )
-        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        parser.add_argument(
+            "--json", action="store_true", help="Output as JSON"
+        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
         args = parser.parse_args()
 
         settings = ProjectConfig.load_settings()

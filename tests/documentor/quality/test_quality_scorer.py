@@ -41,7 +41,6 @@ class TestQualityScorer:
     def test_get_label_boundary_0_returns_abandoned(self) -> None:
         assert QualityScorer.get_label(0) == "abandoned"
 
-
     @staticmethod
     def _patch_git(
         last_commit: datetime | None = None,

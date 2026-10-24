@@ -219,7 +219,7 @@ For each issue that requires verifying a doc claim against source code, choose t
 
 Produce a structured markdown report with:
 
-- **Grade** (0-100) with a points breakdown table
+- **Grade** (0-100) with a points breakdown table — **zero findings means 100**; otherwise compute `100 − Σ weight(finding)` (`critical −40 · high −15 · medium −5 · low −2`), adjustable by at most ±5 when the justification names the finding(s) and why. Every deduction must name the finding that cost the points (full rule: `../../docs/reference/code/review-mode.md` → "Grading")
 - **Summary** of findings
 - **Issues** — each with: file path, line number(s), severity, problem, impact, suggested fix
 - **Previous issues verified as resolved** (if applicable)

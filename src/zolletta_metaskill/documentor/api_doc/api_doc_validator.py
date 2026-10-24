@@ -356,7 +356,9 @@ class APIDocValidator:
             "documentation.dir in .zolletta-metaskill/settings.json.",
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
-        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        parser.add_argument(
+            "--json", action="store_true", help="Output as JSON"
+        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
 
         args = parser.parse_args()
 

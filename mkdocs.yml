@@ -117,11 +117,10 @@ nav:
           - "Example review report":
               - "Overview": reference/example-review-report/index.md
               - "SUMMARY.md": reference/example-review-report/SUMMARY.md
-              - "TODO.md": reference/example-review-report/TODO.md
               - "patterns.md": reference/example-review-report/patterns.md
               - "documentor.md": reference/example-review-report/documentor.md
               - "python-code-style.md": reference/example-review-report/python-code-style.md
-              - "python-testing-style.md": reference/example-review-report/python-testing-style.md
+              - "python-testing-patterns.md": reference/example-review-report/python-testing-patterns.md
           - "Tool messages": reference/tool-messages.md
           - "Augmented coding patterns": reference/augmented-coding-patterns.md
           - "Reference index": reference/index.md
@@ -156,6 +155,11 @@ nav:
           - "6 ADR governance pipeline": explanation/adr/architecture/0006-adr-governance-pipeline.md
           - "7 Sensor adoption criteria": explanation/adr/architecture/0007-sensor-adoption-criteria.md
           - "8 Balanced coupling model": explanation/adr/architecture/0008-balanced-coupling-model.md
+          - "9 Parameter limits": explanation/adr/architecture/0009-parameter-limits-are-two-numbers.md
+          - "10 Engine capability protocols": explanation/adr/architecture/0010-engine-capabilities-are-separate-protocols.md
+          - "11 Configuration architecture (corrected)": explanation/adr/architecture/0011-configuration-architecture-corrected.md
+          - "12 Thresholds are skill defaults": explanation/adr/architecture/0012-thresholds-are-skill-defaults.md
+          - "13 CLI modules are clients": explanation/adr/architecture/0013-cli-modules-are-clients.md
           - "Distilled directives": explanation/adr/architecture/adr-distilled.md
       - "Augmented Coding Patterns":
         - "Patterns in use": explanation/patterns.md

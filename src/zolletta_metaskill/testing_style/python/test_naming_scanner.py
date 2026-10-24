@@ -286,7 +286,9 @@ class TestNamingScanner:
             "Flags functions with fewer than testing.test_naming_min_segments "
             "segments after test_."
         )
-        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        parser.add_argument(
+            "--json", action="store_true", help="Output as JSON"
+        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
         args = parser.parse_args()
 
         TestNamingScanner._ensure_python_engine()

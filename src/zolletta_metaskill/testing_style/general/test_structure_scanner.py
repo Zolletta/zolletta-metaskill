@@ -187,7 +187,9 @@ class TestStructureScanner:
             description="Check that test directory structure mirrors source structure. "
             "Roots and package come from .zolletta-metaskill/settings.json."
         )
-        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        parser.add_argument(
+            "--json", action="store_true", help="Output as JSON"
+        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
         args = parser.parse_args()
 
         TestStructureScanner._ensure_python_engine()
@@ -315,7 +317,10 @@ class TestStructureScanner:
                     continue  # Skip conftest.py, fixtures.py, etc.
                 rel = str(rel_path)
                 try:
-                    test_files[rel] = (test_pkg, tp.read_text(encoding="utf-8"))
+                    test_files[rel] = (
+                        test_pkg,
+                        tp.read_text(encoding="utf-8"),
+                    )  # pragma: no mutate — equivalent on UTF-8 locales  # noqa: E501
                 except (OSError, UnicodeDecodeError):
                     test_files[rel] = (test_pkg, "")
         return test_only_dirs, src_index, test_files

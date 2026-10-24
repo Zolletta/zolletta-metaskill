@@ -134,7 +134,9 @@ class ClassMetricsScanner:
             description="Scan Python source for class metrics (God class triage). "
             "Roots and thresholds come from .zolletta-metaskill/settings.json."
         )
-        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        parser.add_argument(
+            "--json", action="store_true", help="Output as JSON"
+        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
         args = parser.parse_args()
 
         ClassMetricsScanner._ensure_python_engine()

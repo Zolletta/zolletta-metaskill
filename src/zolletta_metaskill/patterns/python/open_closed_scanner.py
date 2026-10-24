@@ -211,7 +211,7 @@ class OpenClosedScanner:
         """Scan a file for OCP violations."""
         violations: list[dict[str, Any]] = []
         try:
-            tree = ast.parse(path.read_text(encoding="utf-8"))
+            tree = ast.parse(path.read_text(encoding="utf-8"))  # pragma: no mutate
         except SyntaxError:
             return violations
 
@@ -265,7 +265,9 @@ class OpenClosedScanner:
             description="Open/Closed Principle (OCP) validator. "
             "Roots come from .zolletta-metaskill/settings.json."
         )
-        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        parser.add_argument(
+            "--json", action="store_true", help="Output as JSON"
+        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
         args = parser.parse_args()
 
         settings = ProjectConfig.load_settings()

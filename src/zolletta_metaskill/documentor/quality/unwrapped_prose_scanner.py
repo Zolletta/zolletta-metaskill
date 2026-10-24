@@ -231,7 +231,7 @@ class UnwrappedProseScanner:
     def scan_file(path: Path) -> list[Finding]:
         """Return findings for one markdown file, or none if unreadable."""
         try:
-            text = path.read_text(encoding="utf-8")
+            text = path.read_text(encoding="utf-8")  # pragma: no mutate — equivalent on UTF-8
         except (OSError, UnicodeDecodeError):
             return []
         return UnwrappedProseScanner.scan_text(path, text)
@@ -345,7 +345,9 @@ class UnwrappedProseScanner:
             description="Flag markdown paragraphs hard-wrapped across lines. Roots "
             "come from .zolletta-metaskill/settings.json."
         )
-        parser.add_argument("--json", action="store_true", help="Output as JSON instead of text")
+        parser.add_argument(
+            "--json", action="store_true", help="Output as JSON instead of text"
+        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
         args = parser.parse_args()
 
         settings = ProjectConfig.load_settings(UnwrappedProseScanner.DEFAULT_SETTINGS_PATH)

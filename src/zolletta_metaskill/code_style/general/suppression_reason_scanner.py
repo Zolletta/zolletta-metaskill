@@ -104,7 +104,7 @@ class SuppressionReasonScanner:
     def _scan_python(path: Path) -> list[dict[str, Any]]:
         """Return violation records for ``type: ignore`` comments."""
         try:
-            text = path.read_text(encoding="utf-8")
+            text = path.read_text(encoding="utf-8")  # pragma: no mutate — equivalent on UTF-8
             tokens = tokenize.generate_tokens(io.StringIO(text).readline)
             comments = [
                 (tok.start[0], tok.string) for tok in tokens if tok.type == tokenize.COMMENT
@@ -176,7 +176,7 @@ class SuppressionReasonScanner:
     def _scan_php(path: Path) -> list[dict[str, Any]]:
         """Return violation records for PHPStan/Psalm suppressions."""
         try:
-            text = path.read_text(encoding="utf-8")
+            text = path.read_text(encoding="utf-8")  # pragma: no mutate — equivalent on UTF-8
         except (OSError, UnicodeDecodeError):
             print(f"Warning: could not read '{path}'", file=sys.stderr)
             return []
@@ -232,7 +232,9 @@ class SuppressionReasonScanner:
             "or a reason (language-agnostic). Scan roots come from "
             ".zolletta-metaskill/settings.json."
         )
-        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        parser.add_argument(
+            "--json", action="store_true", help="Output as JSON"
+        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
         args = parser.parse_args()
 
         settings = ProjectConfig.load_settings()

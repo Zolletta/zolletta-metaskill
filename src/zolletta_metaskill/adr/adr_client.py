@@ -32,17 +32,17 @@ class ADRClient:
     """CLI wrapper for the ADR distiller."""
 
     @staticmethod
-    def build_parser() -> argparse.ArgumentParser:
+    def build_parser() -> argparse.ArgumentParser:  # pragma: no mutate — help text untested
         """Build the CLI argument parser."""
         parser = argparse.ArgumentParser(
-            description="Distill Accepted ADRs into architectural directives. "
-            "Directories come from documentation.dir / documentation.adrs / "
-            "runs_dir in .zolletta-metaskill/settings.json."
+            description="Distill Accepted ADRs into architectural directives. "  # pragma: no mutate
+            "Directories come from documentation.dir / documentation.adrs / "  # pragma: no mutate
+            "runs_dir in .zolletta-metaskill/settings.json."  # pragma: no mutate
         )
         parser.add_argument(
             "--json",
             action="store_true",
-            help="Output JSON report instead of plain text",
+            help="Output JSON report instead of plain text",  # pragma: no mutate
         )
         return parser
 

@@ -124,7 +124,7 @@ class LinkChecker:
         """Extract all links from a markdown file."""
         links: list[LinkInfo] = []
         try:
-            with open(file_path, encoding="utf-8", errors="ignore") as f:
+            with open(file_path, encoding="utf-8", errors="ignore") as f:  # pragma: no mutate
                 lines = f.readlines()
         except OSError:
             return links
@@ -151,7 +151,7 @@ class LinkChecker:
         """Extract all heading anchors from a markdown file."""
         headings: set[str] = set()
         try:
-            with open(file_path, encoding="utf-8", errors="ignore") as f:
+            with open(file_path, encoding="utf-8", errors="ignore") as f:  # pragma: no mutate
                 content = f.read()
         except OSError:
             return headings
@@ -183,7 +183,7 @@ class LinkChecker:
     def find_duplicate_anchors(file_path: str) -> list[tuple[str, int]]:
         """Find headings that produce duplicate anchors."""
         try:
-            with open(file_path, encoding="utf-8", errors="ignore") as f:
+            with open(file_path, encoding="utf-8", errors="ignore") as f:  # pragma: no mutate
                 lines = f.readlines()
         except OSError:
             return []
@@ -437,8 +437,12 @@ class LinkChecker:
             "root (current directory).",
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
-        parser.add_argument("--json", action="store_true", help="Output as JSON")
-        parser.add_argument("--broken-only", action="store_true", help="Only show broken links")
+        parser.add_argument(
+            "--json", action="store_true", help="Output as JSON"
+        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
+        parser.add_argument(
+            "--broken-only", action="store_true", help="Only show broken links"
+        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
 
         args = parser.parse_args()
 

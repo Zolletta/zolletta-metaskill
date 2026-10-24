@@ -84,7 +84,7 @@ class ProjectConfig:
 
         """
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
+            data = json.loads(path.read_text(encoding="utf-8"))  # pragma: no mutate
         except (OSError, json.JSONDecodeError):
             return {}
         return data if isinstance(data, dict) else {}

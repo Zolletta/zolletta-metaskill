@@ -49,7 +49,7 @@ class PythonEngine:
 
         """
         try:
-            source = path.read_text(encoding="utf-8")
+            source = path.read_text(encoding="utf-8")  # pragma: no mutate — equivalent on UTF-8
         except OSError:
             return ModuleInfo(path=path, language=self.language, has_syntax_error=True)
 

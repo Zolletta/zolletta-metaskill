@@ -500,7 +500,7 @@ class IntegrationGraphScanner:
         print("\nResult: report generated (triage artifact)")
 
     @staticmethod
-    def main() -> int:
+    def main() -> int:  # pragma: no mutate — help text is not a tested contract
         """Entry point for the integration graph scanner CLI."""
         parser = argparse.ArgumentParser(
             description="Emit the internal import graph for coupling "
@@ -510,7 +510,7 @@ class IntegrationGraphScanner:
         parser.add_argument(
             "--json",
             action="store_true",
-            help="Output as JSON instead of text",
+            help="Output as JSON instead of text",  # pragma: no mutate — help text untested
         )
         args = parser.parse_args()
 

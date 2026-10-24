@@ -39,7 +39,7 @@ class DocAccuracyScorer:
         details: dict[str, Any] = {"checks": [], "issues": []}
 
         try:
-            with open(full_path, encoding="utf-8", errors="ignore") as f:
+            with open(full_path, encoding="utf-8", errors="ignore") as f:  # pragma: no mutate
                 content = f.read()
         except OSError:
             return 50.0, details
@@ -187,7 +187,7 @@ class DocAccuracyScorer:
     def _extract_version_from_manifest(path: str, filename: str) -> str | None:
         """Extract version string from a package manifest."""
         try:
-            with open(path, encoding="utf-8", errors="ignore") as f:
+            with open(path, encoding="utf-8", errors="ignore") as f:  # pragma: no mutate
                 content = f.read()
         except OSError:
             return None

@@ -72,6 +72,8 @@ class TestTestStructureScannerMatching:
         monkeypatch.setattr(sys, "argv", argv)
         return TestStructureScanner.main()
 
+    # --- Tests for TestStructureScanner._resolve_packages(). ---
+
     def test_resolve_packages_accepts_flat_test_mirror(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -143,6 +145,8 @@ class TestTestStructureScannerMatching:
             ProjectConfig.load_settings(), {"python"}
         ) == (None, None)
 
+    # --- Tests for TestStructureScanner._pascal_to_snake(). ---
+
     def test_pascal_to_snake_simple_input_returns_my_class(self) -> None:
         assert TestStructureScanner._pascal_to_snake("MyClass") == "my_class"
 
@@ -160,6 +164,8 @@ class TestTestStructureScannerMatching:
 
     def test_pascal_to_snake_all_upper_returns_a_b_c(self) -> None:
         assert TestStructureScanner._pascal_to_snake("ABC") == "a_b_c"
+
+    # --- Tests for TestStructureScanner._get_class_names(). ---
 
     def test_get_class_names_single_class_returns_single_item(self, tmp_path: Path) -> None:
         f = tmp_path / "user.py"
@@ -189,6 +195,8 @@ class TestTestStructureScannerMatching:
         assert "Outer" in names
         assert "Inner" not in names
 
+    # --- Tests for TestStructureScanner._auto_detect_package(). ---
+
     def test_auto_detect_package_with_init_returns_mypkg(self, tmp_path: Path) -> None:
         src = tmp_path / "src"
         pkg = src / "mypkg"
@@ -206,6 +214,8 @@ class TestTestStructureScannerMatching:
         src.mkdir()
         (src / "file.py").write_text("")
         assert TestStructureScanner._auto_detect_package(src) is None
+
+    # --- Tests for TestStructureScanner._build_source_index(). ---
 
     def test_build_source_index_basic_input_contains_test_cache(self, tmp_path: Path) -> None:
         pkg = tmp_path / "mypkg"
@@ -251,6 +261,8 @@ class TestTestStructureScannerMatching:
         info = index["models/item.py"]
         assert info["dir"] == "models"
 
+    # --- Tests for TestStructureScanner._find_indirect_refs(). ---
+
     def test_find_indirect_refs_skips_directly_covered_source(self) -> None:
         test_refs = [
             {
@@ -265,6 +277,8 @@ class TestTestStructureScannerMatching:
         )
         assert refs == []
         assert covered == set()
+
+    # --- Tests for TestStructureScanner._match_test_to_source(). ---
 
     def test_match_test_to_source_exact_match_returns_cache_py(self) -> None:
         index = {"cache.py": {"prefixes": {"test_cache"}, "dir": "."}}

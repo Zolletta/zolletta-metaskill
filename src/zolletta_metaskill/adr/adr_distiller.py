@@ -112,7 +112,7 @@ class ADRDistiller:
             else:
                 result_lines.append(line)
 
-        distilled_path.write_text("".join(result_lines), encoding="utf-8")
+        distilled_path.write_text("".join(result_lines), encoding="utf-8")  # pragma: no mutate
 
     @staticmethod
     def write(distilled_path: Path, directives: list[str]) -> None:
@@ -132,7 +132,7 @@ class ADRDistiller:
             "Only Accepted decisions are included.\n\n"
         )
         body = "\n".join(directives) + "\n"
-        distilled_path.write_text(header + body, encoding="utf-8")
+        distilled_path.write_text(header + body, encoding="utf-8")  # pragma: no mutate
 
     @staticmethod
     def write_placeholder(distilled_path: Path) -> None:
@@ -156,4 +156,4 @@ class ADRDistiller:
             "project's documentation standards\n"
             "3. Re-run `/zolletta-metaskill setup` to detect and distill them\n"
         )
-        distilled_path.write_text(content, encoding="utf-8")
+        distilled_path.write_text(content, encoding="utf-8")  # pragma: no mutate

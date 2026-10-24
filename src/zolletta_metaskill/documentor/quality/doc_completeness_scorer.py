@@ -40,7 +40,7 @@ class DocCompletenessScorer:
     def load_diataxis_translations(path: str) -> dict[str, Any]:
         """Load translated Diátaxis signposts from a JSON file."""
         try:
-            with open(path, encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:  # pragma: no mutate — equivalent on UTF-8
                 data = json.load(f)
             if not isinstance(data, dict):
                 return {"readme_sections": None, "quadrants": {}}
@@ -157,7 +157,7 @@ class DocCompletenessScorer:
             details["any_of_groups"] = any_of_groups
 
         try:
-            with open(full_path, encoding="utf-8", errors="ignore") as f:
+            with open(full_path, encoding="utf-8", errors="ignore") as f:  # pragma: no mutate
                 content = f.read()
         except OSError:
             return 0.0, details

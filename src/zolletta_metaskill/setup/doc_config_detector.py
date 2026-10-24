@@ -47,7 +47,7 @@ class DocConfigDetector:
         return "docs"
 
     @staticmethod
-    def main() -> int:
+    def main() -> int:  # pragma: no mutate — help text is not a tested contract
         """Entry point for the documentation directory detector CLI."""
         parser = argparse.ArgumentParser(
             description="Detect the project's documentation directory."
@@ -56,7 +56,7 @@ class DocConfigDetector:
             "directory",
             nargs="?",
             default=".",
-            help="Project root to check (default: current directory)",
+            help="Project root to check (default: current directory)",  # pragma: no mutate
         )
         args = parser.parse_args()
 
