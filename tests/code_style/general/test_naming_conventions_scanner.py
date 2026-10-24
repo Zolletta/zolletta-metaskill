@@ -7,9 +7,9 @@ import subprocess
 import sys
 from collections.abc import Callable
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
-from unittest.mock import patch
 
 from zolletta_metaskill.code_style.general.naming_conventions_scanner import (
     NamingConventionsScanner,
