@@ -127,7 +127,7 @@ strict = true
 python_version = "3.12"
 python_executable = ".venv/bin/python"
 mypy_path = "src"
-exclude = ["zolletta-metaskill/", "playground/"]
+exclude = ["zolletta-metaskill/", "playground/", "mutants/"]
 
 [[tool.mypy.overrides]]
 # Scoped to the optional grammar only (ADR-0004). `tree_sitter` itself is a hard
@@ -156,7 +156,7 @@ branch = true
 [tool.vulture]
 min_confidence = 80
 paths = ["src"]
-exclude = [".venv/", "playground/"]
+exclude = [".venv/", "playground/", "mutants/"]
 
 [tool.mutmut]
 # skills/ ships runtime assets (e.g. acronym lists) that tests assert on; the

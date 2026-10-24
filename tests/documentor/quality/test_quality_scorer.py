@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import ExitStack
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
@@ -40,53 +41,70 @@ class TestQualityScorer:
     def test_get_label_boundary_0_returns_abandoned(self) -> None:
         assert QualityScorer.get_label(0) == "abandoned"
 
+
+    @staticmethod
+    def _patch_git(
+        last_commit: datetime | None = None,
+        code_changes: int | None = None,
+    ) -> ExitStack:
+        """Patch the GitHelper reads the scorers make; second patch only when given."""
+        stack = ExitStack()
+        stack.enter_context(
+            patch.object(GitHelper, "get_file_last_commit_date", return_value=last_commit)
+        )
+        if code_changes is not None:
+            stack.enter_context(
+                patch.object(GitHelper, "get_code_changes_since", return_value=code_changes)
+            )
+        return stack
+
     # --- score_last_updated ---
 
     def test_no_git_history(self, tmp_path: Path) -> None:
-        with patch.object(GitHelper, "get_file_last_commit_date", return_value=None):
+        with self._patch_git(last_commit=None):
             score, details = QualityScorer.score_last_updated(str(tmp_path), "doc.md")
             assert score == 50.0
             assert "reason" in details
 
     def test_now_recent_returns_100_0(self, tmp_path: Path) -> None:
         recent = datetime.now(UTC) - timedelta(days=3)
-        with patch.object(GitHelper, "get_file_last_commit_date", return_value=recent):
+        with self._patch_git(last_commit=recent):
             score, details = QualityScorer.score_last_updated(str(tmp_path), "doc.md")
             assert score == 100.0
 
     def test_now_30_days_succeeds(self, tmp_path: Path) -> None:
         dt = datetime.now(UTC) - timedelta(days=20)
-        with patch.object(GitHelper, "get_file_last_commit_date", return_value=dt):
+        with self._patch_git(last_commit=dt):
             score, details = QualityScorer.score_last_updated(str(tmp_path), "doc.md")
             assert 80 <= score <= 100
 
     def test_now_90_days_succeeds(self, tmp_path: Path) -> None:
         dt = datetime.now(UTC) - timedelta(days=60)
-        with patch.object(GitHelper, "get_file_last_commit_date", return_value=dt):
+        with self._patch_git(last_commit=dt):
             score, details = QualityScorer.score_last_updated(str(tmp_path), "doc.md")
             assert 50 <= score < 80
 
     def test_now_180_days_succeeds(self, tmp_path: Path) -> None:
         dt = datetime.now(UTC) - timedelta(days=120)
-        with patch.object(GitHelper, "get_file_last_commit_date", return_value=dt):
+        with self._patch_git(last_commit=dt):
             score, details = QualityScorer.score_last_updated(str(tmp_path), "doc.md")
             assert 25 <= score < 50
 
     def test_now_365_days_succeeds(self, tmp_path: Path) -> None:
         dt = datetime.now(UTC) - timedelta(days=250)
-        with patch.object(GitHelper, "get_file_last_commit_date", return_value=dt):
+        with self._patch_git(last_commit=dt):
             score, details = QualityScorer.score_last_updated(str(tmp_path), "doc.md")
             assert 10 <= score < 25
 
     def test_now_very_old_succeeds(self, tmp_path: Path) -> None:
         dt = datetime.now(UTC) - timedelta(days=500)
-        with patch.object(GitHelper, "get_file_last_commit_date", return_value=dt):
+        with self._patch_git(last_commit=dt):
             score, details = QualityScorer.score_last_updated(str(tmp_path), "doc.md")
             assert score == pytest.approx(7.3)
 
     def test_now_naive_datetime_returns_100_0(self, tmp_path: Path) -> None:
         recent = datetime.now() - timedelta(days=3)
-        with patch.object(GitHelper, "get_file_last_commit_date", return_value=recent):
+        with self._patch_git(last_commit=recent):
             score, details = QualityScorer.score_last_updated(str(tmp_path), "doc.md")
             assert score == 100.0
 
@@ -98,47 +116,35 @@ class TestQualityScorer:
 
     def test_no_refs_no_git(self, tmp_path: Path) -> None:
         (tmp_path / "doc.md").write_text("# Title\n\nSome content without refs.\n")
-        with patch.object(GitHelper, "get_file_last_commit_date", return_value=None):
+        with self._patch_git(last_commit=None):
             score, details = QualityScorer.score_code_doc_alignment(str(tmp_path), "doc.md")
             assert score == 70.0
 
     def test_no_refs_with_git_no_changes(self, tmp_path: Path) -> None:
         (tmp_path / "doc.md").write_text("# Title\n\nSome content.\n")
         dt = datetime.now(UTC) - timedelta(days=10)
-        with (
-            patch.object(GitHelper, "get_file_last_commit_date", return_value=dt),
-            patch.object(GitHelper, "get_code_changes_since", return_value=0),
-        ):
+        with self._patch_git(last_commit=dt, code_changes=0):
             score, details = QualityScorer.score_code_doc_alignment(str(tmp_path), "doc.md")
             assert score == 100.0
 
     def test_no_refs_with_git_few_changes(self, tmp_path: Path) -> None:
         (tmp_path / "doc.md").write_text("# Title\n\nSome content.\n")
         dt = datetime.now(UTC) - timedelta(days=10)
-        with (
-            patch.object(GitHelper, "get_file_last_commit_date", return_value=dt),
-            patch.object(GitHelper, "get_code_changes_since", return_value=3),
-        ):
+        with self._patch_git(last_commit=dt, code_changes=3):
             score, details = QualityScorer.score_code_doc_alignment(str(tmp_path), "doc.md")
             assert score == 80.0
 
     def test_no_refs_with_git_many_changes(self, tmp_path: Path) -> None:
         (tmp_path / "doc.md").write_text("# Title\n\nSome content.\n")
         dt = datetime.now(UTC) - timedelta(days=10)
-        with (
-            patch.object(GitHelper, "get_file_last_commit_date", return_value=dt),
-            patch.object(GitHelper, "get_code_changes_since", return_value=25),
-        ):
+        with self._patch_git(last_commit=dt, code_changes=25):
             score, details = QualityScorer.score_code_doc_alignment(str(tmp_path), "doc.md")
             assert score == 40.0
 
     def test_no_refs_with_git_moderate_changes(self, tmp_path: Path) -> None:
         (tmp_path / "doc.md").write_text("# Title\n\nSome content.\n")
         dt = datetime.now(UTC) - timedelta(days=10)
-        with (
-            patch.object(GitHelper, "get_file_last_commit_date", return_value=dt),
-            patch.object(GitHelper, "get_code_changes_since", return_value=10),
-        ):
+        with self._patch_git(last_commit=dt, code_changes=10):
             score, details = QualityScorer.score_code_doc_alignment(str(tmp_path), "doc.md")
             assert score == 60.0
 
