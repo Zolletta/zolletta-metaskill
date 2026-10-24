@@ -47,7 +47,9 @@ class TestTestStructureResults:
             setattr(results, "missing", [_item()])
         except dataclasses.FrozenInstanceError:
             return
-        raise AssertionError("TestStructureResults should be frozen")
+        raise AssertionError(
+            "TestStructureResults should be frozen"
+        )  # pragma: no cover — only reached if frozen is broken
 
     def test_buckets_are_still_mutable_lists(self) -> None:
         """Frozen blocks rebinding, not in-place append — the scanner fills them in."""

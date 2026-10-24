@@ -33,10 +33,10 @@ def text_contract(request: pytest.FixtureRequest) -> Callable[[str, str], None]:
 
     def check(rel_path: str, actual: str) -> None:
         path = fixtures_root / rel_path
-        if update:
+        if update:  # pragma: no cover — runs only under --update-fixtures
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(actual, encoding="utf-8")
-        if not path.exists():
+        if not path.exists():  # pragma: no cover — failure path
             raise AssertionError(f"missing fixture {path}; run pytest --update-fixtures")
         expected = path.read_text(encoding="utf-8")
         assert actual == expected, (

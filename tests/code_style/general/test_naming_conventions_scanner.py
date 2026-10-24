@@ -9,6 +9,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+from unittest.mock import patch
 
 from zolletta_metaskill.code_style.general.naming_conventions_scanner import (
     NamingConventionsScanner,
@@ -725,3 +726,16 @@ class TestNamingConventionsScanner:
             ],
         )
         text_contract("code_style/general/naming_conventions_scanner.txt", capsys.readouterr().out)
+
+    def test_load_acronyms_missing_file_falls_back(self, tmp_path: Path) -> None:
+        missing = tmp_path / "nope.json"
+        with patch.object(NamingConventionsScanner, "_ACRONYMS_JSON", missing):
+            result = NamingConventionsScanner._known_acronyms()
+        assert result == frozenset({"ADR", "API", "CLI", "HTTP", "JSON", "PHP", "URL"})
+
+    def test_load_acronyms_invalid_json_falls_back(self, tmp_path: Path) -> None:
+        bad = tmp_path / "bad.json"
+        bad.write_text("{not json", encoding="utf-8")
+        with patch.object(NamingConventionsScanner, "_ACRONYMS_JSON", bad):
+            result = NamingConventionsScanner._known_acronyms()
+        assert result == frozenset({"ADR", "API", "CLI", "HTTP", "JSON", "PHP", "URL"})

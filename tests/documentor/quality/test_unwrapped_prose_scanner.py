@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from collections.abc import Callable
 from pathlib import Path
 
@@ -244,3 +245,84 @@ class TestUnwrappedProseScanner:
         findings = UnwrappedProseScanner.scan_text("docs/guide.md", "A sentence that\nwraps.\n")
         UnwrappedProseScanner._emit_text([Path("docs")], 3, findings)
         text_contract("documentor/quality/unwrapped_prose_scanner.txt", capsys.readouterr().out)
+
+    def test_unterminated_frontmatter_scans_as_body(self) -> None:
+        """An unclosed ``---`` block is not frontmatter; lines are scanned."""
+        text = "---\ntitle: x\nA sentence that\nwraps here.\n"
+        assert UnwrappedProseScanner.paragraph_runs(text) == [(2, 4)]
+
+    def test_indented_continuation_is_not_a_run(self) -> None:
+        text = "Normal line.\n    indented continuation line\n"
+        assert UnwrappedProseScanner.paragraph_runs(text) == []
+
+    # --- main ---
+
+    def test_main_disabled_settings_emits_skipped(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        monkeypatch.setattr(
+            "zolletta_metaskill.core.project_config.ProjectConfig.load_settings",
+            staticmethod(lambda *a, **k: {"documentation": {"check_unwrapped_prose": False}}),
+        )
+        assert UnwrappedProseScanner.main() == 0
+        out = capsys.readouterr()
+        assert "SKIPPED" in out.out
+
+    def test_main_no_doc_roots_returns_one(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        monkeypatch.setattr(
+            "zolletta_metaskill.core.project_config.ProjectConfig.load_settings",
+            staticmethod(lambda *a, **k: {"documentation": {"dir": str(tmp_path / "nope")}}),
+        )
+        monkeypatch.setattr(
+            UnwrappedProseScanner, "resolve_roots", staticmethod(lambda s: [tmp_path / "nope"])
+        )
+        monkeypatch.setattr(UnwrappedProseScanner, "is_enabled", staticmethod(lambda s: True))
+        assert UnwrappedProseScanner.main() == 1
+
+    def test_main_scans_and_reports(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        docs = tmp_path / "docs"
+        docs.mkdir()
+        (docs / "a.md").write_text("A sentence that\nwraps here.\n")
+        monkeypatch.setattr(sys, "argv", ["prog", "--json"])
+        monkeypatch.setattr(
+            "zolletta_metaskill.core.project_config.ProjectConfig.load_settings",
+            staticmethod(lambda *a, **k: {"documentation": {"dir": str(docs)}}),
+        )
+        monkeypatch.setattr(UnwrappedProseScanner, "is_enabled", staticmethod(lambda s: True))
+        monkeypatch.setattr(UnwrappedProseScanner, "resolve_roots", staticmethod(lambda s: [docs]))
+        assert UnwrappedProseScanner.main() == 0
+        assert json.loads(capsys.readouterr().out)
+
+    def test_main_scans_text_report(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        docs = tmp_path / "docs"
+        docs.mkdir()
+        (docs / "a.md").write_text("One line.\n")
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        monkeypatch.setattr(
+            "zolletta_metaskill.core.project_config.ProjectConfig.load_settings",
+            staticmethod(lambda *a, **k: {"documentation": {"dir": str(docs)}}),
+        )
+        monkeypatch.setattr(UnwrappedProseScanner, "is_enabled", staticmethod(lambda s: True))
+        monkeypatch.setattr(UnwrappedProseScanner, "resolve_roots", staticmethod(lambda s: [docs]))
+        assert UnwrappedProseScanner.main() == 0
+
+    def test_fence_break_inside_run_flushes_the_run(self) -> None:
+        text = "A sentence that\nwraps here.\n```\ncode\n```\n"
+        assert UnwrappedProseScanner.paragraph_runs(text) == [(1, 2)]

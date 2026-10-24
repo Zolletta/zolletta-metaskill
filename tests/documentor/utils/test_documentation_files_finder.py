@@ -109,3 +109,9 @@ class TestDocumentationFilesFinder:
         settings = {"language": "en", "documentation": {"dir": "docs"}}
         inventory = DocumentationFilesFinder.find(settings, str(tmp_path))
         assert inventory.skipped_reason is None
+
+    def test_match_root_documents_listdir_oserror_returns_empty(self, tmp_path: Path) -> None:
+        from unittest.mock import patch
+
+        with patch("os.listdir", side_effect=PermissionError("denied")):
+            assert DocumentationFilesFinder._match_root_documents(tmp_path) == {}

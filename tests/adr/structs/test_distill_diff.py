@@ -40,7 +40,9 @@ class TestDistillDiff:
             setattr(diff, "directive_lines", ("x",))
         except dataclasses.FrozenInstanceError:
             return
-        raise AssertionError("DistillDiff should be frozen")
+        raise AssertionError(
+            "DistillDiff should be frozen"
+        )  # pragma: no cover — only reached if frozen is broken
 
     def test_dict_defaults_are_not_shared(self) -> None:
         first = DistillDiff()

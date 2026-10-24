@@ -25,8 +25,7 @@ class SourceSignatureExtractor:
             return None
         try:
             return ast.unparse(node)
-        except AttributeError:  # pragma: no cover
-            # Python < 3.9 fallback
+        except AttributeError:  # pragma: no cover — Python < 3.9 fallback
             if isinstance(node, ast.Name):
                 return node.id
             elif isinstance(node, ast.Constant):
@@ -150,7 +149,7 @@ class SourceSignatureExtractor:
         kind = "function"
         for parent in ast.walk(tree):
             if isinstance(parent, ast.ClassDef):
-                for item in parent.body:
+                for item in parent.body:  # pragma: no branch — walk hits every class
                     if item is node:
                         parent_class = parent.name
                         kind = "method"

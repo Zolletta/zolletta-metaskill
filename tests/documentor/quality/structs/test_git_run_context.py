@@ -34,7 +34,9 @@ class TestGitRunContext:
             setattr(ctx, "repo_root", "/other")
         except dataclasses.FrozenInstanceError:
             return
-        raise AssertionError("GitRunContext should be frozen")
+        raise AssertionError(
+            "GitRunContext should be frozen"
+        )  # pragma: no cover — only reached if frozen is broken
 
     def test_renames_default_is_not_shared_between_instances(self) -> None:
         first = GitRunContext(repo_root="/a")

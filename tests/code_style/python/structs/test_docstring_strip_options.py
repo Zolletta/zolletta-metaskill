@@ -34,7 +34,9 @@ class TestDocstringStripOptions:
             setattr(options, "strip_private", True)
         except dataclasses.FrozenInstanceError:
             return
-        raise AssertionError("DocstringStripOptions should be frozen")
+        raise AssertionError(
+            "DocstringStripOptions should be frozen"
+        )  # pragma: no cover — only reached if frozen is broken
 
     # --- Settings resolution ---
 

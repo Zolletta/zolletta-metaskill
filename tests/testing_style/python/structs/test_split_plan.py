@@ -56,7 +56,9 @@ class TestSplitPlan:
             setattr(plan, "original_class_name", "Other")
         except dataclasses.FrozenInstanceError:
             return
-        raise AssertionError("SplitPlan should be frozen")
+        raise AssertionError(
+            "SplitPlan should be frozen"
+        )  # pragma: no cover — only reached if frozen is broken
 
     def test_tuple_defaults_are_not_shared(self) -> None:
         first = SplitPlan(original_module=_module(), class_node=_class())

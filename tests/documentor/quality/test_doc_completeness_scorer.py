@@ -212,3 +212,16 @@ class TestDocCompletenessScorer:
         score, details = DocCompletenessScorer.score_completeness(str(tmp_path), "doc.md", [])
         assert score == 70.0
         assert details["found_sections"] == []
+
+    def test_copy_quadrant_value_list_returns_copy(self) -> None:
+        from zolletta_metaskill.documentor.quality.doc_completeness_scorer import (
+            DocCompletenessScorer,
+        )
+
+        src = ["a", "b"]
+        out = DocCompletenessScorer._copy_quadrant_value(src)
+        assert out == src and out is not src
+
+    def test_copy_quadrant_value_scalar_returns_same(self) -> None:
+        assert DocCompletenessScorer._copy_quadrant_value("x") == "x"
+        assert DocCompletenessScorer._copy_quadrant_value(3) == 3
