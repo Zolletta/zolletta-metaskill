@@ -93,7 +93,8 @@
       "max_file_length": 800,
       "vulture_min_confidence": 80,
       "max_cyclomatic_complexity": 12,
-      "max_function_length": 125
+      "max_function_length": 125,
+      "max_dataclass_fields": 10
     },
     "testing": {
       "coverage_gap_threshold": 45,

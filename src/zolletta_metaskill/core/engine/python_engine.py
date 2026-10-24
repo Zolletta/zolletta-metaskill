@@ -130,6 +130,7 @@ class PythonEngine:
             if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef))
         ]
         attributes = self._extract_attributes(node)
+        is_dataclass, dataclass_fields = self._extract_dataclass(node)
         return ClassInfo(
             name=node.name,
             lineno=node.lineno,
@@ -139,6 +140,8 @@ class PythonEngine:
             attributes=attributes,
             is_abstract=is_abstract,
             is_test_class=node.name.startswith("Test"),
+            is_dataclass=is_dataclass,
+            dataclass_fields=dataclass_fields,
         )
 
     def _build_method(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> MethodInfo:
@@ -165,6 +168,34 @@ class PythonEngine:
             return_type=return_type,
             raises=raises,
         )
+
+    def _extract_dataclass(self, node: ast.ClassDef) -> tuple[bool, list[str]]:
+        """Return whether the class is a dataclass and its declared fields.
+
+        A ``@dataclass`` (or ``@dataclass(...)``) decorator marks the class;
+        its implicit ``__init__`` parameters are the annotated names assigned
+        at class level (``x: int``, ``x: int = 0``, ``x: T = field(...)``).
+        """
+        is_dataclass = any(
+            (isinstance(dec, ast.Name) and dec.id == "dataclass")
+            or (isinstance(dec, ast.Attribute) and dec.attr == "dataclass")
+            or (
+                isinstance(dec, ast.Call)
+                and (
+                    (isinstance(dec.func, ast.Name) and dec.func.id == "dataclass")
+                    or (isinstance(dec.func, ast.Attribute) and dec.func.attr == "dataclass")
+                )
+            )
+            for dec in node.decorator_list
+        )
+        if not is_dataclass:
+            return False, []
+        fields = [
+            item.target.id
+            for item in node.body
+            if isinstance(item, ast.AnnAssign) and isinstance(item.target, ast.Name)
+        ]
+        return True, fields
 
     def _extract_attributes(self, class_node: ast.ClassDef) -> list[str]:
         """Extract instance attribute names (``self.x``) from a class body.

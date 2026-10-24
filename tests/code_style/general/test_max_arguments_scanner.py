@@ -199,6 +199,48 @@ class TestMaxArgumentsScanner:
         assert len(findings) == 1
         assert "Method 'Foo.bar' has 7 parameters (max 5)" in findings[0].description
 
+    def test_scan_module_dataclass_over_limit_flagged(self, tmp_path: Path) -> None:
+        module = ModuleInfo(
+            path=tmp_path / "m.py",
+            language="python",
+            classes=[
+                ClassInfo(
+                    name="Wide",
+                    lineno=1,
+                    end_lineno=9,
+                    is_dataclass=True,
+                    dataclass_fields=[f"f{i}" for i in range(11)],
+                )
+            ],
+        )
+        findings = MaxArgumentsScanner.scan_module(module, max_args=5, max_dataclass_fields=10)
+        assert len(findings) == 1
+        assert "Dataclass 'Wide' has 11 parameters (max 5)" in findings[0].description
+
+    def test_scan_module_dataclass_within_own_limit_passes(self, tmp_path: Path) -> None:
+        module = ModuleInfo(
+            path=tmp_path / "m.py",
+            language="python",
+            classes=[
+                ClassInfo(
+                    name="Dto",
+                    lineno=1,
+                    end_lineno=8,
+                    is_dataclass=True,
+                    dataclass_fields=[f"f{i}" for i in range(8)],
+                )
+            ],
+        )
+        assert MaxArgumentsScanner.scan_module(module, max_args=5, max_dataclass_fields=10) == []
+
+    def test_scan_module_non_dataclass_fields_not_counted(self, tmp_path: Path) -> None:
+        module = ModuleInfo(
+            path=tmp_path / "m.py",
+            language="python",
+            classes=[ClassInfo(name="Plain", lineno=1, end_lineno=5)],
+        )
+        assert MaxArgumentsScanner.scan_module(module, max_args=5) == []
+
     def test_scan_module_syntax_error_returns_empty(self, tmp_path: Path) -> None:
         module = ModuleInfo(path=tmp_path / "m.py", language="python", has_syntax_error=True)
         assert MaxArgumentsScanner.scan_module(module, max_args=5) == []

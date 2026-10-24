@@ -64,6 +64,7 @@ class MaxArgumentsScanner:
     """Flag functions and methods exceeding a parameter-count limit."""
 
     DEFAULT_MAX_ARGS = 5
+    DEFAULT_MAX_DATACLASS_FIELDS = 10
     DEFAULT_SETTINGS_PATH = ProjectConfig.DEFAULT_SETTINGS_PATH
 
     @staticmethod
@@ -104,7 +105,27 @@ class MaxArgumentsScanner:
         return min(limits) if limits else MaxArgumentsScanner.DEFAULT_MAX_ARGS
 
     @staticmethod
-    def _records(module: ModuleInfo, max_args: int) -> list[dict[str, Any]]:
+    def resolve_max_dataclass_fields(settings_path: Path) -> int:
+        """Return the maximum allowed dataclass fields.
+
+        Dataclass fields are the implicit ``__init__`` parameters of a value
+        object, so they get their own limit — ``<language>.code_style.max_dataclass_fields``
+        across the enabled languages; falls back to
+        ``DEFAULT_MAX_DATACLASS_FIELDS`` when nothing is configured.
+        """
+        settings = ProjectConfig.load_settings(settings_path)
+        langs = ProjectConfig.enabled_languages(settings, "code_style.check_max_arguments")
+        limits = []
+        for lang in sorted(langs):
+            value = ProjectConfig.setting(settings, f"{lang}.code_style.max_dataclass_fields", None)
+            if isinstance(value, int) and not isinstance(value, bool):
+                limits.append(value)
+        return min(limits) if limits else MaxArgumentsScanner.DEFAULT_MAX_DATACLASS_FIELDS
+
+    @staticmethod
+    def _records(
+        module: ModuleInfo, max_args: int, max_dataclass_fields: int
+    ) -> list[dict[str, Any]]:
         """Return one violation record per over-limit function/method.
 
         Each record has ``kind`` (``"Function"`` or ``"Method"``),
@@ -126,6 +147,15 @@ class MaxArgumentsScanner:
                     }
                 )
         for cls in module.classes:
+            if cls.is_dataclass and len(cls.dataclass_fields) > max_dataclass_fields:
+                records.append(
+                    {
+                        "kind": "Dataclass",
+                        "function": cls.name,
+                        "line": cls.lineno,
+                        "params": len(cls.dataclass_fields),
+                    }
+                )
             for method in cls.methods:
                 if len(method.params) > max_args:
                     records.append(
@@ -139,12 +169,17 @@ class MaxArgumentsScanner:
         return records
 
     @staticmethod
-    def scan_module(module: ModuleInfo, max_args: int = DEFAULT_MAX_ARGS) -> list[Finding]:
+    def scan_module(
+        module: ModuleInfo,
+        max_args: int = DEFAULT_MAX_ARGS,
+        max_dataclass_fields: int = DEFAULT_MAX_DATACLASS_FIELDS,
+    ) -> list[Finding]:
         """Return a ``max_arguments`` finding per over-limit function.
 
         Args:
             module: The parsed module to inspect.
             max_args: Maximum allowed declared parameters.
+            max_dataclass_fields: Maximum allowed dataclass fields.
 
         Returns:
             A list of :class:`Finding` objects, one per function or method
@@ -163,7 +198,7 @@ class MaxArgumentsScanner:
                 ),
                 fix_type="manual",
             )
-            for record in MaxArgumentsScanner._records(module, max_args)
+            for record in MaxArgumentsScanner._records(module, max_args, max_dataclass_fields)
         ]
 
     @staticmethod
@@ -186,12 +221,17 @@ class MaxArgumentsScanner:
             return None
 
     @staticmethod
-    def scan_file(path: Path, max_args: int = DEFAULT_MAX_ARGS) -> list[Finding]:
+    def scan_file(
+        path: Path,
+        max_args: int = DEFAULT_MAX_ARGS,
+        max_dataclass_fields: int = DEFAULT_MAX_DATACLASS_FIELDS,
+    ) -> list[Finding]:
         """Return ``max_arguments`` findings for *path*.
 
         Args:
             path: Path to a source file handled by a registered engine.
             max_args: Maximum allowed declared parameters.
+            max_dataclass_fields: Maximum allowed dataclass fields.
 
         Returns:
             A list of :class:`Finding` objects; empty when the file cannot
@@ -201,7 +241,7 @@ class MaxArgumentsScanner:
         module = MaxArgumentsScanner._parse_file(path)
         if module is None:
             return []
-        return MaxArgumentsScanner.scan_module(module, max_args)
+        return MaxArgumentsScanner.scan_module(module, max_args, max_dataclass_fields)
 
     @staticmethod
     def scan_directory(
@@ -221,9 +261,12 @@ class MaxArgumentsScanner:
             extensions = MaxArgumentsScanner.resolve_extensions(path)
         if max_args is None:
             max_args = MaxArgumentsScanner.resolve_max_args(path)
+        max_dataclass_fields = MaxArgumentsScanner.resolve_max_dataclass_fields(path)
         findings: list[Finding] = []
         for file_path in ProjectConfig.iter_files(root, extensions):
-            findings.extend(MaxArgumentsScanner.scan_file(file_path, max_args))
+            findings.extend(
+                MaxArgumentsScanner.scan_file(file_path, max_args, max_dataclass_fields)
+            )
         return findings
 
     # ------------------------------------------------------------------
@@ -234,6 +277,9 @@ class MaxArgumentsScanner:
     def _scan_roots(
         roots: list[Path], extensions: set[str], max_args: int
     ) -> tuple[int, list[dict[str, Any]]]:
+        max_dataclass_fields = MaxArgumentsScanner.resolve_max_dataclass_fields(
+            MaxArgumentsScanner.DEFAULT_SETTINGS_PATH
+        )
         """Scan *roots* and return ``(file_count, violation_records)``."""
         files: list[Path] = []
         for root in roots:
@@ -243,7 +289,7 @@ class MaxArgumentsScanner:
             module = MaxArgumentsScanner._parse_file(path)
             if module is None:
                 continue
-            for record in MaxArgumentsScanner._records(module, max_args):
+            for record in MaxArgumentsScanner._records(module, max_args, max_dataclass_fields):
                 violations.append(
                     {
                         "file": str(path),

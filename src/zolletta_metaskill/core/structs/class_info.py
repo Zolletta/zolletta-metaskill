@@ -20,6 +20,9 @@ class ClassInfo:
         attributes: Instance attribute names (e.g. ``self.x`` → ``"x"``).
         is_abstract: Whether the class is abstract or an interface.
         is_test_class: Whether the class is a test class (name-based heuristic).
+        is_dataclass: Whether the class carries a ``@dataclass`` decorator.
+        dataclass_fields: Annotated field names declared at class level —
+        the implicit ``__init__`` parameters of a dataclass.
 
     """
 
@@ -31,3 +34,5 @@ class ClassInfo:
     attributes: list[str] = field(default_factory=list)
     is_abstract: bool = False
     is_test_class: bool = False
+    is_dataclass: bool = False
+    dataclass_fields: list[str] = field(default_factory=list)

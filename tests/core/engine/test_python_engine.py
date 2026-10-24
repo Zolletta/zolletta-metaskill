@@ -404,3 +404,34 @@ class TestPythonEngine:
         path = _write(tmp_path, "mod.py", "x = 1\n")
         info = PythonEngine().parse_module(path)
         assert info.has_syntax_error is False
+
+    # --- dataclass detection ---
+
+    def test_dataclass_fields_collected_returns_true(self, tmp_path: Path) -> None:
+        src = (
+            "from dataclasses import dataclass, field\n\n"
+            "@dataclass(frozen=True)\n"
+            "class Point:\n"
+            "    x: int\n"
+            "    y: int = 0\n"
+            "    tags: list = field(default_factory=list)\n"
+        )
+        path = _write(tmp_path, "mod.py", src)
+        info = PythonEngine().parse_module(path)
+        cls = info.classes[0]
+        assert cls.is_dataclass is True
+        assert cls.dataclass_fields == ["x", "y", "tags"]
+
+    def test_bare_dataclass_decorator_detected(self, tmp_path: Path) -> None:
+        src = "from dataclasses import dataclass\n\n@dataclass\nclass A:\n    a: int\n"
+        path = _write(tmp_path, "mod.py", src)
+        cls = PythonEngine().parse_module(path).classes[0]
+        assert cls.is_dataclass is True
+        assert cls.dataclass_fields == ["a"]
+
+    def test_plain_class_is_dataclass_false(self, tmp_path: Path) -> None:
+        src = "class Plain:\n    x = 1\n"
+        path = _write(tmp_path, "mod.py", src)
+        cls = PythonEngine().parse_module(path).classes[0]
+        assert cls.is_dataclass is False
+        assert cls.dataclass_fields == []
