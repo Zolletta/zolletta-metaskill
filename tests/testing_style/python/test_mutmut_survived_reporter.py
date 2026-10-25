@@ -18,6 +18,7 @@ from typing import Any
 
 import pytest
 
+from zolletta_metaskill.core.project_config import ProjectConfig
 from zolletta_metaskill.testing_style.python.mutmut_survived_reporter import (
     MutmutSurvivedReporter,
 )
@@ -136,6 +137,24 @@ class TestMutmutSurvivedReporter:
     ) -> None:
         _install_mutmut(monkeypatch, {RESULTS_PLAIN: FileNotFoundError("mutmut")})
         assert MutmutSurvivedReporter._run_mutmut(["results"]) is None
+
+    def test_run_mutmut_invocation_passes_exact_command_and_kwargs(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        calls: list[tuple[list[str], dict[str, object]]] = []
+
+        def _run(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+            calls.append((cmd, kwargs))
+            return _proc("ok")
+
+        monkeypatch.setattr(subprocess, "run", _run)
+        MutmutSurvivedReporter._run_mutmut(["results"])
+        assert calls == [
+            (
+                ["mutmut", "results"],
+                {"capture_output": True, "text": True, "timeout": 600},
+            )
+        ]
 
     # --- ``_results_stdout`` tries the ``--all`` spellings then bare ``results``. ---
 
@@ -283,6 +302,9 @@ class TestMutmutSurvivedReporter:
     def test_under_source_root_outside_returns_false(self) -> None:
         assert MutmutSurvivedReporter._under_source_root("vendor/x.py", ["src"]) is False
 
+    def test_under_source_root_inside_later_root_returns_true(self) -> None:
+        assert MutmutSurvivedReporter._under_source_root("b/x.py", ["a", "b"]) is True
+
     # --- ``_parse_show`` extracts file, line, mutation, and diff. ---
 
     def test_parse_show_full_output_extracts_all_fields(self) -> None:
@@ -290,8 +312,13 @@ class TestMutmutSurvivedReporter:
         assert file == "src/user.py"
         assert line == 10
         assert mutation == "return age >= 18 → return age > 18"
-        assert "--- src/user.py" in diff
-        assert "+    return age > 18" in diff
+        assert diff == (
+            "--- src/user.py\n"
+            "+++ src/user.py\n"
+            "@@ -10,3 +10,3 @@ def adult(age):\n"
+            "-    return age >= 18\n"
+            "+    return age > 18"
+        )
 
     def test_parse_show_without_header_keeps_all_lines(self) -> None:
         stdout = "--- src/user.py\n@@ -1 +1 @@\n- a\n+ b\n"
@@ -313,6 +340,41 @@ class TestMutmutSurvivedReporter:
         assert file is None
         assert line == 3
 
+    def test_parse_show_tight_diff_lines_strip_marker_only(self) -> None:
+        stdout = "--- f.py\n@@ -1 +1 @@\n-ab\n+cd\n"
+        _file, _line, mutation, _diff = MutmutSurvivedReporter._parse_show(stdout)
+        assert mutation == "ab → cd"
+
+    def test_parse_show_multiple_removed_lines_uses_first_pair(self) -> None:
+        stdout = "--- f.py\n@@ -1 +1 @@\n- a\n- b\n+ c\n"
+        _file, _line, mutation, _diff = MutmutSurvivedReporter._parse_show(stdout)
+        assert mutation == "a → c"
+
+    def test_parse_show_context_line_between_pair_uses_plus_line(self) -> None:
+        stdout = "--- f.py\n@@ -1 +1 @@\n- a\n ctx\n+ b\n"
+        _file, _line, mutation, _diff = MutmutSurvivedReporter._parse_show(stdout)
+        assert mutation == "a → b"
+
+    def test_parse_show_second_plus_line_is_ignored(self) -> None:
+        stdout = "--- f.py\n@@ -1 +1 @@\n- a\n+ b\n+ c\n"
+        _file, _line, mutation, _diff = MutmutSurvivedReporter._parse_show(stdout)
+        assert mutation == "a → b"
+
+    def test_parse_show_removed_without_added_reports_no_mutation(self) -> None:
+        stdout = "--- f.py\n@@ -1 +1 @@\n+ z\n- a\n"
+        _file, _line, mutation, _diff = MutmutSurvivedReporter._parse_show(stdout)
+        assert mutation is None
+
+    def test_parse_show_triple_plus_after_removed_reports_no_mutation(self) -> None:
+        stdout = "--- f.py\n@@ -1 +1 @@\n- a\n+++ g.py\n"
+        _file, _line, mutation, _diff = MutmutSurvivedReporter._parse_show(stdout)
+        assert mutation is None
+
+    def test_parse_show_second_file_header_is_not_a_removed_line(self) -> None:
+        stdout = "--- f.py\n@@ -1 +1 @@\n--- g.py\n- a\n+ b\n"
+        _file, _line, mutation, _diff = MutmutSurvivedReporter._parse_show(stdout)
+        assert mutation == "a → b"
+
     # --- ``_survivor_entry`` merges ``results`` + ``show`` and filters scope. ---
 
     def test_survivor_entry_with_show_output_populates_entry(
@@ -325,12 +387,21 @@ class TestMutmutSurvivedReporter:
         entry = MutmutSurvivedReporter._survivor_entry(
             "user.x_adult__mutmut_2", "survived", ["src"]
         )
-        assert entry is not None
-        assert entry["file"] == "src/user.py"
-        assert entry["line"] == 10
-        assert entry["function"] == "adult"
-        assert entry["mutation"] == "return age >= 18 → return age > 18"
-        assert entry["diff"] is not None
+        assert entry == {
+            "name": "user.x_adult__mutmut_2",
+            "status": "survived",
+            "file": "src/user.py",
+            "line": 10,
+            "function": "adult",
+            "mutation": "return age >= 18 → return age > 18",
+            "diff": (
+                "--- src/user.py\n"
+                "+++ src/user.py\n"
+                "@@ -10,3 +10,3 @@ def adult(age):\n"
+                "-    return age >= 18\n"
+                "+    return age > 18"
+            ),
+        }
 
     def test_survivor_entry_show_failure_keeps_partial_entry(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -388,6 +459,7 @@ class TestMutmutSurvivedReporter:
         # evaluated = killed+survived+timeout+no tests = 4; score = 1/4
         assert report["mutation_score"] == 25.0
         assert report["status"] == "FAIL"
+        assert report["total"] == 6
         assert report["survivor_count"] == 2
         assert report["survivors_shown"] == 2
         assert report["survivors_capped"] is False
@@ -395,6 +467,7 @@ class TestMutmutSurvivedReporter:
             "user.x_adult__mutmut_2",
             "user.xǁUserǁvalid__mutmut_1",
         ]
+        assert [s["status"] for s in report["survivors"]] == ["survived", "no tests"]
 
     def test_report_score_at_threshold_passes(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _install_mutmut(monkeypatch, {})
@@ -411,6 +484,27 @@ class TestMutmutSurvivedReporter:
         assert report["mutation_score"] == 100.0
         assert report["status"] == "PASS"
         assert report["survivor_count"] == 0
+
+    def test_report_fractional_score_rounds_to_one_decimal(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _install_mutmut(monkeypatch, {})
+        statuses = {
+            "m.x_a__mutmut_1": "killed",
+            "m.x_b__mutmut_1": "killed",
+            "m.x_c__mutmut_1": "survived",
+        }
+        report = MutmutSurvivedReporter._report(statuses, 80, 50, [])
+        assert report["mutation_score"] == 66.7
+
+    def test_report_max_mutants_equal_to_survivors_not_capped(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _install_mutmut(monkeypatch, {})
+        statuses = {"m.x_a__mutmut_1": "survived", "m.x_b__mutmut_1": "survived"}
+        report = MutmutSurvivedReporter._report(statuses, 80, 2, [])
+        assert report["survivors_capped"] is False
+        assert report["survivors_shown"] == 2
 
     def test_report_max_mutants_caps_survivors(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _install_mutmut(monkeypatch, {})
@@ -436,6 +530,7 @@ class TestMutmutSurvivedReporter:
         report = MutmutSurvivedReporter._report(
             {"vendor.x_f__mutmut_1": "survived"}, 80, 50, ["src"]
         )
+        assert report["mutation_score"] == 0.0
         assert report["survivor_count"] == 1
         assert report["survivors_shown"] == 0
         assert report["survivors"] == []
@@ -510,7 +605,8 @@ class TestMutmutSurvivedReporter:
             "survivors": [],
         }
         MutmutSurvivedReporter._print_text(report)
-        assert "No survived mutants." in capsys.readouterr().out
+        out = capsys.readouterr().out
+        assert out.splitlines()[-1] == "No survived mutants."
 
     def test_print_text_all_filtered_prints_in_scope_note(
         self, capsys: pytest.CaptureFixture[str]
@@ -524,7 +620,8 @@ class TestMutmutSurvivedReporter:
             "survivors": [],
         }
         MutmutSurvivedReporter._print_text(report)
-        assert "No in-scope survived mutants." in capsys.readouterr().out
+        out = capsys.readouterr().out
+        assert out.splitlines()[-1] == "No in-scope survived mutants."
 
     # --- ``main``: skip paths, mutmut failure, text and JSON runs. ---
 
@@ -543,8 +640,16 @@ class TestMutmutSurvivedReporter:
         rc = _run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
         data = json.loads(capsys.readouterr().out)
-        assert data["skipped"] is True
-        assert "mutmut" in data["reason"]
+        assert data == {"skipped": True, "reason": "python.tools.mutmut is not available"}
+
+    def test_main_tool_key_absent_prints_skipped(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path, {"tools": None})
+        _install_mutmut(monkeypatch, {RESULTS_ALL_TRUE: _proc(RESULTS_STDOUT)})
+        rc = _run_scan(tmp_path, monkeypatch, [])
+        assert rc == 0
+        assert "SKIPPED" in capsys.readouterr().out
 
     def test_main_check_disabled_prints_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -554,6 +659,78 @@ class TestMutmutSurvivedReporter:
         assert rc == 0
         assert "SKIPPED" in capsys.readouterr().out
 
+    def test_main_check_disabled_json_reports_reason(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path, {"testing": {"check_mutation_testing": False}})
+        rc = _run_scan(tmp_path, monkeypatch, ["--json"])
+        assert rc == 0
+        data = json.loads(capsys.readouterr().out)
+        assert data == {
+            "skipped": True,
+            "reason": "python.testing.check_mutation_testing is disabled in settings.json",
+        }
+
+    def test_main_check_key_absent_runs_report(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path, {"testing": None})
+        _install_mutmut(monkeypatch, {RESULTS_ALL_TRUE: _proc(RESULTS_STDOUT)})
+        rc = _run_scan(tmp_path, monkeypatch, [])
+        assert rc == 0
+        assert "Mutation score: 25% (threshold: 80%) — FAIL" in capsys.readouterr().out
+
+    def test_main_threshold_from_settings_decides_status(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path, {"testing": {"mutation_score_threshold": 10}})
+        _install_mutmut(monkeypatch, {RESULTS_ALL_TRUE: _proc(RESULTS_STDOUT)})
+        rc = _run_scan(tmp_path, monkeypatch, [])
+        assert rc == 0
+        assert "Mutation score: 25% (threshold: 10%) — PASS" in capsys.readouterr().out
+
+    def test_main_score_at_default_threshold_passes(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        results = (
+            "".join(f"    m.x_a__mutmut_{n}: killed\n" for n in range(4))
+            + "    m.x_b__mutmut_1: survived\n"
+        )
+        _install_mutmut(monkeypatch, {RESULTS_ALL_TRUE: _proc(results)})
+        rc = _run_scan(tmp_path, monkeypatch, [])
+        assert rc == 0
+        assert "Mutation score: 80% (threshold: 80%) — PASS" in capsys.readouterr().out
+
+    def test_main_max_mutants_default_caps_at_fifty(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        results = "".join(f"    m.x_f__mutmut_{n}: survived\n" for n in range(51))
+        _install_mutmut(monkeypatch, {RESULTS_ALL_TRUE: _proc(results)})
+        rc = _run_scan(tmp_path, monkeypatch, [])
+        assert rc == 0
+        assert "Survived mutants (50 of 51 shown):" in capsys.readouterr().out
+
+    def test_main_source_dirs_reads_python_settings(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        _install_mutmut(monkeypatch, {RESULTS_ALL_TRUE: _proc("    m.x_f__mutmut_1: killed\n")})
+        captured: dict[str, Any] = {}
+        real = ProjectConfig.source_dirs
+
+        def _spy(settings: dict[str, Any], lang: str) -> list[str]:
+            captured["call"] = (settings, lang)
+            return real(settings, lang)
+
+        monkeypatch.setattr(ProjectConfig, "source_dirs", staticmethod(_spy))
+        rc = _run_scan(tmp_path, monkeypatch, [])
+        assert rc == 0
+        capsys.readouterr()
+        expected = json.loads((tmp_path / ".zolletta-metaskill" / "settings.json").read_text())
+        assert captured["call"] == (expected, "python")
+
     def test_main_results_failure_returns_one(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -561,7 +738,9 @@ class TestMutmutSurvivedReporter:
         _install_mutmut(monkeypatch, {})
         rc = _run_scan(tmp_path, monkeypatch, [])
         assert rc == 1
-        assert "mutmut results" in capsys.readouterr().err
+        assert capsys.readouterr().err == (
+            "Error: 'mutmut results' failed — is mutmut installed and has 'mutmut run' completed?\n"
+        )
 
     def test_main_success_text_report(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -596,7 +775,9 @@ class TestMutmutSurvivedReporter:
         )
         rc = _run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
-        data = json.loads(capsys.readouterr().out)
+        out = capsys.readouterr().out
+        assert '\n  "skipped": false' in out
+        data = json.loads(out)
         assert data["skipped"] is False
         assert data["mutation_score"] == 25.0
         assert data["threshold"] == 80

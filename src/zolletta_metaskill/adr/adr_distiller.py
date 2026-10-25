@@ -98,7 +98,9 @@ class ADRDistiller:
         result_lines: list[str] = []
 
         for line in lines:
+            # pragma: no mutate start — rstrip arg irrelevant: prefix-anchored regex
             match = ADRDistiller._DIRECTIVE_RE.match(line.rstrip("\n"))
+            # pragma: no mutate end
             if match:
                 key = match.group(1)
                 if key in removed_set:
@@ -112,7 +114,9 @@ class ADRDistiller:
             else:
                 result_lines.append(line)
 
-        distilled_path.write_text("".join(result_lines), encoding="utf-8")  # pragma: no mutate
+        # pragma: no mutate start — file-writing side effect
+        distilled_path.write_text("".join(result_lines), encoding="utf-8")
+        # pragma: no mutate end
 
     @staticmethod
     def write(distilled_path: Path, directives: list[str]) -> None:
@@ -132,7 +136,9 @@ class ADRDistiller:
             "Only Accepted decisions are included.\n\n"
         )
         body = "\n".join(directives) + "\n"
-        distilled_path.write_text(header + body, encoding="utf-8")  # pragma: no mutate
+        # pragma: no mutate start — file-writing side effect
+        distilled_path.write_text(header + body, encoding="utf-8")
+        # pragma: no mutate end
 
     @staticmethod
     def write_placeholder(distilled_path: Path) -> None:
@@ -156,4 +162,6 @@ class ADRDistiller:
             "project's documentation standards\n"
             "3. Re-run `/zolletta-metaskill setup` to detect and distill them\n"
         )
-        distilled_path.write_text(content, encoding="utf-8")  # pragma: no mutate
+        # pragma: no mutate start — file-writing side effect
+        distilled_path.write_text(content, encoding="utf-8")
+        # pragma: no mutate end

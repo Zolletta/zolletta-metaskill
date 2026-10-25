@@ -128,6 +128,24 @@ class TestUnusedAllExportsScanner:
     def test_extract_imported_names_empty_src_returns_empty_dict(self) -> None:
         assert UnusedAllExportsScanner._extract_imported_names([]) == {}
 
+    def test_extract_imported_names_syntax_error_first_still_indexes_rest(
+        self, tmp_path: Path
+    ) -> None:
+        bad = tmp_path / "bad.py"
+        bad.write_text("from pkg import\n", encoding="utf-8")
+        good = tmp_path / "good.py"
+        good.write_text("from pkg import foo\n", encoding="utf-8")
+        index = UnusedAllExportsScanner._extract_imported_names([bad, good])
+        assert index == {"foo": [good]}
+
+    def test_extract_imported_names_plain_import_indexes_importing_file(
+        self, tmp_path: Path
+    ) -> None:
+        f = tmp_path / "a.py"
+        f.write_text("import a.b.c\n", encoding="utf-8")
+        index = UnusedAllExportsScanner._extract_imported_names([f])
+        assert index == {"c": [f]}
+
     # --- UnusedAllExportsScanner._find_all_files_with_all ---
 
     def test_finds_files_with_all(self, tmp_path: Path) -> None:
@@ -186,7 +204,7 @@ class TestUnusedAllExportsScanner:
         rc = self._run(tmp_path, monkeypatch, ["scan"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert "SKIPPED" in out
+        assert out == "Result: SKIPPED (check_unused_all_exports disabled in settings.json)\n"
 
     def test_check_disabled_json(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -196,7 +214,10 @@ class TestUnusedAllExportsScanner:
         rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
         report = json.loads(capsys.readouterr().out)
         assert rc == 0
-        assert report["skipped"] is True
+        assert report == {
+            "skipped": True,
+            "reason": "check_unused_all_exports disabled in settings.json",
+        }
 
     def test_no_python_language_reports_skipped(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -210,7 +231,9 @@ class TestUnusedAllExportsScanner:
         (tmp_path / "src").mkdir()
         rc = self._run(tmp_path, monkeypatch, ["scan"])
         assert rc == 0
-        assert "SKIPPED" in capsys.readouterr().out
+        assert capsys.readouterr().out == (
+            "Result: SKIPPED (check_unused_all_exports disabled in settings.json)\n"
+        )
 
     def test_missing_source_dir_returns_one(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -219,7 +242,19 @@ class TestUnusedAllExportsScanner:
         rc = self._run(tmp_path, monkeypatch, ["scan"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "no configured source directories" in err
+        assert err == "Error: no configured source directories exist on disk (src)\n"
+
+    def test_missing_source_dirs_error_lists_all_roots(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        self._write_settings(
+            tmp_path,
+            python={"code_style": {}, "paths": {"source": ["lib", "app"], "tests": ["tests"]}},
+        )
+        rc = self._run(tmp_path, monkeypatch, ["scan"])
+        err = capsys.readouterr().err
+        assert rc == 1
+        assert err == "Error: no configured source directories exist on disk (lib, app)\n"
 
     def test_no_unused_exports(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -324,3 +359,97 @@ class TestUnusedAllExportsScanner:
         data = json.loads(capsys.readouterr().out)
         assert rc == 0
         assert data["unused_count"] == 2
+
+    def _write_all_fixture(self, src: Path) -> None:
+        """Create ``src/a.py`` exporting one unused and one self-imported name."""
+        (src / "a.py").write_text(
+            '__all__ = ["unused_func", "self_imported"]\n'
+            "from a import self_imported\n\n"
+            "def unused_func():\n    pass\n\n"
+            "def self_imported():\n    pass\n"
+        )
+
+    def test_scan_json_full_report_matches_exact_output(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        self._write_settings(
+            tmp_path,
+            python={"code_style": {}, "paths": {"source": ["src", "lib"], "tests": ["tests"]}},
+        )
+        src = tmp_path / "src"
+        src.mkdir()
+        (tmp_path / "lib").mkdir()
+        self._write_all_fixture(src)
+        rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
+        out = capsys.readouterr().out
+        expected = {
+            "total_all_entries": 2,
+            "unused_count": 2,
+            "directories": ["src", "lib"],
+            "unused": [
+                {"file": "a.py", "symbol": "unused_func", "importers": []},
+                {"file": "a.py", "symbol": "self_imported", "importers": ["a.py"]},
+            ],
+        }
+        assert rc == 0
+        assert out == json.dumps(expected, indent=2) + "\n"
+
+    def test_scan_text_full_report_matches_exact_lines(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        self._write_settings(
+            tmp_path,
+            python={"code_style": {}, "paths": {"source": ["src", "lib"], "tests": ["tests"]}},
+        )
+        src = tmp_path / "src"
+        src.mkdir()
+        (tmp_path / "lib").mkdir()
+        self._write_all_fixture(src)
+        rc = self._run(tmp_path, monkeypatch, ["scan"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert out.splitlines() == [
+            "=" * 70,
+            "UNUSED __all__ EXPORTS — VALIDATION REPORT",
+            "=" * 70,
+            "",
+            "Source directories: src, lib",
+            "Files with __all__: 1",
+            "Total __all__ entries: 2",
+            "Unused exports: 2",
+            "",
+            f"{'File':<55} {'Symbol':<25}",
+            "-" * 80,
+            f"{'a.py':<55} {'unused_func':<25}",
+            f"{'a.py':<55} {'self_imported':<25}",
+            "",
+            "These symbols are listed in __all__ but never imported by any",
+            "other module in the source tree. Vulture does not detect them",
+            "because __all__ entries are treated as public API exports.",
+            "Consider removing them from __all__ or deleting the symbol entirely.",
+        ]
+
+    def test_scan_no_unused_text_report_matches_exact_lines(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        self._write_settings(tmp_path)
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "a.py").write_text('__all__ = ["foo"]\n\ndef foo():\n    pass\n')
+        (src / "b.py").write_text("from a import foo\n")
+        rc = self._run(tmp_path, monkeypatch, ["scan"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert out.splitlines() == [
+            "=" * 70,
+            "UNUSED __all__ EXPORTS — VALIDATION REPORT",
+            "=" * 70,
+            "",
+            "Source directories: src",
+            "Files with __all__: 1",
+            "Total __all__ entries: 1",
+            "Unused exports: 0",
+            "",
+            "No unused __all__ exports found.",
+            "",
+        ]

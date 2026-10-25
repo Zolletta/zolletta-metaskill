@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import json
 from collections.abc import Callable
 from pathlib import Path
 
@@ -58,6 +59,49 @@ class TestDocstringReportWriter:
         report = FileReport(path=Path("src/b.py"), findings=[finding])
         total = DocstringReportWriter.json_report([report], ["src"], apply_mode=True)
         assert total == 1
+
+    def test_json_report_findings_have_exact_keys(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Each finding object exposes exactly file/line/kind/detail."""
+        finding = Finding(
+            file=Path("src/b.py"),
+            line=20,
+            kind="private",
+            detail="Private function docstring removed",
+            node=ast.Pass(),
+            remove=True,
+        )
+        report = FileReport(path=Path("src/b.py"), findings=[finding])
+        DocstringReportWriter.json_report([report], ["src"], apply_mode=True)
+        data = json.loads(capsys.readouterr().out)
+        assert set(data["findings"][0]) == {"file", "line", "kind", "detail"}
+        assert data["findings"][0]["line"] == 20
+        assert data["findings"][0]["kind"] == "private"
+        assert data["findings"][0]["detail"] == "Private function docstring removed"
+
+    def test_json_report_output_is_indented(self, capsys: pytest.CaptureFixture[str]) -> None:
+        DocstringReportWriter.json_report([], ["src"], apply_mode=False)
+        out = capsys.readouterr().out
+        assert '\n  "' in out
+
+    def test_print_report_all_clear_message(self, capsys: pytest.CaptureFixture[str]) -> None:
+        DocstringReportWriter.print_report([], apply_mode=False)
+        assert capsys.readouterr().out.endswith("Result: all clear\n\n")
+
+    def test_print_report_pluralizes_findings(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """A kind with several findings prints ``(N findings)`` with the plural s."""
+        findings = [
+            Finding(
+                file=Path("src/a.py"),
+                line=line,
+                kind="redundant",
+                detail="Redundant section",
+                node=ast.Pass(),
+            )
+            for line in (4, 9)
+        ]
+        report = FileReport(path=Path("src/a.py"), findings=findings)
+        DocstringReportWriter.print_report([report], apply_mode=False)
+        assert "(2 findings)" in capsys.readouterr().out
 
     # --- text-output contract (tests.4) ---
 

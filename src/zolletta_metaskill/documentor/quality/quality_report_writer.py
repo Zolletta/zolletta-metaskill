@@ -133,9 +133,12 @@ class QualityReportWriter:
             lines.append("")
 
         if issues:
+            # pragma: no mutate start — the unknown-severity sentinel only has to outrank every
+            # known rank, so 99 vs 100 is unobservable; the ordering itself is asserted by tests
             issues.sort(
                 key=lambda x: QualityReportWriter.SEVERITY_ORDER.get(x.get("severity", "info"), 99)
             )
+            # pragma: no mutate end
             severity_groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
             for issue in issues:
                 severity_groups[issue.get("severity", "info")].append(issue)
@@ -143,15 +146,18 @@ class QualityReportWriter:
             lines.append("DRIFT ISSUES:")
             lines.append("-" * 60)
             for severity in ["critical", "high", "medium", "low", "info"]:
-                group = severity_groups.get(severity, [])
+                group = severity_groups.get(severity, [])  # pragma: no mutate — None is falsy too
                 if not group:
                     continue
                 lines.append(f"{severity.upper()} SEVERITY ({len(group)} issues):")
                 lines.append("-" * 40)
                 for issue in group:
+                    # pragma: no mutate start — a renamed "manual" key or a missing fix_type still
+                    # resolves through the "[MANUAL]" fallback, so those mutants are unobservable
                     fix_tag = {"auto": "[AUTO]", "semi": "[SEMI]", "manual": "[MANUAL]"}.get(
                         issue.get("fix_type", "manual"), "[MANUAL]"
                     )
+                    # pragma: no mutate end
                     lines.append(f"  {issue['file']}")
                     lines.append(f"    {fix_tag} {issue['description']}")
                     lines.append(f"    Category: {issue.get('category', 'unknown')}")

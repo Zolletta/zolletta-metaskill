@@ -369,6 +369,10 @@ class TestProjectConfig:
     def test_adrs_dir_non_string(self) -> None:
         assert ProjectConfig.adrs_dir({"documentation": {"adrs": 5}}) is None
 
+    def test_adrs_dir_empty_uses_configured_docs_dir(self) -> None:
+        settings = {"documentation": {"dir": "documentation", "adrs": ""}}
+        assert ProjectConfig.adrs_dir(settings) == Path("documentation")
+
     def test_runs_dir_default(self) -> None:
         assert ProjectConfig.runs_dir({}) == Path(".zolletta-metaskill")
 
@@ -458,6 +462,67 @@ class TestProjectConfig:
         root.mkdir()
         (root / "real.py").write_text("x")
         assert ProjectConfig.iter_files(root, {".py"}) == [root / "real.py"]
+
+    def test_git_files_invocation_args_and_timeout(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """``git ls-files`` must be invoked with the expected argv and timeout."""
+        calls: list[tuple[list[str], dict[str, object]]] = []
+
+        def _fake_git(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+            calls.append((args, kwargs))
+            return subprocess.CompletedProcess(args=args, returncode=0, stdout=b"")
+
+        monkeypatch.setattr(subprocess, "run", _fake_git)
+        root = tmp_path / "src"
+        root.mkdir()
+        ProjectConfig._git_files(root)
+        assert len(calls) == 1
+        args, kwargs = calls[0]
+        assert args == [
+            "git",
+            "-C",
+            str(root),
+            "ls-files",
+            "-c",
+            "-o",
+            "--exclude-standard",
+            "-z",
+        ]
+        assert kwargs["timeout"] == 30
+
+    def test_git_files_invalid_utf8_entry_dropped(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Bytes outside UTF-8 decode via surrogateescape, not a crash."""
+
+        def _fake_git(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[bytes]:
+            return subprocess.CompletedProcess(
+                args=[], returncode=0, stdout=b"\xffbad.py\0real.py\0"
+            )
+
+        monkeypatch.setattr(subprocess, "run", _fake_git)
+        root = tmp_path / "src"
+        root.mkdir()
+        (root / "real.py").write_text("x")
+        assert ProjectConfig.iter_files(root, {".py"}) == [root / "real.py"]
+
+    def test_git_files_existing_path_outside_root_dropped(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A ``../`` entry is dropped even when it resolves to a real file."""
+
+        def _fake_git(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[bytes]:
+            return subprocess.CompletedProcess(
+                args=[], returncode=0, stdout=b"../outside.py\0inside.py\0"
+            )
+
+        monkeypatch.setattr(subprocess, "run", _fake_git)
+        root = tmp_path / "src"
+        root.mkdir()
+        (root / "inside.py").write_text("x")
+        (tmp_path / "outside.py").write_text("x")
+        assert ProjectConfig.iter_files(root, {".py"}) == [root / "inside.py"]
 
     # --- EmitSkipped ---
 

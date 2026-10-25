@@ -315,7 +315,10 @@ class APIDocValidator:
             for rel, sigs in SourceSignatureExtractor.extract_all_signatures(
                 str(root), include_private
             ).items():
+                # pragma: no mutate start — key only groups sigs; all consumers iterate
+                # source_sigs.values()
                 key = str(root / rel)
+                # pragma: no mutate end
                 source_sigs[key] = sigs
 
         documented_items = DocumentedItemExtractor.extract_all_documented_items(
@@ -350,15 +353,15 @@ class APIDocValidator:
     @staticmethod
     def main() -> int:
         """Entry point for the API documentation validator CLI."""
+        # pragma: no mutate start — help text is not a tested contract
         parser = argparse.ArgumentParser(
             description="Validate API documentation against Python source code. "
             "Source roots come from <lang>.paths.source and docs from "
             "documentation.dir in .zolletta-metaskill/settings.json.",
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
-        parser.add_argument(
-            "--json", action="store_true", help="Output as JSON"
-        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        # pragma: no mutate end
 
         args = parser.parse_args()
 

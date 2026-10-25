@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import sys
 from collections.abc import Callable
 from pathlib import Path
 
@@ -15,11 +14,6 @@ from zolletta_metaskill.testing_style.general.test_structure_scanner import Test
 
 class TestTestStructureScannerCollection:
     """Tests for TestStructureScanner (collection), split from TestTestStructureScanner."""
-
-    @staticmethod
-    def _make_src_pkg(root: Path) -> None:
-        (root / "src" / "mypkg").mkdir(parents=True, exist_ok=True)
-        (root / "src" / "mypkg" / "__init__.py").write_text("")
 
     def _make_tree(self, root: Path) -> tuple[Path, Path]:
         """Create a ``src/mypkg`` and ``tests/`` pair and return both roots."""
@@ -40,37 +34,23 @@ class TestTestStructureScannerCollection:
             },
             "php": None,
         }
-        python_overrides = overrides.pop("python", None)
-        if isinstance(python_overrides, dict):
-            base_python = settings["python"]
-            assert isinstance(base_python, dict)
-            for key, value in python_overrides.items():
-                if isinstance(value, dict) and isinstance(base_python.get(key), dict):
-                    base_python[key].update(value)
-                else:
-                    base_python[key] = value
+        python_overrides = overrides.pop("python", {})
+        assert isinstance(python_overrides, dict)
+        base_python = settings["python"]
+        assert isinstance(base_python, dict)
+        for key, value in python_overrides.items():
+            if isinstance(value, dict) and isinstance(base_python.get(key), dict):
+                base_python[key].update(  # pragma: no cover — callers here pass scalar overrides
+                    value
+                )
+            else:
+                base_python[key] = value
         settings.update(overrides)
         meta = dirpath / ".zolletta-metaskill"
         meta.mkdir(parents=True, exist_ok=True)
         path = meta / "settings.json"
         path.write_text(json.dumps(settings))
         return path
-
-    def _make_project(self, tmp_path: Path) -> tuple[Path, Path]:
-        """Create a realistic src/ and tests/ structure."""
-        src_pkg = tmp_path / "src" / "mypkg"
-        test_pkg = tmp_path / "tests" / "mypkg"
-        src_pkg.mkdir(parents=True)
-        test_pkg.mkdir(parents=True)
-        (src_pkg / "__init__.py").write_text("")
-        (test_pkg / "__init__.py").write_text("")
-        return (src_pkg, test_pkg)
-
-    def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
-        """Chdir into tmp_path and run main() with *argv*."""
-        monkeypatch.chdir(tmp_path)
-        monkeypatch.setattr(sys, "argv", argv)
-        return TestStructureScanner.main()
 
     # --- Tests for TestStructureScanner._auto_detect_package(). ---
 
@@ -113,7 +93,7 @@ class TestTestStructureScannerCollection:
     def test_class_based_prefix(self) -> None:
         index = {"user_service.py": {"prefixes": {"test_user_service"}, "dir": "."}}
         assert (
-            TestStructureScanner._match_test_to_source("test_user_service.py", index)
+            TestStructureScanner._match_test_to_source("test_user_service.py", index, test_dir=".")
             == "user_service.py"
         )
 
@@ -211,3 +191,102 @@ class TestTestStructureScannerCollection:
         )
         TestStructureScanner._emit_text([Path("src/mypkg")], [Path("tests/mypkg")], results)
         text_contract("testing_style/general/test_structure_scanner.txt", capsys.readouterr().out)
+
+    # --- Tests for TestStructureScanner._collect_dirs(). ---
+
+    def test_collect_dirs_non_py_only_dir_not_collected(self, tmp_path: Path) -> None:
+        """A directory holding only non-Python files is not an empty dir and has no .py files."""
+        (tmp_path / "pkg").mkdir()
+        (tmp_path / "pkg" / "mod.py").write_text("x = 1\n")
+        (tmp_path / "data").mkdir()
+        (tmp_path / "data" / "blob.txt").write_text("not python\n")
+        dirs = TestStructureScanner._collect_dirs(tmp_path)
+        assert Path("pkg") in dirs
+        assert Path("data") not in dirs
+
+    # --- Tests for TestStructureScanner._collect_inputs() edge cases. ---
+
+    def test_collect_inputs_fixture_file_does_not_stop_iteration(self, tmp_path: Path) -> None:
+        """``continue``, not ``break``: real tests after ``fixtures/`` are still read."""
+        src_pkg, test_pkg = self._make_tree(tmp_path)
+        fixture = test_pkg / "fixtures" / "golden.py"
+        fixture.parent.mkdir(parents=True)
+        fixture.write_text("x = 1\n")
+        (test_pkg / "test_widget.py").write_text("def test_spin() -> None:\n    pass\n")
+        _dirs, _index, test_files = TestStructureScanner._collect_inputs([src_pkg], [test_pkg])
+        assert "test_widget.py" in test_files
+        assert "fixtures/golden.py" not in test_files
+
+    def test_collect_inputs_unreadable_test_file_stores_empty_content(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        src_pkg, test_pkg = self._make_tree(tmp_path)
+        bad_test = test_pkg / "test_bad.py"
+        bad_test.write_text("def test_bad() -> None:\n    pass\n")
+        original_read_text = Path.read_text
+
+        def mock_read_text(
+            self: Path, encoding: str | None = None, errors: str | None = None
+        ) -> str:
+            if self.resolve() == bad_test.resolve():
+                raise OSError("permission denied")
+            return original_read_text(self, encoding=encoding, errors=errors)
+
+        monkeypatch.setattr(Path, "read_text", mock_read_text)
+        _dirs, _index, test_files = TestStructureScanner._collect_inputs([src_pkg], [test_pkg])
+        assert test_files["test_bad.py"] == (test_pkg, "")
+
+    # --- Tests for TestStructureScanner._emit_text() package headers. ---
+
+    def test_emit_text_multiple_packages_joined_with_comma(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        results = Results()
+        TestStructureScanner._emit_text(
+            [Path("a/pkg"), Path("b/pkg")], [Path("ta"), Path("tb")], results
+        )
+        out = capsys.readouterr().out
+        assert "**Source packages:** `a/pkg`, `b/pkg`" in out
+        assert "**Test packages:** `ta`, `tb`" in out
+
+    # --- Tests for the empty-section "None" lines. ---
+
+    def test_emit_text_empty_report_prints_exact_none_lines(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        results = Results()
+        TestStructureScanner._emit_text([Path("src/mypkg")], [Path("tests/mypkg")], results)
+        lines = capsys.readouterr().out.splitlines()
+        assert "*None — all test file names match their source stem or class name.*" in lines
+        assert "*None — all test files are in the correct mirrored directory.*" in lines
+        assert "*None — all test files and directories match a source counterpart.*" in lines
+        assert "*None — all source files with classes have direct or indirect tests.*" in lines
+        assert (
+            "*None — no test file provides indirect coverage for uncovered source files.*" in lines
+        )
+        assert "**Result:** all clear" in lines
+
+    # --- Tests for TestStructureScanner._emit_orphaned(). ---
+
+    def test_emit_orphaned_files_only_prints_no_none_line(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        TestStructureScanner._emit_orphaned([{"test_file": "test_orphan.py"}], [])
+        lines = capsys.readouterr().out.splitlines()
+        assert "| `test_orphan.py` |" in lines
+        assert not any(line.startswith("*None") for line in lines)
+
+    def test_emit_orphaned_dirs_only_prints_no_none_line(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        TestStructureScanner._emit_orphaned([], [{"test_dir": "helpers/"}])
+        lines = capsys.readouterr().out.splitlines()
+        assert "| `helpers/` |" in lines
+        assert not any(line.startswith("*None") for line in lines)
+
+    def test_emit_orphaned_empty_prints_exact_none_line(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        TestStructureScanner._emit_orphaned([], [])
+        lines = capsys.readouterr().out.splitlines()
+        assert "*None — all test files and directories match a source counterpart.*" in lines

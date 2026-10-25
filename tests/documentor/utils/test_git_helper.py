@@ -37,6 +37,17 @@ class TestGitHelper:
             result = GitHelper.run_git(str(tmp_path), ["status"])
             assert result == ""
 
+    def test_run_git_invokes_git_with_captured_text_and_timeout(self, tmp_path: Path) -> None:
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = type("R", (), {"returncode": 0, "stdout": "ok"})()
+            GitHelper.run_git(str(tmp_path), ["status"])
+            mock_run.assert_called_once_with(
+                ["git", "-C", str(tmp_path), "status"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+
     # --- get_file_last_commit_date ---
 
     def test_get_file_last_commit_date_valid_returns_2024(self, tmp_path: Path) -> None:
@@ -82,6 +93,11 @@ class TestGitHelper:
             _, args = mock_run.call_args.args
             assert args[-1] == "."
 
+    def test_get_code_changes_since_passes_repo_path(self, tmp_path: Path) -> None:
+        with patch.object(GitHelper, "run_git", return_value="") as mock_run:
+            GitHelper.get_code_changes_since(str(tmp_path), "2024-01-01")
+            assert mock_run.call_args.args[0] == str(tmp_path)
+
     # --- get_files_changed_since ---
 
     def test_get_files_changed_since_parses_name_status(self, tmp_path: Path) -> None:
@@ -109,6 +125,47 @@ class TestGitHelper:
         with patch.object(GitHelper, "run_git", return_value="orphan\nM\tsrc/a.py\n"):
             changes = GitHelper.get_files_changed_since(str(tmp_path), "2024-01-01")
             assert changes == [{"status": "M", "file": "src/a.py"}]
+
+    def test_get_files_changed_since_passes_exact_log_args(self, tmp_path: Path) -> None:
+        with patch.object(GitHelper, "run_git", return_value="") as mock_run:
+            GitHelper.get_files_changed_since(str(tmp_path), "2024-01-01")
+            repo, args = mock_run.call_args.args
+            assert repo == str(tmp_path)
+            assert args == [
+                "log",
+                "--since",
+                "2024-01-01",
+                "--name-status",
+                "--pretty=format:",
+                "--diff-filter=ACDMRT",
+            ]
+
+    def test_get_files_changed_since_with_scope_passes_full_args(self, tmp_path: Path) -> None:
+        with patch.object(GitHelper, "run_git", return_value="") as mock_run:
+            GitHelper.get_files_changed_since(str(tmp_path), "2024-01-01", scope="src")
+            _, args = mock_run.call_args.args
+            assert args == [
+                "log",
+                "--since",
+                "2024-01-01",
+                "--name-status",
+                "--pretty=format:",
+                "--diff-filter=ACDMRT",
+                "--",
+                "src",
+            ]
+
+    def test_get_files_changed_since_filename_with_spaces_returns_full_name(
+        self, tmp_path: Path
+    ) -> None:
+        with patch.object(GitHelper, "run_git", return_value="M\tsrc/my file.py\n"):
+            changes = GitHelper.get_files_changed_since(str(tmp_path), "2024-01-01")
+            assert changes == [{"status": "M", "file": "src/my file.py"}]
+
+    def test_get_files_changed_since_rename_line_returns_last_column(self, tmp_path: Path) -> None:
+        with patch.object(GitHelper, "run_git", return_value="R100\told.py\tnew.py\n"):
+            changes = GitHelper.get_files_changed_since(str(tmp_path), "2024-01-01")
+            assert changes == [{"status": "R", "file": "new.py"}]
 
     # --- get_renamed_files ---
 
@@ -139,6 +196,38 @@ class TestGitHelper:
             assert "--name-status" in args
             assert args[-2:] == ["--diff-filter=R", "-M"]
 
+    def test_get_renamed_files_passes_repo_and_full_args(self, tmp_path: Path) -> None:
+        with patch.object(GitHelper, "run_git", return_value="") as mock_run:
+            GitHelper.get_renamed_files(str(tmp_path), "2024-01-01")
+            repo, args = mock_run.call_args.args
+            assert repo == str(tmp_path)
+            assert args == [
+                "log",
+                "--since",
+                "2024-01-01",
+                "--name-status",
+                "--pretty=format:",
+                "--diff-filter=R",
+                "-M",
+            ]
+
+    def test_get_renamed_files_filename_with_spaces_returns_full_paths(
+        self, tmp_path: Path
+    ) -> None:
+        with patch.object(
+            GitHelper,
+            "run_git",
+            return_value="R100\told dir/a.py\tnew dir/b.py\n",
+        ):
+            renames = GitHelper.get_renamed_files(str(tmp_path), "2024-01-01")
+            assert renames == [("old dir/a.py", "new dir/b.py")]
+
+    def test_get_renamed_files_modified_line_with_extra_column_ignored(
+        self, tmp_path: Path
+    ) -> None:
+        with patch.object(GitHelper, "run_git", return_value="M\ta.py\tb.py\n"):
+            assert GitHelper.get_renamed_files(str(tmp_path), "2024-01-01") == []
+
     # --- get_latest_tag ---
 
     def test_get_latest_tag_with_tag_returns_1_2_3(self, tmp_path: Path) -> None:
@@ -155,3 +244,7 @@ class TestGitHelper:
             repo, args = mock_run.call_args.args
             assert repo == str(tmp_path)
             assert args == ["describe", "--tags", "--abbrev=0"]
+
+    def test_get_latest_tag_x_prefix_kept_after_v_strip(self, tmp_path: Path) -> None:
+        with patch.object(GitHelper, "run_git", return_value="vX1.2.3"):
+            assert GitHelper.get_latest_tag(str(tmp_path)) == "X1.2.3"

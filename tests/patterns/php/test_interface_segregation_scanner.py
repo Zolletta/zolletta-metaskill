@@ -11,6 +11,7 @@ dependency is not installed.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -712,3 +713,240 @@ class TestInterfaceSegregationScanner:
         out = capsys.readouterr().out
         assert rc == 0
         assert "threshold: 7" in out
+
+    # --- Output contract gaps surfaced by mutation testing. ---
+
+    def test_scan_module_default_min_methods_flags_fat_interface(self, tmp_path: Path) -> None:
+        """Default threshold stays at 7 even when callers omit min_methods."""
+        cls = ClassInfo(
+            name="Fat",
+            lineno=1,
+            end_lineno=10,
+            is_abstract=True,
+            methods=[_make_method(f"m{i}") for i in range(8)],
+        )
+        module = ModuleInfo(path=tmp_path / "x.php", language="php", classes=[cls])
+        findings = InterfaceSegregationScanner.scan_module(module)
+        assert len(findings) == 1
+        assert "threshold: 7" in findings[0].description
+
+    def test_scan_file_default_min_methods_flags_fat_interface(self, tmp_path: Path) -> None:
+        """scan_file uses the same default when min_methods is omitted."""
+        cls = ClassInfo(
+            name="Fat",
+            lineno=1,
+            end_lineno=10,
+            is_abstract=True,
+            methods=[_make_method(f"m{i}") for i in range(8)],
+        )
+        module = ModuleInfo(path=tmp_path / "x.php", language="php", classes=[cls])
+        assert len(InterfaceSegregationScanner.scan_module(module)) == 1
+
+    def test_scan_module_concrete_then_fat_still_flags_later(self, tmp_path: Path) -> None:
+        """A concrete class early in the list must not stop the scan."""
+        concrete = ClassInfo(name="C", lineno=1, end_lineno=5)
+        fat = ClassInfo(
+            name="Fat",
+            lineno=6,
+            end_lineno=20,
+            is_abstract=True,
+            methods=[_make_method(f"m{i}") for i in range(8)],
+        )
+        module = ModuleInfo(path=tmp_path / "x.php", language="php", classes=[concrete, fat])
+        findings = InterfaceSegregationScanner.scan_module(module)
+        assert len(findings) == 1
+        assert findings[0].description.startswith("Fat")
+
+    def test_scan_module_finding_fix_type_is_manual(self, tmp_path: Path) -> None:
+        cls = ClassInfo(
+            name="Fat",
+            lineno=1,
+            end_lineno=10,
+            is_abstract=True,
+            methods=[_make_method(f"m{i}") for i in range(8)],
+        )
+        module = ModuleInfo(path=tmp_path / "x.php", language="php", classes=[cls])
+        findings = InterfaceSegregationScanner.scan_module(module)
+        assert findings[0].fix_type == "manual"
+
+    def test_scan_module_methods_joined_with_comma_space(self, tmp_path: Path) -> None:
+        cls = ClassInfo(
+            name="Fat",
+            lineno=1,
+            end_lineno=10,
+            is_abstract=True,
+            methods=[_make_method(f"m{i}") for i in range(8)],
+        )
+        module = ModuleInfo(path=tmp_path / "x.php", language="php", classes=[cls])
+        desc = InterfaceSegregationScanner.scan_module(module)[0].description
+        assert "m0, m1" in desc
+
+    def test_scan_module_implementers_joined_with_comma_space(self, tmp_path: Path) -> None:
+        cls = ClassInfo(
+            name="Fat",
+            lineno=1,
+            end_lineno=10,
+            is_abstract=True,
+            methods=[_make_method(f"m{i}") for i in range(8)],
+        )
+        impl = ClassInfo(name="ImplA", lineno=12, end_lineno=20, bases=["Fat"])
+        impl_b = ClassInfo(name="ImplB", lineno=21, end_lineno=30, bases=["Fat"])
+        module = ModuleInfo(path=tmp_path / "x.php", language="php", classes=[cls, impl, impl_b])
+        desc = InterfaceSegregationScanner.scan_module(module)[0].description
+        assert "(implementers: ImplA, ImplB)" in desc
+
+    @_skip_no_ts
+    def test_main_skipped_text_exact(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _write_settings(tmp_path, php={"patterns": {"check_isp": False}})
+        rc = _run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert out == "Result: SKIPPED (check_isp disabled in settings.json)\n"
+
+    @_skip_no_ts
+    def test_main_missing_dir_stderr_exact(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _write_settings(tmp_path)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
+        err = capsys.readouterr().err
+        assert rc == 1
+        assert err.splitlines() == ["Error: no configured source directories exist on disk"]
+
+    @_skip_no_ts
+    def test_main_uses_configured_psr4_root(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """``source_roots(settings, …)`` must read the configured psr-4 dir, not ``src``."""
+        _write_settings(tmp_path, php={"autoload": {"psr-4": {"App\\": "lib/"}}})
+        _write_php(tmp_path / "lib" / "Fat.php", _fat_interface(8))
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        payload = json.loads(out)
+        assert payload["directories"] == ["lib"]
+        assert payload["violation_count"] == 1
+
+    @_skip_no_ts
+    def test_main_json_output_keys_and_indent(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _write_settings(tmp_path)
+        _write_php(tmp_path / "src" / "Fat.php", _fat_interface(8))
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        payload = json.loads(out)
+        assert sorted(payload) == [
+            "directories",
+            "min_methods",
+            "scanned_files",
+            "violation_count",
+            "violations",
+        ]
+        assert '\n  "directories"' in out
+        violation = payload["violations"][0]
+        assert sorted(violation) == ["description", "file", "line", "severity"]
+        assert violation["file"].endswith("Fat.php")
+        assert payload["directories"] == ["src"]
+
+    @_skip_no_ts
+    def test_main_scanned_files_counts_each_php_file(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _write_settings(tmp_path)
+        _write_php(
+            tmp_path / "src" / "a.php",
+            "<?php\ninterface A {\n    public function a();\n}\n",
+        )
+        _write_php(
+            tmp_path / "src" / "b.php",
+            "<?php\ninterface B {\n    public function b();\n}\n",
+        )
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert json.loads(out)["scanned_files"] == 2
+
+    @_skip_no_ts
+    def test_main_text_report_full_lines(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _write_settings(tmp_path)
+        _write_php(tmp_path / "src" / "Fat.php", _fat_interface(8))
+        rc = _run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        lines = out.splitlines()
+        assert lines.count("=" * 70) == 2
+        assert "PHP INTERFACE SEGREGATION (ISP) — VALIDATION REPORT" in lines
+        assert "## Fat interfaces (1 found)" in out
+        assert "    Fix: split into smaller, focused interfaces" in lines
+        assert "Result: ISP violations found (report-only mode)" in lines
+        assert "Result: all clear" not in out
+
+    @_skip_no_ts
+    def test_main_all_clear_exact(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _write_settings(tmp_path)
+        _write_php(
+            tmp_path / "src" / "Good.php",
+            "<?php\ninterface Good {\n    public function save();\n}\n",
+        )
+        rc = _run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "Result: all clear" in out.splitlines()
+
+    def test_scan_module_no_implementers_description_has_no_marker(self, tmp_path: Path) -> None:
+        """Without implementers the description keeps the ``(threshold: N).`` shape."""
+        cls = ClassInfo(
+            name="Fat",
+            lineno=1,
+            end_lineno=10,
+            is_abstract=True,
+            methods=[_make_method(f"m{i}") for i in range(8)],
+        )
+        module = ModuleInfo(path=tmp_path / "x.php", language="php", classes=[cls])
+        desc = InterfaceSegregationScanner.scan_module(module)[0].description
+        assert re.search(r"\(threshold: \d+\)\.", desc)
+
+    @_skip_no_ts
+    def test_main_text_report_lists_each_finding_with_location(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _write_settings(tmp_path)
+        _write_php(tmp_path / "src" / "Fat.php", _fat_interface(8))
+        rc = _run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        lines = out.splitlines()
+        assert any(line.startswith("  Fat") for line in lines)
+        assert any("Fat.php" in line for line in lines)

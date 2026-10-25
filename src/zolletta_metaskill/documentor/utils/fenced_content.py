@@ -54,7 +54,7 @@ class FencedContent:
 
         """
         kept: list[str] = []
-        in_fence = False
+        in_fence = False  # pragma: no mutate — None is falsy like False, equivalent initial state
         for line in content.splitlines():
             if FencedContent.is_fence(line):
                 in_fence = not in_fence

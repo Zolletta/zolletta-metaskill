@@ -117,12 +117,28 @@ class TestADRDiscovery:
         assert records[0].number == "001"
         assert records[0].title == "Test"
 
+    def test_adrs_outside_adrs_path_are_not_scanned(self, tmp_path: Path) -> None:
+        """``adrs_path`` scopes the search — ADRs elsewhere in docs/ stay out."""
+        docs = tmp_path / "docs"
+        write_adr(docs / "adr" / "0001-in.md", "001", "In")
+        write_adr(docs / "0002-out.md", "002", "Out")
+        records = ADRDiscovery.find_files(docs, "adr")
+        assert [r.title for r in records] == ["In"]
+
     def test_finds_adrs_in_docs_root(self, tmp_path: Path) -> None:
         docs = tmp_path / "docs"
         docs.mkdir()
         write_adr(docs / "0001-test.md", "001", "Test")
         records = ADRDiscovery.find_files(docs, "")
         assert len(records) == 1
+
+    def test_distilled_file_skipped_not_terminal(self, tmp_path: Path) -> None:
+        """adr-distilled.md is skipped, not a loop exit — files after it still scan."""
+        docs = tmp_path / "docs"
+        write_adr(docs / "adr" / "adr-distilled.md", "001", "Distilled")
+        write_adr(docs / "adr" / "z-last.md", "002", "Last")
+        records = ADRDiscovery.find_files(docs, "adr")
+        assert [r.title for r in records] == ["Last"]
 
     def test_none_adrs_path_returns_empty(self, tmp_path: Path) -> None:
         docs = tmp_path / "docs"

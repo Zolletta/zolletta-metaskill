@@ -1,7 +1,7 @@
 ---
 audience: ai, human
 status: stable
-skills: [setup, review, patterns, documentor, python-*, php-*]
+skills: [setup, review, patterns, documentor, grice, python-*, php-*]
 ---
 
 # AGENTS.md
@@ -123,6 +123,7 @@ The ❌ rules — `documentation.3`, `documentation.5`, `documentation.6`, `test
 #### Suppressions
 
 - `suppressions.1` — **Every suppression carries its reason** — `type: ignore[code]`, `# noqa: RULE`, `# pragma: no cover` — so a reader can tell a deliberate exception from a leftover.
+- `suppressions.2` — **A bare `# pragma: no mutate` suppresses only mutations on single-line statements.** Mutmut registers each mutant on its statement's first line and never sees comments nested inside a multi-line call, so a pragma on an `arg=` line inside `parser.add_argument(...)` does nothing. For multi-line statements wrap them in standalone `# pragma: no mutate start` / `# pragma: no mutate end` comment lines, and always verify with `mutmut show` that the mutant is actually gone.
 
 #### CLI
 
@@ -145,6 +146,13 @@ The ❌ rules — `documentation.3`, `documentation.5`, `documentation.6`, `test
 - `tests.3` — **A test function is named `test_<unit>_<scenario>_<expected_outcome>`** and carries at least three segments after the prefix. A `parametrize` needs explicit `ids=` of the same shape, or the generated names become `test_naming` findings.
 - `tests.4` — **A non-test file under `tests/` goes in `tests/fixtures/<subpath>/`, mirroring the source subpath, and is committed** — so that a change in output appears as a readable diff instead of a silent regeneration. The scanners ignore that directory: both enumerate through `ProjectConfig.iter_files(root, {".py"})`.
 - `tests.5` — **Tests inside a `Test*` class are grouped under `# --- section ---` comments.**
+
+#### Mutation testing
+
+- `mutants.1` — **Case-variant literals are equivalent mutants on APFS.** Mutations like `"Makefile"` → `"MAKEFILE"` or `".zolletta-metaskill"` → `".ZOLLETTA-METASKILL"` cannot be killed on macOS because the filesystem is case-insensitive — silence them with `# pragma: no mutate` plus the reason, don't write a test that asserts platform-dependent behaviour.
+- `mutants.2` — **Read the whole mutated expression before writing a test.** `x if cond or True` forces the same branch as the original, so it is an equivalent mutant; `and False` flips it. A test for an equivalent mutant passes on both versions and proves nothing — inspect first, then decide test vs pragma.
+- `mutants.3` — **Substring asserts do not kill `XX…XX`/CAPS mutants.** The mutated text still contains the original substring. Assert on `splitlines()` membership, `startswith`/`endswith`, exact equality, or `count == N` for repeated lines.
+- `mutants.4` — **When subagents fix mutants, the parent verifies once, at the end.** Per-mutant verification while children still work is an endless loop: they touch `mutants/` and each other's stats, so intermediate numbers lie anyway. Collect all child reports first, then run a single clean `mutmut run` to reconcile — that one result is the truth.
 
 ### Rule index
 
@@ -185,8 +193,13 @@ The ❌ rules — `documentation.3`, `documentation.5`, `documentation.6`, `test
 | `imports.3`       | ✅    |
 | `structs.1`       | ❌    |
 | `suppressions.1`  | ✅    |
+| `suppressions.2`  | ❌    |
 | `tests.1`         | ✅    |
 | `tests.2`         | ✅    |
 | `tests.3`         | ✅    |
 | `tests.4`         | ❌    |
 | `tests.5`         | ❌    |
+| `mutants.1`       | ❌    |
+| `mutants.2`       | ❌    |
+| `mutants.3`       | ❌    |
+| `mutants.4`       | ❌    |

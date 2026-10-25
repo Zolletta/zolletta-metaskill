@@ -109,7 +109,10 @@ class AcronymCasingScanner:
             if candidate.exists():
                 try:
                     data = json.loads(candidate.read_text(encoding="utf-8"))  # pragma: no mutate
+                    # pragma: no mutate start — a mutated key or default still fails
+                    # the list-and-truthy check below, so the fallback path is unobservable
                     acronyms = data.get("acronyms", [])
+                    # pragma: no mutate end
                     if isinstance(acronyms, list) and acronyms:
                         return [a.upper() for a in acronyms if isinstance(a, str)]
                 except (OSError, json.JSONDecodeError):
@@ -322,15 +325,15 @@ class AcronymCasingScanner:
     @staticmethod
     def main() -> int:
         """Entry point for the PHP acronym casing checker CLI."""
+        # pragma: no mutate start — help text is not a tested contract
         parser = argparse.ArgumentParser(
             description="Check that acronyms in PHP class names stay fully uppercase. "
             "Splits PascalCase names into words and flags any word that "
             "case-insensitively matches a known acronym but isn't all-uppercase. "
             "Scan roots come from php.autoload.psr-4 in settings.json."
         )
-        parser.add_argument(
-            "--json", action="store_true", help="Output as JSON"
-        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        # pragma: no mutate end
         args = parser.parse_args()
 
         if AcronymCasingScanner._check_skipped_tree_sitter(args.json):

@@ -51,8 +51,8 @@ class DocAccuracyScorer:
         passed, total = DocAccuracyScorer._check_version_match(
             repo_path, content, details, latest_tag
         )
-        checks_passed += passed
-        checks_total += total
+        checks_passed += passed  # pragma: no mutate — counter is 0 here, so += and = are equivalent
+        checks_total += total  # pragma: no mutate — counter is 0 here, so += and = are equivalent
 
         # Check 2: Package version from manifests
         passed, total = DocAccuracyScorer._check_manifest_versions(repo_path, content, details)
@@ -77,7 +77,9 @@ class DocAccuracyScorer:
     @staticmethod
     def _version_refs(content: str) -> list[str]:
         """Extract version-like strings (``v1.2.3``, ``version: 1.2``) from content."""
+        # pragma: no mutate start — re.IGNORECASE makes pattern letter case equivalent
         return re.findall(r"(?:v|version[:\s]*)(\d+\.\d+(?:\.\d+)?)", content, re.IGNORECASE)
+        # pragma: no mutate end
 
     @staticmethod
     def _check_version_match(
@@ -172,9 +174,11 @@ class DocAccuracyScorer:
         for date_str in dates_found:
             try:
                 d = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=UTC)
-                if d > now:
+                # d is midnight UTC and now has wall-clock time, so == is unreachable
+                if d > now:  # pragma: no mutate — >= is equivalent here
                     details["issues"].append(f"Future date found: {date_str}")
-                    all_ok = False
+                    # all_ok is consumed only by truthiness
+                    all_ok = False  # pragma: no mutate — None is equivalent here
             except ValueError:  # pragma: no cover
                 pass
         if all_ok:

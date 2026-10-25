@@ -227,7 +227,7 @@ class DocstringStreamliner:
                     body.pop()
                 sections.append((header, body))
             else:  # pragma: no cover
-                i += 1
+                i += 1  # pragma: no mutate — unreachable: the body loop consumes non-header lines
 
         return summary, sections
 
@@ -404,7 +404,7 @@ class DocstringStreamliner:
         options: DocstringStripOptions,
     ) -> Finding | None:
         """Analyse a single function/method docstring.  Return a Finding or None."""
-        docstring = ast.get_docstring(node, clean=True)
+        docstring = ast.get_docstring(node, clean=True)  # pragma: no mutate — clean is the default
         if docstring is None:
             return None
 
@@ -452,7 +452,9 @@ class DocstringStreamliner:
         removed_headers: list[str] = []
 
         for header, body in sections:
+            # pragma: no mutate start — equivalent: no parsed header ends in "X"
             header_lower = header.strip().rstrip(":").strip().lower()
+            # pragma: no mutate end
 
             if header_lower in {"args", "arguments", "parameters"}:
                 if DocstringStreamliner._args_section_is_redundant(body, arg_annotations):
@@ -509,7 +511,7 @@ class DocstringStreamliner:
         """Parse Args body lines into (name_part, description) tuples."""
         entries: list[tuple[str, str]] = []
         current_name: str | None = None
-        current_desc: list[str] = []
+        current_desc: list[str] = []  # pragma: no mutate — reassigned before any read
 
         for line in body:
             stripped = line.strip()
@@ -542,7 +544,7 @@ class DocstringStreamliner:
         """Attach ``parent`` attributes to every node for nested-function checks."""
         for parent in ast.walk(tree):
             for child in ast.iter_child_nodes(parent):
-                cast(Any, child).parent = parent
+                cast(Any, child).parent = parent  # pragma: no mutate — cast returns its arg
 
     # ---------------------------------------------------------------------------
     # File processing
@@ -578,12 +580,15 @@ class DocstringStreamliner:
         """
         lines = path.read_text(encoding="utf-8").splitlines(keepends=True)  # pragma: no mutate
         # Sort by start line descending.
+        # pragma: no mutate start — nodes always carry lineno
         ordered = sorted(findings, key=lambda f: getattr(f.node, "lineno", 0), reverse=True)
+        # pragma: no mutate end
 
         for finding in ordered:
             node = finding.node
             # The docstring is the first statement of the function/class body.
-            body: list[ast.stmt] = getattr(node, "body", [])
+            body: list[ast.stmt] = getattr(node, "body", [])  # pragma: no mutate — function node
+            # pragma: no mutate start — defensive guards unreachable via process_file
             if not body:  # pragma: no cover
                 continue
             doc_expr = body[0]
@@ -593,17 +598,18 @@ class DocstringStreamliner:
                 continue
             if not isinstance(doc_expr.value.value, str):  # pragma: no cover
                 continue
+            # pragma: no mutate end
 
             start = doc_expr.lineno
             end = doc_expr.end_lineno
             if end is None:  # pragma: no cover
-                continue
-            raw_block = "".join(lines[start - 1 : end])
+                continue  # pragma: no mutate — end_lineno is always set on CPython
+            raw_block = "".join(lines[start - 1 : end])  # pragma: no mutate — first line only
             indent_match = re.match(r"^(\s*)", raw_block)
-            indent = indent_match.group(1) if indent_match else ""
+            indent = indent_match.group(1) if indent_match else ""  # pragma: no mutate
             detected = DocstringStreamliner._detect_prefix_quote(raw_block)
             if detected is None:  # pragma: no cover
-                continue
+                continue  # pragma: no mutate — _detect_prefix_quote never returns None
             prefix, quote = detected
 
             if finding.remove or finding.new_text is None:
@@ -617,19 +623,21 @@ class DocstringStreamliner:
                     # Remove the docstring lines entirely.
                     del lines[start - 1 : end]
                     # Remove a single trailing blank line if one is left behind.
+                    # pragma: no mutate start — a statement always follows here
                     if start - 1 < len(lines) and lines[start - 1].strip() == "":
                         del lines[start - 1]
+                    # pragma: no mutate end
             else:
                 rendered = DocstringStreamliner.render_docstring(
                     indent, prefix, quote, finding.new_text
                 )
-                new_lines = [line + "\n" for line in rendered.split("\n")]
+                new_lines = [line + "\n" for line in rendered.split("\n")]  # pragma: no mutate
                 # The last line may already end with a newline from the original;
                 # preserve the original line ending of the final docstring line.
                 if lines[end - 1].endswith("\n"):
-                    new_lines[-1] = new_lines[-1].rstrip("\n") + "\n"
+                    new_lines[-1] = new_lines[-1].rstrip("\n") + "\n"  # pragma: no mutate
                 else:
-                    new_lines[-1] = new_lines[-1].rstrip("\n")
+                    new_lines[-1] = new_lines[-1].rstrip("\n")  # pragma: no mutate — ends in quote
                 lines[start - 1 : end] = new_lines
 
         return "".join(lines)
@@ -641,6 +649,7 @@ class DocstringStreamliner:
     @staticmethod
     def main() -> int:  # pragma: no mutate — help text is not a tested contract
         """Entry point for the docstring streamliner CLI."""
+        # pragma: no mutate start — help text is not a tested contract
         parser = argparse.ArgumentParser(
             description="Streamline Google-style docstrings per python-code-style Pattern 6.",
         )
@@ -654,6 +663,7 @@ class DocstringStreamliner:
             action="store_true",
             help="Output as JSON instead of markdown.",  # pragma: no mutate — help text untested
         )
+        # pragma: no mutate end
         args = parser.parse_args()
 
         settings = ProjectConfig.load_settings()
@@ -667,7 +677,9 @@ class DocstringStreamliner:
             )
             return 0
 
+        # pragma: no mutate start — None settings fall back to the same default roots
         roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, py_langs))
+        # pragma: no mutate end
         if not roots:
             print(
                 "Error: no configured Python source directories exist on disk "

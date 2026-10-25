@@ -61,6 +61,18 @@ class TestDocstringStripOptions:
         assert options.strip_nested is False
         assert options.strip_obvious_init is True
 
+    def test_from_settings_each_toggle_false_maps_to_its_field(self) -> None:
+        """Every settings key must reach its own field (a transposed kwarg shows here)."""
+        for key, field in (
+            ("docstring_strip_private", "strip_private"),
+            ("docstring_strip_tests", "strip_tests"),
+            ("docstring_strip_nested", "strip_nested"),
+            ("docstring_strip_obvious_init", "strip_obvious_init"),
+        ):
+            settings: dict[str, Any] = {"python": {"code_style": {key: False}}}
+            options = DocstringStripOptions.from_settings(settings, {"python"})
+            assert getattr(options, field) is False, f"{key} did not reach {field}"
+
     # --- Role in the call chain ---
 
     def test_replaces_four_positional_booleans(self) -> None:

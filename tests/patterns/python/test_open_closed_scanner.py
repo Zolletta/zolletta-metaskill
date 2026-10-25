@@ -232,6 +232,17 @@ class TestOpenClosedScanner:
         node = _parse_if(source)
         assert OpenClosedScanner._count_type_branches(node) == 0
 
+    def test_multi_statement_else_block_if_returns_1(self) -> None:
+        """A nested if inside a multi-statement else is a separate chain, not an elif."""
+        source = (
+            "if isinstance(x, int):\n    pass\n"
+            "else:\n"
+            "    if isinstance(y, str):\n        pass\n"
+            "    print(y)\n"
+        )
+        node = _parse_if(source)
+        assert OpenClosedScanner._count_type_branches(node) == 1
+
     # --- syntax vocabulary is not a type ladder ---
 
     def test_ast_node_ladder_is_not_counted(self) -> None:
@@ -389,16 +400,29 @@ class TestOpenClosedScanner:
             "    elif isinstance(x, float):\n        pass\n"
         )
         violations = OpenClosedScanner.scan_file(f)
-        ladders = [v for v in violations if v["type"] == "type_ladder"]
-        assert len(ladders) == 1
-        assert ladders[0]["branches"] == 3
+        assert violations == [
+            {
+                "type": "type_ladder",
+                "file": str(f),
+                "line": 2,
+                "branches": 3,
+                "detail": "if/elif chain with 3 type-check branches",
+            }
+        ]
 
     def test_string_dispatch_violation(self, tmp_path: Path) -> None:
         f = tmp_path / "mod.py"
         f.write_text('def f(obj, t):\n    return builtins.getattr(obj, "method_" + t)\n')
         violations = OpenClosedScanner.scan_file(f)
-        dispatches = [v for v in violations if v["type"] == "string_dispatch"]
-        assert len(dispatches) == 1
+        assert violations == [
+            {
+                "type": "string_dispatch",
+                "file": str(f),
+                "line": 2,
+                "branches": 0,
+                "detail": "getattr() with dynamic string — consider polymorphism",
+            }
+        ]
 
     def test_match_on_type_violation(self, tmp_path: Path) -> None:
         f = tmp_path / "mod.py"
@@ -410,9 +434,15 @@ class TestOpenClosedScanner:
             "        case float():\n            pass\n"
         )
         violations = OpenClosedScanner.scan_file(f)
-        matches = [v for v in violations if v["type"] == "match_on_type"]
-        assert len(matches) == 1
-        assert matches[0]["branches"] == 3
+        assert violations == [
+            {
+                "type": "match_on_type",
+                "file": str(f),
+                "line": 2,
+                "branches": 3,
+                "detail": "match/case on type with 3 class patterns",
+            }
+        ]
 
     def test_scan_file_no_violations_returns_empty_list(self, tmp_path: Path) -> None:
         f = tmp_path / "mod.py"
@@ -458,7 +488,21 @@ class TestOpenClosedScanner:
         rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert "all clear" in out
+        assert (
+            out
+            == "\n".join(
+                [
+                    "=" * 70,
+                    "OPEN/CLOSED PRINCIPLE (OCP) — VALIDATION REPORT",
+                    "=" * 70,
+                    "",
+                    "## OCP violations: none",
+                    "",
+                    "Result: all clear",
+                ]
+            )
+            + "\n"
+        )
 
     def test_main_with_violations_report_only(
         self,
@@ -473,8 +517,26 @@ class TestOpenClosedScanner:
         rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert "type_ladder" in out
-        assert "report-only" in out
+        assert (
+            out
+            == "\n".join(
+                [
+                    "=" * 70,
+                    "OPEN/CLOSED PRINCIPLE (OCP) — VALIDATION REPORT",
+                    "=" * 70,
+                    "",
+                    "## OCP violations (1 found)",
+                    "",
+                    "  [type_ladder] if/elif chain with 3 type-check branches",
+                    "    -> mod.py:2",
+                    "    Fix: replace type branching with polymorphism (strategy pattern,",
+                    "         plugin registry, or protocol-based dispatch)",
+                    "",
+                    "Result: OCP violations found (report-only mode)",
+                ]
+            )
+            + "\n"
+        )
 
     def test_main_check_disabled(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -484,7 +546,7 @@ class TestOpenClosedScanner:
         rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert "SKIPPED" in out
+        assert out == "Result: SKIPPED (check_ocp disabled in settings.json)\n"
 
     def test_main_check_disabled_json(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -494,7 +556,7 @@ class TestOpenClosedScanner:
         rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
         report = json.loads(capsys.readouterr().out)
         assert rc == 0
-        assert report["skipped"] is True
+        assert report == {"skipped": True, "reason": "check_ocp disabled in settings.json"}
 
     def test_main_missing_src(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -503,7 +565,7 @@ class TestOpenClosedScanner:
         rc = _run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "no configured source directories" in err
+        assert err == "Error: no configured source directories exist on disk\n"
 
     def test_main_min_branches_setting(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -526,12 +588,23 @@ class TestOpenClosedScanner:
         src.mkdir()
         (src / "mod.py").write_text(_LADDER_SRC)
         rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
-        report = json.loads(capsys.readouterr().out)
+        out = capsys.readouterr().out
+        expected = {
+            "directories": ["src"],
+            "min_branches": 3,
+            "violation_count": 1,
+            "violations": [
+                {
+                    "type": "type_ladder",
+                    "file": "mod.py",
+                    "line": 2,
+                    "branches": 3,
+                    "detail": "if/elif chain with 3 type-check branches",
+                }
+            ],
+        }
         assert rc == 0
-        assert report["violation_count"] == 1
-        assert report["violations"][0]["type"] == "type_ladder"
-        assert report["min_branches"] == 3
-        assert report["directories"] == ["src"]
+        assert out == json.dumps(expected, indent=2) + "\n"
 
     def test_main_gitignored_dirs_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -546,6 +619,38 @@ class TestOpenClosedScanner:
         out = capsys.readouterr().out
         assert rc == 0
         assert "all clear" in out
+
+    def test_main_non_default_source_root_returns_report(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """``python.paths.source`` comes from settings, not the ``["src"]`` default."""
+        _write_settings(tmp_path, python={"paths": {"source": ["lib"]}})
+        lib = tmp_path / "lib"
+        lib.mkdir()
+        (lib / "mod.py").write_text(_LADDER_SRC)
+        rc = _run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert (
+            out
+            == "\n".join(
+                [
+                    "=" * 70,
+                    "OPEN/CLOSED PRINCIPLE (OCP) — VALIDATION REPORT",
+                    "=" * 70,
+                    "",
+                    "## OCP violations (1 found)",
+                    "",
+                    "  [type_ladder] if/elif chain with 3 type-check branches",
+                    "    -> mod.py:2",
+                    "    Fix: replace type branching with polymorphism (strategy pattern,",
+                    "         plugin registry, or protocol-based dispatch)",
+                    "",
+                    "Result: OCP violations found (report-only mode)",
+                ]
+            )
+            + "\n"
+        )
 
     # --- AST guard paths ---
 
@@ -580,4 +685,41 @@ class TestOpenClosedScanner:
         import ast as _ast
 
         node = _ast.parse("isinstance()", mode="eval").body
+        assert OpenClosedScanner._is_syntax_vocabulary(node) is False
+
+    def test_is_syntax_class_mixed_tuple_returns_false(self) -> None:
+        import ast as _ast
+
+        node = _ast.parse("(ast.ClassDef, Dog)", mode="eval").body
+        assert OpenClosedScanner._is_syntax_class(node) is False
+
+    def test_is_syntax_class_empty_tuple_returns_false(self) -> None:
+        import ast as _ast
+
+        node = _ast.parse("()", mode="eval").body
+        assert OpenClosedScanner._is_syntax_class(node) is False
+
+    def test_is_string_collection_mixed_tuple_returns_false(self) -> None:
+        import ast as _ast
+
+        node = _ast.parse('("a", 1)', mode="eval").body
+        assert OpenClosedScanner._is_string_collection(node) is False
+
+    def test_is_string_collection_empty_tuple_returns_false(self) -> None:
+        import ast as _ast
+
+        node = _ast.parse("()", mode="eval").body
+        assert OpenClosedScanner._is_string_collection(node) is False
+
+    def test_is_syntax_vocabulary_all_syntax_boolop_returns_true(self) -> None:
+        import ast as _ast
+
+        node = _ast.parse("isinstance(n, ast.Call) and isinstance(n, ast.Name)", mode="eval").body
+        assert OpenClosedScanner._is_syntax_vocabulary(node) is True
+
+    def test_is_syntax_vocabulary_named_call_returns_false(self) -> None:
+        """``foo(n, ast.Call)`` is a domain call — the func id must be ``isinstance``."""
+        import ast as _ast
+
+        node = _ast.parse("foo(n, ast.Call)", mode="eval").body
         assert OpenClosedScanner._is_syntax_vocabulary(node) is False

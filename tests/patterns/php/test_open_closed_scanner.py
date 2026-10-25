@@ -136,8 +136,11 @@ class TestOpenClosedScanner:
         assert findings[0].category == "ocp"
         assert findings[0].severity == "medium"
         assert findings[0].fix_type == "manual"
-        assert "3 instanceof" in findings[0].description
-        assert "polymorphism" in findings[0].description
+        assert findings[0].line == 4
+        assert findings[0].description == (
+            "if/elseif chain with 3 instanceof branches — use polymorphism "
+            "instead of type branching (strategy pattern, interface dispatch)"
+        )
 
     @_skip_no_ts
     def test_two_branches_not_flagged(self, tmp_path: Path) -> None:
@@ -497,7 +500,7 @@ class TestOpenClosedScanner:
         rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert "SKIPPED" in out
+        assert out == "Result: SKIPPED (check_ocp disabled in settings.json)\n"
 
     def test_check_disabled_json(
         self,
@@ -509,7 +512,10 @@ class TestOpenClosedScanner:
         rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert json.loads(out)["skipped"] is True
+        assert json.loads(out) == {
+            "skipped": True,
+            "reason": "check_ocp disabled in settings.json",
+        }
 
     def test_main_missing_dir(
         self,
@@ -521,7 +527,7 @@ class TestOpenClosedScanner:
         rc = _run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "source" in err
+        assert err == "Error: no configured source directories exist on disk\n"
 
     @_skip_no_ts
     def test_main_all_clear(
@@ -535,7 +541,15 @@ class TestOpenClosedScanner:
         rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert "all clear" in out
+        assert out.splitlines() == [
+            "=" * 70,
+            "PHP OPEN/CLOSED PRINCIPLE (OCP) — VALIDATION REPORT",
+            "=" * 70,
+            "",
+            "## OCP violations: none (threshold: 3 branches)",
+            "",
+            "Result: all clear",
+        ]
 
     @_skip_no_ts
     def test_main_violation_report_only(
@@ -549,9 +563,20 @@ class TestOpenClosedScanner:
         rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert "OCP violations" in out
-        assert "instanceof" in out
-        assert "report-only" in out
+        assert out.splitlines() == [
+            "=" * 70,
+            "PHP OPEN/CLOSED PRINCIPLE (OCP) — VALIDATION REPORT",
+            "=" * 70,
+            "",
+            "## OCP violations (1 found)",
+            "",
+            "  if/elseif chain with 3 instanceof branches — use polymorphism "
+            "instead of type branching (strategy pattern, interface dispatch)",
+            f"    -> {Path('src') / 'Bad.php'}:4",
+            "    Fix: replace instanceof branching with polymorphism",
+            "",
+            "Result: OCP violations found (report-only mode)",
+        ]
 
     @_skip_no_ts
     def test_main_json_output(
@@ -562,13 +587,28 @@ class TestOpenClosedScanner:
     ) -> None:
         _write_settings(tmp_path)
         _write_php(tmp_path / "src" / "Bad.php", _INSTANCEOF_LADDER)
+        _write_php(tmp_path / "src" / "Good.php", _CLEAN_PHP)
         rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
         out = capsys.readouterr().out
         assert rc == 0
         payload = json.loads(out)
-        assert payload["violation_count"] == 1
-        assert payload["min_branches"] == 3
-        assert payload["scanned_files"] == 1
+        assert payload == {
+            "directories": ["src"],
+            "scanned_files": 2,
+            "min_branches": 3,
+            "violation_count": 1,
+            "violations": [
+                {
+                    "file": str(Path("src") / "Bad.php"),
+                    "line": 4,
+                    "severity": "medium",
+                    "description": "if/elseif chain with 3 instanceof branches — "
+                    "use polymorphism instead of type branching (strategy "
+                    "pattern, interface dispatch)",
+                }
+            ],
+        }
+        assert out == json.dumps(payload, indent=2) + "\n"
 
     @_skip_no_ts
     def test_main_custom_min_branches(
@@ -577,6 +617,7 @@ class TestOpenClosedScanner:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        """``php.patterns.ocp_min_branches`` lowers the flag threshold."""
         _write_settings(tmp_path, php={"patterns": {"ocp_min_branches": 2}})
         _write_php(
             tmp_path / "src" / "Two.php",
@@ -591,10 +632,42 @@ class TestOpenClosedScanner:
             "    }\n"
             "}\n",
         )
-        rc = _run(tmp_path, monkeypatch, ["prog"])
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert "OCP violations" in out
+        assert json.loads(out) == {
+            "directories": ["src"],
+            "scanned_files": 1,
+            "min_branches": 2,
+            "violation_count": 1,
+            "violations": [
+                {
+                    "file": str(Path("src") / "Two.php"),
+                    "line": 4,
+                    "severity": "medium",
+                    "description": "if/elseif chain with 2 instanceof branches — "
+                    "use polymorphism instead of type branching (strategy "
+                    "pattern, interface dispatch)",
+                }
+            ],
+        }
+
+    @_skip_no_ts
+    def test_main_uses_configured_psr4_root(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A non-default ``psr-4`` root is honoured over the ``src`` fallback."""
+        _write_settings(tmp_path, php={"autoload": {"psr-4": {"App\\": "lib/"}}})
+        _write_php(tmp_path / "lib" / "Bad.php", _INSTANCEOF_LADDER)
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        payload = json.loads(out)
+        assert payload["directories"] == ["lib"]
+        assert payload["violation_count"] == 1
 
     @_skip_no_ts
     def test_main_report_shows_threshold(

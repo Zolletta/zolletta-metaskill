@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import ast
 import json
 import subprocess
 import sys
 from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -380,6 +382,36 @@ class TestCyclomaticComplexityScanner:
         f.touch()
         assert CyclomaticComplexityScanner.scan_file(f, max_complexity=1) == []
 
+    def test_python_functions_qualify_through_blocks_and_classes(self) -> None:
+        """Qualified names keep the prefix across ``if`` blocks and classes."""
+        src = (
+            "def outer():\n"
+            "    if True:\n"
+            "        def inner():\n"
+            "            pass\n"
+            "    class Inner:\n"
+            "        def method(self):\n"
+            "            pass\n"
+        )
+        funcs = CyclomaticComplexityScanner._python_functions(ast.parse(src))
+        assert [name for name, _ in funcs] == [
+            "outer",
+            "outer.inner",
+            "outer.Inner.method",
+        ]
+
+    def test_python_complexity_node_without_body_returns_one(self) -> None:
+        """A node with no ``body`` attribute scores the base complexity."""
+        node = ast.parse("x = 1").body[0]
+        assert CyclomaticComplexityScanner._python_complexity(node) == 1
+
+    def test_python_record_line_is_def_lineno(self, tmp_path: Path) -> None:
+        """The reported line is the ``def`` line, not a hardcoded 1."""
+        f = self._write(tmp_path / "m.py", "x = 1\ndef f(y):\n    if y:\n        pass\n")
+        findings = CyclomaticComplexityScanner.scan_file(f, max_complexity=1)
+        assert len(findings) == 1
+        assert findings[0].line == 2
+
     # --- Tests for PHP complexity counting. ---
 
     @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
@@ -475,6 +507,32 @@ class TestCyclomaticComplexityScanner:
         f = self._write(tmp_path / "f.php", "<?php\nfunction f() {}\n")
         assert CyclomaticComplexityScanner.scan_file(f, max_complexity=1) == []
         assert "Warning: could not parse" in capsys.readouterr().err
+
+    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    def test_php_function_kind_and_line_exact(self, tmp_path: Path) -> None:
+        """A top-level PHP function reports kind ``Function`` at its own line."""
+        f = self._write(tmp_path / "f.php", "<?php\nfunction f($x) { if ($x) {} }\n")
+        findings = CyclomaticComplexityScanner.scan_file(f, max_complexity=1)
+        assert len(findings) == 1
+        assert findings[0].description == "Function 'f' has cyclomatic complexity 2 (max 1)"
+        assert findings[0].line == 2
+
+    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    def test_php_class_in_function_qualifies_method(self, tmp_path: Path) -> None:
+        """A class declared inside a function qualifies its methods."""
+        src = "<?php\nfunction outer() { class C { public function m() { if (true) {} } } }\n"
+        f = self._write(tmp_path / "f.php", src)
+        findings = CyclomaticComplexityScanner.scan_file(f, max_complexity=1)
+        assert [x.description for x in findings] == [
+            "Function 'outer' has cyclomatic complexity 3 (max 1)",
+            "Method 'outer.C.m' has cyclomatic complexity 2 (max 1)",
+        ]
+
+    def test_php_name_invalid_utf8_replaced(self) -> None:
+        """``errors="replace"`` maps invalid UTF-8 name bytes to U+FFFD."""
+        name_node = SimpleNamespace(start_byte=0, end_byte=4)
+        node = SimpleNamespace(child_by_field_name=lambda _field: name_node)
+        assert CyclomaticComplexityScanner._php_name(node, b"caf\xe9") == "caf�"
 
     # --- Tests for CyclomaticComplexityScanner.scan_file(). ---
 
@@ -585,6 +643,114 @@ class TestCyclomaticComplexityScanner:
         )
         assert len(findings) == 1
 
+    # --- Tests for CyclomaticComplexityScanner._scan_roots(). ---
+
+    def test_scan_roots_unhandled_file_continues(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A ``None`` records result skips that file, not the rest."""
+        root = tmp_path / "src"
+        root.mkdir()
+        self._write(root / "a.py", "def skipped():\n    pass\n")
+        self._write(root / "z.py", self._complex_python(ifs=2))
+
+        real = CyclomaticComplexityScanner._records_for_file
+        monkeypatch.setattr(
+            CyclomaticComplexityScanner,
+            "_records_for_file",
+            staticmethod(lambda p: None if p.name == "a.py" else real(p)),
+        )
+        scanned, violations = CyclomaticComplexityScanner._scan_roots([root], {".py"}, 1)
+        assert scanned == 2
+        assert violations == [
+            {
+                "file": str(root / "z.py"),
+                "function": "fn",
+                "kind": "Function",
+                "line": 1,
+                "complexity": 3,
+                "over": 2,
+            }
+        ]
+
+    def test_scan_roots_at_limit_no_violation(self, tmp_path: Path) -> None:
+        """Complexity equal to the limit is not a violation."""
+        root = tmp_path / "src"
+        root.mkdir()
+        self._write(root / "m.py", self._complex_python(ifs=3))
+        _scanned, violations = CyclomaticComplexityScanner._scan_roots([root], {".py"}, 4)
+        assert violations == []
+
+    def test_scan_roots_violations_sorted_descending(self, tmp_path: Path) -> None:
+        """Violations sort by complexity descending with exact fields."""
+        root = tmp_path / "src"
+        root.mkdir()
+        self._write(root / "a.py", self._complex_python(ifs=12))
+        self._write(root / "z.py", self._complex_python(ifs=14))
+        scanned, violations = CyclomaticComplexityScanner._scan_roots([root], {".py"}, 1)
+        assert scanned == 2
+        assert violations == [
+            {
+                "file": str(root / "z.py"),
+                "function": "fn",
+                "kind": "Function",
+                "line": 1,
+                "complexity": 15,
+                "over": 14,
+            },
+            {
+                "file": str(root / "a.py"),
+                "function": "fn",
+                "kind": "Function",
+                "line": 1,
+                "complexity": 13,
+                "over": 12,
+            },
+        ]
+
+    # --- Tests for CyclomaticComplexityScanner._emit_json() and _emit_text(). ---
+
+    def test_emit_json_output_matches_exactly(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """The JSON report is asserted byte-for-byte, keys and indent."""
+        violations = [
+            {
+                "file": "src/a.py",
+                "function": "fn",
+                "kind": "Function",
+                "line": 3,
+                "complexity": 15,
+                "over": 3,
+            },
+            {
+                "file": "src/b.py",
+                "function": "g",
+                "kind": "Method",
+                "line": 9,
+                "complexity": 14,
+                "over": 2,
+            },
+        ]
+        CyclomaticComplexityScanner._emit_json([Path("src"), Path("lib")], 7, 12, violations)
+        expected = {
+            "directories": ["src", "lib"],
+            "scanned": 7,
+            "max_complexity": 12,
+            "violation_count": 2,
+            "violations": [
+                {"file": "src/a.py", "function": "fn", "line": 3, "complexity": 15, "over": 3},
+                {"file": "src/b.py", "function": "g", "line": 9, "complexity": 14, "over": 2},
+            ],
+        }
+        assert capsys.readouterr().out == json.dumps(expected, indent=2) + "\n"
+
+    def test_emit_text_no_violations_all_clear(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """An empty report joins multiple roots and prints the none lines."""
+        CyclomaticComplexityScanner._emit_text([Path("alpha"), Path("beta")], 3, 12, [])
+        lines = capsys.readouterr().out.splitlines()
+        assert "Scanned 3 files under alpha, beta (max complexity 12)" in lines
+        assert "## Functions exceeding the limit: none" in lines
+        assert "Result: all clear" in lines
+
     # --- Tests for CyclomaticComplexityScanner.main(). ---
 
     def test_main_check_disabled_reports_skipped(
@@ -603,7 +769,10 @@ class TestCyclomaticComplexityScanner:
         rc = CyclomaticComplexityScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
-        assert "SKIPPED" in out
+        assert (
+            "Result: SKIPPED (check_cyclomatic_complexity disabled in settings.json)"
+            in out.splitlines()
+        )
 
     def test_main_check_disabled_json(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -620,6 +789,7 @@ class TestCyclomaticComplexityScanner:
         report = json.loads(capsys.readouterr().out)
         assert rc == 0
         assert report["skipped"] is True
+        assert report["reason"] == "check_cyclomatic_complexity disabled in settings.json"
 
     def test_main_missing_dir(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -631,7 +801,38 @@ class TestCyclomaticComplexityScanner:
         rc = CyclomaticComplexityScanner.main()
         err = capsys.readouterr().err
         assert rc == 1
-        assert "no configured source directories" in err
+        assert err == "Error: no configured source directories exist on disk (src)\n"
+
+    def test_main_missing_dirs_listed_in_error(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Every configured-but-missing root is named, comma-separated."""
+        monkeypatch.chdir(tmp_path)
+        self._write_settings(
+            tmp_path,
+            python={"paths": {"source": ["alpha", "beta"]}, "code_style": {}},
+        )
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        rc = CyclomaticComplexityScanner.main()
+        err = capsys.readouterr().err
+        assert rc == 1
+        assert err == "Error: no configured source directories exist on disk (alpha, beta)\n"
+
+    def test_main_custom_source_root_scanned(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A configured ``python.paths.source`` replaces the default root."""
+        monkeypatch.chdir(tmp_path)
+        self._write_settings(tmp_path, python={"paths": {"source": ["custom"]}, "code_style": {}})
+        root = tmp_path / "custom"
+        root.mkdir()
+        self._write(root / "m.py", self._complex_python(ifs=12))
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        rc = CyclomaticComplexityScanner.main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "Scanned 1 files under custom (max complexity 12)" in out.splitlines()
+        assert "violations found" in out
 
     def test_main_all_clear(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -659,6 +860,7 @@ class TestCyclomaticComplexityScanner:
         rc = CyclomaticComplexityScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
+        assert "Scanned 1 files under src (max complexity 12)" in out.splitlines()
         assert "violations found" in out
         assert "m.py" in out
         assert "fn" in out
@@ -675,9 +877,13 @@ class TestCyclomaticComplexityScanner:
         rc = CyclomaticComplexityScanner.main()
         report = json.loads(capsys.readouterr().out)
         assert rc == 0
+        assert report["directories"] == ["src"]
+        assert report["scanned"] == 1
         assert report["max_complexity"] == 12
         assert report["violation_count"] == 1
+        assert report["violations"][0]["file"] == "src/m.py"
         assert report["violations"][0]["function"] == "fn"
+        assert report["violations"][0]["line"] == 1
         assert report["violations"][0]["complexity"] == 13
         assert report["violations"][0]["over"] == 1
 

@@ -276,7 +276,10 @@ class DriftDetector:
         doc_path = doc_ctx.file_rel_path
         refs = doc_ctx.refs
         current_version = git_ctx.current_version
+        # pragma: no mutate start — falsy current_version yields the same empty list;
+        # _version_is_older(doc, None) raises inside its guarded try and returns False
         if current_version and refs["versions"]:
+            # pragma: no mutate end
             for doc_version in refs["versions"]:
                 if doc_version != current_version and DriftDetector._version_is_older(
                     doc_version, current_version
@@ -307,7 +310,9 @@ class DriftDetector:
         if doc_modified.tzinfo is None:
             doc_modified_utc = doc_modified.replace(tzinfo=UTC)
         else:
+            # pragma: no mutate start — astimezone() preserves the instant; identical subtraction
             doc_modified_utc = doc_modified.astimezone(UTC)
+            # pragma: no mutate end
         days_since = (now - doc_modified_utc).days
         if days_since > 365:
             return [
@@ -357,7 +362,10 @@ class DriftDetector:
             heading_words.update(h.split())
 
         for section in expected:
+            # pragma: no mutate start — a section found in heading_words is always a substring of
+            # its own heading, so the `found` rescue below makes the and/or variant equivalent
             if section not in heading_words and section not in headings:
+                # pragma: no mutate end
                 found = any(section in h for h in headings)
                 if not found:
                     issues.append(
@@ -377,9 +385,11 @@ class DriftDetector:
         """Extract numeric value from a version part, stripping pre-release tags."""
         cleaned = re.sub(r"[^0-9].*$", "", part)
         try:
+            # pragma: no mutate start — int("") hits the except and returns the same 0
             return int(cleaned) if cleaned else 0
+            # pragma: no mutate end
         except ValueError:  # pragma: no cover
-            return 0
+            return 0  # pragma: no mutate — unreachable: cleaned is digits-only
 
     @staticmethod
     def _version_is_older(v1: str, v2: str) -> bool:
@@ -388,10 +398,13 @@ class DriftDetector:
             parts1 = [DriftDetector._parse_version_part(x) for x in v1.split(".")]
             parts2 = [DriftDetector._parse_version_part(x) for x in v2.split(".")]
             max_len = max(len(parts1), len(parts2))
+            # pragma: no mutate start — an extra trailing 0 cannot flip a tuple comparison,
+            # and a non-int pad raises inside the guarded try (returns False either way)
             while len(parts1) < max_len:
                 parts1.append(0)
             while len(parts2) < max_len:
                 parts2.append(0)
+            # pragma: no mutate end
             return tuple(parts1) < tuple(parts2)
         except (ValueError, AttributeError, TypeError):  # pragma: no cover
             return False

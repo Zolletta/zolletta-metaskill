@@ -108,6 +108,12 @@ nav:
           - "Workflows & tools": reference/documentation/workflows-and-tools.md
           - "Scoring & categories": reference/documentation/scoring-and-categories.md
           - "Operational rules": reference/documentation/operational-rules.md
+      - "Grice maxims":
+          - "Overview": reference/documentation/grice/index.md
+          - "Quantity": reference/documentation/grice/quantity.md
+          - "Quality": reference/documentation/grice/quality.md
+          - "Relation": reference/documentation/grice/relation.md
+          - "Manner": reference/documentation/grice/manner.md
       - "Project configuration":
           - "Settings schema": reference/settings-schema.md
           - "Subcommands": reference/subcommands.md

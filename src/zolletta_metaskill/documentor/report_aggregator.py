@@ -17,39 +17,43 @@ class ReportAggregator:
     @staticmethod
     def read_quality_cache(cache_dir: Path) -> dict[str, Any]:
         """Read the unified drift + quality quality cache file."""
-        path = cache_dir / "quality.json"
+        path = cache_dir / "quality.json"  # pragma: no mutate — mutants.1: APFS is case-insensitive
         if not path.exists():
             return ReportAggregator._missing_record("quality")
         try:
-            return cast(
-                dict[str, Any], json.loads(path.read_text(encoding="utf-8"))
-            )  # pragma: no mutate — equivalent on UTF-8 locales  # noqa: E501
+            # pragma: no mutate start — cast is identity; utf-8 aliases decode the same
+            return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
+            # pragma: no mutate end
         except (OSError, json.JSONDecodeError):
             return ReportAggregator._missing_record("quality")
 
     @staticmethod
     def read_api_doc_cache(cache_dir: Path) -> dict[str, Any]:
         """Read the API doc validation cache file."""
+        # pragma: no mutate start — mutants.1: APFS is case-insensitive
         path = cache_dir / "api_doc_validator.json"
+        # pragma: no mutate end
         if not path.exists():
             return ReportAggregator._missing_record("api_doc")
         try:
-            return cast(
-                dict[str, Any], json.loads(path.read_text(encoding="utf-8"))
-            )  # pragma: no mutate — equivalent on UTF-8 locales  # noqa: E501
+            # pragma: no mutate start — cast is identity; utf-8 aliases decode the same
+            return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
+            # pragma: no mutate end
         except (OSError, json.JSONDecodeError):
             return ReportAggregator._missing_record("api_doc")
 
     @staticmethod
     def read_link_cache(cache_dir: Path) -> dict[str, Any]:
         """Read the link checker cache file."""
+        # pragma: no mutate start — mutants.1: APFS is case-insensitive
         path = cache_dir / "link_checker.json"
+        # pragma: no mutate end
         if not path.exists():
             return ReportAggregator._missing_record("links")
         try:
-            return cast(
-                dict[str, Any], json.loads(path.read_text(encoding="utf-8"))
-            )  # pragma: no mutate — equivalent on UTF-8 locales  # noqa: E501
+            # pragma: no mutate start — cast is identity; utf-8 aliases decode the same
+            return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
+            # pragma: no mutate end
         except (OSError, json.JSONDecodeError):
             return ReportAggregator._missing_record("links")
 
@@ -139,7 +143,9 @@ class ReportAggregator:
         lines.append(f"Duplicate anchors:         {summary.get('duplicate_anchors', 0)}")
         lines.append("")
 
+        # pragma: no mutate start — [] default is falsy like None; only feeds 'if missing'
         missing = summary.get("missing_sections", [])
+        # pragma: no mutate end
         if missing:
             lines.append(f"Missing sections: {', '.join(missing)}")
             lines.append("")

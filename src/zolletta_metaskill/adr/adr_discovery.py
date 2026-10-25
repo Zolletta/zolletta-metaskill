@@ -41,7 +41,10 @@ class ADRDiscovery:
         if adrs_path is None:
             return []
 
+        # pragma: no mutate start — `or True` mutant still evaluates docs_dir/adrs_path, `and
+        # False` yields docs_dir either way
         search_dir = docs_dir / adrs_path if adrs_path else docs_dir
+        # pragma: no mutate end
 
         if not search_dir.is_dir():
             return []

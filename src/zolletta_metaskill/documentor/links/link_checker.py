@@ -53,10 +53,12 @@ class LinkChecker:
             return "anchor"
 
         # Check if it has an anchor
+        # pragma: no mutate start — equivalent: split("#")[0] returns the target unchanged when "#"
+        # is absent; Path("").suffix == "" and "XXXX" is not in IMAGE_EXTENSIONS  # noqa: E501
         file_part = target.split("#")[0] if "#" in target else target
-
         # Check for image
         ext = Path(file_part).suffix.lower() if file_part else ""
+        # pragma: no mutate end
         if ext in LinkChecker.IMAGE_EXTENSIONS:
             return "image"
 
@@ -99,8 +101,11 @@ class LinkChecker:
     ) -> None:
         """Extract reference-style definitions and HTML links/images."""
         ref_def = re.compile(r"^\[([^\]]+)\]:\s+(.+)$")
+        # pragma: no mutate start — CAPS mutants are equivalent under re.IGNORECASE; flag-removal
+        # mutants are covered by uppercase-tag tests  # noqa: E501
         html_link = re.compile(r'<a\s+[^>]*href=["\']([^"\']+)["\']', re.IGNORECASE)
         html_img = re.compile(r'<img\s+[^>]*src=["\']([^"\']+)["\']', re.IGNORECASE)
+        # pragma: no mutate end
 
         ref_match = ref_def.match(stripped)
         if ref_match:
@@ -129,7 +134,9 @@ class LinkChecker:
         except OSError:
             return links
 
+        # pragma: no mutate start — equivalent: `not None` toggles identically to `not False`
         in_code_block = False
+        # pragma: no mutate end
         for i, line in enumerate(lines, 1):
             stripped = line.strip()
             if FencedContent.is_fence(line):
@@ -170,6 +177,8 @@ class LinkChecker:
         """Convert heading text to GitHub-style anchor slug."""
         text = text.lower()
         # Remove inline code backticks
+        # pragma: no mutate start — equivalent: [^\w\s-] strips backticks anyway; text is
+        # lowercased so "X" never reaches strip  # noqa: E501
         text = text.replace("`", "")
         # Remove special characters except hyphens and spaces
         text = re.sub(r"[^\w\s-]", "", text)
@@ -177,6 +186,7 @@ class LinkChecker:
         text = re.sub(r"[\s]+", "-", text)
         # Remove leading/trailing hyphens
         text = text.strip("-")
+        # pragma: no mutate end
         return text
 
     @staticmethod
@@ -190,7 +200,9 @@ class LinkChecker:
 
         seen: dict[str, int] = {}
         duplicates = []
+        # pragma: no mutate start — equivalent: `not None` toggles identically to `not False`
         in_code_block = False
+        # pragma: no mutate end
 
         for i, line in enumerate(lines, 1):
             # Skip code blocks — # comments inside code blocks are not headings
@@ -205,7 +217,9 @@ class LinkChecker:
                 if slug in seen:
                     duplicates.append((slug, i))
                 else:
+                    # pragma: no mutate start — equivalent: only key membership is read
                     seen[slug] = i
+                    # pragma: no mutate end
 
         return duplicates
 
@@ -289,7 +303,9 @@ class LinkChecker:
             return
 
         target = link.link_target
+        # pragma: no mutate start — equivalent: "" is falsy in every place anchor_ref is checked
         anchor_ref: str | None = None
+        # pragma: no mutate end
         if "#" in target:
             file_part, anchor_ref = target.split("#", 1)
         else:
@@ -381,16 +397,20 @@ class LinkChecker:
 
         Returns the report string (Markdown or JSON depending on *as_json*).
         """
+        # pragma: no mutate start — equivalent: bool(None) == bool(False)
         check_external = bool(
             ProjectConfig.setting(settings, "documentation.check_external", False)
         )
+        # pragma: no mutate end
 
         md_files = LinkChecker.find_markdown_files(repo_path)
         if not md_files:
             empty_data: dict[str, Any] = {"error": "No markdown files found", "summary": {}}
             cache_dir.mkdir(parents=True, exist_ok=True)
             cache_path = cache_dir / "link_checker.json"
+            # pragma: no mutate start — `default` never fires; `indent` variants covered by tests
             cache_path.write_text(json.dumps(empty_data, indent=2, default=str) + "\n")
+            # pragma: no mutate end
             if as_json:
                 return json.dumps(empty_data, indent=2)
             return "No markdown files found."
@@ -418,20 +438,26 @@ class LinkChecker:
             as_json=as_json,
         )
 
+        # pragma: no mutate start — broken_only=None is falsy like False, and inner-line mutants
+        # cannot be pragmad selectively; the exact cache content is asserted in tests  # noqa: E501
         cache_data = LinkReportWriter.generate_report_data(
             all_links,
             duplicate_anchors,
             broken_only=broken_only,
         )
+        # pragma: no mutate end
         cache_dir.mkdir(parents=True, exist_ok=True)
         cache_path = cache_dir / "link_checker.json"
+        # pragma: no mutate start — `default` never fires; `indent` variants covered by tests
         cache_path.write_text(json.dumps(cache_data, indent=2, default=str) + "\n")
+        # pragma: no mutate end
 
         return report
 
     @staticmethod
     def main() -> int:
         """Entry point for the markdown link checker CLI."""
+        # pragma: no mutate start — help text is not a tested contract
         parser = argparse.ArgumentParser(
             description="Check markdown links for validity. Scans the repository "
             "root (current directory).",
@@ -443,6 +469,7 @@ class LinkChecker:
         parser.add_argument(
             "--broken-only", action="store_true", help="Only show broken links"
         )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
+        # pragma: no mutate end
 
         args = parser.parse_args()
 

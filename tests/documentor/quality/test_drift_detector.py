@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+import os
+import time
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
-from unittest.mock import patch
+from typing import Any, cast
+from unittest.mock import call, patch
 
 import pytest
 
@@ -71,16 +73,55 @@ class TestDriftDetector:
     def test_no_git_history(self, tmp_path: Path) -> None:
         (tmp_path / "README.md").write_text("# Test", encoding="utf-8")
         p = self._patch_git(None)
-        with p[0], p[1]:
+        with p[0] as last_commit, p[1]:
             issues = DriftDetector.detect_drift_for_doc(
                 self._git_ctx(str(tmp_path), (), None),
                 self._settings(),
                 "README.md",
                 [],
             )
-        assert len(issues) == 1
-        assert issues[0]["category"] == "temporal"
-        assert issues[0]["severity"] == "info"
+        assert issues == [
+            {
+                "file": "README.md",
+                "severity": "info",
+                "category": "temporal",
+                "description": "Documentation file has no git history (untracked or new)",
+                "fix_type": "manual",
+            }
+        ]
+        last_commit.assert_called_once_with(str(tmp_path), "README.md")
+
+    def test_docs_readme_is_exempt_from_structure_check(self, tmp_path: Path) -> None:
+        """A README under ``docs/`` never gets a structural issue."""
+        docs = tmp_path / "docs"
+        docs.mkdir()
+        (docs / "README.md").write_text("# Project\n\nSome text.", encoding="utf-8")
+        doc_modified = datetime.now(UTC) - timedelta(days=10)
+        p = self._patch_git(doc_modified)
+        with p[0], p[1]:
+            issues = DriftDetector.detect_drift_for_doc(
+                self._git_ctx(str(tmp_path), (), None),
+                self._settings(),
+                "docs/README.md",
+                [],
+            )
+        assert issues == []
+
+    def test_since_date_is_formatted_commit_date(self, tmp_path: Path) -> None:
+        """``since_date`` is the doc's last commit date formatted as YYYY-MM-DD."""
+        (tmp_path / "mod.py").write_text("x = 1", encoding="utf-8")
+        (tmp_path / "README.md").write_text("See `mod.py`", encoding="utf-8")
+        doc_modified = datetime.now(UTC) - timedelta(days=10)
+        p = self._patch_git(doc_modified, [{"status": "M", "file": "mod.py"}])
+        with p[0] as last_commit, p[1] as changed:
+            DriftDetector.detect_drift_for_doc(
+                self._git_ctx(str(tmp_path), (), None),
+                self._settings(),
+                "README.md",
+                [],
+            )
+        last_commit.assert_called_once_with(str(tmp_path), "README.md")
+        changed.assert_called_once_with(str(tmp_path), doc_modified.strftime("%Y-%m-%d"), "mod.py")
 
     def test_factual_drift_referenced_files(self, tmp_path: Path) -> None:
         (tmp_path / "auth.py").write_text("x = 1", encoding="utf-8")
@@ -246,7 +287,57 @@ class TestDriftDetector:
         )
         assert resolved == ["mod.py"]
 
+    def test_resolve_referenced_files_resolves_relative_to_doc_dir(self, tmp_path: Path) -> None:
+        """A ref that exists only under the doc's directory resolves via that dir."""
+        (tmp_path / "docs" / "sub").mkdir(parents=True)
+        (tmp_path / "docs" / "sub" / "mod.py").write_text("x = 1", encoding="utf-8")
+        resolved = DriftDetector._resolve_referenced_files(
+            self._git_ctx(str(tmp_path)),
+            self._doc_ctx("docs/doc.md", {"files": ["sub/mod.py"]}),
+        )
+        assert resolved == ["docs/sub/mod.py"]
+
     # --- _check_factual_drift severity tiers ---
+
+    @pytest.mark.parametrize(
+        ("count", "expected_severity"),
+        [
+            pytest.param(2, "low", id="two_changed_files_is_low"),
+            pytest.param(5, "medium", id="five_changed_files_is_medium"),
+            pytest.param(6, "high", id="six_changed_files_is_high"),
+        ],
+    )
+    def test_factual_drift_count_returns_exact_issue(
+        self, tmp_path: Path, count: int, expected_severity: str
+    ) -> None:
+        """Boundaries: ``> 2`` is medium and ``> 5`` is high, exclusive."""
+        files = [f"mod{i}.py" for i in range(count)]
+        for f in files:
+            (tmp_path / f).write_text("x = 1", encoding="utf-8")
+        with patch.object(
+            GitHelper,
+            "get_files_changed_since",
+            return_value=[{"status": "M", "file": "x.py"}],
+        ) as changed:
+            issues = DriftDetector._check_factual_drift(
+                self._git_ctx(str(tmp_path)),
+                self._doc_ctx("README.md", {"files": files}, "2026-01-01"),
+            )
+        expected_description = (
+            f"{count} referenced source file(s) changed since doc was last updated: "
+            + ", ".join(files[:5])
+        )
+        assert issues == [
+            {
+                "file": "README.md",
+                "severity": expected_severity,
+                "category": "factual",
+                "description": expected_description,
+                "fix_type": "semi",
+                "details": {"changed_files": files, "change_count": count},
+            }
+        ]
+        assert changed.call_args_list == [call(str(tmp_path), "2026-01-01", f) for f in files]
 
     def test_factual_drift_medium_severity_for_three_files(self, tmp_path: Path) -> None:
         """Three changed referenced files land in the medium severity tier."""
@@ -290,7 +381,140 @@ class TestDriftDetector:
         assert factual[0]["details"]["change_count"] == 25
         assert factual[0]["details"]["changed_dirs"] == ["src"]
 
+    @pytest.mark.parametrize(
+        ("count", "expect_issue"),
+        [
+            pytest.param(20, False, id="exactly_20_changes_has_no_issue"),
+            pytest.param(21, True, id="more_than_20_changes_has_issue"),
+        ],
+    )
+    def test_factual_fallback_threshold_returns_exact_issue(
+        self, tmp_path: Path, count: int, expect_issue: bool
+    ) -> None:
+        """The 20-change fallback threshold is exclusive."""
+        changes = [{"status": "M", "file": f"src/f{i}.py"} for i in range(count)]
+        with patch.object(GitHelper, "get_files_changed_since", return_value=changes) as changed:
+            issues = DriftDetector._check_factual_fallback(
+                self._git_ctx(str(tmp_path)),
+                self._doc_ctx(
+                    "README.md",
+                    since_date="2026-01-01",
+                    associated_code_dirs=("src",),
+                ),
+            )
+        changed.assert_called_once_with(str(tmp_path), "2026-01-01", "src")
+        if not expect_issue:
+            assert issues == []
+            return
+        assert issues == [
+            {
+                "file": "README.md",
+                "severity": "low",
+                "category": "factual",
+                "description": (
+                    "21 code files changed in associated directories since doc was "
+                    "last updated (no specific source files referenced in doc — "
+                    "needs review)"
+                ),
+                "fix_type": "manual",
+                "details": {"changed_dirs": ["src"], "change_count": 21},
+            }
+        ]
+
+    def test_factual_fallback_sums_changes_across_dirs(self, tmp_path: Path) -> None:
+        """Change counts accumulate across associated dirs, not per-dir."""
+
+        def by_dir(_root: str, _since: str, code_dir: str) -> list[dict[str, str]]:
+            return [{"status": "M", "file": f"{code_dir}/f{i}.py"} for i in range(15)]
+
+        with patch.object(GitHelper, "get_files_changed_since", side_effect=by_dir):
+            issues = DriftDetector._check_factual_fallback(
+                self._git_ctx(str(tmp_path)),
+                self._doc_ctx(
+                    "README.md",
+                    since_date="2026-01-01",
+                    associated_code_dirs=("a", "b"),
+                ),
+            )
+        assert len(issues) == 1
+        assert issues[0]["details"]["change_count"] == 30
+        assert sorted(issues[0]["details"]["changed_dirs"]) == ["a", "b"]
+
     # --- referential mode ---
+
+    def test_rename_drift_stale_reference_returns_exact_issue(self, tmp_path: Path) -> None:
+        (tmp_path / "old.py").write_text("# a different file\n", encoding="utf-8")
+        (tmp_path / "new.py").write_text("x = 1", encoding="utf-8")
+        issues = DriftDetector._check_rename_drift(
+            self._git_ctx(str(tmp_path), (("old.py", "new.py"),)),
+            self._settings(include_referential=True),
+            self._doc_ctx("README.md", {"files": ["old.py"]}),
+        )
+        assert issues == [
+            {
+                "file": "README.md",
+                "severity": "high",
+                "category": "referential",
+                "description": (
+                    "References 'old.py' which was renamed to 'new.py', "
+                    "but 'old.py' still exists as a different file "
+                    "— reference may be stale"
+                ),
+                "fix_type": "manual",
+                "details": {"old_path": "old.py", "new_path": "new.py"},
+            }
+        ]
+
+    def test_rename_drift_stuck_rename_returns_exact_issue(self, tmp_path: Path) -> None:
+        (tmp_path / "new.py").write_text("x = 1", encoding="utf-8")
+        issues = DriftDetector._check_rename_drift(
+            self._git_ctx(str(tmp_path), (("old.py", "new.py"),)),
+            self._settings(include_referential=True),
+            self._doc_ctx("README.md", {"files": ["old.py"]}),
+        )
+        assert issues == [
+            {
+                "file": "README.md",
+                "severity": "medium",
+                "category": "referential",
+                "description": "References 'old.py' which was renamed to 'new.py'",
+                "fix_type": "auto",
+                "details": {"old_path": "old.py", "new_path": "new.py"},
+            }
+        ]
+
+    def test_rename_drift_undone_rename_continues_to_next_rename(self, tmp_path: Path) -> None:
+        """A round-trip rename is skipped, and the loop still sees later renames."""
+        (tmp_path / "old.py").write_text("x = 1", encoding="utf-8")
+        issues = DriftDetector._check_rename_drift(
+            self._git_ctx(str(tmp_path), (("old.py", "new.py"), ("gone.py", "dest.py"))),
+            self._settings(include_referential=True),
+            self._doc_ctx("README.md", {"files": ["old.py", "gone.py"]}),
+        )
+        assert issues == [
+            {
+                "file": "README.md",
+                "severity": "medium",
+                "category": "referential",
+                "description": "References 'gone.py' which was renamed to 'dest.py'",
+                "fix_type": "auto",
+                "details": {"old_path": "gone.py", "new_path": "dest.py"},
+            }
+        ]
+
+    # --- _resolves ---
+
+    def test_resolves_doc_dir_only_returns_true(self, tmp_path: Path) -> None:
+        (tmp_path / "docs" / "sub").mkdir(parents=True)
+        (tmp_path / "docs" / "sub" / "f.py").write_text("x = 1", encoding="utf-8")
+        assert DriftDetector._resolves(str(tmp_path), "docs", "sub/f.py") is True
+
+    def test_resolves_repo_root_only_returns_true(self, tmp_path: Path) -> None:
+        (tmp_path / "f.py").write_text("x = 1", encoding="utf-8")
+        assert DriftDetector._resolves(str(tmp_path), "docs", "f.py") is True
+
+    def test_resolves_neither_returns_false(self, tmp_path: Path) -> None:
+        assert DriftDetector._resolves(str(tmp_path), "docs", "f.py") is False
 
     def test_rename_drift_referential_mode_flags_removed_file(self, tmp_path: Path) -> None:
         """In referential mode a renamed-and-deleted file yields a medium issue."""
@@ -348,6 +572,49 @@ class TestDriftDetector:
         )
         assert issues == []
 
+    def test_broken_refs_doc_dir_reference_returns_empty_list(self, tmp_path: Path) -> None:
+        """A ref that resolves only relative to the doc dir is not broken."""
+        (tmp_path / "docs" / "sub").mkdir(parents=True)
+        (tmp_path / "docs" / "sub" / "note.md").write_text("notes", encoding="utf-8")
+        issues = DriftDetector._check_broken_refs(
+            self._git_ctx(str(tmp_path)),
+            self._doc_ctx("docs/doc.md", {"files": ["sub/note.md"]}),
+        )
+        assert issues == []
+
+    def test_broken_refs_missing_reference_returns_exact_issue(self, tmp_path: Path) -> None:
+        issues = DriftDetector._check_broken_refs(
+            self._git_ctx(str(tmp_path)),
+            self._doc_ctx("docs/doc.md", {"files": ["gone.md"]}),
+        )
+        assert issues == [
+            {
+                "file": "docs/doc.md",
+                "severity": "medium",
+                "category": "referential",
+                "description": "References non-existent file: gone.md",
+                "fix_type": "auto",
+            }
+        ]
+
+    # --- check_readme_structure ---
+
+    def test_check_version_drift_older_doc_version_returns_exact_issue(self) -> None:
+        issues = DriftDetector._check_version_drift(
+            self._git_ctx("/nonexistent", (), "2.0.0"),
+            self._doc_ctx("README.md", {"versions": ["1.0.0"]}),
+        )
+        assert issues == [
+            {
+                "file": "README.md",
+                "severity": "medium",
+                "category": "temporal",
+                "description": "References version 1.0.0, current is 2.0.0",
+                "fix_type": "auto",
+                "details": {"doc_version": "1.0.0", "current_version": "2.0.0"},
+            }
+        ]
+
     # --- check_readme_structure ---
 
     def test_version_drift_same_version_not_flagged(self, tmp_path: Path) -> None:
@@ -396,6 +663,25 @@ class TestDriftDetector:
         assert "Installation" in sections
         assert "Usage" in sections
         assert "License" in sections
+
+    def test_check_readme_structure_missing_sections_returns_exact_issues(
+        self, tmp_path: Path
+    ) -> None:
+        (tmp_path / "README.md").write_text("# Project\n\nSome text.", encoding="utf-8")
+        issues = DriftDetector.check_readme_structure(
+            self._git_ctx(str(tmp_path)), self._doc_ctx("README.md")
+        )
+        assert {i["description"] for i in issues} == {
+            "README missing recommended section: Installation",
+            "README missing recommended section: Usage",
+            "README missing recommended section: License",
+        }
+        for issue in issues:
+            assert set(issue) == {"file", "severity", "category", "description", "fix_type"}
+            assert issue["file"] == "README.md"
+            assert issue["severity"] == "low"
+            assert issue["category"] == "structural"
+            assert issue["fix_type"] == "manual"
 
     def test_all_sections_present(self, tmp_path: Path) -> None:
         (tmp_path / "README.md").write_text(
@@ -451,8 +737,44 @@ class TestDriftDetector:
         if expected_severity is None:
             assert issues == []
             return
+        assert issues == [
+            {
+                "file": "README.md",
+                "severity": expected_severity,
+                "category": "temporal",
+                "description": f"Documentation not updated in {days_ago} days",
+                "fix_type": "manual",
+                "details": {
+                    "days_since_update": days_ago,
+                    "last_updated": "2026-01-01",
+                },
+            }
+        ]
+
+    def test_temporal_drift_aware_datetime_is_normalized_to_utc(self) -> None:
+        """An aware ``doc_modified`` keeps its instant, not its wall clock.
+
+        The instant is 365 days and 20 hours ago — still ``medium``. Reading
+        the UTC-10 wall clock as UTC instead would add ten hours and cross
+        into ``high``.
+        """
+        old_tz = os.environ.get("TZ")
+        os.environ["TZ"] = "HST10"
+        time.tzset()
+        try:
+            instant = datetime.now(UTC) - timedelta(days=365, hours=20)
+            doc_modified = instant.astimezone(timezone(timedelta(hours=-10)))
+            issues = DriftDetector._check_temporal_drift(
+                self._doc_ctx("README.md", since_date="2026-01-01"), doc_modified
+            )
+        finally:
+            if old_tz is None:
+                os.environ.pop("TZ", None)
+            else:  # pragma: no cover — TZ is unset in the test environment
+                os.environ["TZ"] = old_tz
+            time.tzset()
         assert len(issues) == 1
-        assert issues[0]["severity"] == expected_severity
+        assert issues[0]["severity"] == "medium"
 
     # --- _parse_version_part / _version_is_older ---
 
@@ -478,8 +800,19 @@ class TestDriftDetector:
             pytest.param("1.0.1", "1.0", False, id="shorter_second_is_false"),
             pytest.param("1.0.0-alpha", "1.0.0", False, id="prerelease_is_false"),
             pytest.param("", "1.0.0", True, id="empty_string_is_true"),
+            pytest.param("1.10.0", "1.9.0", False, id="minor_ten_is_not_older"),
+            pytest.param("1.0.0", "1.0", False, id="trailing_zero_is_not_older"),
         ],
     )
     def test_version_is_older_pair_returns_expected(self, v1: str, v2: str, expected: bool) -> None:
         """An empty version parses to ``[0]``, so it is older than every release."""
         assert DriftDetector._version_is_older(v1, v2) is expected
+
+    def test_version_is_older_non_string_input_returns_false(self) -> None:
+        """Unparseable input hits the ``except`` and reports no drift."""
+        assert DriftDetector._version_is_older(cast(str, None), "1.0.0") is False
+
+    def test_version_is_older_unparseable_part_counts_as_zero(self) -> None:
+        """``return 1`` mutant on the empty-part fallback flips this comparison."""
+        assert DriftDetector._version_is_older("1.0", "1.x") is False
+        assert DriftDetector._version_is_older("1.x", "1.1") is True

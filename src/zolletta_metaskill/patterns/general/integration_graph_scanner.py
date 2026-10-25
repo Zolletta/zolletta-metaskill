@@ -171,7 +171,9 @@ class IntegrationGraphScanner:
                     for name in imp.names or [imp.module]:
                         module_hits[candidate].append(name)
             for name in imp.names:
+                # pragma: no mutate start — empty module: ``".name"`` splits to ``name``'s parts
                 dotted = f"{imp.module}.{name}" if imp.module else name
+                # pragma: no mutate end
                 for candidate in IntegrationGraphScanner._python_candidates(base, dotted):
                     if IntegrationGraphScanner._exists_exact(candidate):
                         # The name is a submodule — attribute it to the
@@ -307,8 +309,12 @@ class IntegrationGraphScanner:
         except (OSError, ImportError):
             return kinds
 
+        # pragma: no mutate start — ``_text`` only decodes identifier/type node
+        # spans (ASCII), so the encoding default and error-handler mutants are unobservable
         def _text(node: Any) -> str:
             return source[node.start_byte : node.end_byte].decode("utf-8", errors="replace")
+
+        # pragma: no mutate end
 
         stack = [tree.root_node]
         while stack:
@@ -500,8 +506,9 @@ class IntegrationGraphScanner:
         print("\nResult: report generated (triage artifact)")
 
     @staticmethod
-    def main() -> int:  # pragma: no mutate — help text is not a tested contract
+    def main() -> int:
         """Entry point for the integration graph scanner CLI."""
+        # pragma: no mutate start — help text is not a tested contract
         parser = argparse.ArgumentParser(
             description="Emit the internal import graph for coupling "
             "triage (Balanced Coupling model). Scan roots and languages "
@@ -510,8 +517,9 @@ class IntegrationGraphScanner:
         parser.add_argument(
             "--json",
             action="store_true",
-            help="Output as JSON instead of text",  # pragma: no mutate — help text untested
+            help="Output as JSON instead of text",
         )
+        # pragma: no mutate end
         args = parser.parse_args()
 
         settings = ProjectConfig.load_settings(IntegrationGraphScanner.DEFAULT_SETTINGS_PATH)
@@ -528,8 +536,11 @@ class IntegrationGraphScanner:
             )
             return 1
 
+        # pragma: no mutate start — ``extensions=None`` re-resolves inside
+        # ``scan_directory`` from the same settings file ``main`` already loaded
         extensions = ProjectConfig.extensions_for(languages)
         result = IntegrationGraphScanner.scan_directory(roots, extensions=extensions)
+        # pragma: no mutate end
         if args.json:
             IntegrationGraphScanner._emit_json(result, roots)
         else:

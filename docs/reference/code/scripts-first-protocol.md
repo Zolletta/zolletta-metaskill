@@ -6,7 +6,7 @@ skills: [review, patterns, documentor, python-*, php-*]
 
 # Scripts-first execution protocol
 
-Shared rules for every subcommand that runs deterministic scanning scripts (scanners, ruff, mypy, ty, vulture, drift tools). This file is referenced by `python-code-style`, `python-testing-style`, `patterns`, `documentor`, and the `review` orchestrator. It applies identically to **standalone subcommand invocations** (i.e. `/zolletta-metaskill documentor`) and to subcommand subagents launched by `/zolletta-metaskill review`.
+Shared rules for every subcommand that runs deterministic scanning scripts (scanners, ruff, mypy, ty, vulture, drift tools). This file is referenced by `python-code-style`, `python-testing-style`, `patterns`, `documentor`, `grice`, and the `review` orchestrator. It applies identically to **standalone subcommand invocations** (i.e. `/zolletta-metaskill documentor`) and to subcommand subagents launched by `/zolletta-metaskill review`.
 
 > **Companion to [review-mode.md](review-mode.md)**: review-mode defines *what* to do with diagnostics (two-bucket classification, no fixes). This protocol defines *how* to run the scripts that produce those diagnostics — batch-run them, cache their output, then apply judgment only to the items scripts defer.
 
@@ -54,10 +54,11 @@ Every review run (standalone or orchestrated) creates a timestamped run folder:
 Only for items the scripts explicitly defer to judgment. Read source files **only** for these specific items, not broadly. The judgment items per subcommand:
 
 | Subcommand             | Judgment items (Phase C)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-|------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `patterns`             | "Reason to change" test on top-N `class_metrics` candidates **[JUDGMENT]**; DIP composition-root suppression for flagged classes that wire DI containers **[JUDGMENT]**; "Missing tests" coverage cross-check (compare `cache/test_structure.md` "Missing tests" table against `cache/pytest_cov.txt` — downgrade to informational if coverage >50%) **[JUDGMENT]**; coupling assessment per `balanced-coupling.md` — classify integration strength/distance/volatility for the cross-module edges in `cache/integration_graph.json`, apply the balance rule, flag unbalanced+volatile only, note inferred classifications as assumptions **[JUDGMENT]** |
 | `documentor`           | False-positive filtering for known FP patterns (code-fence anchors in `cache/link_checker.json`, phantom class methods in `cache/api_doc_validator.json`, parameter name collisions) — only open source files for FP candidates **[JUDGMENT]**                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `python-testing-style` | Indirect-coverage tracing for modules below the gap threshold in `cache/pytest_cov.txt` (use `tokensave_callers` or grep to check if callers are real vs mocked) **[JUDGMENT]**; survived-mutant → suggested-test-name recommendations from `cache/mutmut_survived.txt` **[JUDGMENT]**                                                                                                                                                                                                                                                                                                                                                                   |
+| `grice`                | None — the report is assembled entirely from `cache/grice.json`; the indices are deterministic and the findings already carry their lines **[JUDGMENT]** only for severity and grade                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `python-code-style`    | Vulture false-positive review for dynamically-accessed methods in `cache/vulture.txt` **[JUDGMENT]**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `php-code-style`       | PHPStan/Psalm false-positive review for dynamically-accessed methods **[JUDGMENT]**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `php-testing-style`    | PHPUnit coverage gap indirect-coverage tracing **[JUDGMENT]**; escaped-mutant → suggested-test-name recommendations from `cache/infection.txt` **[JUDGMENT]**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -79,7 +80,7 @@ The canonical script reference is [`scripts.md`](scripts.md) — refer to it for
 ### `python-code-style`
 
 | Script                                 | Cache file                        | Condition                                       |
-|----------------------------------------|-----------------------------------|-------------------------------------------------|
+| -------------------------------------- | --------------------------------- | ----------------------------------------------- |
 | `ruff check`                           | `cache/ruff.txt`                  | `python.tools.ruff.available`                   |
 | `ruff format --check`                  | `cache/ruff_format.txt`           | `python.tools.ruff.available`                   |
 | `ty check`                             | `cache/ty.txt`                    | `python.tools.ty.available`                     |
@@ -97,7 +98,7 @@ The canonical script reference is [`scripts.md`](scripts.md) — refer to it for
 ### `python-testing-style`
 
 | Script                                      | Cache file                  | Condition                                                                                                |
-|---------------------------------------------|-----------------------------|----------------------------------------------------------------------------------------------------------|
+| ------------------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `pytest --cov --cov-report=term-missing -q` | `cache/pytest_cov.txt`      | `python.tools.pytest.available`                                                                          |
 | `test_naming_scanner.py --json`             | `cache/test_naming.json`    | `python.testing.check_test_naming`                                                                       |
 | `mutmut run`                                | `cache/mutmut.txt`          | `python.tools.mutmut.available` AND `python.testing.check_mutation_testing` AND `pytest --cov` succeeded |
@@ -106,7 +107,7 @@ The canonical script reference is [`scripts.md`](scripts.md) — refer to it for
 ### `patterns`
 
 | Script                                | Cache file                        | Condition       |
-|---------------------------------------|-----------------------------------|-----------------|
+| ------------------------------------- | --------------------------------- | --------------- |
 | `class_metrics_scanner.py`            | `cache/class_metrics.txt`         | always (Python) |
 | `test_god_classes_scanner.py`         | `cache/test_god_classes.txt`      | always (Python) |
 | `one_class_per_file_scanner.py`       | `cache/one_class_per_file.txt`    | always (Python) |
@@ -124,18 +125,26 @@ For PHP projects, run the PHP equivalents from `src/zolletta_metaskill/patterns/
 `documentor_client.py` runs all three tools and prints the aggregated report; each tool writes its own cache file:
 
 | Script                         | Cache file                     | Condition |
-|--------------------------------|--------------------------------|-----------|
-| `documentor_client.py --json`     | (aggregates all caches)        | always    |
+| ------------------------------ | ------------------------------ | --------- |
+| `documentor_client.py --json`  | (aggregates all caches)        | always    |
 | `quality/quality_review.py`    | `cache/quality.json`           | always    |
 | `api_doc/api_doc_validator.py` | `cache/api_doc_validator.json` | always    |
 | `links/link_checker.py`        | `cache/link_checker.json`      | always    |
 
 See [`documentation/operational-rules.md`](../documentation/operational-rules.md) for tool invocation conventions (run from the project root, `documentation.include_referential` suppression, etc.).
 
+### `grice`
+
+| Script                          | Cache file         | Condition                   |
+| ------------------------------- | ------------------ | --------------------------- |
+| `grice/grice_scanner.py --json` | `cache/grice.json` | `documentation.check_grice` |
+
+The scanner writes `cache/grice.json` itself, into the run folder it resolves from `settings.json`, so the redirect is only a safeguard. When the toggle is off it prints `SKIPPED` and exits 0 — record that in the report instead of grading it.
+
 ### `php-code-style`
 
 | Script                                  | Cache file                        | Condition                                    |
-|-----------------------------------------|-----------------------------------|----------------------------------------------|
+| --------------------------------------- | --------------------------------- | -------------------------------------------- |
 | `vendor/bin/phpstan analyse`            | `cache/phpstan.txt`               | `php.tools.phpstan.available`                |
 | `vendor/bin/psalm`                      | `cache/psalm.txt`                 | `php.tools.psalm.available`                  |
 | `vendor/bin/php-cs-fixer fix --dry-run` | `cache/php_cs_fixer.txt`          | `php.tools.php_cs_fixer.available`           |
@@ -149,7 +158,7 @@ See [`documentation/operational-rules.md`](../documentation/operational-rules.md
 ### `php-testing-style`
 
 | Script                               | Cache file              | Condition                                                                                               |
-|--------------------------------------|-------------------------|---------------------------------------------------------------------------------------------------------|
+| ------------------------------------ | ----------------------- | ------------------------------------------------------------------------------------------------------- |
 | `vendor/bin/phpunit --coverage-text` | `cache/phpunit_cov.txt` | `php.tools.phpunit.available`                                                                           |
 | `vendor/bin/infection`               | `cache/infection.txt`   | `php.tools.infection.available` AND `php.testing.check_mutation_testing` AND the coverage run succeeded |
 
@@ -158,7 +167,7 @@ See [`documentation/operational-rules.md`](../documentation/operational-rules.md
 When running as part of `/zolletta-metaskill review`, the orchestrator runs these shared scripts once and writes them to `cache/` before launching subagents. Subagents read from cache instead of re-running them:
 
 | Script                          | Cache file                     | Used by                         |
-|---------------------------------|--------------------------------|---------------------------------|
+| ------------------------------- | ------------------------------ | ------------------------------- |
 | `one_class_per_file_scanner.py` | `cache/one_class_per_file.txt` | `patterns`, `python-code-style` |
 | `test_structure_scanner.py`     | `cache/test_structure.md`      | `patterns`                      |
 

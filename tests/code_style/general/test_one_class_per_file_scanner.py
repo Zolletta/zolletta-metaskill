@@ -59,6 +59,12 @@ class TestOneClassPerFileScanner:
         # split on "_" produces ["", "class"] -> "" + "Class"
         assert OneClassPerFileScanner._snake_to_pascal("_class") == "Class"
 
+    # --- Tests for OneClassPerFileScanner._names_match(). ---
+
+    def test_names_match_snake_case_stem_input_returns_true(self) -> None:
+        """A class named exactly like the snake_case stem matches, not only PascalCase."""
+        assert OneClassPerFileScanner._names_match("my_file", "my_file") is True
+
     # --- Tests for OneClassPerFileScanner.scan_file() — now returns list[Finding]. ---
 
     def test_single_class_no_violation(self, tmp_path: Path) -> None:
@@ -73,21 +79,32 @@ class TestOneClassPerFileScanner:
         f = tmp_path / "multi.py"
         f.write_text("class Foo:\n    pass\nclass Bar:\n    pass\n")
         findings = OneClassPerFileScanner.scan_file(f)
-        assert len(findings) == 1
-        assert findings[0].category == "multi_class"
-        assert findings[0].severity == "high"
-        assert "Foo" in findings[0].description
-        assert "Bar" in findings[0].description
-        assert "2 classes" in findings[0].description
+        assert findings == [
+            Finding(
+                file=str(f),
+                line=1,
+                category="multi_class",
+                severity="high",
+                description="2 classes: Foo, Bar",
+                fix_type="manual",
+            )
+        ]
 
     def test_scan_file_zero_classes_returns_low(self, tmp_path: Path) -> None:
         """A file with no classes produces a zero_class finding."""
         f = tmp_path / "utils.py"
         f.write_text("def helper():\n    return 42\n")
         findings = OneClassPerFileScanner.scan_file(f)
-        assert len(findings) == 1
-        assert findings[0].category == "zero_class"
-        assert findings[0].severity == "low"
+        assert findings == [
+            Finding(
+                file=str(f),
+                line=0,
+                category="zero_class",
+                severity="low",
+                description="No classes (utility/helper module)",
+                fix_type="skip",
+            )
+        ]
 
     def test_syntax_error_returns_empty(self, tmp_path: Path) -> None:
         """A syntax-error file produces no findings (skipped)."""
@@ -130,11 +147,19 @@ class TestOneClassPerFileScanner:
         f = tmp_path / "user.py"
         f.write_text("class WrongName:\n    pass\n")
         findings = OneClassPerFileScanner.scan_file(f)
-        assert len(findings) == 1
-        assert findings[0].category == "name_mismatch"
-        assert findings[0].severity == "medium"
-        assert "WrongName" in findings[0].description
-        assert "User" in findings[0].description  # expected name
+        assert findings == [
+            Finding(
+                file=str(f),
+                line=1,
+                category="name_mismatch",
+                severity="medium",
+                description=(
+                    "Class 'WrongName' doesn't match filename. "
+                    "Expected 'User' (or rename file to match class)"
+                ),
+                fix_type="manual",
+            )
+        ]
 
     def test_class_name_matches_filename(self, tmp_path: Path) -> None:
         """A class name matching the PascalCase filename produces no findings."""
@@ -199,7 +224,14 @@ class TestOneClassPerFileScanner:
         rc = OneClassPerFileScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
-        assert "SKIPPED" in out
+        assert out.splitlines() == [
+            "=" * 70,
+            "1 CLASS 1 FILE, 1 FILE 1 CLASS — VALIDATION REPORT",
+            "=" * 70,
+            "",
+            "Result: SKIPPED (check_one_class_per_file disabled in settings.json)",
+            "",
+        ]
 
     def test_main_check_disabled_json(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -211,7 +243,10 @@ class TestOneClassPerFileScanner:
         rc = OneClassPerFileScanner.main()
         report = json.loads(capsys.readouterr().out)
         assert rc == 0
-        assert report["skipped"] is True
+        assert report == {
+            "skipped": True,
+            "reason": "check_one_class_per_file disabled in settings.json",
+        }
 
     def test_main_missing_dir(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -223,7 +258,7 @@ class TestOneClassPerFileScanner:
         rc = OneClassPerFileScanner.main()
         err = capsys.readouterr().err
         assert rc == 1
-        assert "no configured source directories" in err
+        assert err == "Error: no configured source directories exist on disk\n"
 
     def test_main_all_clear(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -317,12 +352,24 @@ class TestOneClassPerFileScanner:
         (root / "multi.py").write_text("class Foo:\n    pass\nclass Bar:\n    pass\n")
         monkeypatch.setattr(sys, "argv", ["prog", "--json"])
         rc = OneClassPerFileScanner.main()
-        report = json.loads(capsys.readouterr().out)
+        out = capsys.readouterr().out
+        expected = {
+            "directories": ["src"],
+            "scanned": 1,
+            "violation_count": 1,
+            "violations": [
+                {
+                    "file": "src/multi.py",
+                    "line": 1,
+                    "category": "multi_class",
+                    "severity": "high",
+                    "description": "2 classes: Foo, Bar",
+                }
+            ],
+        }
         assert rc == 0
-        assert report["directories"] == ["src"]
-        assert report["scanned"] == 1
-        assert report["violation_count"] == 1
-        assert report["violations"][0]["category"] == "multi_class"
+        assert json.loads(out) == expected
+        assert out == json.dumps(expected, indent=2) + "\n"
 
     def test_main_syntax_error_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -439,6 +486,23 @@ class TestOneClassPerFileScanner:
         assert rc == 0
         assert "all clear" in out
 
+    def test_main_custom_source_root_reports_lib_directory(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """python.paths.source overrides the default 'src' root."""
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path, python={"code_style": {}, "paths": {"source": ["lib"]}})
+        root = tmp_path / "lib"
+        root.mkdir()
+        (root / "__init__.py").write_text("")
+        (root / "user.py").write_text("class User:\n    pass\n")
+        monkeypatch.setattr(sys, "argv", ["prog", "--json"])
+        rc = OneClassPerFileScanner.main()
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["directories"] == ["lib"]
+        assert report["scanned"] == 1
+
     # --- Test-root scanning (check_one_class_per_test_file). ---
 
     def test_scan_file_acronym_cased_class_matches_filename(self, tmp_path: Path) -> None:
@@ -478,6 +542,7 @@ class TestOneClassPerFileScanner:
         report = json.loads(capsys.readouterr().out)
         assert rc == 0
         assert report["directories"] == ["src", "tests"]
+        assert report["scanned"] == 2
         assert report["violation_count"] == 1
         assert report["violations"][0]["category"] == "multi_class"
         assert "test_user.py" in report["violations"][0]["file"]
@@ -604,6 +669,48 @@ class TestOneClassPerFileScanner:
         assert rc == 0
         assert report["violation_count"] == 1
 
+    def test_main_custom_test_root_scans_spec_directory(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """python.paths.tests overrides the default 'tests' root."""
+        monkeypatch.chdir(tmp_path)
+        _write_settings(
+            tmp_path,
+            python={"code_style": {}, "paths": {"source": ["src"], "tests": ["spec"]}},
+        )
+        root = tmp_path / "src"
+        root.mkdir()
+        (root / "__init__.py").write_text("")
+        (root / "user.py").write_text("class User:\n    pass\n")
+        spec = tmp_path / "spec"
+        spec.mkdir()
+        (spec / "test_bad.py").write_text("class Foo:\n    pass\nclass Bar:\n    pass\n")
+        monkeypatch.setattr(sys, "argv", ["prog", "--json"])
+        rc = OneClassPerFileScanner.main()
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["directories"] == ["src", "spec"]
+        assert report["violation_count"] == 1
+
+    # --- Tests for OneClassPerFileScanner._collect_test_files(). ---
+
+    def test_collect_test_files_init_file_is_skipped(self, tmp_path: Path) -> None:
+        """__init__.py under a test root is never collected."""
+        (tmp_path / "__init__.py").write_text("class Foo:\n    pass\n")
+        result = OneClassPerFileScanner._collect_test_files([tmp_path], {".py"}, [])
+        assert result == []
+
+    def test_collect_test_files_seen_file_keeps_scanning(self, tmp_path: Path) -> None:
+        """A path already scanned as source is skipped, not a halt to the iteration."""
+        src = tmp_path / "src"
+        src.mkdir()
+        seen = src / "user.py"
+        seen.write_text("class User:\n    pass\n")
+        extra = tmp_path / "zzz.py"
+        extra.write_text("class Zzz:\n    pass\n")
+        result = OneClassPerFileScanner._collect_test_files([tmp_path], {".py"}, [seen])
+        assert result == [extra]
+
     # --- Text-output contract. ---
 
     def test_emit_text_matches_committed_contract(
@@ -646,3 +753,22 @@ class TestOneClassPerFileScanner:
         ]
         OneClassPerFileScanner._emit_text(findings, report_zero=True)
         text_contract("code_style/general/one_class_per_file_scanner.txt", capsys.readouterr().out)
+
+    def test_emit_text_no_findings_reports_none_sections(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Empty findings print each ``none`` section and the all-clear result."""
+        OneClassPerFileScanner._emit_text([], report_zero=True)
+        assert capsys.readouterr().out.splitlines() == [
+            "=" * 70,
+            "1 CLASS 1 FILE, 1 FILE 1 CLASS — VALIDATION REPORT",
+            "=" * 70,
+            "",
+            "## Files with 2+ classes: none",
+            "",
+            "## Class name != filename: none",
+            "",
+            "## Files with 0 classes: none",
+            "",
+            "Result: all clear",
+        ]

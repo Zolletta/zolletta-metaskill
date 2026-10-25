@@ -145,9 +145,12 @@ class QualityReview:
 
         min_sev_map = DriftDetector.SEVERITY_ORDER
         min_sev = min_sev_map.get(min_severity, 3)
+        # pragma: no mutate start — sentinel 99≈100: both exceed every threshold (min_sev ≤ 4);
+        # a missing/None default crashes the run() call site, which the severity-filter test covers
         filtered_issues = [
             i for i in all_issues if min_sev_map.get(i.get("severity", "info"), 99) <= min_sev
         ]
+        # pragma: no mutate end
 
         report = QualityReportWriter.generate_report(
             repo_path, all_scores, filtered_issues, as_json=True

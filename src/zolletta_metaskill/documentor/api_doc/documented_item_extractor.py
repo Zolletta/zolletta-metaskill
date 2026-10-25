@@ -26,7 +26,13 @@ class DocumentedItemExtractor:
             return params
         for p in param_str.split(","):
             p = p.strip()
-            if p and p not in ("self", "cls", "..."):
+            # pragma: no mutate start — a mutated "..." entry still fails isidentifier() below
+            if p and p not in (
+                "self",
+                "cls",
+                "...",
+            ):
+                # pragma: no mutate end
                 parts = p.split(":")
                 param_name = parts[0].strip().split("=")[0].strip()
                 if param_name and param_name.replace("*", "").isidentifier():
@@ -67,14 +73,18 @@ class DocumentedItemExtractor:
         heading_func = re.compile(r"^#{1,6}\s+`?(\w+(?:\.\w+)*)\(`?.*\)?`?\s*$")
         param_pattern = re.compile(r"^\s*[-*]\s+`(\w+)`\s*(?:\(([^)]+)\))?\s*(?::|--)?\s*(.*)")
 
-        current_item = None
+        current_item = None  # pragma: no mutate — falsy sentinel unobservable here
+        # pragma: no mutate start — reassigned to [] as soon as a heading makes it reachable
         current_params: list[dict[str, Any]] = []
+        # pragma: no mutate end
 
         for i, line in enumerate(lines):
             match = heading_func.match(line)
             if match:
+                # pragma: no mutate start — current_item is always in items when set
                 if current_item and current_item in items:
                     items[current_item]["parameters"] = current_params
+                # pragma: no mutate end
 
                 func_name = match.group(1)
                 items[func_name] = {
@@ -101,8 +111,10 @@ class DocumentedItemExtractor:
                     }
                 )
 
+        # pragma: no mutate start — same invariant as the flush above
         if current_item and current_item in items:
             items[current_item]["parameters"] = current_params
+        # pragma: no mutate end
 
         return items
 

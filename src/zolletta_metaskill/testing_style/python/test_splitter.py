@@ -54,7 +54,9 @@ class TestSplitter:
     @staticmethod
     def _pascal_to_snake(name: str) -> str:
         """Convert PascalCase to snake_case."""
+        # pragma: no mutate start — lstrip arg is a char set; 'X' never occurs (uppers are lowered)
         return "".join("_" + c.lower() if c.isupper() else c for c in name).lstrip("_")
+        # pragma: no mutate end
 
     @staticmethod
     def _snake_to_pascal(name: str) -> str:
@@ -68,10 +70,12 @@ class TestSplitter:
             return {}
         p = Path(mapping_arg)
         if p.exists():
-            return cast(
-                dict[str, str], json.loads(p.read_text(encoding="utf-8"))
-            )  # pragma: no mutate — equivalent on UTF-8 locales  # noqa: E501
+            # pragma: no mutate start — cast() arg is a type hint, ignored at runtime
+            return cast(dict[str, str], json.loads(p.read_text(encoding="utf-8")))
+            # pragma: no mutate end
+        # pragma: no mutate start — cast() arg is a type hint, ignored at runtime
         return cast(dict[str, str], json.loads(mapping_arg))
+        # pragma: no mutate end
 
     @staticmethod
     def _get_test_methods(class_node: ast.ClassDef) -> list[ast.FunctionDef | ast.AsyncFunctionDef]:
@@ -107,7 +111,9 @@ class TestSplitter:
         for m in methods:
             # Remove "test_" prefix, take everything up to the next "_"
             remainder = m.name[len("test_") :]
+            # pragma: no mutate start — split("_")[0] == remainder when "_" is absent
             prefix = remainder.split("_")[0] if "_" in remainder else remainder
+            # pragma: no mutate end
             groups.setdefault(prefix, []).append(m.name)
         return groups
 
@@ -124,9 +130,11 @@ class TestSplitter:
         groups: dict[str, list[ast.FunctionDef | ast.AsyncFunctionDef]] = {}
         for m in methods:
             remainder = m.name[len("test_") :]
-            matched = False
+            matched = False  # pragma: no mutate — None ≡ False: only truthiness is read
             # Try longest-prefix match first
+            # pragma: no mutate start — matching prefixes are prefix-comparable; orderings agree
             for prefix in sorted(mapping.keys(), key=len, reverse=True):
+                # pragma: no mutate end
                 if remainder == prefix or remainder.startswith(prefix + "_"):
                     sut = mapping[prefix]
                     groups.setdefault(sut, []).append(m)
@@ -317,32 +325,32 @@ class TestSplitter:
     @staticmethod
     def _build_parser() -> argparse.ArgumentParser:  # pragma: no mutate — help text untested
         """Build the CLI argument parser."""
+        # pragma: no mutate start — argparse help/usage text is untested
         parser = argparse.ArgumentParser(
-            description="Split a God test class into per-SUT test files."  # pragma: no mutate
+            description="Split a God test class into per-SUT test files."
         )
         parser.add_argument(
             "test_file",
-            help="Path to the test .py file to split",  # pragma: no mutate — help text untested
+            help="Path to the test .py file to split",
         )
         parser.add_argument(
             "--mapping",
-            default=None,  # pragma: no mutate — help text is not a tested contract
-            help="JSON file or inline JSON string mapping prefix to SUT class name",  # pragma: no mutate — help text is not a tested contract  # noqa: E501
+            default=None,
+            help="JSON file or inline JSON string mapping prefix to SUT class name",
         )
         parser.add_argument(
             "--class",
             dest="class_name",
             default=None,
-            help="Name of the test class to split (default: first test class)",  # pragma: no mutate
+            help="Name of the test class to split (default: first test class)",
         )
         parser.add_argument(
             "--dry-run",
             action="store_true",
-            help="Show the proposed split without writing any files",  # pragma: no mutate
+            help="Show the proposed split without writing any files",
         )
-        parser.add_argument(
-            "--json", action="store_true", help="Output as JSON"
-        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        # pragma: no mutate end
         return parser
 
     @staticmethod

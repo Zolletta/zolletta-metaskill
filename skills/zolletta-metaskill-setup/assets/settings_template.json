@@ -14,6 +14,9 @@
     "documentor": {
       "model": null
     },
+    "grice": {
+      "model": null
+    },
     "python-code-style": {
       "model": null
     },

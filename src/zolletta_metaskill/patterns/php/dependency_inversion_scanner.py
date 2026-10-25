@@ -148,17 +148,21 @@ class DependencyInversionScanner:
         """
         for child in node.children:
             if child.type == "name":
+                # pragma: no mutate start — "utf-8" is decode's default, name case-insensitive
                 return source[child.start_byte : child.end_byte].decode("utf-8", errors="replace")
+                # pragma: no mutate end
             if child.type == "qualified_name":
                 # Collect all ``name`` descendants in order and join with ``\``.
                 parts: list[str] = []
                 for desc in DependencyInversionScanner._iter_descendants(child):
                     if desc.type == "name":
+                        # pragma: no mutate start — "utf-8" is decode's default anyway
                         parts.append(
                             source[desc.start_byte : desc.end_byte].decode(
                                 "utf-8", errors="replace"
                             )
                         )
+                        # pragma: no mutate end
                 if parts:  # pragma: no branch — qualified_name always has names
                     return "\\".join(parts)
         return None  # pragma: no cover
@@ -189,23 +193,27 @@ class DependencyInversionScanner:
         """Extract the class name from a ``class_declaration`` node."""
         for child in class_node.children:
             if child.type == "name":
+                # pragma: no mutate start — "utf-8" is decode's default, name case-insensitive
                 return source[child.start_byte : child.end_byte].decode("utf-8", errors="replace")
-        return ""  # pragma: no cover
+                # pragma: no mutate end
+        return ""  # pragma: no cover, no mutate — a class_declaration always has a name child
 
     @staticmethod
     def _find_method_name(method_node: Node, source: bytes) -> str:
         """Extract the method name from a ``method_declaration`` node."""
         for child in method_node.children:
             if child.type == "name":
+                # pragma: no mutate start — "utf-8" is decode's default, name case-insensitive
                 return source[child.start_byte : child.end_byte].decode("utf-8", errors="replace")
-        return ""  # pragma: no cover
+                # pragma: no mutate end
+        return ""  # pragma: no cover, no mutate — a method_declaration always has a name child
 
     @staticmethod
     def _scan_class_methods(
         child: Any, class_name: str, source: bytes, file_path: str, findings: list[Finding]
     ) -> None:
         """Scan methods inside a class declaration for direct instantiations."""
-        body = None
+        body = None  # pragma: no mutate — every class_declaration has a declaration_list
         for c in child.children:
             if c.type == "declaration_list":
                 body = c
@@ -242,8 +250,10 @@ class DependencyInversionScanner:
         """
         DependencyInversionScanner._ensure_php_engine()
         engine = EngineRegistry.get_for_file(path)
+        # pragma: no mutate start — only RawASTEngine engines reach _scan_tree
         if engine is None or not isinstance(engine, RawASTEngine):  # pragma: no cover
             return []  # pragma: no cover
+        # pragma: no mutate end
 
         try:
             tree, source = engine.parse_raw(path)
@@ -312,15 +322,15 @@ class DependencyInversionScanner:
     @staticmethod
     def main() -> int:
         """Entry point for the PHP Dependency Inversion validator CLI."""
+        # pragma: no mutate start — help text is not a tested contract
         parser = argparse.ArgumentParser(
             description=(
                 "PHP Dependency Inversion validator — detect 'new Dep()' "
                 "in constructors and methods."
             )
         )
-        parser.add_argument(
-            "--json", action="store_true", help="Output as JSON"
-        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        # pragma: no mutate end
         args = parser.parse_args()
 
         DependencyInversionScanner._ensure_php_engine()

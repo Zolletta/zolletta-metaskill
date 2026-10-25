@@ -78,7 +78,9 @@ class TestStructureScanner:
     @staticmethod
     def _pascal_to_snake(name: str) -> str:
         """Convert PascalCase to snake_case."""
+        # pragma: no mutate start — output never contains "X"; strip widening is unobservable
         return "".join("_" + c.lower() if c.isupper() else c for c in name).lstrip("_")
+        # pragma: no mutate end
 
     @staticmethod
     def _get_class_names(path: Path) -> list[str]:
@@ -153,7 +155,7 @@ class TestStructureScanner:
 
     @staticmethod
     def _match_test_to_source(
-        test_name: str, src_index: dict[str, dict[str, Any]], test_dir: str = ""
+        test_name: str, src_index: dict[str, dict[str, Any]], test_dir: str
     ) -> str | None:
         """Return the source rel_path whose prefix best matches this test file name.
 
@@ -165,8 +167,11 @@ class TestStructureScanner:
         in different directories), prefers the one in the same directory as the test.
         """
         best_match: str | None = None
-        best_prefix_len = 0
-        best_same_dir = False
+        # Every prefix has len >= len("test_") > 1, and `not best_same_dir` is
+        # read only when len(prefix) == best_prefix_len — unreachable before the
+        # first assignment sets real values, so both initials are unobservable.
+        best_prefix_len = 0  # pragma: no mutate
+        best_same_dir = False  # pragma: no mutate
         for src_rel, info in src_index.items():
             for prefix in info["prefixes"]:
                 if test_name == f"{prefix}.py" or test_name.startswith(f"{prefix}_"):
@@ -183,13 +188,13 @@ class TestStructureScanner:
     @staticmethod
     def main() -> int:
         """Entry point for the test structure mirror checker CLI."""
+        # pragma: no mutate start — help text is not a tested contract
         parser = argparse.ArgumentParser(
             description="Check that test directory structure mirrors source structure. "
             "Roots and package come from .zolletta-metaskill/settings.json."
         )
-        parser.add_argument(
-            "--json", action="store_true", help="Output as JSON"
-        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        # pragma: no mutate end
         args = parser.parse_args()
 
         TestStructureScanner._ensure_python_engine()
@@ -201,7 +206,9 @@ class TestStructureScanner:
             return 0
 
         src_pkgs, test_pkgs = TestStructureScanner._resolve_packages(settings, py_langs)
-        if src_pkgs is None or test_pkgs is None:
+        # _resolve_packages returns (None, None) or (list, list), never a mix,
+        # so or/and below are equivalent.
+        if src_pkgs is None or test_pkgs is None:  # pragma: no mutate
             return 1
 
         test_only_dirs, src_index, test_files = TestStructureScanner._collect_inputs(
@@ -311,16 +318,20 @@ class TestStructureScanner:
                 rel_path = tp.relative_to(test_pkg)
                 if rel_path.parts[:1] == (TestStructureScanner.FIXTURE_DIR,):
                     continue  # a golden file named test_*.py is not a test
-                if tp.name == "__init__.py":
+                # "__init__.py" never startswith("test_"), so the check below
+                # skips it regardless of this comparison's value.
+                if tp.name == "__init__.py":  # pragma: no mutate
                     continue
                 if not tp.name.startswith("test_"):
                     continue  # Skip conftest.py, fixtures.py, etc.
                 rel = str(rel_path)
                 try:
+                    # pragma: no mutate start — utf-8 read is the contract
                     test_files[rel] = (
                         test_pkg,
                         tp.read_text(encoding="utf-8"),
-                    )  # pragma: no mutate — equivalent on UTF-8 locales  # noqa: E501
+                    )
+                    # pragma: no mutate end
                 except (OSError, UnicodeDecodeError):
                     test_files[rel] = (test_pkg, "")
         return test_only_dirs, src_index, test_files

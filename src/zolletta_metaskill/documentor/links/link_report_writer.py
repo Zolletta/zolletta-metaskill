@@ -25,7 +25,10 @@ class LinkReportWriter:
         )
 
         if as_json:
+            # pragma: no mutate start — report_data holds only str/int/None, so `default` is
+            # unreachable
             return json.dumps(report_data, indent=2, default=str)
+            # pragma: no mutate end
 
         return LinkReportWriter._format_markdown(report_data)
 
@@ -93,7 +96,10 @@ class LinkReportWriter:
         """Append broken links section grouped by file."""
         lines.append("BROKEN LINKS:")
         lines.append("-" * 60)
+        # pragma: no mutate start — writes go through setdefault, so the default factory is
+        # unreachable
         by_file: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        # pragma: no mutate end
         for link in broken:
             by_file.setdefault(link.get("source_file", ""), []).append(link)
 

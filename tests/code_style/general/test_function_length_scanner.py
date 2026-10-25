@@ -146,6 +146,15 @@ class TestFunctionLengthScanner:
         settings = self._write_settings(tmp_path, python={"tools": {}})
         assert FunctionLengthScanner.resolve_max_lines(settings) == 100
 
+    def test_disabled_language_limit_ignored(self, tmp_path: Path) -> None:
+        settings = self._write_settings(
+            tmp_path,
+            language="python",
+            python={"code_style": {"check_function_length": False, "max_function_length": 10}},
+            php={"code_style": {"max_function_length": 60}},
+        )
+        assert FunctionLengthScanner.resolve_max_lines(settings) == 60
+
     # --- Tests for FunctionLengthScanner.scan_module(). ---
 
     def test_function_over_limit_flagged(self, tmp_path: Path) -> None:
@@ -223,6 +232,162 @@ class TestFunctionLengthScanner:
             functions=[self._method("a", 1, 5), self._method("b", 10, 20)],
         )
         assert FunctionLengthScanner.scan_module(module, max_lines=100) == []
+
+    # --- Tests for FunctionLengthScanner._records(). ---
+
+    def test_function_record_shape_exact(self, tmp_path: Path) -> None:
+        module = ModuleInfo(
+            path=tmp_path / "mod.py",
+            language="python",
+            functions=[self._method("big", 10, 140)],
+        )
+        assert FunctionLengthScanner._records(module, 100) == [
+            {
+                "kind": "Function",
+                "function": "big",
+                "line": 10,
+                "end_line": 140,
+                "lines": 131,
+            }
+        ]
+
+    def test_method_record_shape_exact(self, tmp_path: Path) -> None:
+        module = ModuleInfo(
+            path=tmp_path / "mod.py",
+            language="python",
+            classes=[
+                ClassInfo(
+                    name="Big",
+                    lineno=1,
+                    end_lineno=200,
+                    methods=[self._method("run", 20, 150)],
+                )
+            ],
+        )
+        assert FunctionLengthScanner._records(module, 100) == [
+            {
+                "kind": "Method",
+                "function": "Big.run",
+                "line": 20,
+                "end_line": 150,
+                "lines": 131,
+            }
+        ]
+
+    def test_method_at_limit_not_recorded(self, tmp_path: Path) -> None:
+        module = ModuleInfo(
+            path=tmp_path / "mod.py",
+            language="python",
+            classes=[
+                ClassInfo(
+                    name="Small",
+                    lineno=1,
+                    end_lineno=120,
+                    methods=[self._method("run", 20, 119)],
+                )
+            ],
+        )
+        assert FunctionLengthScanner._records(module, 100) == []
+
+    # --- Tests for FunctionLengthScanner._scan_roots(). ---
+
+    def test_scan_roots_unparsable_file_does_not_stop_scan(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        root = tmp_path / "src"
+        root.mkdir()
+        self._write(root / "a_blocked.py", self._py_function("blocked", 150))
+        big = self._write(root / "z_big.py", self._py_function("big", 150))
+        real = FunctionLengthScanner._parse_file
+
+        def _fake(path: Path) -> ModuleInfo | None:
+            return None if path.name == "a_blocked.py" else real(path)
+
+        monkeypatch.setattr(FunctionLengthScanner, "_parse_file", staticmethod(_fake))
+        scanned, violations = FunctionLengthScanner._scan_roots([root], {".py"}, 100)
+        assert scanned == 2
+        assert violations == [
+            {
+                "file": str(big),
+                "function": "big",
+                "kind": "Function",
+                "line": 1,
+                "end_line": 151,
+                "lines": 151,
+                "over": 51,
+            }
+        ]
+
+    def test_scan_roots_sorts_violations_by_lines_descending(self, tmp_path: Path) -> None:
+        root = tmp_path / "src"
+        root.mkdir()
+        small = self._write(root / "a_small.py", self._py_function("small", 10))
+        big = self._write(root / "z_big.py", self._py_function("big", 20))
+        scanned, violations = FunctionLengthScanner._scan_roots([root], {".py"}, 5)
+        assert scanned == 2
+        assert violations == [
+            {
+                "file": str(big),
+                "function": "big",
+                "kind": "Function",
+                "line": 1,
+                "end_line": 21,
+                "lines": 21,
+                "over": 16,
+            },
+            {
+                "file": str(small),
+                "function": "small",
+                "kind": "Function",
+                "line": 1,
+                "end_line": 11,
+                "lines": 11,
+                "over": 6,
+            },
+        ]
+
+    # --- Tests for FunctionLengthScanner._emit_json(). ---
+
+    def test_emit_json_output_exact(self, capsys: pytest.CaptureFixture[str]) -> None:
+        violations = [
+            {
+                "file": "f.py",
+                "function": "big",
+                "kind": "Function",
+                "line": 1,
+                "end_line": 30,
+                "lines": 30,
+                "over": 20,
+            }
+        ]
+        FunctionLengthScanner._emit_json([Path("src")], 3, 10, violations)
+        out = capsys.readouterr().out
+        expected = {
+            "directories": ["src"],
+            "scanned": 3,
+            "max_function_length": 10,
+            "violation_count": 1,
+            "violations": [
+                {
+                    "file": "f.py",
+                    "function": "big",
+                    "line": 1,
+                    "end_line": 30,
+                    "lines": 30,
+                    "over": 20,
+                }
+            ],
+        }
+        assert out == json.dumps(expected, indent=2) + "\n"
+
+    # --- Tests for FunctionLengthScanner._emit_text(). ---
+
+    def test_emit_text_clean_report_lines(self, capsys: pytest.CaptureFixture[str]) -> None:
+        FunctionLengthScanner._emit_text([Path("src"), Path("lib")], 4, 10, [])
+        lines = capsys.readouterr().out.splitlines()
+        assert "Scanned 4 files under src, lib (max 10 lines)" in lines
+        assert "## Functions exceeding the limit: none" in lines
+        assert "Result: all clear" in lines
 
     # --- Tests for FunctionLengthScanner.scan_file(). ---
 
@@ -351,6 +516,7 @@ class TestFunctionLengthScanner:
         out = capsys.readouterr().out
         assert rc == 0
         assert "SKIPPED" in out
+        assert "check_function_length disabled in settings.json" in out
 
     def test_main_check_disabled_json(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -364,18 +530,19 @@ class TestFunctionLengthScanner:
         report = json.loads(capsys.readouterr().out)
         assert rc == 0
         assert report["skipped"] is True
+        assert report["reason"] == "check_function_length disabled in settings.json"
 
     def test_main_missing_dir(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """No configured source directory on disk → usage error."""
         monkeypatch.chdir(tmp_path)
-        self._write_settings(tmp_path)
+        self._write_settings(tmp_path, python={"paths": {"source": ["lib", "extra"]}})
         monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FunctionLengthScanner.main()
         err = capsys.readouterr().err
         assert rc == 1
-        assert "no configured source directories" in err
+        assert err == "Error: no configured source directories exist on disk (lib, extra)\n"
 
     def test_main_all_clear(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -403,9 +570,31 @@ class TestFunctionLengthScanner:
         rc = FunctionLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
+        assert "Scanned 1 files under src (max 10 lines)" in out
         assert "violations found" in out
         assert "long.py" in out
         assert "big" in out
+
+    def test_main_custom_source_root_scanned(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        self._write_settings(
+            tmp_path,
+            python={
+                "code_style": {"max_function_length": 10},
+                "paths": {"source": ["lib"]},
+            },
+        )
+        root = tmp_path / "lib"
+        root.mkdir()
+        self._write(root / "long.py", self._py_function("big", 20))
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        rc = FunctionLengthScanner.main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "Scanned 1 files under lib (max 10 lines)" in out
+        assert "long.py" in out
 
     def test_main_only_scans_configured_language(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch

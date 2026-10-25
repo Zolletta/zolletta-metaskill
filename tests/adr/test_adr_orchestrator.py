@@ -6,11 +6,13 @@ import json
 import os
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 from zolletta_metaskill.adr.adr_discovery import ADRDiscovery
 from zolletta_metaskill.adr.adr_orchestrator import ADROrchestrator
+from zolletta_metaskill.adr.structs.distill_report import DistillReport
 
 from .conftest import write_adr
 
@@ -217,6 +219,62 @@ class TestADROrchestrator:
         result = (docs / "adr" / "adr-distilled.md").read_text(encoding="utf-8")
         assert "[ADR-002]" not in result
         assert "[ADR-001]" in result
+        cache = json.loads(cache_path.read_text(encoding="utf-8"))
+        assert "ADR-002" not in cache
+        assert "ADR-001" in cache
+
+    def test_directives_sorted_by_adr_number_not_lexically(self, tmp_path: Path) -> None:
+        docs = tmp_path / "docs"
+        write_adr(docs / "adr" / "0010-a.md", "10", "A", "Accepted", "We do A.")
+        write_adr(docs / "adr" / "0002-b.md", "2", "B", "Accepted", "We do B.")
+        distiller = ADROrchestrator(docs, "adr", tmp_path / "cache.json")
+        distiller.refresh()
+        result = (docs / "adr" / "adr-distilled.md").read_text(encoding="utf-8")
+        assert result.index("[ADR-2]") < result.index("[ADR-10]")
+
+    def test_stale_adr_keeps_category_headings(self, tmp_path: Path) -> None:
+        docs = tmp_path / "docs"
+        f = docs / "adr" / "0001-test.md"
+        write_adr(f, "001", "Test", "Accepted", "We do X.")
+        distiller = ADROrchestrator(docs, "adr", tmp_path / "cache.json")
+        distiller.refresh()
+        distilled_path = docs / "adr" / "adr-distilled.md"
+        distilled_path.write_text(
+            distilled_path.read_text(encoding="utf-8").replace(
+                "- [ADR-001]", "## Architecture\n\n- [ADR-001]"
+            ),
+            encoding="utf-8",
+        )
+        write_adr(f, "001", "Test", "Accepted", "We now do Z.")
+        os.utime(f, (9999999999, 9999999999))
+        distiller.refresh()
+        assert "## Architecture" in distilled_path.read_text(encoding="utf-8")
+
+    def test_lead_in_directive_stays_stale_on_third_refresh(self, tmp_path: Path) -> None:
+        docs = tmp_path / "docs"
+        write_adr(
+            docs / "adr" / "0001-test.md",
+            "001",
+            "Test",
+            "Accepted",
+            "We adopt the following:\n\n- the first rule",
+        )
+        distiller = ADROrchestrator(docs, "adr", tmp_path / "cache.json")
+        distiller.refresh()
+        distiller.refresh()
+        third = distiller.refresh()
+        assert third.stale == ["ADR-001"]
+
+    def test_empty_distilled_file_regenerates(self, tmp_path: Path) -> None:
+        """An existing but empty distilled file is rewritten with directives."""
+        docs = tmp_path / "docs"
+        write_adr(docs / "adr" / "0001-test.md", "001", "Test", "Accepted", "We do X.")
+        distiller = ADROrchestrator(docs, "adr", tmp_path / "cache.json")
+        distiller.refresh()
+        (docs / "adr" / "adr-distilled.md").write_text("", encoding="utf-8")
+        distiller.refresh()
+        result = (docs / "adr" / "adr-distilled.md").read_text(encoding="utf-8")
+        assert "[ADR-001]" in result
 
     def test_no_adrs_writes_placeholder(self, tmp_path: Path) -> None:
         docs = tmp_path / "docs"
@@ -422,6 +480,65 @@ class TestADROrchestrator:
         assert report.has_adrs is True
         assert (docs / "adr" / "adr-distilled.md").exists()
 
+    # --- Tests for ADROrchestrator._classify_records(). ---
+
+    def test_classify_new_record_writes_cache_entry(self, tmp_path: Path) -> None:
+        docs = tmp_path / "docs"
+        f = docs / "adr" / "0001-test.md"
+        write_adr(f, "001", "Test", "Accepted", "We do X.")
+        record = ADRDiscovery._extract_metadata(f)
+        assert record is not None
+        distiller = ADROrchestrator(docs, "adr", tmp_path / "cache.json")
+        current_keys, new_directives, new_cache = distiller._classify_records(
+            [record], {}, DistillReport()
+        )
+        assert current_keys == {"ADR-001"}
+        assert "ADR-001" in new_directives
+        entry = new_cache["ADR-001"]
+        assert entry["path"] == "adr/0001-test.md"
+        assert entry["mtime"] == record.mtime
+        assert entry["status"] == "Accepted"
+        assert entry["refined"] is True
+
+    def test_classify_up_to_date_record_preserves_refined_flag(self, tmp_path: Path) -> None:
+        docs = tmp_path / "docs"
+        f = docs / "adr" / "0001-test.md"
+        write_adr(f, "001", "Test", "Accepted", "We do X.")
+        record = ADRDiscovery._extract_metadata(f)
+        assert record is not None
+        distiller = ADROrchestrator(docs, "adr", tmp_path / "cache.json")
+        old_cache: dict[str, dict[str, object]] = {
+            "ADR-001": {
+                "path": "adr/0001-test.md",
+                "mtime": record.mtime,
+                "status": "Accepted",
+            }
+        }
+        _, _, new_cache = distiller._classify_records([record], old_cache, DistillReport())
+        assert new_cache["ADR-001"]["refined"] is True
+
+    # --- Tests for ADROrchestrator._read_existing(). ---
+
+    def test_read_existing_missing_file_returns_none(self, tmp_path: Path) -> None:
+        assert ADROrchestrator._read_existing(tmp_path / "missing.md") is None
+
+    def test_read_existing_oserror_returns_none(self, tmp_path: Path) -> None:
+        f = tmp_path / "adr-distilled.md"
+        f.write_text("content", encoding="utf-8")
+        with patch.object(Path, "read_text", side_effect=OSError):
+            assert ADROrchestrator._read_existing(f) is None
+
+    def test_distill_adr_none_adrs_path_links_from_docs_dir(self, tmp_path: Path) -> None:
+        docs = tmp_path / "docs"
+        f = docs / "0001-test.md"
+        write_adr(f, "001", "Test", "Accepted", "Do X.")
+        record = ADRDiscovery._extract_metadata(f)
+        assert record is not None
+        distiller = ADROrchestrator(docs, None, tmp_path / "cache.json")
+        directive = distiller.distill_adr(record)
+        assert directive is not None
+        assert "(0001-test.md)" in directive
+
     # --- Tests for ADROrchestrator.run() — delegates to ADRClient.run(). ---
 
     def test_run_with_valid_adrs_returns_0(
@@ -548,3 +665,23 @@ class TestADROrchestrator:
         result = ADROrchestrator._truncate_decision(text)
         assert result == text
         assert not result.endswith("...")
+
+    def test_x_is_not_a_sentence_boundary(self) -> None:
+        assert (
+            ADROrchestrator._truncate_decision("The X factor decides it.")
+            == "The X factor decides it."
+        )
+
+    def test_punctuation_before_final_char_is_not_a_boundary(self) -> None:
+        assert ADROrchestrator._truncate_decision("Do X.Y") == "Do X.Y"
+
+    def test_truncates_at_last_word_boundary(self) -> None:
+        text = "word " * 60  # 300 chars, no sentence boundary
+        result = ADROrchestrator._truncate_decision(text)
+        assert result.endswith("...")
+        assert len(result) > 150
+        assert result != text[: ADROrchestrator._MAX_DECISION_LEN] + "..."
+
+    def test_word_boundary_at_start_truncates_to_first_word(self) -> None:
+        result = ADROrchestrator._truncate_decision("a " + "b" * 300)
+        assert result == "a..."

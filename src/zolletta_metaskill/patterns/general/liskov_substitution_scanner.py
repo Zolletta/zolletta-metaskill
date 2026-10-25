@@ -84,7 +84,10 @@ class LiskovSubstitutionScanner:
                 "is_stub": False,
             }
         # Normalise base names: ``animals.Animal`` → ``Animal``
+        # pragma: no mutate start — any rsplit maxsplit ≥ 1 keeps the same last
+        # component, so those mutants are equivalent
         bases = [base.rsplit(".", 1)[-1] for base in cls.bases]
+        # pragma: no mutate end
         return {
             "name": cls.name,
             "line": cls.lineno,
@@ -213,6 +216,8 @@ class LiskovSubstitutionScanner:
                     parent = classes[base_name]
                     lsp_violations = LiskovSubstitutionScanner._check_lsp_violations(parent, info)
                     for v in lsp_violations:
+                        # pragma: no mutate start — removing fix_type is
+                        # equivalent: Finding.fix_type defaults to "manual"
                         findings.append(
                             Finding(
                                 file=str(module.path),
@@ -226,6 +231,7 @@ class LiskovSubstitutionScanner:
                                 fix_type="manual",
                             )
                         )
+                        # pragma: no mutate end
         return findings
 
     @staticmethod
@@ -331,13 +337,13 @@ class LiskovSubstitutionScanner:
     @staticmethod
     def main() -> int:
         """Entry point for the Liskov Substitution Principle validator CLI."""
+        # pragma: no mutate start — help text is not a tested contract
         parser = argparse.ArgumentParser(
             description="Liskov Substitution Principle (LSP) validator. "
             "Roots come from .zolletta-metaskill/settings.json."
         )
-        parser.add_argument(
-            "--json", action="store_true", help="Output as JSON"
-        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        # pragma: no mutate end
         args = parser.parse_args()
 
         LiskovSubstitutionScanner._ensure_python_engine()

@@ -46,13 +46,13 @@ class DocumentorClient:
     @staticmethod
     def main() -> int:
         """Run the full documentor review and print the aggregated report."""
+        # pragma: no mutate start — help/description text is not a tested contract
         parser = argparse.ArgumentParser(
             description="Run the full documentation review (staleness, API docs, links).",
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
-        parser.add_argument(
-            "--json", action="store_true", help="Output as JSON"
-        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        # pragma: no mutate end
         args = parser.parse_args()
 
         repo_path = os.path.abspath(".")

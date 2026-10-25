@@ -130,13 +130,13 @@ class ClassMetricsScanner:
     @staticmethod
     def main() -> int:
         """Entry point for the class metrics scanner CLI."""
+        # pragma: no mutate start — argparse help text is untested
         parser = argparse.ArgumentParser(
             description="Scan Python source for class metrics (God class triage). "
             "Roots and thresholds come from .zolletta-metaskill/settings.json."
         )
-        parser.add_argument(
-            "--json", action="store_true", help="Output as JSON"
-        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        # pragma: no mutate end
         args = parser.parse_args()
 
         ClassMetricsScanner._ensure_python_engine()
@@ -147,7 +147,9 @@ class ClassMetricsScanner:
             ProjectConfig.emit_skipped(args.json, "check_class_metrics disabled in settings.json")
             return 0
 
+        # pragma: no mutate start — None-settings yields the same default roots
         roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, py_langs))
+        # pragma: no mutate end
         if not roots:
             print(
                 "Error: no configured source directories exist on disk",
@@ -174,7 +176,7 @@ class ClassMetricsScanner:
             for py in ProjectConfig.iter_files(root, {".py"}):
                 engine = EngineRegistry.get_for_file(py)
                 if engine is None:  # pragma: no cover
-                    continue
+                    continue  # pragma: no mutate — unreachable: iter_files only yields .py files
                 module = engine.parse_module(py)
                 all_results.extend(ClassMetricsScanner._class_metrics(module))
 

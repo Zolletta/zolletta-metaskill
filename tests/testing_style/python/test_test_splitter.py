@@ -361,6 +361,241 @@ class TestTestSplitter:
         result = TestSplitter._build_split_file(_plan(module, cls, [], [], "TestOriginal"), "Cache")
         assert "Tests for Cache, split from TestOriginal" in result
 
+    def test_build_split_file_full_layout_exact_lines(self) -> None:
+        module = _parse_module(
+            '"""Docstring."""\n'
+            "import pytest\n"
+            "from foo import bar\n"
+            "pytestmark = pytest.mark.xfail\n"
+            "class TestOriginal:\n"
+            "    def setup(self):\n        self.x = 1\n"
+            "    def test_cache_get(self):\n        assert True\n"
+        )
+        cls = _parse_class(
+            "class TestOriginal:\n"
+            "    def setup(self):\n        self.x = 1\n"
+            "    def test_cache_get(self):\n        assert True\n"
+        )
+        test_methods = TestSplitter._get_test_methods(cls)
+        shared = TestSplitter._get_shared_methods(cls)
+        result = TestSplitter._build_split_file(
+            _plan(module, cls, test_methods, shared, "TestOriginal"), "Cache"
+        )
+        assert result.splitlines() == [
+            '"""Docstring. — split from TestOriginal."""',
+            "",
+            "import pytest",
+            "from foo import bar",
+            "",
+            "pytestmark = pytest.mark.xfail",
+            "",
+            "class TestCache:",
+            '    """Tests for Cache, split from TestOriginal."""',
+            "",
+            "    def setup(self):",
+            "        self.x = 1",
+            "",
+            "    def test_cache_get(self):",
+            "        assert True",
+        ]
+
+    def test_build_split_file_no_docstring_exact_lines(self) -> None:
+        module = _parse_module(
+            "import pytest\nclass TestOriginal:\n    def test_cache_get(self):\n        pass\n"
+        )
+        cls = _parse_class("class TestOriginal:\n    def test_cache_get(self):\n        pass\n")
+        test_methods = TestSplitter._get_test_methods(cls)
+        result = TestSplitter._build_split_file(
+            _plan(module, cls, test_methods, [], "TestOriginal"), "Cache"
+        )
+        assert result.splitlines() == [
+            '"""Tests for Cache — split from TestOriginal."""',
+            "",
+            "import pytest",
+            "",
+            "class TestCache:",
+            '    """Tests for Cache, split from TestOriginal."""',
+            "",
+            "    def test_cache_get(self):",
+            "        pass",
+        ]
+
+    # --- EmitAutoMapping ---
+
+    def test_emit_auto_mapping_text_output_exact_lines(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        f = tmp_path / "test_god.py"
+        f.write_text(
+            "class TestGodClass:\n"
+            "    def setup(self):\n        pass\n"
+            "    def test_cache_a(self):\n        pass\n"
+            "    def test_cache_b(self):\n        pass\n"
+            "    def test_cache_c(self):\n        pass\n"
+            "    def test_cache_d(self):\n        pass\n"
+            "    def test_extract_x(self):\n        pass\n"
+            "    def test_extract_y(self):\n        pass\n"
+            "    def test_extract_z(self):\n        pass\n"
+            "    def test_foo(self):\n        pass\n"
+        )
+        monkeypatch.setattr(sys, "argv", ["prog", str(f)])
+        rc = TestSplitter.main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert out.splitlines() == [
+            "=" * 70,
+            "TEST SPLITTER — test_god.py",
+            "=" * 70,
+            "",
+            "Class: TestGodClass",
+            "Test methods: 8",
+            "Shared methods (fixtures/helpers): 1",
+            "",
+            "No --mapping provided. Auto-deriving prefixes from method names:",
+            "  cache: 4 methods -> ['test_cache_a', 'test_cache_b', 'test_cache_c']...",
+            "  extract: 3 methods -> ['test_extract_x', 'test_extract_y', 'test_extract_z']",
+            "  foo: 1 methods -> ['test_foo']",
+            "",
+            'Use --mapping \'{"prefix": "SutClass", ...}\' to specify SUT names.',
+            "Example:",
+            '  --mapping \'{"cache": "Cache", "extract": "Extract", "foo": "Foo"}\'',
+            "",
+            "Re-run with --mapping to split. Use --dry-run to preview first.",
+        ]
+
+    # --- EmitProposedSplit ---
+
+    def test_emit_proposed_split_text_output_exact_lines(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        f = tmp_path / "test_god.py"
+        f.write_text(
+            "class TestGodClass:\n"
+            "    def setup(self):\n        pass\n"
+            "    def test_cache_get(self):\n        pass\n"
+            "    def test_unknown_thing(self):\n        pass\n"
+        )
+        mapping = '{"cache": "Cache"}'
+        monkeypatch.setattr(sys, "argv", ["prog", str(f), "--mapping", mapping, "--dry-run"])
+        rc = TestSplitter.main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert out.splitlines() == [
+            "=" * 70,
+            "TEST SPLITTER — test_god.py",
+            "=" * 70,
+            "",
+            "Class: TestGodClass",
+            "Test methods: 2",
+            "Shared methods (fixtures/helpers): 1",
+            "",
+            "Proposed split (2 groups):",
+            "",
+            "  Cache -> TestCache (1 methods):",
+            "    test_cache_get",
+            "",
+            "  _unmatched (1 methods):",
+            "    test_unknown_thing",
+            "    (No prefix matched — review and add to mapping)",
+            "",
+            "⚠  1 methods unmatched. Add their prefixes to --mapping",
+            "   or they will be placed in a separate _unmatched test file.",
+            "",
+            "--dry-run: no files written.",
+        ]
+
+    # --- EmitWritten ---
+
+    def test_emit_written_text_output_exact_lines(self, capsys: pytest.CaptureFixture[str]) -> None:
+        TestSplitter._emit_written(
+            False, Path("test_god.py"), Path("out"), ["test_cache.py", "test_extractor.py"], {}
+        )
+        assert capsys.readouterr().out.splitlines() == [
+            "",
+            "Writing split files to: out/",
+            "  test_cache.py",
+            "  test_extractor.py",
+            "",
+            "Done. 2 files written to out/",
+            "Review the split files, then move them to replace the original.",
+            "Original file test_god.py was NOT modified.",
+        ]
+
+    def test_emit_written_json_output_exact_json(self, capsys: pytest.CaptureFixture[str]) -> None:
+        result = {"test_file": "test_god.py"}
+        TestSplitter._emit_written(
+            True, Path("test_god.py"), Path("out"), ["test_cache.py"], result
+        )
+        expected = {
+            "test_file": "test_god.py",
+            "out_dir": "out",
+            "written": ["test_cache.py"],
+        }
+        assert result == expected
+        assert capsys.readouterr().out == json.dumps(expected, indent=2) + "\n"
+
+    # --- WriteSplitFiles ---
+
+    def test_write_split_files_empty_groups_writes_only_named_file(self, tmp_path: Path) -> None:
+        tree = _parse_module("class TestGodClass:\n    def test_cache_get(self):\n        pass\n")
+        cls = _parse_class("class TestGodClass:\n    def test_cache_get(self):\n        pass\n")
+        written = TestSplitter._write_split_files(
+            tree, cls, {"Cache": [], "_unmatched": []}, [], tmp_path
+        )
+        assert written == ["test_cache.py"]
+        assert (tmp_path / "test_cache.py").exists()
+        assert not (tmp_path / "test_unmatched.py").exists()
+
+    def test_write_split_files_empty_unmatched_writes_later_group(self, tmp_path: Path) -> None:
+        tree = _parse_module("class TestGodClass:\n    def test_cache_get(self):\n        pass\n")
+        cls = _parse_class("class TestGodClass:\n    def test_cache_get(self):\n        pass\n")
+        groups: dict[str, list[ast.FunctionDef | ast.AsyncFunctionDef]] = {
+            "_unmatched": [],
+            "cache": [_make_method("test_cache_get")],
+        }
+        written = TestSplitter._write_split_files(tree, cls, groups, [], tmp_path)
+        assert written == ["test_cache.py"]
+        assert (tmp_path / "test_cache.py").exists()
+
+    def test_write_split_files_unmatched_with_methods_writes_file(self, tmp_path: Path) -> None:
+        tree = _parse_module("class TestGodClass:\n    def test_cache_get(self):\n        pass\n")
+        cls = _parse_class("class TestGodClass:\n    def test_cache_get(self):\n        pass\n")
+        groups: dict[str, list[ast.FunctionDef | ast.AsyncFunctionDef]] = {
+            "Cache": [_make_method("test_cache_get")],
+            "_unmatched": [_make_method("test_unknown_thing")],
+        }
+        written = TestSplitter._write_split_files(tree, cls, groups, [], tmp_path)
+        assert written == ["test_cache.py", "test_unmatched.py"]
+        assert (tmp_path / "test_unmatched.py").exists()
+
+    def test_write_split_files_build_call_exact_plan_and_sut(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        tree = _parse_module("class TestGodClass:\n    def test_cache_get(self):\n        pass\n")
+        cls = _parse_class("class TestGodClass:\n    def test_cache_get(self):\n        pass\n")
+        method = _make_method("test_cache_get")
+        shared = _parse_func("def setup(self):\n    pass\n")
+        calls: list[tuple[SplitPlan, str]] = []
+
+        def _spy(plan: SplitPlan, sut: str) -> str:
+            calls.append((plan, sut))
+            return "SPLIT CONTENT"
+
+        monkeypatch.setattr(TestSplitter, "_build_split_file", staticmethod(_spy))
+        written = TestSplitter._write_split_files(
+            tree, cls, {"Cache": [method]}, [shared], tmp_path
+        )
+        assert written == ["test_cache.py"]
+        assert (tmp_path / "test_cache.py").read_text() == "SPLIT CONTENT"
+        assert len(calls) == 1
+        plan, sut = calls[0]
+        assert sut == "Cache"
+        assert plan.original_module is tree
+        assert plan.class_node is cls
+        assert plan.test_methods == (method,)
+        assert plan.shared_methods == (shared,)
+        assert plan.original_class_name == "TestGodClass"
+
     # --- Main ---
 
     def _write_test_file(self, path: Path) -> None:
@@ -404,7 +639,7 @@ class TestTestSplitter:
         rc = TestSplitter.main()
         err = capsys.readouterr().err
         assert rc == 1
-        assert "no test class" in err
+        assert err == f"Error: no test class found in {f}\n"
 
     def test_main_class_not_found(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -415,7 +650,7 @@ class TestTestSplitter:
         rc = TestSplitter.main()
         err = capsys.readouterr().err
         assert rc == 1
-        assert "NonExistent" in err
+        assert err == f"Error: no test class 'NonExistent' found in {f}\n"
 
     def test_main_class_with_no_test_methods(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -471,6 +706,7 @@ class TestTestSplitter:
         cache_content = (out_dir / "test_cache.py").read_text()
         assert "class TestCache:" in cache_content
         assert "def test_cache_get" in cache_content
+        assert f"Original file {f} was NOT modified." in out.splitlines()
 
     def test_main_unmatched_methods(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -598,10 +834,19 @@ class TestTestSplitter:
         rc = TestSplitter.main()
         out = capsys.readouterr().out
         assert rc == 0
-        payload = json.loads(out)
-        assert payload["class"] == "TestGodClass"
-        assert "cache" in payload["auto_prefixes"]
-        assert payload["proposed_mapping"]["cache"] == "Cache"
+        expected = {
+            "test_file": str(f),
+            "class": "TestGodClass",
+            "test_methods": 3,
+            "shared_methods": 1,
+            "auto_prefixes": {
+                "cache": ["test_cache_get", "test_cache_set"],
+                "extract": ["test_extract_defaults"],
+            },
+            "proposed_mapping": {"cache": "Cache", "extract": "Extract"},
+        }
+        assert json.loads(out) == expected
+        assert out == json.dumps(expected, indent=2) + "\n"
 
     def test_main_json_dry_run(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -616,9 +861,19 @@ class TestTestSplitter:
         rc = TestSplitter.main()
         out = capsys.readouterr().out
         assert rc == 0
-        payload = json.loads(out)
-        assert payload["dry_run"] is True
-        assert "test_cache_get" in payload["groups"]["Cache"]
+        expected = {
+            "test_file": str(f),
+            "class": "TestGodClass",
+            "test_methods": 3,
+            "shared_methods": 1,
+            "groups": {
+                "Cache": ["test_cache_get", "test_cache_set"],
+                "Extractor": ["test_extract_defaults"],
+            },
+            "dry_run": True,
+        }
+        assert json.loads(out) == expected
+        assert out == json.dumps(expected, indent=2) + "\n"
 
     def test_main_json_writes_files(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -631,10 +886,21 @@ class TestTestSplitter:
         rc = TestSplitter.main()
         out = capsys.readouterr().out
         assert rc == 0
-        payload = json.loads(out)
         out_dir = tmp_path / ".zolletta-metaskill" / "test_split" / "test_god"
-        assert Path(payload["out_dir"]) == Path(".zolletta-metaskill/test_split/test_god")
-        assert "test_cache.py" in payload["written"]
+        expected = {
+            "test_file": str(f),
+            "class": "TestGodClass",
+            "test_methods": 3,
+            "shared_methods": 1,
+            "groups": {
+                "Cache": ["test_cache_get", "test_cache_set"],
+                "Extractor": ["test_extract_defaults"],
+            },
+            "out_dir": ".zolletta-metaskill/test_split/test_god",
+            "written": ["test_cache.py", "test_extractor.py"],
+        }
+        assert json.loads(out) == expected
+        assert out == json.dumps(expected, indent=2) + "\n"
         assert (out_dir / "test_cache.py").exists()
 
     def test_main_custom_runs_dir(
@@ -653,6 +919,57 @@ class TestTestSplitter:
         rc = TestSplitter.main()
         assert rc == 0
         assert (tmp_path / "out_runs" / "test_split" / "test_god" / "test_cache.py").exists()
+
+    def test_main_existing_out_dir_returns_zero(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        f = tmp_path / "test_god.py"
+        self._write_test_file(f)
+        out_dir = tmp_path / ".zolletta-metaskill" / "test_split" / "test_god"
+        out_dir.mkdir(parents=True)
+        mapping = '{"cache": "Cache", "extract": "Extractor"}'
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", ["prog", str(f), "--mapping", mapping])
+        rc = TestSplitter.main()
+        assert rc == 0
+        assert (out_dir / "test_cache.py").exists()
+
+    def test_main_emit_auto_mapping_receives_exact_plan(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        f = tmp_path / "test_god.py"
+        self._write_test_file(f)
+        calls: list[tuple[bool, Path, SplitPlan, dict[str, object]]] = []
+
+        def _spy(
+            json_mode: bool, test_file: Path, plan: SplitPlan, result: dict[str, object]
+        ) -> None:
+            calls.append((json_mode, test_file, plan, result))
+
+        monkeypatch.setattr(TestSplitter, "_emit_auto_mapping", staticmethod(_spy))
+        monkeypatch.setattr(sys, "argv", ["prog", str(f)])
+        rc = TestSplitter.main()
+        assert rc == 0
+        assert len(calls) == 1
+        json_mode, test_file, plan, result = calls[0]
+        assert json_mode is False
+        assert test_file == f
+        assert result == {
+            "test_file": str(f),
+            "class": "TestGodClass",
+            "test_methods": 3,
+            "shared_methods": 1,
+        }
+        assert isinstance(plan.original_module, ast.Module)
+        assert ast.dump(plan.original_module) == ast.dump(ast.parse(f.read_text()))
+        assert plan.class_node.name == "TestGodClass"
+        assert [m.name for m in plan.test_methods] == [
+            "test_cache_get",
+            "test_cache_set",
+            "test_extract_defaults",
+        ]
+        assert [m.name for m in plan.shared_methods] == ["setup"]
+        assert plan.original_class_name == "TestGodClass"
 
 
 def _plan(

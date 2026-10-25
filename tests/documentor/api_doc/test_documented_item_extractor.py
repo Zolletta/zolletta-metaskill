@@ -46,14 +46,64 @@ class TestDocumentedItemExtractor:
         assert "self" not in param_names
         assert "x" in param_names
 
+    def test_inline_function_skips_cls(self, tmp_path: Path) -> None:
+        p = tmp_path / "api.md"
+        p.write_text("See `bar(cls, x)` for details.\n")
+        items = DocumentedItemExtractor.extract_documented_items(str(p))
+        assert [p["name"] for p in items["bar"]["parameters"]] == ["x"]
+
+    def test_inline_function_item_dict_shape(self, tmp_path: Path) -> None:
+        p = tmp_path / "api.md"
+        p.write_text("Intro line.\n\nSee `bar(x)` for details.\n")
+        items = DocumentedItemExtractor.extract_documented_items(str(p))
+        assert items["bar"] == {
+            "name": "bar",
+            "line": 3,
+            "kind": "function",
+            "file": str(p),
+            "parameters": [{"name": "x"}],
+        }
+
+    def test_inline_function_annotated_param_keeps_name(self, tmp_path: Path) -> None:
+        p = tmp_path / "api.md"
+        p.write_text("See `bar(a: int)` for details.\n")
+        items = DocumentedItemExtractor.extract_documented_items(str(p))
+        assert [x["name"] for x in items["bar"]["parameters"]] == ["a"]
+
+    def test_inline_function_starred_param_kept(self, tmp_path: Path) -> None:
+        p = tmp_path / "api.md"
+        p.write_text("See `bar(*args)` for details.\n")
+        items = DocumentedItemExtractor.extract_documented_items(str(p))
+        assert [x["name"] for x in items["bar"]["parameters"]] == ["*args"]
+
     def test_extract_documented_items_param_list_contains_b(self, tmp_path: Path) -> None:
         p = tmp_path / "api.md"
         p.write_text("### `foo()`\n\n- `a` (int): first param\n- `b` (str): second param\n")
         items = DocumentedItemExtractor.extract_documented_items(str(p))
         assert "foo" in items
-        param_names = [p["name"] for p in items["foo"]["parameters"]]
-        assert "a" in param_names
-        assert "b" in param_names
+        assert items["foo"]["name"] == "foo"
+        assert items["foo"]["line"] == 1
+        assert items["foo"]["kind"] == "function"
+        assert items["foo"]["file"] == str(p)
+        assert items["foo"]["parameters"] == [
+            {"name": "a", "annotation": "int"},
+            {"name": "b", "annotation": "str"},
+        ]
+
+    def test_heading_item_dict_shape_exact(self, tmp_path: Path) -> None:
+        """The heading branch must emit the full item shape, ``parameters`` included."""
+        p = tmp_path / "api.md"
+        p.write_text("### `foo()`\n")
+        items = DocumentedItemExtractor.extract_documented_items(str(p))
+        assert items == {
+            "foo": {
+                "name": "foo",
+                "line": 1,
+                "kind": "function",
+                "file": str(p),
+                "parameters": [],
+            }
+        }
 
     def test_multiple_headings_carry_params(self, tmp_path: Path) -> None:
         p = tmp_path / "api.md"
@@ -96,6 +146,33 @@ class TestDocumentedItemExtractor:
         items = DocumentedItemExtractor.extract_all_documented_items(str(d), recursive=False)
         assert "foo" in items
         assert "bar" not in items
+
+    def test_extract_all_documented_items_directory_defaults_non_recursive(
+        self, tmp_path: Path
+    ) -> None:
+        d = tmp_path / "docs"
+        sub = d / "sub"
+        sub.mkdir(parents=True)
+        (d / "a.md").write_text("### `foo()`\n")
+        (sub / "b.md").write_text("### `bar()`\n")
+        items = DocumentedItemExtractor.extract_all_documented_items(str(d))
+        assert "foo" in items
+        assert "bar" not in items
+
+    def test_extract_all_documented_items_rst_file_non_recursive(self, tmp_path: Path) -> None:
+        d = tmp_path / "docs"
+        d.mkdir()
+        (d / "a.rst").write_text("### `foo()`\n")
+        items = DocumentedItemExtractor.extract_all_documented_items(str(d), recursive=False)
+        assert "foo" in items
+
+    def test_extract_all_documented_items_rst_file_recursive(self, tmp_path: Path) -> None:
+        d = tmp_path / "docs"
+        sub = d / "sub"
+        sub.mkdir(parents=True)
+        (sub / "b.rst").write_text("### `bar()`\n")
+        items = DocumentedItemExtractor.extract_all_documented_items(str(d), recursive=True)
+        assert "bar" in items
 
     def test_extract_all_documented_items_directory_recursive_contains_bar(
         self, tmp_path: Path

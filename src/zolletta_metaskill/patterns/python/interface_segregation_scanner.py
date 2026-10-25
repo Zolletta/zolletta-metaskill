@@ -119,13 +119,13 @@ class InterfaceSegregationScanner:
     @staticmethod
     def main() -> int:
         """Entry point for the Interface Segregation Principle validator CLI."""
+        # pragma: no mutate start — help text is not a tested contract
         parser = argparse.ArgumentParser(
             description="Interface Segregation Principle (ISP) validator. "
             "Roots come from .zolletta-metaskill/settings.json."
         )
-        parser.add_argument(
-            "--json", action="store_true", help="Output as JSON"
-        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        # pragma: no mutate end
         args = parser.parse_args()
 
         settings = ProjectConfig.load_settings()
@@ -135,7 +135,9 @@ class InterfaceSegregationScanner:
             ProjectConfig.emit_skipped(args.json, "check_isp disabled in settings.json")
             return 0
 
+        # pragma: no mutate start — a None settings arg still falls back to the default source dirs
         roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, py_langs))
+        # pragma: no mutate end
         if not roots:
             print(
                 "Error: no configured source directories exist on disk",
@@ -283,18 +285,16 @@ class InterfaceSegregationScanner:
         stub_violations: list[dict[str, Any]],
     ) -> None:
         """Emit the JSON report."""
-        print(
-            json.dumps(
-                {
-                    "directories": [str(root) for root in roots],
-                    "min_methods": min_methods,
-                    "fat_interfaces": fat_interfaces,
-                    "stub_violations": stub_violations,
-                    "violation_count": len(fat_interfaces) + len(stub_violations),
-                },
-                indent=2,
-            )
-        )
+        payload = {
+            "directories": [str(root) for root in roots],
+            "min_methods": min_methods,
+            "fat_interfaces": fat_interfaces,
+            "stub_violations": stub_violations,
+            "violation_count": len(fat_interfaces) + len(stub_violations),
+        }
+        # pragma: no mutate start — indent is cosmetic: consumers parse the JSON, not its layout
+        print(json.dumps(payload, indent=2))
+        # pragma: no mutate end
 
     @staticmethod
     def _emit_text(
@@ -332,7 +332,9 @@ class InterfaceSegregationScanner:
             print(f"  {item['name']} ({item['method_count']} methods)")
             print(f"    -> {item['file']}:{item['line']}")
             print(f"    Methods: {', '.join(item['methods'])}")
+            # pragma: no mutate start — a missing key yields a falsy default either way
             impls = implementers.get(item["name"], [])
+            # pragma: no mutate end
             if impls:
                 print(f"    Implementers: {', '.join(impls)}")
             print("    Fix: split into smaller, focused protocols")

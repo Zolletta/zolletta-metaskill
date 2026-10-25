@@ -241,6 +241,62 @@ class TestDocstringStreamlinerParsing:
         assert finding is not None
         assert finding.kind == "test"
 
+    # --- Tests for DocstringStreamliner._arg_name_from_entry(). ---
+
+    def test_arg_name_from_entry_two_word_name_returns_both(self) -> None:
+        assert DocstringStreamliner._arg_name_from_entry("x y") == "x y"
+
+    def test_arg_name_from_entry_uppercase_initial_kept(self) -> None:
+        assert DocstringStreamliner._arg_name_from_entry("Xabc") == "Xabc"
+
+    # --- Tests for DocstringStreamliner._parse_args_entries(). ---
+
+    def test_parse_args_entries_blank_line_inside_desc_returns_double_space(self) -> None:
+        body = ["    x: first", "", "        second"]
+        entries = DocstringStreamliner._parse_args_entries(body)
+        assert entries == [("x", "first  second")]
+
+    def test_parse_args_entries_continuation_with_colon_stays_in_desc(self) -> None:
+        body = ["    x: first", "        note: cont"]
+        entries = DocstringStreamliner._parse_args_entries(body)
+        assert entries == [("x", "first note: cont")]
+
+    def test_parse_args_entries_multiline_descs_returns_joined(self) -> None:
+        body = ["    x: first", "        more", "    y: second", "        part"]
+        entries = DocstringStreamliner._parse_args_entries(body)
+        assert entries == [("x", "first more"), ("y", "second part")]
+
+    def test_parse_args_entries_colon_in_desc_partitions_first(self) -> None:
+        entries = DocstringStreamliner._parse_args_entries(["    x: a: b"])
+        assert entries == [("x", "a: b")]
+
+    # --- Tests for DocstringStreamliner._args_section_is_redundant(). ---
+
+    def test_args_section_is_redundant_cls_skipped_returns_true(self) -> None:
+        body = ["    cls: whatever", "    x: int"]
+        anns: dict[str, str | None] = {"cls": None, "x": "int"}
+        assert DocstringStreamliner._args_section_is_redundant(body, anns) is True
+
+    def test_args_section_is_redundant_self_then_meaningful_returns_false(self) -> None:
+        body = ["    self: whatever", "    x: the number of items"]
+        anns: dict[str, str | None] = {"self": None, "x": "int"}
+        assert DocstringStreamliner._args_section_is_redundant(body, anns) is False
+
+    # --- Tests for DocstringStreamliner._analyze_function(). ---
+
+    def test_parse_indented_docstring_redundant_args_removed(self) -> None:
+        src = (
+            'def f(x: int) -> None:\n    """Summary.\n\n    Args:\n'
+            '        x: int\n    """\n    pass\n'
+        )
+        node = self._parse(src)
+        finding = DocstringStreamliner._analyze_function(
+            node, Path("f.py"), DocstringStripOptions(False, False, False, False)
+        )
+        assert finding is not None
+        assert finding.kind == "redundant"
+        assert "Args" in finding.detail
+
     # --- Tests for DocstringStreamliner.main(). ---
 
     def test_empty_directory_contains_all_clear(

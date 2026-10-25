@@ -117,6 +117,135 @@ class TestDocstringStreamlinerRedundancy:
         )
         assert finding is None
 
+    def test_strip_private_finding_fields_exact(self) -> None:
+        src = 'def _helper(x: int) -> None:\n    """A helper."""\n    pass\n'
+        node = self._parse(src)
+        finding = DocstringStreamliner._analyze_function(
+            node, Path("f.py"), DocstringStripOptions(True, False, False, False)
+        )
+        assert finding is not None
+        assert finding.line == 1
+        assert finding.kind == "private"
+        assert finding.detail == "_helper() — private"
+        assert finding.node is node
+        assert finding.new_text is None
+        assert finding.remove is True
+
+    def test_strip_tests_finding_fields_exact(self) -> None:
+        src = 'def test_foo(x: int) -> None:\n    """Test foo."""\n    pass\n'
+        node = self._parse(src)
+        finding = DocstringStreamliner._analyze_function(
+            node, Path("test_foo.py"), DocstringStripOptions(False, True, False, False)
+        )
+        assert finding is not None
+        assert finding.line == 1
+        assert finding.kind == "test"
+        assert finding.detail == "test_foo() — test function"
+        assert finding.node is node
+        assert finding.new_text is None
+        assert finding.remove is True
+
+    def test_strip_nested_finding_fields_exact(self) -> None:
+        src = 'def outer():\n    def inner():\n        """Nested."""\n        pass\n'
+        tree = ast.parse(src)
+        DocstringStreamliner._annotate_parents(tree)
+        outer = tree.body[0]
+        assert isinstance(outer, ast.FunctionDef)
+        inner = outer.body[0]
+        assert isinstance(inner, ast.FunctionDef)
+        finding = DocstringStreamliner._analyze_function(
+            inner, Path("f.py"), DocstringStripOptions(False, False, True, False)
+        )
+        assert finding is not None
+        assert finding.line == 2
+        assert finding.kind == "nested"
+        assert finding.detail == "inner() — nested function"
+        assert finding.node is inner
+        assert finding.new_text is None
+        assert finding.remove is True
+
+    def test_strip_obvious_init_finding_fields_exact(self) -> None:
+        src = (
+            'class C:\n    def __init__(self, x: int) -> None:\n        """Init."""\n        pass\n'
+        )
+        tree = ast.parse(src)
+        DocstringStreamliner._annotate_parents(tree)
+        cls = tree.body[0]
+        assert isinstance(cls, ast.ClassDef)
+        init_node = cls.body[0]
+        assert isinstance(init_node, ast.FunctionDef)
+        finding = DocstringStreamliner._analyze_function(
+            init_node, Path("f.py"), DocstringStripOptions(False, False, False, True)
+        )
+        assert finding is not None
+        assert finding.line == 2
+        assert finding.kind == "obvious_init"
+        assert finding.detail == "__init__ — all params have type annotations"
+        assert finding.node is init_node
+        assert finding.new_text is None
+        assert finding.remove is True
+
+    def test_redundant_args_and_returns_finding_exact(self) -> None:
+        src = (
+            'def f(x: int) -> int:\n    """Summary.\n\nArgs:\n    x: int\n'
+            '\nReturns:\n    int"""\n    return x\n'
+        )
+        node = self._parse(src)
+        finding = DocstringStreamliner._analyze_function(
+            node, Path("f.py"), DocstringStripOptions(False, False, False, False)
+        )
+        assert finding is not None
+        assert finding.line == 1
+        assert finding.kind == "redundant"
+        assert finding.detail == "removed redundant section(s): Args, Returns"
+        assert finding.node is node
+        assert finding.new_text == "Summary."
+        assert finding.remove is False
+
+    def test_returns_before_args_both_removed_finding_exact(self) -> None:
+        src = (
+            'def f(x: int) -> int:\n    """Summary.\n\nReturns:\n    int\n'
+            '\nArgs:\n    x: int"""\n    return x\n'
+        )
+        node = self._parse(src)
+        finding = DocstringStreamliner._analyze_function(
+            node, Path("f.py"), DocstringStripOptions(False, False, False, False)
+        )
+        assert finding is not None
+        assert finding.detail == "removed redundant section(s): Returns, Args"
+        assert finding.new_text == "Summary."
+
+    def test_arguments_header_redundant_removed(self) -> None:
+        src = 'def f(x: int) -> None:\n    """Summary.\n\nArguments:\n    x: int"""\n    pass\n'
+        node = self._parse(src)
+        finding = DocstringStreamliner._analyze_function(
+            node, Path("f.py"), DocstringStripOptions(False, False, False, False)
+        )
+        assert finding is not None
+        assert finding.detail == "removed redundant section(s): Args"
+        assert finding.new_text == "Summary."
+
+    def test_parameters_header_redundant_removed(self) -> None:
+        src = 'def f(x: int) -> None:\n    """Summary.\n\nParameters:\n    x: int"""\n    pass\n'
+        node = self._parse(src)
+        finding = DocstringStreamliner._analyze_function(
+            node, Path("f.py"), DocstringStripOptions(False, False, False, False)
+        )
+        assert finding is not None
+        assert finding.detail == "removed redundant section(s): Args"
+        assert finding.new_text == "Summary."
+
+    def test_meaningful_returns_section_kept(self) -> None:
+        src = (
+            'def f(x: int) -> int:\n    """Summary.\n\nReturns:\n'
+            '    the computed count"""\n    return x\n'
+        )
+        node = self._parse(src)
+        finding = DocstringStreamliner._analyze_function(
+            node, Path("f.py"), DocstringStripOptions(False, False, False, False)
+        )
+        assert finding is None
+
     # --- Tests for DocstringStreamliner.process_file(). ---
 
     def test_strip_private_in_file(self, tmp_path: Path) -> None:
@@ -140,6 +269,36 @@ class TestDocstringStreamlinerRedundancy:
         result = DocstringStreamliner.apply_edits(src, report.findings)
         assert "Args:" not in result
         assert "Summary." in result
+        assert result == 'def f(x: int) -> None:\n    """Summary."""\n    pass\n'
+
+    def test_apply_edits_single_quoted_docstring_exact(self, tmp_path: Path) -> None:
+        src = tmp_path / "mod.py"
+        original = "def f(x: int) -> None:\n    '''Summary.\n\nArgs:\n    x: int'''\n    pass\n"
+        src.write_text(original, encoding="utf-8")
+        report = DocstringStreamliner.process_file(
+            src, DocstringStripOptions(False, False, False, False)
+        )
+        result = DocstringStreamliner.apply_edits(src, report.findings)
+        assert result == "def f(x: int) -> None:\n    '''Summary.'''\n    pass\n"
+
+    def test_apply_edits_two_findings_bottom_up_exact(self, tmp_path: Path) -> None:
+        src = tmp_path / "mod.py"
+        original = (
+            'def f(x: int) -> None:\n    """Summary.\n\nArgs:\n    x: int"""\n    pass\n'
+            "\n"
+            'def g(y: str) -> None:\n    """Doc.\n\nArgs:\n    y: str"""\n    pass\n'
+        )
+        src.write_text(original, encoding="utf-8")
+        report = DocstringStreamliner.process_file(
+            src, DocstringStripOptions(False, False, False, False)
+        )
+        assert len(report.findings) == 2
+        result = DocstringStreamliner.apply_edits(src, report.findings)
+        assert result == (
+            'def f(x: int) -> None:\n    """Summary."""\n    pass\n'
+            "\n"
+            'def g(y: str) -> None:\n    """Doc."""\n    pass\n'
+        )
 
     def test_remove_obsolete_docstring_with_pass(self, tmp_path: Path) -> None:
         src = tmp_path / "mod.py"
@@ -150,6 +309,7 @@ class TestDocstringStreamlinerRedundancy:
         )
         result = DocstringStreamliner.apply_edits(src, report.findings)
         assert "pass" in result
+        assert result == "def f(x: int) -> int:\n    pass\n"
 
     def test_remove_obsolete_docstring_with_other_stmts(self, tmp_path: Path) -> None:
         src = tmp_path / "mod.py"
@@ -163,6 +323,7 @@ class TestDocstringStreamlinerRedundancy:
         )
         result = DocstringStreamliner.apply_edits(src, report.findings)
         assert "return x" in result
+        assert result == "def f(x: int) -> int:\n    return x\n"
 
     def test_strip_private_apply(self, tmp_path: Path) -> None:
         src = tmp_path / "mod.py"
@@ -173,6 +334,7 @@ class TestDocstringStreamlinerRedundancy:
         )
         result = DocstringStreamliner.apply_edits(src, report.findings)
         assert "Helper" not in result
+        assert result == "def _helper() -> None:\n    pass\n"
 
     def test_remove_docstring_strips_trailing_blank(self, tmp_path: Path) -> None:
         """When a docstring is removed and a blank line follows, the blank is also removed."""
@@ -189,6 +351,7 @@ class TestDocstringStreamlinerRedundancy:
         assert "Args:" not in result
         assert "return x" in result
         assert "\n\n\n" not in result
+        assert result == "def f(x: int) -> int:\n    return x\n"
 
     def test_replace_docstring_no_trailing_newline(self, tmp_path: Path) -> None:
         """When the last docstring line has no trailing newline, the replacement preserves it."""
@@ -202,6 +365,7 @@ class TestDocstringStreamlinerRedundancy:
         assert "Args:" not in result
         assert "Summary." in result
         assert not result.endswith("\n")
+        assert result == 'def f(x: int) -> None:\n    """Summary."""'
 
     # --- Tests for DocstringStreamliner.main(). ---
 

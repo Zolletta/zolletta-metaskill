@@ -20,15 +20,6 @@ class TestTestStructureScannerMain:
         (root / "src" / "mypkg").mkdir(parents=True, exist_ok=True)
         (root / "src" / "mypkg" / "__init__.py").write_text("")
 
-    def _make_tree(self, root: Path) -> tuple[Path, Path]:
-        """Create a ``src/mypkg`` and ``tests/`` pair and return both roots."""
-        (root / "src" / "mypkg").mkdir(parents=True)
-        (root / "src" / "mypkg" / "widget.py").write_text(
-            "class Widget:\n    def spin(self) -> None:\n        pass\n"
-        )
-        (root / "tests").mkdir()
-        return (root / "src" / "mypkg", root / "tests")
-
     def _write_settings(self, dirpath: Path, **overrides: object) -> Path:
         """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
         settings: dict[str, object] = {
@@ -39,15 +30,15 @@ class TestTestStructureScannerMain:
             },
             "php": None,
         }
-        python_overrides = overrides.pop("python", None)
-        if isinstance(python_overrides, dict):
-            base_python = settings["python"]
-            assert isinstance(base_python, dict)
-            for key, value in python_overrides.items():
-                if isinstance(value, dict) and isinstance(base_python.get(key), dict):
-                    base_python[key].update(value)
-                else:
-                    base_python[key] = value
+        python_overrides = overrides.pop("python", {})
+        assert isinstance(python_overrides, dict)
+        base_python = settings["python"]
+        assert isinstance(base_python, dict)
+        for key, value in python_overrides.items():
+            if isinstance(value, dict) and isinstance(base_python.get(key), dict):
+                base_python[key].update(value)
+            else:  # pragma: no cover — every caller here passes dict overrides
+                base_python[key] = value
         settings.update(overrides)
         meta = dirpath / ".zolletta-metaskill"
         meta.mkdir(parents=True, exist_ok=True)
@@ -81,7 +72,7 @@ class TestTestStructureScannerMain:
         rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert "SKIPPED" in out
+        assert out == "Result: SKIPPED (check_test_structure disabled in settings.json)\n"
 
     def test_main_check_disabled_json(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -91,7 +82,10 @@ class TestTestStructureScannerMain:
         rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
         report = json.loads(capsys.readouterr().out)
         assert rc == 0
-        assert report["skipped"] is True
+        assert report == {
+            "skipped": True,
+            "reason": "check_test_structure disabled in settings.json",
+        }
 
     def test_main_missing_src(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -298,11 +292,30 @@ class TestTestStructureScannerMain:
         (src_pkg / "user.py").write_text("class User:\n    pass\n")
         (test_pkg / "test_cache.py").write_text("def test_cache():\n    pass\n")
         rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
-        report = json.loads(capsys.readouterr().out)
+        raw = capsys.readouterr().out
+        report = json.loads(raw)
         assert rc == 0
+        assert '\n  "source_packages":' in raw
+        assert set(report) == {
+            "source_packages",
+            "test_packages",
+            "misnamed",
+            "misplaced",
+            "orphaned",
+            "orphaned_dirs",
+            "missing",
+            "indirect_refs",
+            "has_issues",
+        }
         assert report["has_issues"] is True
-        assert len(report["missing"]) == 1
-        assert report["missing"][0]["source_file"] == "user.py"
+        assert report["missing"] == [
+            {
+                "source_file": "user.py",
+                "classes": "User",
+                "expected_prefix": "test_user*.py",
+                "expected_dir": ".",
+            }
+        ]
         assert report["source_packages"] == ["src/mypkg"]
         assert report["test_packages"] == ["tests/mypkg"]
 
@@ -451,3 +464,74 @@ class TestTestStructureScannerMain:
         out = capsys.readouterr().out
         assert rc == 0
         assert "STRUCTURAL MISMATCHES" in out or "all clear" in out
+
+    def test_main_json_misplaced_reported_exactly(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._write_settings(tmp_path)
+        src_pkg, test_pkg = self._make_project(tmp_path)
+        src_sub = src_pkg / "models"
+        src_sub.mkdir()
+        (src_sub / "__init__.py").write_text("")
+        (src_sub / "item.py").write_text("class Item:\n    pass\n")
+        (test_pkg / "test_item.py").write_text("def test_item():\n    pass\n")
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["misplaced"] == [
+            {
+                "test_file": "test_item.py",
+                "source_file": "models/item.py",
+                "test_dir": ".",
+                "expected_dir": "models",
+            }
+        ]
+
+    def test_main_json_indirect_ref_reported_exactly(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._write_settings(tmp_path)
+        src_pkg, test_pkg = self._make_project(tmp_path)
+        (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
+        (src_pkg / "user.py").write_text("class User:\n    pass\n")
+        (test_pkg / "test_cache.py").write_text(
+            "from mypkg.cache import Cache\nfrom mypkg.user import User\n"
+            "def test_both():\n    assert Cache and User\n"
+        )
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["indirect_refs"] == [
+            {
+                "test_file": "test_cache.py",
+                "primary_source": "cache.py",
+                "indirectly_tested_sources": "user.py",
+                "indirectly_tested_classes": "User",
+            }
+        ]
+        assert report["missing"] == []
+
+    def test_main_json_orphaned_dirs_reported_exactly(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._write_settings(tmp_path)
+        src_pkg, test_pkg = self._make_project(tmp_path)
+        (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
+        (test_pkg / "test_cache.py").write_text("def test_cache():\n    pass\n")
+        (test_pkg / "orphan_dir").mkdir()
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["orphaned_dirs"] == [{"test_dir": "orphan_dir/"}]
+
+    def test_main_all_clear_prints_exact_result_line(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._write_settings(tmp_path)
+        src_pkg, test_pkg = self._make_project(tmp_path)
+        (src_pkg / "cache.py").write_text("class Cache:\n    pass\n")
+        (test_pkg / "test_cache.py").write_text("def test_cache():\n    pass\n")
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "**Result:** all clear" in out.splitlines()

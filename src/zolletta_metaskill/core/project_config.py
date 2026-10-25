@@ -103,7 +103,10 @@ class ProjectConfig:
         for part in dotted_path.split("."):
             if not isinstance(node, dict):
                 return default
+            # pragma: no mutate start — the sentinel is unobservable: explicit None values take the
+            # same path
             node = node.get(part, ProjectConfig._MISSING)
+            # pragma: no mutate end
             if node is ProjectConfig._MISSING:
                 return default
         if default is None:
@@ -156,10 +159,13 @@ class ProjectConfig:
         enabled: set[str] = set()
         for lang in ProjectConfig.configured_languages(settings):
             section = settings.get(lang)
+            # pragma: no mutate start — a missing toggle yields a non-False value either way, so
+            # the default is unobservable
             if (
                 isinstance(section, dict)
                 and ProjectConfig.setting(section, toggle_path, True) is False
             ):
+                # pragma: no mutate end
                 continue
             enabled.add(lang)
         return enabled
@@ -180,9 +186,12 @@ class ProjectConfig:
         """
         for lang in languages:
             section = settings.get(lang)
+            # pragma: no mutate start — ``setting`` itself guards non-dict input, so the isinstance
+            # ternary is unobservable
             value = ProjectConfig.setting(
                 section if isinstance(section, dict) else {}, toggle_path, default
             )
+            # pragma: no mutate end
             if value:
                 return True
         return False
@@ -364,12 +373,15 @@ class ProjectConfig:
         adrs = ProjectConfig.setting(settings, "documentation.adrs", None)
         if adrs is None:
             return None
+        # pragma: no mutate start — ``docs_dir / ""`` equals ``docs_dir``, so the ``if adrs``
+        # branch condition is unobservable
         if isinstance(adrs, str):
             return (
                 ProjectConfig.docs_dir(settings) / adrs
                 if adrs
                 else ProjectConfig.docs_dir(settings)
             )
+        # pragma: no mutate end
         return None
 
     @staticmethod
@@ -401,7 +413,10 @@ class ProjectConfig:
         if result.returncode != 0:
             return None
         files = []
+        # pragma: no mutate start — decode() defaults to utf-8 and the codec name is
+        # case-insensitive
         for rel in result.stdout.decode("utf-8", errors="surrogateescape").split("\0"):
+            # pragma: no mutate end
             if not rel or rel.startswith("../"):
                 continue
             path = root / rel

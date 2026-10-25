@@ -134,6 +134,44 @@ class TestPythonEngine:
         assert priv.is_public is False
         assert pub.is_public is True
 
+    def test_classmethod_is_not_static(self, tmp_path: Path) -> None:
+        """A ``@classmethod`` decorator is a Name but not ``staticmethod``."""
+        path = _write(
+            tmp_path,
+            "mod.py",
+            "class Foo:\n    @classmethod\n    def make(cls):\n        pass\n",
+        )
+        info = PythonEngine().parse_module(path)
+        cls = _classes(info)["Foo"]
+        m = next(meth for meth in cls.methods if meth.name == "make")
+        assert m.is_static is False
+
+    def test_class_attributes_after_class_level_assignment(self, tmp_path: Path) -> None:
+        """A class-level constant must not stop ``self.x`` attribute collection."""
+        path = _write(
+            tmp_path,
+            "mod.py",
+            "class Foo:\n    CONST = 1\n    def __init__(self):\n        self.x = 1\n",
+        )
+        info = PythonEngine().parse_module(path)
+        cls = _classes(info)["Foo"]
+        assert cls.attributes == ["x"]
+
+    def test_class_attributes_deduplicated(self, tmp_path: Path) -> None:
+        """The same ``self.x`` assigned in two methods is reported once."""
+        path = _write(
+            tmp_path,
+            "mod.py",
+            "class Foo:\n"
+            "    def __init__(self):\n"
+            "        self.x = 1\n"
+            "    def reset(self):\n"
+            "        self.x = 0\n",
+        )
+        info = PythonEngine().parse_module(path)
+        cls = _classes(info)["Foo"]
+        assert cls.attributes == ["x"]
+
     def test_class_with_async_method(self, tmp_path: Path) -> None:
         path = _write(
             tmp_path,
@@ -351,6 +389,12 @@ class TestPythonEngine:
         info = PythonEngine().parse_module(path)
         assert info.all_exports == ["Foo"]
 
+    def test_non_all_list_assignment_is_not_exports(self, tmp_path: Path) -> None:
+        """``x = [1]`` has a Name target but is not ``__all__``."""
+        path = _write(tmp_path, "mod.py", "x = [1]\n")
+        info = PythonEngine().parse_module(path)
+        assert info.all_exports is None
+
     # --- parse_module — docstring ---
 
     def test_module_with_docstring(self, tmp_path: Path) -> None:
@@ -378,10 +422,22 @@ class TestPythonEngine:
         assert info.functions == []
         assert info.imports == []
 
+    def test_syntax_error_preserves_path_and_language(self, tmp_path: Path) -> None:
+        path = _write(tmp_path, "mod.py", "def foo(:\n    pass\n")
+        info = PythonEngine().parse_module(path)
+        assert info.path == path
+        assert info.language == "python"
+
     def test_parse_module_nonexistent_file_returns_empty_list(self, tmp_path: Path) -> None:
         info = PythonEngine().parse_module(tmp_path / "nope.py")
         assert info.has_syntax_error is True
         assert info.classes == []
+
+    def test_parse_module_missing_file_preserves_path_and_language(self, tmp_path: Path) -> None:
+        path = tmp_path / "nope.py"
+        info = PythonEngine().parse_module(path)
+        assert info.path == path
+        assert info.language == "python"
 
     # --- parse_module — edge cases ---
 
@@ -456,3 +512,48 @@ class TestPythonEngine:
         cls = PythonEngine().parse_module(path).classes[0]
         assert cls.is_dataclass is False
         assert cls.dataclass_fields == []
+
+    def test_qualified_dataclass_decorator_detected(self, tmp_path: Path) -> None:
+        src = "import dataclasses\n\n@dataclasses.dataclass\nclass A:\n    a: int\n"
+        path = _write(tmp_path, "mod.py", src)
+        cls = PythonEngine().parse_module(path).classes[0]
+        assert cls.is_dataclass is True
+        assert cls.dataclass_fields == ["a"]
+
+    def test_qualified_dataclass_call_detected(self, tmp_path: Path) -> None:
+        src = "import dataclasses\n\n@dataclasses.dataclass(frozen=True)\nclass A:\n    a: int\n"
+        path = _write(tmp_path, "mod.py", src)
+        cls = PythonEngine().parse_module(path).classes[0]
+        assert cls.is_dataclass is True
+        assert cls.dataclass_fields == ["a"]
+
+    def test_attribute_decorator_not_dataclass(self, tmp_path: Path) -> None:
+        """``@attr.s`` is an Attribute decorator whose attr is not ``dataclass``."""
+        src = "import attr\n\n@attr.s\nclass A:\n    a: int\n"
+        path = _write(tmp_path, "mod.py", src)
+        cls = PythonEngine().parse_module(path).classes[0]
+        assert cls.is_dataclass is False
+
+    def test_call_decorator_name_not_dataclass(self, tmp_path: Path) -> None:
+        """``@register()`` calls a Name that is not ``dataclass``."""
+        src = "@register()\nclass A:\n    a: int\n"
+        path = _write(tmp_path, "mod.py", src)
+        cls = PythonEngine().parse_module(path).classes[0]
+        assert cls.is_dataclass is False
+
+    def test_call_decorator_attribute_not_dataclass(self, tmp_path: Path) -> None:
+        """``@mod.register()`` calls an Attribute that is not ``dataclass``."""
+        src = "import mod\n\n@mod.register()\nclass A:\n    a: int\n"
+        path = _write(tmp_path, "mod.py", src)
+        cls = PythonEngine().parse_module(path).classes[0]
+        assert cls.is_dataclass is False
+
+    def test_dataclass_fields_exclude_plain_assignments(self, tmp_path: Path) -> None:
+        """Only annotated names are dataclass fields — ``CONST = 1`` is not."""
+        src = (
+            "from dataclasses import dataclass\n\n@dataclass\nclass A:\n    x: int\n    CONST = 1\n"
+        )
+        path = _write(tmp_path, "mod.py", src)
+        cls = PythonEngine().parse_module(path).classes[0]
+        assert cls.is_dataclass is True
+        assert cls.dataclass_fields == ["x"]

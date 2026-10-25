@@ -80,7 +80,20 @@ class TestADRClient:
         """format_report returns 'no ADRs found' when has_adrs is False."""
         report = DistillReport(has_adrs=False)
         result = ADRClient.format_report(report, as_json=False)
-        assert "no ADRs found" in result
+        assert result == "ADR distiller: no ADRs found"
+
+    def test_format_report_plain_with_dropped_keeps_summary(self) -> None:
+        """The dropped count is appended to the counts line, not a replacement."""
+        report = DistillReport(new=["a.md"], has_adrs=True, dropped=["ADR-0001"])
+        result = ADRClient.format_report(report, as_json=False)
+        assert result == "ADR distiller: 1 new, 0 stale, 0 removed, 1 dropped"
+
+    def test_format_report_plain_with_lead_ins_keeps_summary(self) -> None:
+        """The lead-in warning is appended to the counts line, not a replacement."""
+        report = DistillReport(has_adrs=True, lead_ins=["ADR-0006", "ADR-0015"])
+        result = ADRClient.format_report(report, as_json=False)
+        assert result.startswith("ADR distiller: 0 new, 0 stale, 0 removed")
+        assert result.endswith("rather than a decision: ADR-0006, ADR-0015")
 
     # --- Tests for ADRClient.missing_docs_error. ---
 
@@ -96,6 +109,15 @@ class TestADRClient:
         data = json.loads(result)
         assert data["new"] == []
         assert data["has_adrs"] is False
+
+    def test_missing_docs_error_json_has_exact_keys(self) -> None:
+        result = ADRClient.missing_docs_error(Path("/tmp/nope"), as_json=True)
+        data = json.loads(result)
+        assert set(data) == {"new", "stale", "removed", "dropped", "lead_ins", "has_adrs"}
+        assert data["stale"] == []
+        assert data["removed"] == []
+        assert data["dropped"] == []
+        assert data["lead_ins"] == []
 
     # --- Tests for ADRClient.run. ---
 
@@ -125,6 +147,60 @@ class TestADRClient:
         out = capsys.readouterr().out
         data = json.loads(out)
         assert data["has_adrs"] is False
+
+    def test_run_missing_docs_error_names_docs_dir(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The error message names the configured docs dir, not a placeholder."""
+        meta = tmp_path / ".zolletta-metaskill"
+        meta.mkdir()
+        (meta / "settings.json").write_text(json.dumps({"documentation": {"dir": "handbook"}}))
+        monkeypatch.chdir(tmp_path)
+        rc = ADRClient.run([])
+        assert rc == 1
+        assert "handbook" in capsys.readouterr().err
+
+    def test_run_uses_configured_docs_dir_not_default(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A missing configured dir must fail even when ./docs exists."""
+        meta = tmp_path / ".zolletta-metaskill"
+        meta.mkdir()
+        (meta / "settings.json").write_text(json.dumps({"documentation": {"dir": "no_such_docs"}}))
+        (tmp_path / "docs").mkdir()
+        monkeypatch.chdir(tmp_path)
+        rc = ADRClient.run([])
+        assert rc == 1
+        assert "no_such_docs" in capsys.readouterr().err
+
+    def test_run_writes_cache_under_configured_runs_dir(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The mtime cache lands under ``runs_dir``, not the default."""
+        meta = tmp_path / ".zolletta-metaskill"
+        meta.mkdir()
+        (meta / "settings.json").write_text(
+            json.dumps(
+                {
+                    "runs_dir": "custom_runs",
+                    "documentation": {"dir": "docs", "adrs": None},
+                }
+            )
+        )
+        (tmp_path / "docs").mkdir()
+        monkeypatch.chdir(tmp_path)
+        rc = ADRClient.run([])
+        assert rc == 0
+        assert (tmp_path / "custom_runs" / "adr-cache.json").exists()
 
     # --- Tests for the CLI main() function. ---
 

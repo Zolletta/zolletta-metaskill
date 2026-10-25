@@ -143,8 +143,11 @@ class TestGodClassesScanner:
         for root in roots:
             for py in ProjectConfig.iter_files(root, {".py"}):
                 engine = EngineRegistry.get_for_file(py)
-                if engine is None:  # pragma: no cover
+                # pragma: no mutate start — unreachable for .py paths once PythonEngine is
+                # registered
+                if engine is None:  # pragma: no cover — the registry always serves .py files
                     continue
+                # pragma: no mutate end
                 module = engine.parse_module(py)
                 all_results.extend(TestGodClassesScanner._test_class_metrics(module))
         return all_results
@@ -186,6 +189,7 @@ class TestGodClassesScanner:
     @staticmethod
     def main() -> int:  # pragma: no mutate — help text is not a tested contract
         """Entry point for the test God class scanner CLI."""
+        # pragma: no mutate start — help/description text is not a tested contract
         parser = argparse.ArgumentParser(
             description="Scan Python test classes for size and mixed-SUT detection. "
             "Roots and thresholds come from .zolletta-metaskill/settings.json."
@@ -193,11 +197,10 @@ class TestGodClassesScanner:
         parser.add_argument(
             "--show-methods",
             action="store_true",
-            help="List all method names per class (helps spot mixed SUTs)",  # pragma: no mutate
+            help="List all method names per class (helps spot mixed SUTs)",
         )
-        parser.add_argument(
-            "--json", action="store_true", help="Output as JSON"
-        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        # pragma: no mutate end
         args = parser.parse_args()
 
         TestGodClassesScanner._ensure_python_engine()

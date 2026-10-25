@@ -83,10 +83,14 @@ class AcronymCasingScanner:
         (e.g. the script was copied without the assets directory).
         """
         try:
-            data = json.loads(
-                AcronymCasingScanner._ACRONYMS_JSON.read_text(encoding="utf-8")
-            )  # pragma: no mutate — equivalent on UTF-8 locales  # noqa: E501
+            # pragma: no mutate start — carried from inline pragma (was ineffective inside a
+            # multi-line statement)
+            data = json.loads(AcronymCasingScanner._ACRONYMS_JSON.read_text(encoding="utf-8"))
+            # pragma: no mutate end
+            # pragma: no mutate start — a missing key yields a falsy value either way, so the
+            # default is unobservable
             acronyms = data.get("acronyms", [])
+            # pragma: no mutate end
             if isinstance(acronyms, list) and acronyms:
                 return [a.upper() for a in acronyms if isinstance(a, str)]
         except (OSError, json.JSONDecodeError):
@@ -268,15 +272,15 @@ class AcronymCasingScanner:
     @staticmethod
     def main() -> int:
         """Entry point for the acronym casing checker CLI."""
+        # pragma: no mutate start — help text is not a tested contract
         parser = argparse.ArgumentParser(
             description="Check that acronyms in class names stay fully uppercase. "
             "Splits PascalCase names into words and flags any word that "
             "case-insensitively matches a known acronym but isn't all-uppercase. "
             "Scan roots come from python.paths.source in settings.json."
         )
-        parser.add_argument(
-            "--json", action="store_true", help="Output as JSON"
-        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        # pragma: no mutate end
         args = parser.parse_args()
 
         settings = ProjectConfig.load_settings()

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -119,16 +120,40 @@ class TestDocumentorClient:
         settings = {"language": "python", "documentation": {"dir": "guide"}}
         assert DocumentorClient._python_configured(settings) is True
 
+    def test_python_configured_uses_custom_source_root(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """``python.paths.source`` is honoured rather than the ``src`` default."""
+        (tmp_path / "lib").mkdir()
+        (tmp_path / "docs").mkdir()
+        monkeypatch.chdir(tmp_path)
+        settings = {
+            "language": "python",
+            "python": {"paths": {"source": ["lib"]}},
+            "documentation": {"dir": "docs"},
+        }
+        assert DocumentorClient._python_configured(settings) is True
+
+    def test_python_configured_false_when_default_docs_exists_but_custom_missing(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Only the configured docs dir counts, not the ``docs`` default."""
+        self._layout(tmp_path, src=True, docs=True)
+        monkeypatch.chdir(tmp_path)
+        settings = {"language": "python", "documentation": {"dir": "guide"}}
+        assert DocumentorClient._python_configured(settings) is False
+
     # --- main ---
 
     def test_main_runs_all_tools_and_prints_report(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         patches = self._patch_main_inputs(tmp_path)
+        cache_dir = tmp_path / "cache"
         with (
             patch("sys.argv", ["documentor_client.py"]),
             patches[0],
-            patches[1],
+            patches[1] as mock_resolve,
             patches[2] as mock_q,
             patches[3] as mock_api,
             patches[4],
@@ -137,11 +162,39 @@ class TestDocumentorClient:
         ):
             exit_code = DocumentorClient.main()
         assert exit_code == 0
-        mock_q.assert_called_once()
-        mock_api.assert_called_once()
-        mock_link.assert_called_once()
+        mock_resolve.assert_called_once_with({})
+        mock_q.assert_called_once_with(os.path.abspath("."), {}, cache_dir)
+        mock_api.assert_called_once_with({}, cache_dir)
+        mock_link.assert_called_once_with(os.path.abspath("."), {}, cache_dir)
         out = capsys.readouterr().out
         assert "Documentor Review Report" in out
+
+    def test_main_creates_cache_dir_with_parents(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        patches = self._patch_main_inputs(tmp_path)
+        real_mkdir = Path.mkdir
+        mkdir_kwargs: list[dict[str, Any]] = []
+
+        def spy(self: Path, *args: Any, **kwargs: Any) -> None:
+            mkdir_kwargs.append(kwargs)
+            real_mkdir(self, *args, **kwargs)
+
+        with (
+            patch("sys.argv", ["documentor_client.py"]),
+            patch.object(Path, "mkdir", autospec=True, side_effect=spy),
+            patches[0],
+            patches[1],
+            patches[2],
+            patches[3],
+            patches[4],
+            patches[5],
+            patches[6],
+            patch("builtins.print"),
+        ):
+            DocumentorClient.main()
+        assert mkdir_kwargs
+        assert all(kwargs == {"parents": True, "exist_ok": True} for kwargs in mkdir_kwargs)
 
     def test_main_skips_api_doc_when_python_not_configured(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -160,7 +213,15 @@ class TestDocumentorClient:
             exit_code = DocumentorClient.main()
         assert exit_code == 0
         mock_api.assert_not_called()
-        mock_skip.assert_called_once()
+        mock_skip.assert_called_once_with(
+            tmp_path / "cache",
+            {
+                "skipped_reason": "Python source roots or docs dir not configured/missing",
+                "summary": {},
+                "issues": [],
+                "suggestions": [],
+            },
+        )
 
     def test_main_json_output(self, tmp_path: Path) -> None:
         patches = self._patch_main_inputs(tmp_path)
@@ -215,6 +276,43 @@ class TestDocumentorClient:
         ):
             exit_code = DocumentorClient.main()
         assert exit_code == 1
+
+    def test_main_score_equal_to_threshold_exits_0(self, tmp_path: Path) -> None:
+        settings = {"documentation": {"staleness_threshold": 90}}
+        patches = self._patch_main_inputs(tmp_path, aggregate_score=90.0, settings=settings)
+        with (
+            patch("sys.argv", ["documentor_client.py"]),
+            patches[0],
+            patches[1],
+            patches[2],
+            patches[3],
+            patches[4],
+            patches[5],
+            patches[6],
+            patch("builtins.print"),
+        ):
+            exit_code = DocumentorClient.main()
+        assert exit_code == 0
+
+    def test_main_quality_cache_without_summary_exits_0(self, tmp_path: Path) -> None:
+        patches = self._patch_main_inputs(tmp_path)
+        with (
+            patch("sys.argv", ["documentor_client.py"]),
+            patches[0],
+            patches[1],
+            patches[2],
+            patches[3],
+            patches[4],
+            patches[5],
+            patches[6],
+            patch("builtins.print"),
+            patch(
+                "zolletta_metaskill.documentor.documentor_client.ReportAggregator.read_quality_cache",
+                return_value={"issues": []},
+            ),
+        ):
+            exit_code = DocumentorClient.main()
+        assert exit_code == 0
 
     def test_main_no_score_exits_0(self, tmp_path: Path) -> None:
         patches = self._patch_main_inputs(tmp_path, aggregate_score=None)

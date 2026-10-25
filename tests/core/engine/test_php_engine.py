@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import pytest
+from tree_sitter import Parser
 
 from zolletta_metaskill.core.engine.language_engine import LanguageEngine
 from zolletta_metaskill.core.engine.php_engine import PHPEngine
@@ -372,6 +374,8 @@ class Worker {
         path = tmp_path / "missing.php"
         info = engine.parse_module(path)
         assert info.has_syntax_error is True
+        assert info.path == path
+        assert info.language == "php"
         assert info.classes == []
         assert info.functions == []
 
@@ -390,8 +394,10 @@ class First {
         info = engine.parse_module(path)
         cls = info.classes[0]
         assert cls.lineno == 3
+        assert cls.end_lineno == 5
         method = cls.methods[0]
         assert method.lineno == 4
+        assert method.end_lineno == 4
 
     # --- Graceful degradation -------------------------------------------------
 
@@ -418,5 +424,99 @@ class First {
         path = tmp_path / "Foo.php"
         path.write_text("<?php class Foo {}", encoding="utf-8")
 
+        with pytest.raises(ImportError) as exc_info:
+            engine.parse_module(path)
+        assert str(exc_info.value) == (
+            "tree-sitter-php is required to parse PHP files. "
+            "Install it with: uv add 'zolletta-metaskill[php]' "
+            "(or: pip install 'zolletta-metaskill[php]')"
+        )
+
+    # --- Injected dependencies ----------------------------------------------
+
+    def test_get_parser_injected_parser_factory_returns_factory_result(self) -> None:
+        """An injected parser_factory is stored and used for the parser."""
+        sentinel = cast("Parser", object())
+        engine = PHPEngine(parser_factory=lambda: sentinel, dependency_check=lambda: True)
+        assert engine._get_parser() is sentinel  # noqa: SLF001
+
+    def test_get_parser_failing_dependency_check_raises_import_error(self, tmp_path: Path) -> None:
+        """An injected dependency_check returning False forces ImportError."""
+        engine = PHPEngine(dependency_check=lambda: False)
+        path = tmp_path / "Foo.php"
+        path.write_text("<?php class Foo {}", encoding="utf-8")
+
         with pytest.raises(ImportError, match="tree-sitter-php"):
             engine.parse_module(path)
+
+    # --- Exact field assertions ----------------------------------------------
+
+    @_skip_no_ts
+    def test_parse_use_imports_exact_fields(self, tmp_path: Path) -> None:
+        engine = PHPEngine()
+        src = """<?php
+namespace App;
+
+use Some\\Ns\\Cls;
+use Other\\Ns\\{ClsA, ClsB as Bee};
+use A\\{B};
+use Third\\Thing as Alias;
+"""
+        path = tmp_path / "imports.php"
+        path.write_text(src, encoding="utf-8")
+
+        info = engine.parse_module(path)
+        assert [(imp.module, imp.names, imp.lineno, imp.is_relative) for imp in info.imports] == [
+            ("Some\\Ns\\Cls", [], 4, False),
+            ("Other\\Ns\\ClsA", [], 5, False),
+            ("Other\\Ns\\ClsB", ["Bee"], 5, False),
+            ("A\\B", [], 6, False),
+            ("Third\\Thing", ["Alias"], 7, False),
+        ]
+
+    @_skip_no_ts
+    def test_parse_interface_extends_returns_exact_bases(self, tmp_path: Path) -> None:
+        engine = PHPEngine()
+        src = """<?php
+interface Repo extends BaseIface, Countable {
+    public function find(int $id): ?array;
+}
+"""
+        path = tmp_path / "Repo.php"
+        path.write_text(src, encoding="utf-8")
+
+        info = engine.parse_module(path)
+        cls = info.classes[0]
+        assert cls.bases == ["BaseIface", "Countable"]
+        assert cls.is_abstract is True
+        assert cls.is_test_class is False
+        assert cls.lineno == 2
+        assert cls.end_lineno == 4
+
+    @_skip_no_ts
+    def test_parse_function_duplicate_throws_returns_deduped_raises(self, tmp_path: Path) -> None:
+        engine = PHPEngine()
+        src = """<?php
+function risky(): void {
+    throw new \\RuntimeException("a");
+    throw new \\RuntimeException("b");
+}
+"""
+        path = tmp_path / "risky.php"
+        path.write_text(src, encoding="utf-8")
+
+        info = engine.parse_module(path)
+        func = info.functions[0]
+        assert func.raises == ["RuntimeException"]
+        assert func.is_public is True
+        assert func.is_static is False
+
+    @_skip_no_ts
+    def test_parse_module_invalid_utf8_bytes_still_parses(self, tmp_path: Path) -> None:
+        """Invalid UTF-8 in comments is replaced, not raised (errors="replace")."""
+        engine = PHPEngine()
+        path = tmp_path / "Bad.php"
+        path.write_bytes(b"<?php /* \xff\xfe */ class Foo {}")
+
+        info = engine.parse_module(path)
+        assert info.classes[0].name == "Foo"

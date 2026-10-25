@@ -215,6 +215,11 @@
           "description": "When true, quality/unwrapped_prose_scanner.py reports markdown paragraphs broken mid-sentence. Opt-in (default: false): an existing documentation tree can carry a long backlog, and the rule is a formatting convention, so clear the backlog before turning it on.",
           "default": false
         },
+        "check_grice": {
+          "type": "boolean",
+          "description": "When true, grice/grice_scanner.py scores documentation against Grice's Quantity, Quality, Relation and Manner maxims, as indices relative to the corpus itself. Opt-in (default: false): a relative index is a judgement about prose, not a defect list, so a project asks for it deliberately.",
+          "default": false
+        },
         "include_referential": {
           "type": "boolean",
           "description": "When true, quality_review also reports referential drift (docs referencing symbols that moved), not just broken links.",

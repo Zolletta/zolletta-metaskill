@@ -71,7 +71,9 @@ class GitHelper:
         """Count commits touching *directory* since *since_date*."""
         args = ["log", "--since", since_date, "--oneline", "--", directory or "."]
         output = GitHelper.run_git(repo_path, args)
+        # pragma: no mutate start — output is a str; falsy means "", so both branches yield 0
         return len([line for line in output.splitlines() if line.strip()]) if output else 0
+        # pragma: no mutate end
 
     @staticmethod
     def get_renamed_files(repo_path: str, since_date: str) -> list[tuple[str, str]]:

@@ -94,10 +94,49 @@ class TestDocCodeMapper:
         mapping = DocCodeMapper.map_docs_to_code(str(tmp_path), ["docs/README.md"], ["src/app.py"])
         assert "docs" in mapping["docs/README.md"]
 
+    def test_map_docs_to_code_proximity_exact_dirs(self, tmp_path: Path) -> None:
+        """Proximity mapping stores the matching directory, not a placeholder."""
+        mapping = DocCodeMapper.map_docs_to_code(
+            str(tmp_path), ["src/auth/README.md"], ["src/auth/login.py"]
+        )
+        assert mapping["src/auth/README.md"] == ["src/auth"]
+
+    def test_map_docs_to_code_unreadable_doc_does_not_stop_others(self, tmp_path: Path) -> None:
+        """A doc that fails to open must not abort content-ref mapping for the rest."""
+        doc = tmp_path / "docs" / "b.md"
+        doc.parent.mkdir(parents=True)
+        doc.write_text("See `x.py`.", encoding="utf-8")
+        mapping = DocCodeMapper.map_docs_to_code(
+            str(tmp_path), ["docs/missing.md", "docs/b.md"], ["pkg/x.py"]
+        )
+        assert "pkg" in mapping["docs/b.md"]
+
+    def test_map_by_content_refs_root_level_code_not_mapped(self, tmp_path: Path) -> None:
+        """A referenced code file at the repo root has no directory to map to."""
+        doc = tmp_path / "docs" / "b.md"
+        doc.parent.mkdir(parents=True)
+        doc.write_text("See `a.py`.", encoding="utf-8")
+        mapping: dict[str, list[str]] = {"docs/b.md": []}
+        DocCodeMapper._map_by_content_refs(str(tmp_path), ["docs/b.md"], ["a.py"], mapping)
+        assert mapping["docs/b.md"] == []
+
     def test_map_docs_to_code_missing_doc_file_is_tolerated(self, tmp_path: Path) -> None:
         """map_docs_to_code skips content matching when the doc file cannot be read."""
         mapping = DocCodeMapper.map_docs_to_code(str(tmp_path), ["docs/absent.md"], [])
         assert mapping == {}
+
+    def test_map_docs_to_code_readme_rst_and_txt(self, tmp_path: Path) -> None:
+        for name in ("readme.rst", "readme.txt", "index.md"):
+            doc = tmp_path / "guides" / name
+            doc.parent.mkdir(parents=True, exist_ok=True)
+            doc.write_text("# Docs", encoding="utf-8")
+        mapping = DocCodeMapper.map_docs_to_code(
+            str(tmp_path),
+            ["guides/readme.rst", "guides/readme.txt", "guides/index.md"],
+            [],
+        )
+        for doc_rel in ("guides/readme.rst", "guides/readme.txt", "guides/index.md"):
+            assert "guides" in mapping[doc_rel]
 
     # --- Reference Extraction ---
 
@@ -116,6 +155,32 @@ class TestDocCodeMapper:
         assert "client.py" in refs["files"]
         assert "api.md" in refs["files"]
         assert "https://example.com" in refs["links"]
+
+    def test_extract_references_external_and_anchor_links_not_files(self, tmp_path: Path) -> None:
+        """http/https/mailto/anchor targets are links, never file references."""
+        doc = tmp_path / "guide.md"
+        doc.write_text(
+            "[a](http://example.com/x) [b](https://example.com/y) "
+            "[c](mailto:dev@example.com) [d](#section) [e](local.md)\n",
+            encoding="utf-8",
+        )
+        refs = DocCodeMapper.extract_references_from_doc(str(tmp_path), "guide.md")
+        assert refs["files"] == {"local.md"}
+        for target in (
+            "http://example.com/x",
+            "https://example.com/y",
+            "mailto:dev@example.com",
+            "#section",
+        ):
+            assert target in refs["links"]
+
+    def test_extract_references_anchor_suffix_stripped_from_file(self, tmp_path: Path) -> None:
+        """``file.md#anchor`` records ``file.md`` — the fragment is dropped."""
+        doc = tmp_path / "guide.md"
+        doc.write_text("[x](docs/api.md#usage)\n", encoding="utf-8")
+        refs = DocCodeMapper.extract_references_from_doc(str(tmp_path), "guide.md")
+        assert "docs/api.md" in refs["files"]
+        assert "docs/api.md#usage" not in refs["files"]
 
     def test_extract_references_from_doc_missing_file_returns_empty(self, tmp_path: Path) -> None:
         """extract_references_from_doc returns empty reference sets for an unreadable doc."""

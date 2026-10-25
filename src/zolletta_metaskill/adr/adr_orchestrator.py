@@ -79,7 +79,7 @@ class ADROrchestrator:
             if key not in current_keys:
                 report.removed.append(key)
         for key in report.removed:
-            new_cache.pop(key, None)
+            new_cache.pop(key, None)  # pragma: no mutate — new_cache holds only current records
 
         # Read existing distilled file (lives in the ADR directory, not docs root)
         distilled_path = self._distilled_path()
@@ -150,7 +150,9 @@ class ADROrchestrator:
             key = ADRCache.key(record)
             current_keys.add(key)
             cached = old_cache.get(key)
+            # pragma: no mutate start — any non-"accepted" default gives the same result
             was_accepted = cached is not None and self._is_accepted(str(cached.get("status", "")))
+            # pragma: no mutate end
             is_accepted = self._is_accepted(record.status)
 
             if cached is None:
@@ -173,7 +175,9 @@ class ADROrchestrator:
                 refined = directive is None or not ADRDistiller.is_lead_in(directive)
             else:
                 # Up-to-date — preserve existing directive and its flag
+                # pragma: no mutate start — this branch needs cached["refined"] is not False
                 refined = bool(cached.get("refined", True))
+                # pragma: no mutate end
 
             # Update cache entry
             new_cache[key] = {
@@ -214,7 +218,9 @@ class ADROrchestrator:
         merged: dict[str, str] = {}
         for key, directive in existing_directives.items():
             if key in accepted_keys:
+                # pragma: no mutate start — the loop below overwrites this key with the same value
                 merged[key] = new_directives.get(key, directive)
+                # pragma: no mutate end
         for key, directive in new_directives.items():
             merged[key] = directive
         return merged
@@ -230,18 +236,23 @@ class ADROrchestrator:
         existing_directives = diff.existing_directives
         new_directives = diff.new_directives
         directive_lines = list(diff.directive_lines)
+        # pragma: no mutate start — has_adrs implies non-empty directive_lines
         if not (report.has_adrs and directive_lines):
             ADRDistiller.write_placeholder(distilled_path)
             return
+        # pragma: no mutate end
 
         # Check if we can do an in-place update (preserve category headings).
         # This works when the existing file has directives (not a placeholder)
         # and every new directive replaces an existing line — the in-place
         # updater doesn't support inserting lines (brand-new ADRs, or stale
         # ADRs whose directive was previously absent from the file).
+        # pragma: no mutate start — parse_directives(None) is {}, and a directive-less file also
+        # leaves existing_directives empty, so the or-variant resolves identically downstream
         existing_has_directives = bool(
             existing_content is not None and ADRDistiller.parse_directives(existing_content)
         )
+        # pragma: no mutate end
         can_update_in_place = existing_has_directives and all(
             key in existing_directives for key in new_directives
         )
@@ -310,7 +321,7 @@ class ADROrchestrator:
         # Try to break at a word boundary
         truncated = cleaned[: ADROrchestrator._MAX_DECISION_LEN]
         last_space = truncated.rfind(" ")
-        if last_space > 0:
+        if last_space > 0:  # pragma: no mutate — collapsed text never starts with " "
             return truncated[:last_space] + "..."
         return truncated + "..."
 

@@ -26,6 +26,7 @@ class SourceSignatureExtractor:
         try:
             return ast.unparse(node)
         except AttributeError:  # pragma: no cover — Python < 3.9 fallback
+            # pragma: no mutate start — unreachable: ast.unparse exists on all supported Pythons
             if isinstance(node, ast.Name):
                 return node.id
             elif isinstance(node, ast.Constant):
@@ -37,6 +38,7 @@ class SourceSignatureExtractor:
                 slice_ = SourceSignatureExtractor._annotation_to_str(node.slice)
                 return f"{value}[{slice_}]"
             return str(type(node).__name__)
+            # pragma: no mutate end
 
     @staticmethod
     def _extract_decorator_names(decorator_list: list[ast.expr]) -> list[str]:
@@ -80,12 +82,14 @@ class SourceSignatureExtractor:
             }
             # Check if this arg has a default
             default_idx = i - default_offset
+            # pragma: no mutate start — default_idx never reaches len(defaults); ``<=`` equals ``<``
             if default_idx >= 0 and default_idx < len(args.defaults):
+                # pragma: no mutate end
                 param["has_default"] = True
                 try:
                     param["default"] = ast.unparse(args.defaults[default_idx])
                 except AttributeError:  # pragma: no cover
-                    param["default"] = "..."
+                    param["default"] = "..."  # pragma: no mutate — unreachable fallback
             params.append(param)
 
         # *args
@@ -109,13 +113,15 @@ class SourceSignatureExtractor:
                 "has_default": False,
                 "default": None,
             }
+            # pragma: no mutate start — kw_defaults parallels kwonlyargs; the bounds check is dead
             kw_default = args.kw_defaults[i] if i < len(args.kw_defaults) else None
+            # pragma: no mutate end
             if kw_default is not None:
                 param["has_default"] = True
                 try:
                     param["default"] = ast.unparse(kw_default)
                 except AttributeError:  # pragma: no cover
-                    param["default"] = "..."
+                    param["default"] = "..."  # pragma: no mutate — unreachable fallback
             params.append(param)
 
         # **kwargs
@@ -203,7 +209,9 @@ class SourceSignatureExtractor:
         try:
             with open(source_path, encoding="utf-8", errors="ignore") as f:  # pragma: no mutate
                 source = f.read()
+            # pragma: no mutate start — filename only shows in discarded SyntaxError messages
             tree = ast.parse(source, filename=source_path)
+            # pragma: no mutate end
         except (SyntaxError, OSError):
             return signatures
 

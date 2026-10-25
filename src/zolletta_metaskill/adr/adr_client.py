@@ -34,16 +34,19 @@ class ADRClient:
     @staticmethod
     def build_parser() -> argparse.ArgumentParser:  # pragma: no mutate — help text untested
         """Build the CLI argument parser."""
+        # pragma: no mutate start — carried from inline pragma (was ineffective inside a multi-line
+        # statement)
         parser = argparse.ArgumentParser(
-            description="Distill Accepted ADRs into architectural directives. "  # pragma: no mutate
-            "Directories come from documentation.dir / documentation.adrs / "  # pragma: no mutate
-            "runs_dir in .zolletta-metaskill/settings.json."  # pragma: no mutate
+            description="Distill Accepted ADRs into architectural directives. "
+            "Directories come from documentation.dir / documentation.adrs / "
+            "runs_dir in .zolletta-metaskill/settings.json."
         )
         parser.add_argument(
             "--json",
             action="store_true",
-            help="Output JSON report instead of plain text",  # pragma: no mutate
+            help="Output JSON report instead of plain text",
         )
+        # pragma: no mutate end
         return parser
 
     @staticmethod

@@ -45,7 +45,9 @@ class PythonPathsDetector:
             data = tomllib.loads(path.read_text(encoding="utf-8"))  # pragma: no mutate
         except (OSError, tomllib.TOMLDecodeError):
             return {}
+        # pragma: no mutate start — tomllib.loads always returns a dict
         return data if isinstance(data, dict) else {}
+        # pragma: no mutate end
 
     @staticmethod
     def _str_list(value: Any) -> list[str]:
@@ -60,8 +62,10 @@ class PythonPathsDetector:
         if not root.is_dir():
             return None
         for child in sorted(root.iterdir()):
+            # pragma: no mutate start — "__INIT__.PY" differs only on case-sensitive filesystems
             if child.is_dir() and (child / "__init__.py").exists():
                 return child.name
+            # pragma: no mutate end
         return None
 
     @staticmethod
@@ -71,11 +75,13 @@ class PythonPathsDetector:
         tool: dict[str, Any] = tool_raw if isinstance(tool_raw, dict) else {}
 
         # 1. Hatch: [tool.hatch.build.targets.wheel] packages = ["src/pkg"]
+        # pragma: no mutate start — the get default is unreachable behind the isinstance guard
         wheel = (
             tool.get("hatch", {}).get("build", {}).get("targets", {}).get("wheel", {})
             if isinstance(tool.get("hatch"), dict)
             else {}
         )
+        # pragma: no mutate end
         hatch_packages = PythonPathsDetector._str_list(wheel.get("packages"))
         if hatch_packages:
             roots = {str(Path(pkg).parent) for pkg in hatch_packages}
@@ -113,12 +119,15 @@ class PythonPathsDetector:
             return ["."]
 
         # 4. src/ contains a package
+        # pragma: no mutate start — "SRC" differs only on case-sensitive filesystems
         if PythonPathsDetector._first_package(project_root / "src") is not None:
             return ["src"]
+        # pragma: no mutate end
 
         # 5. Flat layout: a package dir lives directly in the project root
         if project_root.is_dir():
             for child in sorted(project_root.iterdir()):
+                # pragma: no mutate start — "__INIT__.PY" differs only on case-sensitive filesystems
                 if (
                     child.is_dir()
                     and child.name not in PythonPathsDetector._IGNORED_FLAT_DIRS
@@ -126,6 +135,7 @@ class PythonPathsDetector:
                     and (child / "__init__.py").exists()
                 ):
                     return ["."]
+                # pragma: no mutate end
 
         return ["src"]
 
@@ -134,14 +144,18 @@ class PythonPathsDetector:
         """Return detected test roots for the project."""
         tool_raw = pyproject.get("tool")
         tool: dict[str, Any] = tool_raw if isinstance(tool_raw, dict) else {}
+        # pragma: no mutate start — the get default is unreachable behind the isinstance guard
         pytest_cfg = tool.get("pytest", {}).get("ini_options", {})
+        # pragma: no mutate end
         if isinstance(pytest_cfg, dict):  # pragma: no branch — pytest cfg is a table
             testpaths = PythonPathsDetector._str_list(pytest_cfg.get("testpaths"))
             if testpaths:
                 return testpaths
+        # pragma: no mutate start — both branches return ["tests"] anyway
         if (project_root / "tests").is_dir():
             return ["tests"]
         return ["tests"]
+        # pragma: no mutate end
 
     @staticmethod
     def detect_python_paths(project_root: Path) -> dict[str, Any]:
@@ -156,7 +170,9 @@ class PythonPathsDetector:
         """
         pyproject = PythonPathsDetector._load_pyproject(project_root)
         source = PythonPathsDetector._detect_source(pyproject, project_root)
+        # pragma: no mutate start — source is never empty, so this initial value is unread
         package: str | None = None
+        # pragma: no mutate end
         for root in source:
             package = PythonPathsDetector._first_package(project_root / root)
             if package is not None:
@@ -170,6 +186,7 @@ class PythonPathsDetector:
     @staticmethod
     def main() -> int:  # pragma: no mutate — help text is not a tested contract
         """Entry point for the Python paths detector CLI."""
+        # pragma: no mutate start — help/description text is not a tested contract
         parser = argparse.ArgumentParser(
             description="Detect Python source/test roots and package name "
             "from pyproject.toml and the directory layout."
@@ -178,8 +195,9 @@ class PythonPathsDetector:
             "directory",
             nargs="?",
             default=".",
-            help="Project root to check (default: current directory)",  # pragma: no mutate
+            help="Project root to check (default: current directory)",
         )
+        # pragma: no mutate end
         args = parser.parse_args()
 
         result = PythonPathsDetector.detect_python_paths(Path(args.directory))

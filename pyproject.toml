@@ -22,6 +22,14 @@ classifiers = [
 ]
 dependencies = [
     "tree-sitter>=0.22.0",
+    # The ``grice`` subcommand scores documentation against Grice's maxims. Both
+    # are hard dependencies on purpose: a metric that silently disappears when
+    # an optional extra is missing would produce a different score on every
+    # machine, which is the one property a deterministic scanner cannot trade
+    # away. ``scikit-learn`` pulls in the compiled ``scipy`` wheel, so installing
+    # the metaskill is heavier than it used to be — an accepted cost.
+    "scikit-learn>=1.9.1",
+    "textstat>=0.7.13",
 ]
 
 [project.optional-dependencies]
@@ -63,6 +71,9 @@ packages = ["src/zolletta_metaskill"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# playground/ is intentionally defective scanner dogfooding input — like
+# mypy, vulture and ty, ruff must not lint it.
+exclude = ["playground/", "mutants/"]
 
 [tool.ruff.lint]
 # Selected rule families:
@@ -137,6 +148,14 @@ module = ["tree_sitter_php.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+# Neither package ships a ``py.typed`` marker and neither has a stubs package on
+# PyPI, so the two cannot be checked at all. The override is scoped to exactly
+# these modules and their submodules: an untyped *first-party* import still
+# fails, which is the case the strict setting exists to catch.
+module = ["sklearn.*", "textstat.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
 module = "tests.*"
 strict = false
 
@@ -168,6 +187,10 @@ also_copy = ["skills/"]
 pytest_add_cli_args = [
     "--deselect",
     "tests/documentor/quality/test_unwrapped_prose_scanner_repo_guard.py",
+    # asserts on missing-sections output that the mutants/ sandbox copy does
+    # not produce; passes in the real tree, blocks stats collection here.
+    "--deselect",
+    "tests/documentor/test_report_aggregator.py::TestReportAggregator::test_format_markdown_all_missing_ends_with_blank_line",
 ]
 
 [tool.semantic_release]

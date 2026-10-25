@@ -34,13 +34,6 @@ def _write_settings(dirpath: Path, **overrides: object) -> Path:
 class TestDocstringStreamlinerIntegration:
     """Tests for DocstringStreamliner (integration), split from TestDocstringStreamliner."""
 
-    def _parse(self, source: str) -> ast.FunctionDef:
-        tree = ast.parse(source)
-        DocstringStreamliner._annotate_parents(tree)
-        node = tree.body[0]
-        assert isinstance(node, ast.FunctionDef)
-        return node
-
     def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
         """Chdir into tmp_path and run main() with *argv*."""
         monkeypatch.chdir(tmp_path)
@@ -132,7 +125,7 @@ class TestDocstringStreamlinerIntegration:
         rc = self._run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert "SKIPPED" in out
+        assert "Result: SKIPPED (check_docstring_no_type_repeat disabled in settings.json)" in out
 
     def test_check_disabled_json(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch

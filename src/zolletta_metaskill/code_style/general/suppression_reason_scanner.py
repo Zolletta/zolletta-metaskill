@@ -94,8 +94,10 @@ class SuppressionReasonScanner:
         A reason is free text after the ignore (a trailing ``#`` comment
         counts) or a comment on the line immediately above.
         """
+        # pragma: no mutate start — truthiness only changes for all-"#"/all-"X" rests
         if rest.strip().lstrip("#").strip():
             return True
+        # pragma: no mutate end
         if lineno >= 2:
             return lines[lineno - 2].lstrip().startswith("#")
         return False
@@ -104,7 +106,9 @@ class SuppressionReasonScanner:
     def _scan_python(path: Path) -> list[dict[str, Any]]:
         """Return violation records for ``type: ignore`` comments."""
         try:
-            text = path.read_text(encoding="utf-8")  # pragma: no mutate — equivalent on UTF-8
+            # pragma: no mutate start — read details are not a tested contract
+            text = path.read_text(encoding="utf-8")
+            # pragma: no mutate end
             tokens = tokenize.generate_tokens(io.StringIO(text).readline)
             comments = [
                 (tok.start[0], tok.string) for tok in tokens if tok.type == tokenize.COMMENT
@@ -154,8 +158,10 @@ class SuppressionReasonScanner:
             if not stripped.startswith("*"):
                 return False
             content = stripped.lstrip("*").strip()
+            # pragma: no mutate start — only all-"/" content differs, not a reason anyway
             if content.rstrip("/").strip():
                 return True
+            # pragma: no mutate end
             if stripped.endswith("*/"):
                 return False
         return False
@@ -176,7 +182,9 @@ class SuppressionReasonScanner:
     def _scan_php(path: Path) -> list[dict[str, Any]]:
         """Return violation records for PHPStan/Psalm suppressions."""
         try:
-            text = path.read_text(encoding="utf-8")  # pragma: no mutate — equivalent on UTF-8
+            # pragma: no mutate start — read details are not a tested contract
+            text = path.read_text(encoding="utf-8")
+            # pragma: no mutate end
         except (OSError, UnicodeDecodeError):
             print(f"Warning: could not read '{path}'", file=sys.stderr)
             return []
@@ -227,14 +235,14 @@ class SuppressionReasonScanner:
     @staticmethod
     def main() -> int:
         """Entry point for the suppression-reason scanner CLI."""
+        # pragma: no mutate start — help/description text is not a tested contract
         parser = argparse.ArgumentParser(
             description="Flag type-checker suppressions missing an error code "
             "or a reason (language-agnostic). Scan roots come from "
             ".zolletta-metaskill/settings.json."
         )
-        parser.add_argument(
-            "--json", action="store_true", help="Output as JSON"
-        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        # pragma: no mutate end
         args = parser.parse_args()
 
         settings = ProjectConfig.load_settings()

@@ -75,6 +75,8 @@ class TestDocCompletenessScorer:
         )
         assert score == 0.0
         assert details["expected_sections"] == ["Usage"]
+        assert details["found_sections"] == []
+        assert details["missing_sections"] == []
 
     def test_score_completeness_all_sections_present(self, tmp_path: Path) -> None:
         """Doc with all required sections scores 100."""
@@ -140,6 +142,33 @@ class TestDocCompletenessScorer:
         assert quad["dir_names"] == {"recetas"}
         assert quad["required_sections"] == ["ingredients", "steps"]
 
+    def test_merged_quadrants_flat_map_used_as_quadrants(self) -> None:
+        """A payload without a ``quadrants`` key is itself the quadrant map."""
+        quadrants = DocCompletenessScorer.merged_quadrants(
+            {"recipes": {"required_sections": ["Ingredients"]}}
+        )
+        assert quadrants["recipes"]["required_sections"] == ["ingredients"]
+
+    def test_merged_quadrants_non_dict_entry_leaves_later_entries(self) -> None:
+        """A non-dict quadrant entry is skipped without stopping the loop."""
+        quadrants = DocCompletenessScorer.merged_quadrants(
+            {"quadrants": {"bad": "junk", "recipes": {"required_sections": ["Steps"]}}}
+        )
+        assert "bad" not in quadrants
+        assert quadrants["recipes"]["required_sections"] == ["steps"]
+
+    def test_merged_quadrants_new_quadrant_has_exact_shape(self) -> None:
+        quadrants = DocCompletenessScorer.merged_quadrants(
+            {"quadrants": {"recipes": {"required_sections": ["Steps"]}}}
+        )
+        assert quadrants["recipes"] == {"dir_names": set(), "required_sections": ["steps"]}
+
+    def test_merged_quadrants_lowercases_any_of_groups(self) -> None:
+        quadrants = DocCompletenessScorer.merged_quadrants(
+            {"quadrants": {"recipes": {"any_of_groups": [["Alpha", "BETA"]]}}}
+        )
+        assert quadrants["recipes"]["any_of_groups"] == [["alpha", "beta"]]
+
     def test_merged_quadrants_does_not_mutate_class_attribute(self) -> None:
         """The class attribute is never touched — that was the whole point."""
         before = DocCompletenessScorer.DIATAXIS_QUADRANTS
@@ -202,6 +231,99 @@ class TestDocCompletenessScorer:
         assert details["any_of_groups_missing"] == [["prerequisites", "before starting"]]
         assert score == 0.0
 
+    def test_score_completeness_tutorial_uses_quadrant_sections(self, tmp_path: Path) -> None:
+        """A tutorials doc is scored against the quadrant's required sections."""
+        tutorials = tmp_path / "docs" / "tutorials"
+        tutorials.mkdir(parents=True)
+        (tutorials / "start.md").write_text(
+            "# Start\n\n## What we will learn\n\nThings.\n\n## Prerequisites\n\nNone.\n",
+            encoding="utf-8",
+        )
+        score, details = DocCompletenessScorer.score_completeness(
+            str(tmp_path), "docs/tutorials/start.md", ["Unrelated"]
+        )
+        assert details["doc_structure"] == "diataxis"
+        assert details["expected_sections"] == ["what we will learn", "prerequisites"]
+        assert details["found_sections"] == ["what we will learn", "prerequisites"]
+        assert details["any_of_groups"] == []
+        assert score == 100.0
+
+    def test_score_completeness_custom_quadrant_without_required_sections(
+        self, tmp_path: Path
+    ) -> None:
+        """A quadrant config lacking ``required_sections`` scores on groups alone."""
+        recipes = tmp_path / "docs" / "recipes"
+        recipes.mkdir(parents=True)
+        (recipes / "cake.md").write_text(
+            "# Cake\n\n## Alpha\n\nA.\n\n## Beta\n\nB.\n", encoding="utf-8"
+        )
+        quadrants = {
+            "recipes": {
+                "dir_names": {"recipes"},
+                "any_of_groups": [["alpha"], ["beta"]],
+            }
+        }
+        score, details = DocCompletenessScorer.score_completeness(
+            str(tmp_path), "docs/recipes/cake.md", [], quadrants
+        )
+        assert details["expected_sections"] == []
+        assert details["any_of_groups_found"] == 2
+        assert score == 100.0
+
+    def test_score_completeness_group_substring_match(self, tmp_path: Path) -> None:
+        """A group entry matching a heading as a substring still satisfies it."""
+        recipes = tmp_path / "docs" / "recipes"
+        recipes.mkdir(parents=True)
+        (recipes / "cake.md").write_text("# Cake\n\n## Prerequisites\n\nNone.\n", encoding="utf-8")
+        quadrants = {"recipes": {"dir_names": {"recipes"}, "any_of_groups": [["requisites"]]}}
+        score, details = DocCompletenessScorer.score_completeness(
+            str(tmp_path), "docs/recipes/cake.md", [], quadrants
+        )
+        assert details["any_of_groups_found"] == 1
+        assert score == 100.0
+
+    def test_score_completeness_section_substring_match(self, tmp_path: Path) -> None:
+        """A required section matching only as a heading substring is found."""
+        (tmp_path / "doc.md").write_text(
+            "# T\n\n## Installation Guide\n\nSteps.\n" + "filler\n" * 40, encoding="utf-8"
+        )
+        score, details = DocCompletenessScorer.score_completeness(
+            str(tmp_path), "doc.md", ["install"]
+        )
+        assert details["found_sections"] == ["install"]
+        assert score == 100.0
+
+    def test_partial_satisfaction_keeps_length_penalty(self, tmp_path: Path) -> None:
+        """One of two required sections on a short doc scores 50 minus 15."""
+        (tmp_path / "doc.md").write_text(
+            "# T\n\n## Installation\n\nSteps.\n" + "filler\n" * 15, encoding="utf-8"
+        )
+        score, details = DocCompletenessScorer.score_completeness(
+            str(tmp_path), "doc.md", ["Installation", "License"]
+        )
+        assert details["missing_sections"] == ["License"]
+        assert score == 35.0
+
+    def test_full_satisfaction_single_requirement_keeps_penalty(self, tmp_path: Path) -> None:
+        """The penalty waiver only applies when more than one requirement exists."""
+        (tmp_path / "doc.md").write_text(
+            "# T\n\n## Installation\n\nSteps.\n" + "filler\n" * 15, encoding="utf-8"
+        )
+        score, _ = DocCompletenessScorer.score_completeness(
+            str(tmp_path), "doc.md", ["Installation"]
+        )
+        assert score == 85.0
+
+    def test_full_satisfaction_two_requirements_waives_penalty(self, tmp_path: Path) -> None:
+        (tmp_path / "doc.md").write_text(
+            "# T\n\n## Installation\n\nSteps.\n\n## License\n\nMIT.\n" + "filler\n" * 10,
+            encoding="utf-8",
+        )
+        score, _ = DocCompletenessScorer.score_completeness(
+            str(tmp_path), "doc.md", ["Installation", "License"]
+        )
+        assert score == 100.0
+
     # --- Length Penalty ---
 
     def test_short_doc_applies_full_length_penalty(self, tmp_path: Path) -> None:
@@ -219,6 +341,18 @@ class TestDocCompletenessScorer:
         score, details = DocCompletenessScorer.score_completeness(str(tmp_path), "doc.md", [])
         assert score == 70.0
         assert details["found_sections"] == []
+
+    def test_ten_line_doc_gets_smaller_length_penalty(self, tmp_path: Path) -> None:
+        """Exactly ten non-blank lines lands in the 15-point band, not the 30-point one."""
+        (tmp_path / "doc.md").write_text("# T\n" + "line\n" * 9, encoding="utf-8")
+        score, _ = DocCompletenessScorer.score_completeness(str(tmp_path), "doc.md", [])
+        assert score == 85.0
+
+    def test_thirty_line_doc_gets_no_length_penalty(self, tmp_path: Path) -> None:
+        """Thirty non-blank lines is the first length with no penalty."""
+        (tmp_path / "doc.md").write_text("# T\n" + "line\n" * 29, encoding="utf-8")
+        score, _ = DocCompletenessScorer.score_completeness(str(tmp_path), "doc.md", [])
+        assert score == 100.0
 
     def test_copy_quadrant_value_list_returns_copy(self) -> None:
         from zolletta_metaskill.documentor.quality.doc_completeness_scorer import (

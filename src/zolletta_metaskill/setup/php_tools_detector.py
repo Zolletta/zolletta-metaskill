@@ -93,10 +93,13 @@ class PHPToolsDetector:
         """
         composer = PHPToolsDetector.detect_php_tools_from_composer(project_root / "composer.json")
         config = PHPToolsDetector.detect_php_tools_from_config_files(project_root)
+        # pragma: no mutate start — the .get() defaults are unreachable: both source dicts cover
+        # every tool in _TOOLS
         return {
             tool: {"available": composer.get(tool, False) or config.get(tool, False)}
             for tool, _, _ in PHPToolsDetector._TOOLS
         }
+        # pragma: no mutate end
 
     @staticmethod
     def main() -> int:  # pragma: no mutate — help text is not a tested contract
@@ -104,12 +107,15 @@ class PHPToolsDetector:
         parser = argparse.ArgumentParser(
             description="Detect PHP tool availability from composer.json and config files."
         )
+        # pragma: no mutate start — carried from inline pragma (was ineffective inside a multi-line
+        # statement)
         parser.add_argument(
             "directory",
             nargs="?",
             default=".",
-            help="Project root to check (default: current directory)",  # pragma: no mutate
+            help="Project root to check (default: current directory)",
         )
+        # pragma: no mutate end
         args = parser.parse_args()
 
         result = PHPToolsDetector.detect_php_tools(Path(args.directory))

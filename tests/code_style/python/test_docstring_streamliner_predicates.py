@@ -81,15 +81,24 @@ class TestDocstringStreamlinerPredicates:
     def test_is_trivial_arg_desc_meaningful_desc_returns_false(self) -> None:
         assert DocstringStreamliner.is_trivial_arg_desc("x", "the number of items", "int") is False
 
+    def test_is_trivial_arg_desc_desc_ending_uppercase_x_returns_false(self) -> None:
+        assert DocstringStreamliner.is_trivial_arg_desc("x", "x.X", "int") is False
+
     # --- Tests for DocstringStreamliner.is_trivial_returns_desc(). ---
 
     def test_is_trivial_returns_desc_meaningful_desc_returns_false(self) -> None:
         assert DocstringStreamliner.is_trivial_returns_desc("the count", "int") is False
 
+    def test_is_trivial_returns_desc_desc_ending_uppercase_x_returns_false(self) -> None:
+        assert DocstringStreamliner.is_trivial_returns_desc("int.X", "int") is False
+
     # --- Tests for DocstringStreamliner._is_private(). ---
 
     def test_is_private_private_name_returns_true(self) -> None:
         assert DocstringStreamliner._is_private("_helper") is True
+
+    def test_is_private_dunder_prefix_only_returns_true(self) -> None:
+        assert DocstringStreamliner._is_private("__mangled") is True
 
     def test_is_private_public_name_returns_false(self) -> None:
         assert DocstringStreamliner._is_private("helper") is False
@@ -204,6 +213,22 @@ class TestDocstringStreamlinerPredicates:
         err = capsys.readouterr().err
         assert rc == 1
         assert "no configured Python source directories" in err
+        assert err == "Error: no configured Python source directories exist on disk (src)\n"
+
+    def test_missing_two_srcs_reports_error_exact(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(
+            tmp_path,
+            python={
+                "code_style": {},
+                "paths": {"source": ["src", "lib"], "tests": ["tests"], "package": "mypkg"},
+            },
+        )
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        err = capsys.readouterr().err
+        assert rc == 1
+        assert err == "Error: no configured Python source directories exist on disk (src, lib)\n"
 
     def test_syntax_error_file_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch

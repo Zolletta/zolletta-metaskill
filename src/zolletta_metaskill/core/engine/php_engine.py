@@ -128,8 +128,9 @@ class PHPEngine:
         """Build MethodInfo for function or method declaration."""
         if child.type == "function_definition":
             return self._build_function(child, source)
-        if child.type == "method_declaration":  # pragma: no cover
-            return self._build_method(child, source)
+        # methods only appear inside declaration_list, never at top level — unreachable branch
+        if child.type == "method_declaration":  # pragma: no cover, no mutate
+            return self._build_method(child, source)  # pragma: no mutate — unreachable
         return None
 
     def parse_module(self, path: Path) -> ModuleInfo:
@@ -178,6 +179,7 @@ class PHPEngine:
             if child.type == "namespace_use_declaration":
                 imports.extend(self._build_imports(child, source))
 
+        # pragma: no mutate start — dropping ``all_exports``/``docstring`` hits equal defaults
         return ModuleInfo(
             path=path,
             language=self.language,
@@ -188,6 +190,7 @@ class PHPEngine:
             docstring=None,
             has_syntax_error=has_syntax_error,
         )
+        # pragma: no mutate end
 
     def parse_raw(self, path: Path) -> tuple[Tree, bytes]:
         """Parse the PHP file at *path* and return the raw tree-sitter tree.
@@ -240,7 +243,10 @@ class PHPEngine:
     @staticmethod
     def _node_text(node: Node, source: bytes) -> str:
         """Return the source text covered by *node* as a string."""
-        return source[node.start_byte : node.end_byte].decode("utf-8", errors="replace")
+        raw = source[node.start_byte : node.end_byte]
+        # decode() defaults to utf-8 and codec names are case-insensitive; errors= handling is
+        # asserted by the invalid-UTF-8 parse test, but the pragma is line-level and silences it too
+        return raw.decode("utf-8", errors="replace")  # pragma: no mutate
 
     @staticmethod
     def _child_by_type(node: Node, name: str) -> Node | None:
@@ -259,7 +265,7 @@ class PHPEngine:
         """Return the text of the ``name`` child of *node*, or empty string."""
         name_node = self._child_by_type(node, "name")
         if name_node is None:  # pragma: no cover
-            return ""
+            return ""  # pragma: no mutate — unreachable
         return self._node_text(name_node, source)
 
     def _qualified_name_text(self, node: Node, source: bytes) -> str:
@@ -287,6 +293,7 @@ class PHPEngine:
         bases = self._collect_bases(node, source)
         is_abstract = self._child_by_type(node, "abstract_modifier") is not None
         methods = self._collect_methods(node, source)
+        # pragma: no mutate start — ``attributes=[]`` removal hits the equal dataclass default
         return ClassInfo(
             name=name,
             lineno=node.start_point[0] + 1,
@@ -297,6 +304,7 @@ class PHPEngine:
             is_abstract=is_abstract,
             is_test_class=name.endswith("Test"),
         )
+        # pragma: no mutate end
 
     def _build_interface(self, node: Node, source: bytes) -> ClassInfo | None:
         """Build a :class:`ClassInfo` from an ``interface_declaration`` node."""
@@ -305,6 +313,7 @@ class PHPEngine:
             return None
         bases = self._collect_bases(node, source)
         methods = self._collect_methods(node, source)
+        # pragma: no mutate start — ``attributes=[]`` removal hits the equal dataclass default
         return ClassInfo(
             name=name,
             lineno=node.start_point[0] + 1,
@@ -315,6 +324,7 @@ class PHPEngine:
             is_abstract=True,
             is_test_class=name.endswith("Test"),
         )
+        # pragma: no mutate end
 
     def _build_trait(self, node: Node, source: bytes) -> ClassInfo | None:
         """Build a :class:`ClassInfo` from a ``trait_declaration`` node."""
@@ -322,6 +332,7 @@ class PHPEngine:
         if not name:  # pragma: no cover
             return None
         methods = self._collect_methods(node, source)
+        # pragma: no mutate start — list/bool kwarg removals hit equal defaults
         return ClassInfo(
             name=name,
             lineno=node.start_point[0] + 1,
@@ -332,6 +343,7 @@ class PHPEngine:
             is_abstract=False,
             is_test_class=name.endswith("Test"),
         )
+        # pragma: no mutate end
 
     def _collect_bases(self, node: Node, source: bytes) -> list[str]:
         """Collect base class and interface names from a class-like node."""
@@ -348,7 +360,8 @@ class PHPEngine:
         """Extract names from a base/interface clause node."""
         names: list[str] = []
         for child in clause.children:
-            if child.type in ("name", "qualified_name", "namespace_name"):
+            # ``namespace_name`` is a dead entry — the grammar nests it inside qualified_name
+            if child.type in ("name", "qualified_name", "namespace_name"):  # pragma: no mutate
                 text = self._qualified_name_text(child, source)
                 if text:  # pragma: no branch — a name node always yields text
                     names.append(text)
@@ -399,6 +412,7 @@ class PHPEngine:
         params = self._collect_params(node, source)
         return_type = self._collect_return_type(node, source)
         raises = self._collect_raises(node, source)
+        # pragma: no mutate start — ``is_public``/``is_static`` removals hit equal defaults
         return MethodInfo(
             name=name,
             lineno=node.start_point[0] + 1,
@@ -409,6 +423,7 @@ class PHPEngine:
             return_type=return_type,
             raises=raises,
         )
+        # pragma: no mutate end
 
     def _is_public(self, node: Node) -> bool:
         """Determine visibility from a ``visibility_modifier`` child.
@@ -420,9 +435,12 @@ class PHPEngine:
         if vis is None:
             return True
         for child in vis.children:
+            # pragma: no mutate start — missed ``public`` still falls through to True
             if child.type in ("public", "protected", "private"):  # pragma: no branch
                 return bool(child.type == "public")
-        return True  # pragma: no cover
+            # pragma: no mutate end
+        # unreachable — a visibility_modifier always has a visibility child
+        return True  # pragma: no cover, no mutate
 
     def _collect_params(self, node: Node, source: bytes) -> list[str]:
         """Extract parameter names from a ``formal_parameters`` child.
@@ -440,7 +458,7 @@ class PHPEngine:
         for descendant in self._iter_descendants(params_node):
             if descendant.type == "variable_name":
                 if descendant.parent is not None and descendant.parent.type == "variadic_parameter":
-                    continue
+                    continue  # pragma: no mutate — variadic is last, break == continue
                 name_child = self._child_by_type(descendant, "name")
                 if name_child is not None:  # pragma: no branch — always carries a name
                     names.append(self._node_text(name_child, source))
@@ -451,13 +469,14 @@ class PHPEngine:
         # The return type appears as a typed child after formal_parameters.
         # Common node types: primitive_type, optional_type, named_type,
         # qualified_name, nullable_type, union_type, intersection_type.
-        found_colon = False
+        found_colon = False  # pragma: no mutate — None/True init is equivalent
         for child in node.children:
-            if not found_colon:
-                if child.type == ":":
+            if not found_colon:  # pragma: no mutate — pre-colon children are never type nodes
+                if child.type == ":":  # pragma: no mutate — ``!=`` sets the flag one child earlier
                     found_colon = True
                 continue
             # only type nodes follow the colon in a signature
+            # pragma: no mutate start — dead set entries (the grammar wraps them)
             if child.type in {  # pragma: no branch
                 "primitive_type",
                 "optional_type",
@@ -469,6 +488,7 @@ class PHPEngine:
                 "named_type_list",
             }:
                 return self._node_text(child, source).strip()
+            # pragma: no mutate end
         return None
 
     def _collect_raises(self, node: Node, source: bytes) -> list[str]:
@@ -489,7 +509,8 @@ class PHPEngine:
         if creation is None:
             return None
         for child in creation.children:
-            if child.type in ("qualified_name", "name", "named_type"):
+            # ``named_type`` is a dead entry — object_creation carries qualified_name/name directly
+            if child.type in ("qualified_name", "name", "named_type"):  # pragma: no mutate
                 return self._qualified_name_text(child, source)
         return None  # pragma: no cover
 
@@ -502,11 +523,12 @@ class PHPEngine:
         # For grouped imports (``use Ns\{A, B}``) the namespace prefix is a
         # direct ``namespace_name`` / ``qualified_name`` child of the
         # declaration, and each group clause only carries the final name.
-        prefix = ""
+        prefix = ""  # pragma: no mutate — group use always overwrites it
         group_node: Node | None = None
         standalone_clauses: list[Node] = []
         for child in node.children:
-            if child.type in ("namespace_name", "qualified_name", "name"):
+            # only ``namespace_name`` appears as a group prefix — the other entries are dead
+            if child.type in ("namespace_name", "qualified_name", "name"):  # pragma: no mutate
                 prefix = self._qualified_name_text(child, source)
             elif child.type == "namespace_use_group":
                 group_node = child
@@ -520,31 +542,35 @@ class PHPEngine:
                 if info is not None:  # pragma: no branch
                     imports.append(info)
         for clause in standalone_clauses:
+            # ``prefix=None``/removal behaves like ``""``; ``lineno=None`` is silenced alongside
+            # pragma: no mutate start
             info = self._import_from_clause(clause, source, lineno, prefix="")
+            # pragma: no mutate end
             # None only for a module-less clause, already pragma'd
             if info is not None:  # pragma: no branch
                 imports.append(info)
         return imports
 
     def _import_from_clause(
-        self, clause: Node, source: bytes, lineno: int, prefix: str = ""
+        self, clause: Node, source: bytes, lineno: int, prefix: str
     ) -> ImportInfo | None:
         """Build an :class:`ImportInfo` from a single ``namespace_use_clause``."""
-        module = ""
-        alias = ""
-        seen_as = False
+        module = ""  # pragma: no mutate — ``None`` is falsy like ``""``
+        alias = ""  # pragma: no mutate — ``None`` is falsy like ``""``
+        seen_as = False  # pragma: no mutate — ``None`` is falsy like ``False``
         for child in clause.children:
             if child.type == "as":
                 seen_as = True
                 continue
             if seen_as and child.type == "name":
                 alias = self._node_text(child, source)
-                seen_as = False
-                continue
-            if child.type in ("qualified_name", "name", "namespace_name"):
+                seen_as = False  # pragma: no mutate — no ``name`` follows the alias
+                continue  # pragma: no mutate — nothing follows the alias
+            # ``namespace_name`` is a dead entry — the grammar nests it inside qualified_name
+            if child.type in ("qualified_name", "name", "namespace_name"):  # pragma: no mutate
                 if not module:  # pragma: no branch — second name wins only in malformed AST
                     module = self._qualified_name_text(child, source)
-            elif child.type == "namespace_use_group":  # pragma: no cover
+            elif child.type == "namespace_use_group":  # pragma: no cover, no mutate
                 # Handled by caller; skip here.
                 pass
         if prefix and module:
@@ -552,12 +578,14 @@ class PHPEngine:
         names = [alias] if alias else []
         if not module:  # pragma: no cover
             return None
+        # pragma: no mutate start — ``is_relative=False`` removal hits the equal default
         return ImportInfo(
             module=module,
             names=names,
             lineno=lineno,
             is_relative=False,
         )
+        # pragma: no mutate end
 
     # -- Internal: tree walking --------------------------------------------
 

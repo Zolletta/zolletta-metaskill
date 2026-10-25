@@ -168,6 +168,120 @@ class TestLinkChecker:
         assert links[0].line_number == 2
         assert links[1].line_number == 4
 
+    def test_extract_links_local_image_records_all_fields(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.md"
+        f.write_text("![alt text](image.png)", encoding="utf-8")
+        links = LinkChecker.extract_links(str(f), "test.md")
+        assert len(links) == 1
+        link = links[0]
+        assert link.source_file == "test.md"
+        assert link.line_number == 1
+        assert link.link_text == "alt text"
+        assert link.link_target == "image.png"
+        assert link.link_type == "image"
+
+    def test_extract_links_external_image_records_all_fields(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.md"
+        f.write_text("![alt](https://example.com/i.png)", encoding="utf-8")
+        links = LinkChecker.extract_links(str(f), "test.md")
+        assert len(links) == 1
+        link = links[0]
+        assert link.source_file == "test.md"
+        assert link.line_number == 1
+        assert link.link_text == "alt"
+        assert link.link_target == "https://example.com/i.png"
+        assert link.link_type == "external"
+
+    def test_extract_links_single_backtick_span_link_is_skipped(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.md"
+        f.write_text("`[a](b.md)`", encoding="utf-8")
+        assert LinkChecker.extract_links(str(f), "test.md") == []
+
+    def test_extract_links_link_after_single_backtick_span_is_skipped(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.md"
+        f.write_text("!`c`[a](b.md)", encoding="utf-8")
+        assert LinkChecker.extract_links(str(f), "test.md") == []
+
+    def test_extract_links_link_after_double_backtick_span_is_skipped(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.md"
+        f.write_text("!``c``[a](b.md)", encoding="utf-8")
+        assert LinkChecker.extract_links(str(f), "test.md") == []
+
+    def test_extract_links_trailing_bang_keeps_link(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.md"
+        f.write_text("[a](b.md)!", encoding="utf-8")
+        links = LinkChecker.extract_links(str(f), "test.md")
+        assert len(links) == 1
+        assert links[0].link_target == "b.md"
+
+    def test_extract_links_link_after_image_syntax_is_kept(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.md"
+        f.write_text("![i](i.png) [a](b.md)", encoding="utf-8")
+        links = LinkChecker.extract_links(str(f), "test.md")
+        assert [(lnk.link_target, lnk.link_type) for lnk in links] == [
+            ("i.png", "image"),
+            ("b.md", "local_file"),
+        ]
+
+    def test_extract_links_content_after_code_block_is_extracted(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.md"
+        f.write_text("```\n[a](a.md)\n```\n[b](b.md)\n", encoding="utf-8")
+        links = LinkChecker.extract_links(str(f), "test.md")
+        assert [(lnk.link_target, lnk.line_number) for lnk in links] == [("b.md", 4)]
+
+    def test_extract_links_ref_def_records_all_fields(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.md"
+        f.write_text("[ref]: guide.md", encoding="utf-8")
+        links = LinkChecker.extract_links(str(f), "test.md")
+        assert len(links) == 1
+        link = links[0]
+        assert link.source_file == "test.md"
+        assert link.line_number == 1
+        assert link.link_text == "ref"
+        assert link.link_target == "guide.md"
+        assert link.link_type == "local_file"
+
+    def test_extract_links_html_link_records_all_fields(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.md"
+        f.write_text('<a href="guide.md">Guide</a>', encoding="utf-8")
+        links = LinkChecker.extract_links(str(f), "test.md")
+        assert len(links) == 1
+        link = links[0]
+        assert link.source_file == "test.md"
+        assert link.line_number == 1
+        assert link.link_text == ""
+        assert link.link_target == "guide.md"
+        assert link.link_type == "local_file"
+
+    def test_extract_links_uppercase_html_link_returns_link(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.md"
+        f.write_text('<A HREF="guide.md">Guide</A>', encoding="utf-8")
+        links = LinkChecker.extract_links(str(f), "test.md")
+        assert [lnk.link_target for lnk in links] == ["guide.md"]
+
+    def test_extract_links_uppercase_html_img_returns_image(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.md"
+        f.write_text('<IMG SRC="image.png">', encoding="utf-8")
+        links = LinkChecker.extract_links(str(f), "test.md")
+        assert [(lnk.link_target, lnk.link_type) for lnk in links] == [("image.png", "image")]
+
+    def test_extract_links_http_html_img_returns_no_image(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.md"
+        f.write_text('<img src="http://example.com/i.png">', encoding="utf-8")
+        assert LinkChecker.extract_links(str(f), "test.md") == []
+
+    def test_extract_links_html_img_records_all_fields(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.md"
+        f.write_text('<img src="image.png">', encoding="utf-8")
+        links = LinkChecker.extract_links(str(f), "test.md")
+        assert len(links) == 1
+        link = links[0]
+        assert link.source_file == "test.md"
+        assert link.line_number == 1
+        assert link.link_text == ""
+        assert link.link_target == "image.png"
+        assert link.link_type == "image"
+
     # --- slugify_heading ---
 
     def test_slugify_heading_simple_input_returns_hello_world(self) -> None:
@@ -285,6 +399,17 @@ class TestLinkChecker:
     def test_linkinfo_external_skip_returns_true(self) -> None:
         link = LinkInfo("README.md", 1, "text", "https://example.com", "external")
         LinkChecker.validate_link(link, "/repo", {}, check_external=False)
+        assert link.is_valid is True
+
+    def test_linkinfo_external_default_skips_url_check(self) -> None:
+        """Omitting ``check_external`` must take the skip path, not hit the network."""
+        link = LinkInfo("README.md", 1, "text", "https://example.com", "external")
+        with patch(
+            "zolletta_metaskill.documentor.links.link_checker.ExternalURLChecker.validate",
+            autospec=True,
+        ) as validate:
+            LinkChecker.validate_link(link, "/repo", {})
+        validate.assert_not_called()
         assert link.is_valid is True
 
     def test_external_check_success(self) -> None:
@@ -439,6 +564,55 @@ class TestLinkChecker:
         LinkChecker.validate_link(link, str(tmp_path), cache)
         assert link.is_valid is True
 
+    def test_validate_link_missing_anchor_error_is_exact(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.md"
+        f.write_text("# Other\n", encoding="utf-8")
+        link = LinkInfo("test.md", 1, "text", "#nonexistent", "anchor")
+        LinkChecker.validate_link(link, str(tmp_path), {})
+        assert link.is_valid is False
+        assert link.error == "Anchor '#nonexistent' not found in test.md"
+
+    def test_validate_link_anchor_with_uppercase_x_returns_true(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.md"
+        f.write_text("# Xen\n", encoding="utf-8")
+        link = LinkInfo("test.md", 1, "text", "#Xen", "anchor")
+        LinkChecker.validate_link(link, str(tmp_path), {})
+        assert link.is_valid is True
+
+    def test_validate_link_multi_anchor_target_returns_exact_error(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.md"
+        f.write_text("# Test", encoding="utf-8")
+        (tmp_path / "guide.md").write_text("# B\n", encoding="utf-8")
+        link = LinkInfo("test.md", 1, "text", "guide.md#a#b", "cross_doc_anchor")
+        LinkChecker.validate_link(link, str(tmp_path), {})
+        assert link.is_valid is False
+        assert link.error == "File exists but anchor '#a#b' not found in 'guide.md'"
+
+    def test_validate_link_file_in_source_dir_returns_true(self, tmp_path: Path) -> None:
+        (tmp_path / "docs").mkdir()
+        (tmp_path / "docs" / "test.md").write_text("# Test", encoding="utf-8")
+        (tmp_path / "docs" / "guide.md").write_text("Guide", encoding="utf-8")
+        link = LinkInfo("docs/test.md", 1, "text", "guide.md", "local_file")
+        LinkChecker.validate_link(link, str(tmp_path), {})
+        assert link.is_valid is True
+
+    def test_validate_link_case_mismatch_error_is_exact(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.md"
+        f.write_text("# Test", encoding="utf-8")
+        (tmp_path / "Guide.md").write_text("Guide", encoding="utf-8")
+        link = LinkInfo("test.md", 1, "text", "guide.md", "local_file")
+        real_exists = os.path.exists
+
+        def mock_exists(path: str) -> bool:
+            if path.endswith("guide.md") and not path.endswith("Guide.md"):
+                return False
+            return real_exists(path)  # pragma: no cover
+
+        with patch("os.path.exists", side_effect=mock_exists):
+            LinkChecker.validate_link(link, str(tmp_path), {})
+        assert link.is_valid is False
+        assert link.error == "File not found at 'guide.md' (case mismatch? found 'Guide.md')"
+
     # --- _get_headings ---
 
     def test_get_headings_caches_result_returns_result1(self, tmp_path: Path) -> None:
@@ -456,8 +630,7 @@ class TestLinkChecker:
     def test_check_case_insensitive_finds_match_contains_guide_md(self, tmp_path: Path) -> None:
         (tmp_path / "Guide.md").write_text("guide", encoding="utf-8")
         result = LinkChecker._check_case_insensitive(str(tmp_path / "guide.md"))
-        assert result is not None
-        assert "Guide.md" in result
+        assert result == str(tmp_path / "Guide.md")
 
     def test_check_case_insensitive_no_match_returns_none(self, tmp_path: Path) -> None:
         (tmp_path / "other.md").write_text("other", encoding="utf-8")
@@ -646,3 +819,73 @@ class TestLinkChecker:
         (tmp_path / "README.md").write_text("", encoding="utf-8")
         rc = self._run(tmp_path, monkeypatch, ["prog"])
         assert rc == 0
+
+    # --- run ---
+
+    def test_run_returns_markdown_report_by_default(self, tmp_path: Path) -> None:
+        (tmp_path / "README.md").write_text("# Title\n[link](guide.md)\n", encoding="utf-8")
+        (tmp_path / "guide.md").write_text("# Guide\n", encoding="utf-8")
+        report = LinkChecker.run(str(tmp_path), {}, tmp_path / "cache")
+        assert report.splitlines()[0] == "Link Check Report"
+        expected = f"  {'local_file':<25} {1:>4} total, {0:>4} broken"
+        assert expected in report.splitlines()
+
+    def test_run_empty_repo_json_output_is_exact(self, tmp_path: Path) -> None:
+        report = LinkChecker.run(str(tmp_path), {}, tmp_path / "cache", as_json=True)
+        expected = {"error": "No markdown files found", "summary": {}}
+        assert json.loads(report) == expected
+        assert report == json.dumps(expected, indent=2)
+
+    def test_run_empty_repo_markdown_output_is_exact(self, tmp_path: Path) -> None:
+        report = LinkChecker.run(str(tmp_path), {}, tmp_path / "cache")
+        assert report == "No markdown files found."
+
+    def test_run_empty_repo_writes_exact_cache_file(self, tmp_path: Path) -> None:
+        cache_dir = tmp_path / "cache"
+        LinkChecker.run(str(tmp_path), {}, cache_dir, as_json=True)
+        assert os.listdir(cache_dir) == ["link_checker.json"]
+        expected = {"error": "No markdown files found", "summary": {}}
+        cache_file = cache_dir / "link_checker.json"
+        assert cache_file.read_text(encoding="utf-8") == (
+            json.dumps(expected, indent=2, default=str) + "\n"
+        )
+
+    def test_run_writes_exact_cache_file(self, tmp_path: Path) -> None:
+        (tmp_path / "README.md").write_text("# Title\n[link](guide.md)\n", encoding="utf-8")
+        (tmp_path / "guide.md").write_text("# Guide\n", encoding="utf-8")
+        cache_dir = tmp_path / "cache"
+        report = LinkChecker.run(str(tmp_path), {}, cache_dir, as_json=True)
+        assert os.listdir(cache_dir) == ["link_checker.json"]
+        cache_file = cache_dir / "link_checker.json"
+        assert cache_file.read_text(encoding="utf-8") == report + "\n"
+
+    def test_run_existing_cache_dir_does_not_raise(self, tmp_path: Path) -> None:
+        (tmp_path / "README.md").write_text("# Title\n", encoding="utf-8")
+        cache_dir = tmp_path / "cache"
+        cache_dir.mkdir()
+        report = LinkChecker.run(str(tmp_path), {}, cache_dir)
+        assert report.splitlines()[0] == "Link Check Report"
+
+    def test_run_source_file_is_repo_relative(self, tmp_path: Path) -> None:
+        (tmp_path / "README.md").write_text("# Title\n[link](guide.md)\n", encoding="utf-8")
+        (tmp_path / "guide.md").write_text("# Guide\n", encoding="utf-8")
+        report = LinkChecker.run(str(tmp_path), {}, tmp_path / "cache", as_json=True)
+        data = json.loads(report)
+        assert [lnk["source_file"] for lnk in data["all_links"]] == ["README.md"]
+
+    def test_run_anchor_links_are_validated(self, tmp_path: Path) -> None:
+        (tmp_path / "README.md").write_text("# Title\n[link](#title)\n", encoding="utf-8")
+        report = LinkChecker.run(str(tmp_path), {}, tmp_path / "cache", as_json=True)
+        data = json.loads(report)
+        assert data["summary"]["total_links"] == 1
+        assert data["summary"]["valid"] == 1
+        assert data["summary"]["broken"] == 0
+
+    def test_main_honours_runs_dir_setting(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._write_settings(tmp_path, runs_dir="custom-runs")
+        (tmp_path / "README.md").write_text("# Title\n", encoding="utf-8")
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
+        assert (tmp_path / "custom-runs" / "cache" / "link_checker.json").exists()

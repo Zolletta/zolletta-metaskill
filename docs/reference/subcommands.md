@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [help, version, setup, review, patterns, documentor, adr-distiller, python-*, php-*]
+skills: [help, version, setup, review, patterns, documentor, grice, adr-distiller, python-*, php-*]
 ---
 
 # Subcommands Reference

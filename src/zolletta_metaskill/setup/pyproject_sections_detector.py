@@ -62,13 +62,18 @@ class PyprojectSectionsDetector:
 
         """
         result: dict[str, Any] = {}
+        # pragma: no mutate start — the literal is a fallback placeholder; no pattern can match it
         content = ""
+        # pragma: no mutate end
         if pyproject_path.exists():
             content = pyproject_path.read_text(encoding="utf-8")  # pragma: no mutate
 
         for tool, pattern in PyprojectSectionsDetector._SECTIONS:
             if tool == "uv_project":
+                # pragma: no mutate start — uv_project is the last entry, so break is equivalent
+                # here
                 continue
+                # pragma: no mutate end
             found = bool(re.search(pattern, content, re.MULTILINE))
             result[tool] = {"available": found}
 
@@ -92,12 +97,15 @@ class PyprojectSectionsDetector:
         parser = argparse.ArgumentParser(
             description="Detect which [tool.*] sections exist in pyproject.toml."
         )
+        # pragma: no mutate start — carried from inline pragma (was ineffective inside a multi-line
+        # statement)
         parser.add_argument(
             "pyproject",
             nargs="?",
             default="pyproject.toml",
-            help="Path to pyproject.toml (default: pyproject.toml)",  # pragma: no mutate
+            help="Path to pyproject.toml (default: pyproject.toml)",
         )
+        # pragma: no mutate end
         args = parser.parse_args()
 
         result = PyprojectSectionsDetector.detect_pyproject_sections(Path(args.pyproject))

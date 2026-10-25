@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [setup, review, patterns, documentor, python-*]
+skills: [setup, review, patterns, documentor, grice, python-*]
 ---
 
 # Reports Reference
@@ -34,19 +34,20 @@ The timestamp format (`YYYY-MM-DD-HH-MM`) is lexicographically sortable, so find
 
 Each subcommand writes its own report file:
 
-| Subcommand             | Report file               | Content                                                                                 |
-|------------------------|---------------------------|-----------------------------------------------------------------------------------------|
-| `patterns`             | `patterns.md`             | God class findings, SOLID violations, coupling analysis, structural convention results  |
-| `documentor`           | `documentor.md`           | Diátaxis compliance findings, drift detection results, staleness scores, link integrity |
-| `python-code-style`    | `python-code-style.md`    | Linting findings, formatting issues, naming violations, docstring gaps, type errors     |
+| Subcommand             | Report file                  | Content                                                                                 |
+| ---------------------- | ---------------------------- | --------------------------------------------------------------------------------------- |
+| `patterns`             | `patterns.md`                | God class findings, SOLID violations, coupling analysis, structural convention results  |
+| `documentor`           | `documentor.md`              | Diátaxis compliance findings, drift detection results, staleness scores, link integrity |
+| `grice`                | `grice.md`                   | Corpus-relative maxim indices, broken-link and heading-hierarchy findings               |
+| `python-code-style`    | `python-code-style.md`       | Linting findings, formatting issues, naming violations, docstring gaps, type errors     |
 | `python-testing-style` | `python-testing-patterns.md` | Coverage gaps, test isolation issues, naming violations, fixture design findings        |
 
 ## Orchestrator output
 
 When running `/zolletta-metaskill review`, the orchestrator produces one additional file:
 
-| File         | Content                                                                                                                                        |
-|--------------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| File         | Content                                                                                                                                       |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `SUMMARY.md` | Graded summary of all sub-reviews, links to each specialist report, and the aggregated action list (`Open`/`Done` tables ordered by severity) |
 
 ## Report format

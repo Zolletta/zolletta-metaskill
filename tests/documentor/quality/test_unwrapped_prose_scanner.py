@@ -221,7 +221,10 @@ class TestUnwrappedProseScanner:
             ProjectConfig, "load_settings", staticmethod(lambda path: {"documentation": {}})
         )
         assert UnwrappedProseScanner.main() == 0
-        assert "SKIPPED" in capsys.readouterr().out
+        assert (
+            capsys.readouterr().out
+            == "Result: SKIPPED (check_unwrapped_prose disabled in settings.json)\n"
+        )
 
     def test_main_emits_skipped_json_when_disabled(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
@@ -231,7 +234,10 @@ class TestUnwrappedProseScanner:
             ProjectConfig, "load_settings", staticmethod(lambda path: {"documentation": {}})
         )
         assert UnwrappedProseScanner.main() == 0
-        assert json.loads(capsys.readouterr().out)["skipped"] is True
+        assert json.loads(capsys.readouterr().out) == {
+            "skipped": True,
+            "reason": "check_unwrapped_prose disabled in settings.json",
+        }
 
     # --- Text contract ---
 
@@ -330,3 +336,215 @@ class TestUnwrappedProseScanner:
     def test_fence_break_inside_run_flushes_the_run(self) -> None:
         text = "A sentence that\nwraps here.\n```\ncode\n```\n"
         assert UnwrappedProseScanner.paragraph_runs(text) == [(1, 2)]
+
+    # --- frontmatter edge cases ---
+
+    def test_empty_frontmatter_with_later_break_still_scans_body(self) -> None:
+        r"""An empty ``---\\n---`` frontmatter ends at line 2, not the next ``---``."""
+        text = "---\n---\nWrap a\nwraps b.\n\n---\nMore.\n"
+        assert UnwrappedProseScanner.paragraph_runs(text) == [(3, 4)]
+
+    def test_fence_as_last_frontmatter_line_does_not_swallow_body(self) -> None:
+        """The line before the closing ``---`` must not re-enter the scan as a fence opener."""
+        text = "---\n```\n---\nWrap one\nwraps two.\n"
+        assert UnwrappedProseScanner.paragraph_runs(text) == [(4, 5)]
+
+    # --- block boundaries ---
+
+    def test_asterisk_thematic_break_ends_a_run(self) -> None:
+        assert UnwrappedProseScanner.paragraph_runs("Prose.\n***\nMore.\n") == []
+
+    def test_underscore_thematic_break_ends_a_run(self) -> None:
+        assert UnwrappedProseScanner.paragraph_runs("Prose.\n___\nMore.\n") == []
+
+    def test_heading_without_blank_lines_still_breaks_a_run(self) -> None:
+        assert UnwrappedProseScanner.paragraph_runs("Prose.\n## Heading\nMore.\n") == []
+
+    # --- sentence termination ---
+
+    def test_space_before_closing_emphasis_counts_as_terminated(self) -> None:
+        assert UnwrappedProseScanner.paragraph_runs("Done. **\nNext.\n") == []
+
+    def test_trailing_emphasis_counts_as_terminated(self) -> None:
+        assert UnwrappedProseScanner.paragraph_runs("Done.**\nNext.\n") == []
+
+    def test_line_ending_in_uppercase_letter_is_unterminated(self) -> None:
+        assert UnwrappedProseScanner.paragraph_runs("Wraps.X\nends here.\n") == [(1, 2)]
+
+    def test_middle_line_must_also_terminate_a_sentence(self) -> None:
+        text = "Done.\nMid wraps\nDone.\n"
+        assert UnwrappedProseScanner.paragraph_runs(text) == [(1, 3)]
+
+    # --- fenced code ---
+
+    def test_fenced_code_contents_are_never_scanned(self) -> None:
+        text = "```\ncode line one\ncode line two\n```\n"
+        assert UnwrappedProseScanner.paragraph_runs(text) == []
+
+    def test_run_after_closing_fence_is_reported(self) -> None:
+        text = "```\ncode\n```\nWrap a\nwraps.\n"
+        assert UnwrappedProseScanner.paragraph_runs(text) == [(4, 5)]
+
+    def test_single_space_indented_run_is_not_a_violation(self) -> None:
+        assert UnwrappedProseScanner.paragraph_runs(" Wraps mid\nends here.\n") == []
+
+    def test_three_line_run_is_reported(self) -> None:
+        assert UnwrappedProseScanner.paragraph_runs("A wraps\nB wraps\nC ends.\n") == [(1, 3)]
+
+    # --- is_enabled ---
+
+    def test_is_enabled_rejects_non_boolean_value(self) -> None:
+        settings = {"documentation": {"check_unwrapped_prose": "yes"}}
+        assert UnwrappedProseScanner.is_enabled(settings) is False
+
+    # --- scan_roots ordering and continuation ---
+
+    def test_scan_roots_continues_past_missing_root(self, tmp_path: Path) -> None:
+        real = tmp_path / "real"
+        real.mkdir()
+        (real / "a.md").write_text("Wraps\nhere.\n", encoding="utf-8")
+        findings = UnwrappedProseScanner.scan_roots([tmp_path / "absent", real])
+        assert [f.file for f in findings] == [str(real / "a.md")]
+
+    def test_scan_roots_scans_files_after_a_duplicate(self, tmp_path: Path) -> None:
+        sub = tmp_path / "sub"
+        sub.mkdir()
+        (sub / "b.md").write_text("Wraps\nhere.\n", encoding="utf-8")
+        (tmp_path / "z.md").write_text("Wraps\nhere.\n", encoding="utf-8")
+        findings = UnwrappedProseScanner.scan_roots([sub, tmp_path])
+        assert [f.file for f in findings] == [str(sub / "b.md"), str(tmp_path / "z.md")]
+
+    # --- report output contracts ---
+
+    def test_emit_json_matches_exact_output(self, capsys: pytest.CaptureFixture[str]) -> None:
+        findings = UnwrappedProseScanner.scan_text("docs/guide.md", "A sentence\nthat wraps.\n")
+        UnwrappedProseScanner._emit_json([Path("docs")], 3, findings)
+        expected = {
+            "directories": ["docs"],
+            "scanned": 3,
+            "violation_count": 1,
+            "violations": [
+                {
+                    "file": "docs/guide.md",
+                    "line": 1,
+                    "category": "unwrapped_prose",
+                    "severity": "low",
+                    "description": (
+                        "paragraph wraps across lines 1-2; "
+                        "join it into one line (no artificial line breaks)"
+                    ),
+                }
+            ],
+        }
+        assert capsys.readouterr().out == json.dumps(expected, indent=2) + "\n"
+
+    def test_emit_text_joins_multiple_roots_with_comma(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        findings = UnwrappedProseScanner.scan_text("a/x.md", "A sentence\nthat wraps.\n")
+        UnwrappedProseScanner._emit_text([Path("a"), Path("b")], 1, findings)
+        assert "Scanned 1 files under a, b" in capsys.readouterr().out.splitlines()
+
+    def test_emit_text_all_clear_lines(self, capsys: pytest.CaptureFixture[str]) -> None:
+        UnwrappedProseScanner._emit_text([Path("docs")], 3, [])
+        lines = capsys.readouterr().out.splitlines()
+        assert "## Wrapped paragraphs: none" in lines
+        assert "Result: all clear" in lines
+
+    # --- main: enabled path ---
+
+    def test_main_json_report_is_exact(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        docs = tmp_path / "docs"
+        docs.mkdir()
+        (docs / "a.md").write_text("A sentence that\nwraps here.\n")
+        monkeypatch.setattr(sys, "argv", ["prog", "--json"])
+        monkeypatch.setattr(
+            "zolletta_metaskill.core.project_config.ProjectConfig.load_settings",
+            staticmethod(
+                lambda *a, **k: {"documentation": {"dir": str(docs), "check_unwrapped_prose": True}}
+            ),
+        )
+        assert UnwrappedProseScanner.main() == 0
+        assert json.loads(capsys.readouterr().out) == {
+            "directories": [str(docs)],
+            "scanned": 1,
+            "violation_count": 1,
+            "violations": [
+                {
+                    "file": str(docs / "a.md"),
+                    "line": 1,
+                    "category": "unwrapped_prose",
+                    "severity": "low",
+                    "description": (
+                        "paragraph wraps across lines 1-2; "
+                        "join it into one line (no artificial line breaks)"
+                    ),
+                }
+            ],
+        }
+
+    def test_main_text_report_names_scanned_count(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        docs = tmp_path / "docs"
+        docs.mkdir()
+        (docs / "a.md").write_text("A sentence that\nwraps here.\n")
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        monkeypatch.setattr(
+            "zolletta_metaskill.core.project_config.ProjectConfig.load_settings",
+            staticmethod(
+                lambda *a, **k: {"documentation": {"dir": str(docs), "check_unwrapped_prose": True}}
+            ),
+        )
+        assert UnwrappedProseScanner.main() == 0
+        lines = capsys.readouterr().out.splitlines()
+        assert f"Scanned 1 files under {docs}" in lines
+        assert "Result: violations found (report-only mode)" in lines
+
+    def test_main_no_doc_roots_prints_exact_error(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        missing = tmp_path / "nope"
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        monkeypatch.setattr(
+            "zolletta_metaskill.core.project_config.ProjectConfig.load_settings",
+            staticmethod(
+                lambda *a, **k: {
+                    "documentation": {"dir": str(missing), "check_unwrapped_prose": True}
+                }
+            ),
+        )
+        assert UnwrappedProseScanner.main() == 1
+        out = capsys.readouterr()
+        assert out.out == ""
+        assert (
+            out.err == f"Error: no configured documentation directory exists on disk ({missing})\n"
+        )
+
+    def test_main_no_doc_roots_lists_each_candidate(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        first, second = tmp_path / "a", tmp_path / "b"
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        monkeypatch.setattr(UnwrappedProseScanner, "is_enabled", staticmethod(lambda s: True))
+        monkeypatch.setattr(
+            UnwrappedProseScanner, "resolve_roots", staticmethod(lambda s: [first, second])
+        )
+        assert UnwrappedProseScanner.main() == 1
+        assert capsys.readouterr().err == (
+            f"Error: no configured documentation directory exists on disk ({first}, {second})\n"
+        )

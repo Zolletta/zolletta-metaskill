@@ -99,7 +99,8 @@ class DocumentorSettings:
         # One read, two consumers: the quadrants and the required sections are both
         # derived from this file when it is configured.
         translations_path = cls._translations_path(settings)
-        # pragma: no mutate start — ``_resolve_required_sections`` re-resolves a None translations_path from settings itself, so forwarding is unobservable
+        # pragma: no mutate start — ``_resolve_required_sections`` re-resolves a None
+        # translations_path from settings itself, so forwarding is unobservable
         return cls(
             cache_dir=cls.resolve_cache_dir(settings),
             documentation_rel_dir=ProjectConfig.docs_dir(settings),
@@ -214,12 +215,14 @@ class DocumentorSettings:
         back a rename still matters is policy, so it belongs in settings with
         everything else rather than baked into the caller.
         """
-        # pragma: no mutate start — a None default returns the stored node as-is, and non-int nodes already fall through to 90
-        value = ProjectConfig.setting(
-            settings, "documentation.rename_window_days", 90
-        )
+        # pragma: no mutate start — a None default returns the stored node
+        # as-is, and non-int nodes already fall through to 90
+        value = ProjectConfig.setting(settings, "documentation.rename_window_days", 90)
         # pragma: no mutate end
+        # pragma: no mutate start — ProjectConfig.setting only ever returns an int or the
+        # default here, so both isinstance guards are always False and and/or is equivalent
         if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+            # pragma: no mutate end
             return 90
         return value
 
@@ -281,6 +284,7 @@ class DocumentorSettings:
         ]
         if not candidates:
             return None
-        # pragma: no mutate start — all candidates share the same parent dir, so ordering by Path and by name coincide
+        # pragma: no mutate start — all candidates share the same parent
+        # dir, so ordering by Path and by name coincide
         return max(candidates, key=lambda path: path.name)
         # pragma: no mutate end

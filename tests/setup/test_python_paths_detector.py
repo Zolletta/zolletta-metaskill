@@ -39,6 +39,16 @@ class TestPythonPathsDetector:
         data = PythonPathsDetector._load_pyproject(tmp_path)
         assert data["project"]["name"] == "x"
 
+    def test_load_pyproject_reads_pyproject_toml_path(self, tmp_path: Path) -> None:
+        from unittest.mock import patch
+
+        _write_pyproject(tmp_path, '[project]\nname = "x"\n')
+        real_read_text = Path.read_text
+        with patch.object(Path, "read_text", autospec=True) as mock_read:
+            mock_read.side_effect = lambda self, *a, **k: real_read_text(self, *a, **k)
+            PythonPathsDetector._load_pyproject(tmp_path)
+        assert mock_read.call_args.args[0] == tmp_path / "pyproject.toml"
+
     # --- DetectSource ---
 
     def test_detect_source_hatch_packages_returns_src(self, tmp_path: Path) -> None:
@@ -156,6 +166,48 @@ class TestPythonPathsDetector:
         result = PythonPathsDetector._detect_source({}, tmp_path / "missing")
         assert result == ["src"]
 
+    def test_dir_without_init_is_not_a_package(self, tmp_path: Path) -> None:
+        (tmp_path / "adir").mkdir()
+        _make_package(tmp_path, "bpkg")
+        assert PythonPathsDetector._first_package(tmp_path) == "bpkg"
+
+    def test_hatch_non_dict_falls_through(self, tmp_path: Path) -> None:
+        _write_pyproject(tmp_path, '[tool]\nhatch = "abc"\n')
+        result = PythonPathsDetector.detect_python_paths(tmp_path)
+        assert result["source"] == ["src"]
+
+    def test_hatch_targets_without_wheel_falls_through(self, tmp_path: Path) -> None:
+        _write_pyproject(tmp_path, "[tool.hatch.build.targets.sdist]\n")
+        result = PythonPathsDetector.detect_python_paths(tmp_path)
+        assert result["source"] == ["src"]
+
+    def test_hatch_build_without_targets_falls_through(self, tmp_path: Path) -> None:
+        _write_pyproject(tmp_path, '[tool.hatch.build]\ndev-mode-dirs = ["."]\n')
+        result = PythonPathsDetector.detect_python_paths(tmp_path)
+        assert result["source"] == ["src"]
+
+    def test_hatch_table_without_build_falls_through(self, tmp_path: Path) -> None:
+        _write_pyproject(tmp_path, '[tool.hatch]\nversion = "1"\n')
+        result = PythonPathsDetector.detect_python_paths(tmp_path)
+        assert result["source"] == ["src"]
+
+    def test_setuptools_package_dir_non_string_root_falls_through(self, tmp_path: Path) -> None:
+        _write_pyproject(tmp_path, '[tool.setuptools.package-dir]\n"" = 5\n')
+        result = PythonPathsDetector.detect_python_paths(tmp_path)
+        assert result["source"] == ["src"]
+
+    def test_poetry_packages_non_list_falls_through(self, tmp_path: Path) -> None:
+        _write_pyproject(tmp_path, '[tool.poetry]\npackages = "mypkg"\n')
+        result = PythonPathsDetector.detect_python_paths(tmp_path)
+        assert result["source"] == ["src"]
+
+    def test_src_layout_wins_over_flat_package(self, tmp_path: Path) -> None:
+        _make_package(tmp_path / "src", "mypkg")
+        _make_package(tmp_path, "flatpkg")
+        result = PythonPathsDetector.detect_python_paths(tmp_path)
+        assert result["source"] == ["src"]
+        assert result["package"] == "mypkg"
+
     # --- DetectTests ---
 
     def test_detect_tests_pytest_testpaths_returns_dirs(self, tmp_path: Path) -> None:
@@ -199,7 +251,9 @@ class TestPythonPathsDetector:
         _make_package(tmp_path / "src", "mypkg")
         monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path)])
         rc = PythonPathsDetector.main()
-        out = json.loads(capsys.readouterr().out)
+        raw = capsys.readouterr().out
+        assert '\n  "source":' in raw
+        out = json.loads(raw)
         assert rc == 0
         assert out["source"] == ["src"]
         assert out["package"] == "mypkg"

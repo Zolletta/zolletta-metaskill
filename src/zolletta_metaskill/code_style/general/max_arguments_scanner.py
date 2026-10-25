@@ -186,6 +186,7 @@ class MaxArgumentsScanner:
             declaring more than *max_args* parameters.
 
         """
+        # pragma: no mutate start — fix_type defaults to "manual" on Finding already
         return [
             Finding(
                 file=str(module.path),
@@ -200,6 +201,7 @@ class MaxArgumentsScanner:
             )
             for record in MaxArgumentsScanner._records(module, max_args, max_dataclass_fields)
         ]
+        # pragma: no mutate end
 
     @staticmethod
     def _parse_file(path: Path) -> ModuleInfo | None:
@@ -290,6 +292,7 @@ class MaxArgumentsScanner:
             if module is None:
                 continue
             for record in MaxArgumentsScanner._records(module, max_args, max_dataclass_fields):
+                # pragma: no mutate start — no emitter reads "kind"
                 violations.append(
                     {
                         "file": str(path),
@@ -300,6 +303,7 @@ class MaxArgumentsScanner:
                         "over": record["params"] - max_args,
                     }
                 )
+                # pragma: no mutate end
         violations.sort(key=lambda v: v["params"], reverse=True)
         return len(files), violations
 
@@ -363,8 +367,9 @@ class MaxArgumentsScanner:
             print("Result: all clear")
 
     @staticmethod
-    def main() -> int:  # pragma: no mutate — help text is not a tested contract
+    def main() -> int:
         """Entry point for the max arguments scanner CLI."""
+        # pragma: no mutate start — help text is not a tested contract
         parser = argparse.ArgumentParser(
             description="Flag functions and methods declaring too many "
             "parameters (language-agnostic; the pylint PLR0913 rule, which "
@@ -374,8 +379,9 @@ class MaxArgumentsScanner:
         parser.add_argument(
             "--json",
             action="store_true",
-            help="Output as JSON instead of text",  # pragma: no mutate — help text untested
+            help="Output as JSON instead of text",
         )
+        # pragma: no mutate end
         args = parser.parse_args()
 
         settings_path = MaxArgumentsScanner.DEFAULT_SETTINGS_PATH
@@ -387,11 +393,13 @@ class MaxArgumentsScanner:
 
         roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, languages))
         if not roots:
+            # pragma: no mutate start — setting() guards non-dict input
             print(
                 "Error: no configured source directories exist on disk "
                 f"({', '.join(str(r) for r in ProjectConfig.source_roots(settings, languages))})",
                 file=sys.stderr,
             )
+            # pragma: no mutate end
             return 1
 
         extensions = ProjectConfig.extensions_for(languages)

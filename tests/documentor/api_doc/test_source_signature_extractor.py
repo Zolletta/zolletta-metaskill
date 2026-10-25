@@ -53,6 +53,17 @@ class TestSourceSignatureExtractor:
             == "typing.Optional[int]"
         )
 
+    def test_annotation_to_str_union_annotation_returns_union_str(self) -> None:
+        import ast
+
+        src = "def f(x: int | str) -> None: ...\n"
+        tree = ast.parse(src)
+        func = tree.body[0]
+        assert isinstance(func, ast.FunctionDef)
+        assert (
+            SourceSignatureExtractor._annotation_to_str(func.args.args[0].annotation) == "int | str"
+        )
+
     # --- _extract_decorator_names ---
 
     def test_extract_decorator_names_name_decorator_returns_single_item(self) -> None:
@@ -147,10 +158,10 @@ class TestSourceSignatureExtractor:
         func = tree.body[0]
         assert isinstance(func, ast.FunctionDef)
         params = SourceSignatureExtractor._extract_parameters(func)
-        assert len(params) == 2
-        assert params[0]["name"] == "a"
-        assert params[0]["has_default"] is False
-        assert params[1]["name"] == "b"
+        assert params == [
+            {"name": "a", "annotation": None, "has_default": False, "default": None},
+            {"name": "b", "annotation": None, "has_default": False, "default": None},
+        ]
 
     def test_extract_parameters_self_skipped_returns_a(self) -> None:
         import ast
@@ -182,47 +193,51 @@ class TestSourceSignatureExtractor:
         func = tree.body[0]
         assert isinstance(func, ast.FunctionDef)
         params = SourceSignatureExtractor._extract_parameters(func)
-        assert params[0]["has_default"] is False
-        assert params[1]["has_default"] is True
-        assert params[1]["default"] == "10"
-        assert params[2]["has_default"] is True
-        assert params[2]["default"] == "'x'"
+        assert params == [
+            {"name": "a", "annotation": None, "has_default": False, "default": None},
+            {"name": "b", "annotation": None, "has_default": True, "default": "10"},
+            {"name": "c", "annotation": None, "has_default": True, "default": "'x'"},
+        ]
 
     def test_extract_parameters_vararg_is_valid(self) -> None:
         import ast
 
-        src = "def f(a, *args): pass\n"
+        src = "def f(a, *args: int): pass\n"
         tree = ast.parse(src)
         func = tree.body[0]
         assert isinstance(func, ast.FunctionDef)
         params = SourceSignatureExtractor._extract_parameters(func)
-        assert any(p["name"] == "*args" for p in params)
+        assert params == [
+            {"name": "a", "annotation": None, "has_default": False, "default": None},
+            {"name": "*args", "annotation": "int", "has_default": False, "default": None},
+        ]
 
     def test_extract_parameters_kwarg_is_valid(self) -> None:
         import ast
 
-        src = "def f(a, **kwargs): pass\n"
+        src = "def f(a, **kwargs: int): pass\n"
         tree = ast.parse(src)
         func = tree.body[0]
         assert isinstance(func, ast.FunctionDef)
         params = SourceSignatureExtractor._extract_parameters(func)
-        assert any(p["name"] == "**kwargs" for p in params)
+        assert params == [
+            {"name": "a", "annotation": None, "has_default": False, "default": None},
+            {"name": "**kwargs", "annotation": "int", "has_default": False, "default": None},
+        ]
 
     def test_extract_parameters_kwonly_args_returns_false(self) -> None:
         import ast
 
-        src = "def f(a, *, b=1, c): pass\n"
+        src = "def f(a, *, b: int=1, c: str): pass\n"
         tree = ast.parse(src)
         func = tree.body[0]
         assert isinstance(func, ast.FunctionDef)
         params = SourceSignatureExtractor._extract_parameters(func)
-        kwonly = [p for p in params if p["name"] in ("b", "c")]
-        assert len(kwonly) == 2
-        b_param = next(p for p in kwonly if p["name"] == "b")
-        assert b_param["has_default"] is True
-        assert b_param["default"] == "1"
-        c_param = next(p for p in kwonly if p["name"] == "c")
-        assert c_param["has_default"] is False
+        assert params == [
+            {"name": "a", "annotation": None, "has_default": False, "default": None},
+            {"name": "b", "annotation": "int", "has_default": True, "default": "1"},
+            {"name": "c", "annotation": "str", "has_default": False, "default": None},
+        ]
 
     def test_extract_parameters_annotation_extracted_returns_int(self) -> None:
         import ast
@@ -238,12 +253,17 @@ class TestSourceSignatureExtractor:
 
     def test_extract_signatures_extract_function_returns_doc(self, tmp_path: Path) -> None:
         p = tmp_path / "mod.py"
-        p.write_text('"""Module."""\ndef foo(a, b=1):\n    """Doc."""\n    return a\n')
+        p.write_text('"""Module."""\ndef foo(a, b=1) -> int:\n    """Doc."""\n    return a\n')
         sigs = SourceSignatureExtractor.extract_signatures(str(p))
         assert len(sigs) == 1
         assert sigs[0].name == "foo"
         assert sigs[0].kind == "function"
         assert sigs[0].docstring == "Doc."
+        assert sigs[0].file_path == str(p)
+        assert sigs[0].line_number == 2
+        assert sigs[0].return_annotation == "int"
+        assert sigs[0].is_private is False
+        assert sigs[0].parent_class is None
 
     def test_function_beside_class_keeps_function_kind(self, tmp_path: Path) -> None:
         p = tmp_path / "mod.py"
@@ -266,14 +286,37 @@ class TestSourceSignatureExtractor:
 
     def test_extract_signatures_extract_class_excludes_value(self, tmp_path: Path) -> None:
         p = tmp_path / "mod.py"
-        p.write_text("class MyClass:\n    def __init__(self, a, b):\n        self.a = a\n")
+        p.write_text(
+            'class MyClass:\n    """Doc."""\n    def __init__(self, a, b):\n        self.a = a\n'
+        )
         sigs = SourceSignatureExtractor.extract_signatures(str(p))
         cls = next(s for s in sigs if s.name == "MyClass")
         assert cls.kind == "class"
+        assert cls.file_path == str(p)
+        assert cls.line_number == 1
+        assert cls.docstring == "Doc."
+        assert cls.is_private is False
         param_names = [p["name"] for p in cls.parameters]
         assert "a" in param_names
         assert "b" in param_names
         assert "self" not in param_names
+
+    def test_extract_signatures_class_without_init_returns_empty_params(
+        self, tmp_path: Path
+    ) -> None:
+        p = tmp_path / "mod.py"
+        p.write_text("class Bare:\n    pass\n")
+        sigs = SourceSignatureExtractor.extract_signatures(str(p))
+        cls = next(s for s in sigs if s.name == "Bare")
+        assert cls.parameters == []
+
+    def test_extract_signatures_decorated_class_returns_decorator(self, tmp_path: Path) -> None:
+        p = tmp_path / "mod.py"
+        p.write_text("@registered\nclass C:\n    pass\n")
+        sigs = SourceSignatureExtractor.extract_signatures(str(p))
+        cls = next(s for s in sigs if s.name == "C")
+        assert cls.decorators == ["registered"]
+        assert cls.line_number == 2
 
     def test_private_excluded_by_default(self, tmp_path: Path) -> None:
         p = tmp_path / "mod.py"
@@ -290,6 +333,8 @@ class TestSourceSignatureExtractor:
         names = [s.name for s in sigs]
         assert "_private" in names
         assert "public" in names
+        private = next(s for s in sigs if s.name == "_private")
+        assert private.is_private is True
 
     def test_syntax_error_returns_empty(self, tmp_path: Path) -> None:
         p = tmp_path / "mod.py"
@@ -329,8 +374,18 @@ class TestSourceSignatureExtractor:
         sigs = SourceSignatureExtractor.extract_signatures(str(p), include_private=True)
         names = [s.name for s in sigs]
         assert "_Private" in names
+        private_cls = next(s for s in sigs if s.name == "_Private")
+        assert private_cls.is_private is True
 
     # --- extract_all_signatures ---
+
+    def test_extract_all_signatures_private_excluded_by_default(self, tmp_path: Path) -> None:
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "a.py").write_text("def _hidden(): pass\ndef public(): pass\n")
+        all_sigs = SourceSignatureExtractor.extract_all_signatures(str(src))
+        names = [s.name for s in all_sigs["a.py"]]
+        assert names == ["public"]
 
     def test_extract_all_signatures_file_without_signatures_skipped(self, tmp_path: Path) -> None:
         src = tmp_path / "src"

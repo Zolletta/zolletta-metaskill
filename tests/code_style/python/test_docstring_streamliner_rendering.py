@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import ast
-import sys
 from pathlib import Path
 
 import pytest
@@ -15,19 +14,6 @@ from zolletta_metaskill.code_style.python.structs import DocstringStripOptions, 
 
 class TestDocstringStreamlinerRendering:
     """Tests for DocstringStreamliner (rendering), split from TestDocstringStreamliner."""
-
-    def _parse(self, source: str) -> ast.FunctionDef:
-        tree = ast.parse(source)
-        DocstringStreamliner._annotate_parents(tree)
-        node = tree.body[0]
-        assert isinstance(node, ast.FunctionDef)
-        return node
-
-    def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
-        """Chdir into tmp_path and run main() with *argv*."""
-        monkeypatch.chdir(tmp_path)
-        monkeypatch.setattr(sys, "argv", argv)
-        return DocstringStreamliner.main()
 
     # --- Tests for DocstringStreamliner.parse_docstring(). ---
 
@@ -170,10 +156,25 @@ class TestDocstringStreamlinerRendering:
         result = DocstringStreamliner.render_docstring("    ", "r", '"""', "raw doc")
         assert result == '    r"""raw doc"""'
 
+    def test_render_docstring_leading_blank_line_renders_multiline(self) -> None:
+        result = DocstringStreamliner.render_docstring("    ", "", '"""', "\nx")
+        assert result == '    """\n    x\n    """'
+
+    def test_render_docstring_three_lines_exact(self) -> None:
+        result = DocstringStreamliner.render_docstring("    ", "", '"""', "a\nb\nc")
+        assert result == '    """a\n    b\n    c\n    """'
+
+    def test_render_docstring_blank_middle_line_exact(self) -> None:
+        result = DocstringStreamliner.render_docstring("    ", "", '"""', "a\n\nb")
+        assert result == '    """a\n\n    b\n    """'
+
     # --- Tests for DocstringStreamliner._returns_section_is_redundant(). ---
 
     def test_returns_section_is_redundant_trivial_empty_returns_true(self) -> None:
         assert DocstringStreamliner._returns_section_is_redundant([], "int") is True
+
+    def test_returns_section_is_redundant_two_line_trivial_returns_true(self) -> None:
+        assert DocstringStreamliner._returns_section_is_redundant(["int", ""], "int") is True
 
     def test_returns_section_is_redundant_meaningful_returns_false(self) -> None:
         assert DocstringStreamliner._returns_section_is_redundant(["the count"], "int") is False

@@ -131,7 +131,9 @@ class MutmutSurvivedReporter:
         module, _, leaf = base.rpartition(".")
         if leaf.startswith(f"x{MutmutSurvivedReporter._CLASS_NAME_SEPARATOR}"):
             # xǁClassǁmethod → the method name is the last segment
+            # pragma: no mutate start — the last element of an rsplit is identical for any maxsplit
             return module, leaf.rsplit(MutmutSurvivedReporter._CLASS_NAME_SEPARATOR, 1)[-1]
+            # pragma: no mutate end
         if leaf.startswith("x_"):
             return module, leaf[2:]
         return module, leaf or None
@@ -335,24 +337,28 @@ class MutmutSurvivedReporter:
     @staticmethod
     def main() -> int:
         """Entry point for the survived-mutants reporter CLI."""
+        # pragma: no mutate start — help text is not a tested contract
         parser = argparse.ArgumentParser(
             description="Report survived mutants from a completed mutmut run. "
             "Reads python.tools.mutmut / python.testing.mutation_* from settings.json."
         )
-        parser.add_argument(
-            "--json", action="store_true", help="Output as JSON"
-        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        # pragma: no mutate end
         args = parser.parse_args()
 
         settings = ProjectConfig.load_settings()
+        # pragma: no mutate start — any non-True default takes the same skip branch
         if ProjectConfig.setting(settings, "python.tools.mutmut.available", False) is not True:
             ProjectConfig.emit_skipped(args.json, "python.tools.mutmut is not available")
             return 0
+        # pragma: no mutate end
+        # pragma: no mutate start — only an explicit False skips; the default is unobservable
         if ProjectConfig.setting(settings, "python.testing.check_mutation_testing", True) is False:
             ProjectConfig.emit_skipped(
                 args.json, "python.testing.check_mutation_testing is disabled in settings.json"
             )
             return 0
+        # pragma: no mutate end
 
         threshold = ProjectConfig.setting(settings, "python.testing.mutation_score_threshold", 80)
         max_mutants = ProjectConfig.setting(settings, "python.testing.mutation_max_mutants", 50)

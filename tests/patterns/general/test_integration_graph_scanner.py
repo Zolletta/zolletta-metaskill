@@ -207,6 +207,35 @@ class TestIntegrationGraphScanner:
         assert result["edge_count"] == 1
         assert result["edges"][0]["to"].endswith("helper.py")
 
+    def test_relative_bare_from_import_edges_package_init(self, tmp_path: Path) -> None:
+        """``from . import helper`` edges both ``__init__.py`` and ``helper.py``."""
+        root = tmp_path / "src"
+        self._write(root / "pkg" / "__init__.py", "V = 1\n")
+        self._write(root / "pkg" / "helper.py", "H = 1\n")
+        self._write(root / "pkg" / "a.py", "from . import helper\n\nprint(helper.H)\n")
+        result = IntegrationGraphScanner.scan_directory([root], {".py"})
+        by_target = {Path(e["to"]).name: e for e in result["edges"]}
+        assert sorted(by_target) == ["__init__.py", "helper.py"]
+        assert by_target["__init__.py"]["names"] == [{"name": "helper", "usage": "attribute"}]
+        assert by_target["helper.py"]["names"] == [{"name": "helper", "usage": "attribute"}]
+
+    def test_dunder_init_name_dedupes_on_shared_candidate(self, tmp_path: Path) -> None:
+        """``from pkg import a, __init__`` hits ``__init__.py`` as both module and name.
+
+        The second hit must not duplicate or drop entries on the shared edge.
+        """
+        root = tmp_path / "src"
+        self._write(root / "pkg" / "__init__.py", "V = 1\n")
+        self._write(root / "pkg" / "a.py", "A = 1\n")
+        self._write(root / "m.py", "from pkg import a, __init__\n\nprint(a.A)\n")
+        result = IntegrationGraphScanner.scan_directory([root], {".py"})
+        by_target = {Path(e["to"]).name: e["names"] for e in result["edges"]}
+        assert by_target["__init__.py"] == [
+            {"name": "a", "usage": "attribute"},
+            {"name": "__init__", "usage": "import-only"},
+        ]
+        assert by_target["a.py"] == [{"name": "a", "usage": "attribute"}]
+
     def test_relative_dotdot_climbs_ancestors(self, tmp_path: Path) -> None:
         """``from ..sib import x`` resolves by walking up to the root."""
         root = tmp_path / "src"
@@ -264,6 +293,17 @@ class TestIntegrationGraphScanner:
         assert "run" in kinds["call"]
         assert kinds["attribute"] == set()
 
+    def test_record_call_usage_dotted_root_records_attribute(self) -> None:
+        import ast
+
+        node = cast(ast.Call, ast.parse("pkg.mod.run()", mode="eval").body)
+        kinds: dict[str, set[str]] = {"call": set(), "attribute": set()}
+        IntegrationGraphScanner._record_call_usage(node, kinds)
+        assert kinds == {
+            "call": {"run", "pkg.mod.run"},
+            "attribute": {"pkg"},
+        }
+
     def test_usage_call_attribute_root(self, tmp_path: Path) -> None:
         """``mod.func()`` marks the ``mod`` import as a call."""
         root = tmp_path / "src"
@@ -289,6 +329,20 @@ class TestIntegrationGraphScanner:
         result = IntegrationGraphScanner.scan_directory([root], {".py"})
         assert result["edges"][0]["names"] == [{"name": "T", "usage": "type"}]
 
+    def test_usage_type_return_and_arg_annotations(self, tmp_path: Path) -> None:
+        """Return-only and arg-only annotations each mark the name ``type``."""
+        root = tmp_path / "src"
+        self._write(root / "t.py", "class R:\n    pass\n\n\nclass A:\n    pass\n")
+        self._write(
+            root / "a.py",
+            "from t import A, R\n\n\ndef f() -> R:\n    pass\n\n\ndef g(x: A) -> None:\n    pass\n",
+        )
+        result = IntegrationGraphScanner.scan_directory([root], {".py"})
+        assert result["edges"][0]["names"] == [
+            {"name": "A", "usage": "type"},
+            {"name": "R", "usage": "type"},
+        ]
+
     def test_usage_extends_base_class(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
         self._write(root / "base.py", "class Base:\n    pass\n")
@@ -312,6 +366,19 @@ class TestIntegrationGraphScanner:
         self._write(root / "a.py", "from c import CONST\n\ny = CONST + 1\n")
         result = IntegrationGraphScanner.scan_directory([root], {".py"})
         assert result["edges"][0]["names"] == [{"name": "CONST", "usage": "attribute"}]
+
+    def test_usage_attribute_dotted_module_read(self, tmp_path: Path) -> None:
+        """``x = pkg.mod.C`` marks the ``pkg.mod`` import as ``attribute``."""
+        root = tmp_path / "src"
+        self._write(root / "pkg" / "mod.py", "C = 1\n")
+        self._write(root / "a.py", "import pkg.mod\n\nx = pkg.mod.C\n")
+        result = IntegrationGraphScanner.scan_directory([root], {".py"})
+        assert result["edges"][0]["names"] == [{"name": "pkg.mod", "usage": "attribute"}]
+
+    def test_usage_for_dotted_name_suffix_match(self) -> None:
+        """A dotted edge name matches a collected string ending in ``.<name>``."""
+        kinds = {"attribute": {"x.pkg.mod"}}
+        assert IntegrationGraphScanner._usage_for("pkg.mod", kinds) == "attribute"
 
     def test_usage_import_only(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
@@ -364,6 +431,7 @@ class TestIntegrationGraphScanner:
         self._write(root / "broken.py", "def foo(:\n    from os import path\n")
         result = IntegrationGraphScanner.scan_directory([root], {".py"})
         assert result["edge_count"] == 0
+        assert result["external_imports"] == 0
 
     def test_dotted_call_marks_module_call(self, tmp_path: Path) -> None:
         """``pkg.mod.Cls()`` marks a ``pkg.mod`` import as ``call``."""
@@ -424,6 +492,32 @@ class TestIntegrationGraphScanner:
         assert by_name["Dto"] == "type"
 
     @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    def test_php_use_deep_namespace_symbol_is_last_part(self, tmp_path: Path) -> None:
+        root = tmp_path / "src"
+        self._write(root / "Deep" / "Ns" / "Thing.php", "<?php\nclass Thing {}\n")
+        self._write(root / "a.php", "<?php\nuse Deep\\Ns\\Thing;\n")
+        result = IntegrationGraphScanner.scan_directory([root], {".php"})
+        assert result["edge_count"] == 1
+        assert result["edges"][0]["names"] == [{"name": "Thing", "usage": "import-only"}]
+
+    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    def test_php_usages_qualified_names_exact(self, tmp_path: Path) -> None:
+        r"""Qualified ``Ns\Cls`` usages record only the final class name."""
+        f = self._write(
+            tmp_path / "x.php",
+            "<?php\n"
+            "new A\\B\\Svc();\n"
+            "class C extends P\\Base implements P\\Iface {}\n"
+            "function g(P\\Dto $d): void {}\n",
+        )
+        kinds = IntegrationGraphScanner._php_usages(f)
+        assert kinds == {
+            "new": {"Svc"},
+            "extends": {"Base", "Iface"},
+            "type": {"Dto"},
+        }
+
+    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
     def test_php_import_only(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
         self._write(root / "App" / "Unused.php", "<?php\nclass Unused {}\n")
@@ -476,6 +570,17 @@ class TestIntegrationGraphScanner:
         assert modules[a_key]["fan_out"] == 1
         assert modules[a_key]["fan_in"] == 0
 
+    def test_fan_out_counts_distinct_targets(self, tmp_path: Path) -> None:
+        root = tmp_path / "src"
+        self._write(root / "x.py", "A = 1\n")
+        self._write(root / "y.py", "B = 2\n")
+        self._write(root / "m.py", "from x import A\nfrom y import B\n\nprint(A, B)\n")
+        result = IntegrationGraphScanner.scan_directory([root], {".py"})
+        modules = {m["module"]: m for m in result["modules"]}
+        m_key = next(k for k in modules if k.endswith("m.py"))
+        assert modules[m_key]["fan_out"] == 2
+        assert modules[m_key]["fan_in"] == 0
+
     def test_extensions_resolved_from_settings(self, tmp_path: Path) -> None:
         """Omitted extensions resolve from settings.json (python → .py)."""
         settings = self._write_settings(tmp_path, language="python")
@@ -486,6 +591,21 @@ class TestIntegrationGraphScanner:
         result = IntegrationGraphScanner.scan_directory([root], settings_path=settings)
         assert result["edge_count"] == 1
         assert result["edges"][0]["to"].endswith("t.py")
+
+    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    def test_extensions_resolved_from_given_settings_path(self, tmp_path: Path) -> None:
+        """Omitted extensions resolve from *settings_path*, not the default file."""
+        settings = self._write_settings(
+            tmp_path, language="php", python=None, php={"code_style": {}}
+        )
+        root = tmp_path / "src"
+        self._write(root / "App" / "Svc.php", "<?php\nclass Svc {}\n")
+        self._write(root / "a.php", "<?php\nuse App\\Svc;\n\n$s = new Svc();\n")
+        self._write(root / "m.py", "import os\n")
+        result = IntegrationGraphScanner.scan_directory([root], settings_path=settings)
+        assert result["scanned"] == 2
+        assert result["edge_count"] == 1
+        assert result["edges"][0]["to"].endswith("Svc.php")
 
     def test_gitignored_file_skipped(self, tmp_path: Path) -> None:
         self._git_init(tmp_path)
@@ -534,6 +654,56 @@ class TestIntegrationGraphScanner:
         result = IntegrationGraphScanner.scan_directory([root], {".py"})
         assert result["edges"] == []
 
+    def test_engine_none_file_skipped_not_stopping_scan(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A file without an engine is skipped; later files are still scanned."""
+        from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
+
+        real = EngineRegistry.get_for_file
+        monkeypatch.setattr(
+            EngineRegistry,
+            "get_for_file",
+            lambda p: None if Path(p).name == "a.py" else real(p),
+        )
+        root = tmp_path / "src"
+        self._write(root / "a.py", "import os\n")
+        self._write(root / "t.py", "T = 1\n")
+        self._write(root / "z.py", "from t import T\n\nprint(T)\n")
+        result = IntegrationGraphScanner.scan_directory([root], {".py"})
+        assert result["scanned"] == 2
+        assert result["edge_count"] == 1
+
+    def test_parse_failure_file_skipped_not_stopping_scan(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A parse failure warns and continues with the remaining files."""
+        from zolletta_metaskill.core.engine.python_engine import PythonEngine
+
+        real_parse = PythonEngine.parse_module
+
+        def _flaky(_self: PythonEngine, path: Path) -> ModuleInfo:
+            if Path(path).name == "a.py":
+                raise OSError("unreadable")
+            return real_parse(_self, path)
+
+        monkeypatch.setattr(PythonEngine, "parse_module", _flaky)
+        root = tmp_path / "src"
+        self._write(root / "a.py", "import os\n")
+        self._write(root / "t.py", "T = 1\n")
+        self._write(root / "z.py", "from t import T\n\nprint(T)\n")
+        result = IntegrationGraphScanner.scan_directory([root], {".py"})
+        assert result["scanned"] == 2
+        assert result["edge_count"] == 1
+
+    def test_external_imports_accumulate_across_files(self, tmp_path: Path) -> None:
+        root = tmp_path / "src"
+        self._write(root / "a.py", "import os\n")
+        self._write(root / "b.py", "import sys\n")
+        result = IntegrationGraphScanner.scan_directory([root], {".py"})
+        assert result["external_imports"] == 2
+        assert result["edge_count"] == 0
+
     def test_git_missing_falls_back_to_rglob(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -560,6 +730,71 @@ class TestIntegrationGraphScanner:
         err = capsys.readouterr().err
         assert rc == 1
         assert "no configured source directories" in err
+
+    def test_main_missing_configured_dirs_lists_them(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The usage error names the configured roots, exactly."""
+        monkeypatch.chdir(tmp_path)
+        meta = tmp_path / ".zolletta-metaskill"
+        meta.mkdir()
+        (meta / "settings.json").write_text(
+            json.dumps(
+                {
+                    "language": "python",
+                    "python": {"paths": {"source": ["lib", "lib2"]}},
+                    "php": None,
+                }
+            )
+        )
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        rc = IntegrationGraphScanner.main()
+        assert rc == 1
+        assert capsys.readouterr().err.splitlines() == [
+            "Error: no configured source directories exist on disk (lib, lib2)"
+        ]
+
+    def test_main_configured_roots_come_from_settings(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A present default ``src`` dir must not mask a configured-but-missing root."""
+        monkeypatch.chdir(tmp_path)
+        meta = tmp_path / ".zolletta-metaskill"
+        meta.mkdir()
+        (meta / "settings.json").write_text(
+            json.dumps(
+                {
+                    "language": "python",
+                    "python": {"paths": {"source": ["lib"]}},
+                    "php": None,
+                }
+            )
+        )
+        (tmp_path / "src").mkdir()
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        rc = IntegrationGraphScanner.main()
+        assert rc == 1
+        assert capsys.readouterr().err.splitlines() == [
+            "Error: no configured source directories exist on disk (lib)"
+        ]
+
+    @pytest.mark.skipif(not TS_PHP_AVAILABLE, reason="tree-sitter-php not installed")
+    def test_main_scans_only_configured_languages(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Configured languages gate the scan — unconfigured files are ignored."""
+        monkeypatch.chdir(tmp_path)
+        self._write_settings(tmp_path, language="python", php=None)
+        root = tmp_path / "src"
+        self._write(root / "t.py", "T = 1\n")
+        self._write(root / "a.py", "from t import T\n\nprint(T)\n")
+        self._write(root / "x.php", "<?php\nuse App\\Svc;\n\n$s = new Svc();\n")
+        monkeypatch.setattr(sys, "argv", ["prog", "--json"])
+        rc = IntegrationGraphScanner.main()
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["scanned"] == 2
+        assert report["edge_count"] == 1
 
     def test_main_text_report(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -591,6 +826,7 @@ class TestIntegrationGraphScanner:
         out = capsys.readouterr().out
         assert rc == 0
         assert "Edges: none" in out
+        assert "## Edges: none" in out.splitlines()
 
     def test_main_json_report(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -626,6 +862,65 @@ class TestIntegrationGraphScanner:
         out = capsys.readouterr().out
         assert rc == 0
         assert "internal edges" in out
+
+    # --- Tests for the emit helpers. ---
+
+    def test_emit_json_output_shape_and_indent(self, capsys: pytest.CaptureFixture[str]) -> None:
+        result = {
+            "scanned": 1,
+            "external_imports": 0,
+            "edges": [],
+            "modules": [],
+        }
+        IntegrationGraphScanner._emit_json(result, [Path("src")])
+        out = capsys.readouterr().out
+        assert json.loads(out) == {
+            "directories": ["src"],
+            "scanned": 1,
+            "edge_count": 0,
+            "external_imports": 0,
+            "edges": [],
+            "modules": [],
+        }
+        assert out.splitlines()[:3] == ["{", '  "directories": [', '    "src"']
+
+    def test_emit_text_multiple_roots_and_empty_edges_exact(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        result = {
+            "scanned": 0,
+            "external_imports": 0,
+            "edges": [],
+            "modules": [],
+        }
+        IntegrationGraphScanner._emit_text(result, [Path("src"), Path("lib")])
+        lines = capsys.readouterr().out.splitlines()
+        assert "Scanned 0 files under src, lib; 0 internal edges, 0 external imports." in lines
+        assert "## Edges: none" in lines
+
+    def test_emit_text_edge_names_joined_exactly(self, capsys: pytest.CaptureFixture[str]) -> None:
+        result = {
+            "scanned": 2,
+            "external_imports": 0,
+            "edges": [
+                {
+                    "from": "src/a.py",
+                    "to": "src/t.py",
+                    "line": 3,
+                    "names": [
+                        {"name": "T", "usage": "call"},
+                        {"name": "U", "usage": "type"},
+                    ],
+                },
+            ],
+            "modules": [
+                {"module": "src/a.py", "fan_in": 0, "fan_out": 1},
+                {"module": "src/t.py", "fan_in": 1, "fan_out": 0},
+            ],
+        }
+        IntegrationGraphScanner._emit_text(result, [Path("src")])
+        lines = capsys.readouterr().out.splitlines()
+        assert "  src/a.py:3 -> src/t.py  [T(call), U(type)]" in lines
 
     # --- Text contract ---
 

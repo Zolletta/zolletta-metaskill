@@ -84,7 +84,10 @@ class ADRDetector:
             if f.suffix != ".md":
                 continue
             try:
-                content = f.read_text(encoding="utf-8", errors="ignore")  # pragma: no mutate
+                # pragma: no mutate start — carried from inline pragma (was ineffective inside a
+                # multi-line statement)
+                content = f.read_text(encoding="utf-8", errors="ignore")
+                # pragma: no mutate end
             except OSError:
                 continue
             if ADRDetector._ADR_HEADING_RE.search(content):
@@ -145,17 +148,20 @@ class ADRDetector:
         return ADRDetector._determine_adrs_path(adr_files, docs_dir)
 
     @staticmethod
-    def main() -> int:  # pragma: no mutate — help text is not a tested contract
+    def main() -> int:
         """Entry point for the ADR folder detector CLI."""
         parser = argparse.ArgumentParser(
             description="Detect the project's ADR folder within the docs directory."
         )
+        # pragma: no mutate start — carried from inline pragma (was ineffective inside a multi-line
+        # statement)
         parser.add_argument(
             "docs_dir",
             nargs="?",
             default="docs",
-            help="Documentation directory to scan (default: docs)",  # pragma: no mutate
+            help="Documentation directory to scan (default: docs)",
         )
+        # pragma: no mutate end
         args = parser.parse_args()
 
         docs_dir = Path(args.docs_dir)

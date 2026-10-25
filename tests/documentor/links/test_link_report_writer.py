@@ -18,6 +18,27 @@ class TestLinkReportWriter:
         assert data["summary"]["total_links"] == 0
         assert data["summary"]["broken"] == 0
 
+    def test_report_defaults_to_markdown(self) -> None:
+        report = LinkReportWriter.generate_report([], {})
+        assert "Link Check Report" in report
+
+    def test_json_report_indented_two_spaces(self) -> None:
+        report = LinkReportWriter.generate_report([], {}, as_json=True)
+        assert '\n  "summary":' in report
+
+    def test_broken_links_do_not_print_no_issues(self) -> None:
+        link = LinkInfo("README.md", 5, "text", "missing.md", "local_file")
+        link.is_valid = False
+        link.error = "File not found"
+        report = LinkReportWriter.generate_report([link], {}, as_json=False)
+        assert "No issues found. All links are valid." not in report.splitlines()
+
+    def test_no_issues_line_is_exact(self) -> None:
+        link = LinkInfo("README.md", 5, "text", "guide.md", "local_file")
+        link.is_valid = True
+        report = LinkReportWriter.generate_report([link], {}, as_json=False)
+        assert "No issues found. All links are valid." in report.splitlines()
+
     def test_with_broken_links_json(self) -> None:
         link = LinkInfo("README.md", 5, "text", "missing.md", "local_file")
         link.is_valid = False
@@ -93,6 +114,52 @@ class TestLinkReportWriter:
         assert data["summary"]["total_links"] == 1
         assert data["summary"]["valid"] == 1
         assert "all_links" in data
+
+    # --- _report_broken ---
+
+    def test_report_broken_missing_source_file_groups_under_empty(self) -> None:
+        lines: list[str] = []
+        LinkReportWriter._report_broken(
+            lines, [{"line": 1, "text": "t", "target": "x", "error": "e"}]
+        )
+        assert "\n  :" in lines
+
+    def test_report_broken_sorts_links_by_line_number(self) -> None:
+        lines: list[str] = []
+        LinkReportWriter._report_broken(
+            lines,
+            [
+                {"line": 5, "text": "a", "target": "t", "error": "e", "source_file": "f"},
+                {"text": "b", "target": "t", "error": "e", "source_file": "f"},
+                {"line": 0, "text": "c", "target": "t", "error": "e", "source_file": "f"},
+            ],
+        )
+        rendered = "\n".join(lines)
+        assert rendered.index("Line None") < rendered.index("Line 0")
+        assert rendered.index("Line 0") < rendered.index("Line 5")
+
+    # --- _report_type_breakdown ---
+
+    def test_broken_only_markdown_report_includes_type_breakdown(self) -> None:
+        link = LinkInfo("README.md", 5, "text", "missing.md", "local_file")
+        link.is_valid = False
+        link.error = "File not found"
+        report = LinkReportWriter.generate_report([link], {}, broken_only=True, as_json=False)
+        assert "LINK TYPE BREAKDOWN" in report
+
+    def test_report_type_breakdown_missing_type_counts_unknown(self) -> None:
+        lines: list[str] = []
+        LinkReportWriter._report_type_breakdown(
+            lines,
+            {
+                "all_links": [{"target": "a"}, {"target": "b"}],
+                "broken_links": [{"target": "a"}, {"target": "b"}],
+            },
+        )
+        rendered = "\n".join(lines)
+        assert "unknown" in rendered
+        assert "2 total" in rendered
+        assert "2 broken" in rendered
 
     # --- Text Output Contract ---
 

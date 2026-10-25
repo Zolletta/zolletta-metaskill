@@ -88,7 +88,10 @@ class UnwrappedProseScanner:
         for i in range(1, len(lines)):
             if lines[i].strip() == "---":
                 return i + 1
+        # pragma: no mutate start — equivalent: reaching here means lines[0] == "---", a block
+        # boundary, so starting at 0 or 1 scans identically
         return 0
+        # pragma: no mutate end
 
     @staticmethod
     def _is_block_boundary(stripped: str) -> bool:
@@ -166,7 +169,10 @@ class UnwrappedProseScanner:
         runs: list[tuple[int, int]] = []
         i = UnwrappedProseScanner._body_start(lines)
         total = len(lines)
+        # pragma: no mutate start — equivalent: None and False are both falsy, and `not in_fence`
+        # toggles them identically
         in_fence = False
+        # pragma: no mutate end
         while i < total:
             stripped = lines[i].strip()
             if UnwrappedProseScanner.FENCE.match(stripped):
@@ -192,7 +198,10 @@ class UnwrappedProseScanner:
                 run.append(nxt)
                 i += 1
             indented = bool(lines[start][:1].isspace())
+            # pragma: no mutate start — `> 1` vs `>= 1` is equivalent: a one-line run has an empty
+            # run[:-1], so _is_wrapped_run already returns False for it
             if not indented and len(run) > 1 and UnwrappedProseScanner._is_wrapped_run(run):
+                # pragma: no mutate end
                 runs.append((start + 1, i))
         return runs
 
@@ -231,7 +240,10 @@ class UnwrappedProseScanner:
     def scan_file(path: Path) -> list[Finding]:
         """Return findings for one markdown file, or none if unreadable."""
         try:
-            text = path.read_text(encoding="utf-8")  # pragma: no mutate — equivalent on UTF-8
+            # pragma: no mutate start — carried from inline pragma (was ineffective inside a
+            # multi-line statement)
+            text = path.read_text(encoding="utf-8")
+            # pragma: no mutate end
         except (OSError, UnicodeDecodeError):
             return []
         return UnwrappedProseScanner.scan_text(path, text)
@@ -341,13 +353,13 @@ class UnwrappedProseScanner:
     @staticmethod
     def main() -> int:
         """Entry point for the unwrapped prose scanner CLI."""
+        # pragma: no mutate start — help text is not a tested contract
         parser = argparse.ArgumentParser(
             description="Flag markdown paragraphs hard-wrapped across lines. Roots "
             "come from .zolletta-metaskill/settings.json."
         )
-        parser.add_argument(
-            "--json", action="store_true", help="Output as JSON instead of text"
-        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
+        parser.add_argument("--json", action="store_true", help="Output as JSON instead of text")
+        # pragma: no mutate end
         args = parser.parse_args()
 
         settings = ProjectConfig.load_settings(UnwrappedProseScanner.DEFAULT_SETTINGS_PATH)

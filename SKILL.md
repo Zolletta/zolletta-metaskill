@@ -1,7 +1,7 @@
 ---
 name: zolletta-metaskill
 license: MIT + Commons Clause
-description: 'Manages the zolletta-* skill registry: routes /zolletta-metaskill subcommands to specialist skills (setup, review, patterns, documentor). Use when the user runs a zolletta-metaskill subcommand. Do not use to perform reviews directly.'
+description: 'Manages the zolletta-* skill registry: routes /zolletta-metaskill subcommands to specialist skills (setup, review, patterns, documentor, grice). Use when the user runs a zolletta-metaskill subcommand. Do not use to perform reviews directly.'
 metadata:
   argument-hint: "[subcommand]"
 ---
@@ -31,11 +31,11 @@ When no subcommand is given, or the subcommand is `help`, the help table is disp
 
 All subcommands read from this skill's subdirectories:
 
-| Resource   | Path                                | Contents                                                                                                       |
-|------------|-------------------------------------|----------------------------------------------------------------------------------------------------------------|
-| References | `docs/`                             | Shared guidelines (Diátaxis, review workflow, grading rubric, tool messages)                                   |
-| Scripts    | `src/zolletta_metaskill/`           | Scanning scripts organized by skill (patterns/, code_style/, testing_style/, documentor/, adr/, core/, setup/) |
-| Settings   | `.zolletta-metaskill/settings.json` | Project-wide configuration written by `setup` (language, tool availability, reports dir)                       |
+| Resource   | Path                                | Contents                                                                                                               |
+| ---------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| References | `docs/`                             | Shared guidelines (Diátaxis, review workflow, grading rubric, tool messages)                                           |
+| Scripts    | `src/zolletta_metaskill/`           | Scanning scripts organized by skill (patterns/, code_style/, testing_style/, documentor/, grice/, adr/, core/, setup/) |
+| Settings   | `.zolletta-metaskill/settings.json` | Project-wide configuration written by `setup` (language, tool availability, reports dir)                               |
 
 ## Rules
 

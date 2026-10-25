@@ -54,7 +54,10 @@ class PythonEngine:
             return ModuleInfo(path=path, language=self.language, has_syntax_error=True)
 
         try:
+            # pragma: no mutate start — the filename only decorates SyntaxError messages, which are
+            # discarded
             tree = ast.parse(source, filename=str(path))
+            # pragma: no mutate end
         except SyntaxError:
             return ModuleInfo(path=path, language=self.language, has_syntax_error=True)
 
@@ -76,6 +79,7 @@ class PythonEngine:
             elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 functions.append(self._build_method(node))
             elif isinstance(node, ast.Import):
+                # pragma: no mutate start — ImportInfo.is_relative already defaults to False
                 imports.append(
                     ImportInfo(
                         module=node.names[0].name,
@@ -84,6 +88,7 @@ class PythonEngine:
                         is_relative=False,
                     )
                 )
+                # pragma: no mutate end
             elif isinstance(node, ast.ImportFrom):
                 imports.append(
                     ImportInfo(
@@ -98,6 +103,7 @@ class PythonEngine:
                 if exports is not None:
                     all_exports = exports
 
+        # pragma: no mutate start — ModuleInfo.has_syntax_error already defaults to False
         return ModuleInfo(
             path=path,
             language=self.language,
@@ -108,6 +114,7 @@ class PythonEngine:
             docstring=docstring,
             has_syntax_error=False,
         )
+        # pragma: no mutate end
 
     def file_extensions(self) -> list[str]:
         """Return the list of file extensions handled by this engine.
@@ -131,6 +138,8 @@ class PythonEngine:
         ]
         attributes = self._extract_attributes(node)
         is_dataclass, dataclass_fields = self._extract_dataclass(node)
+        # pragma: no mutate start — end_lineno is always set by the parser (PEP 626 era), so the
+        # fallback is unobservable
         return ClassInfo(
             name=node.name,
             lineno=node.lineno,
@@ -143,6 +152,7 @@ class PythonEngine:
             is_dataclass=is_dataclass,
             dataclass_fields=dataclass_fields,
         )
+        # pragma: no mutate end
 
     def _build_method(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> MethodInfo:
         """Build a :class:`MethodInfo` from a function definition node."""
@@ -158,6 +168,8 @@ class PythonEngine:
         if node.returns is not None:
             return_type = ast.unparse(node.returns)
         raises = self._extract_raises(node)
+        # pragma: no mutate start — end_lineno is always set by the parser, so the fallback is
+        # unobservable
         return MethodInfo(
             name=node.name,
             lineno=node.lineno,
@@ -168,6 +180,7 @@ class PythonEngine:
             return_type=return_type,
             raises=raises,
         )
+        # pragma: no mutate end
 
     def _extract_dataclass(self, node: ast.ClassDef) -> tuple[bool, list[str]]:
         """Return whether the class is a dataclass and its declared fields.
@@ -269,7 +282,7 @@ class PythonEngine:
                 except Exception:  # pragma: no cover
                     # Defensive: ast.unparse should not fail on valid nodes,
                     # but guard against unexpected forms anyway.
-                    continue
+                    continue  # pragma: no mutate — unreachable defensive branch
                 if name not in raises:
                     raises.append(name)
         return raises

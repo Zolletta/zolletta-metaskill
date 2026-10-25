@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -21,15 +20,6 @@ class TestTestStructureScannerMatching:
         (root / "src" / "mypkg").mkdir(parents=True, exist_ok=True)
         (root / "src" / "mypkg" / "__init__.py").write_text("")
 
-    def _make_tree(self, root: Path) -> tuple[Path, Path]:
-        """Create a ``src/mypkg`` and ``tests/`` pair and return both roots."""
-        (root / "src" / "mypkg").mkdir(parents=True)
-        (root / "src" / "mypkg" / "widget.py").write_text(
-            "class Widget:\n    def spin(self) -> None:\n        pass\n"
-        )
-        (root / "tests").mkdir()
-        return (root / "src" / "mypkg", root / "tests")
-
     def _write_settings(self, dirpath: Path, **overrides: object) -> Path:
         """Write a minimal settings.json under ``dirpath/.zolletta-metaskill``."""
         settings: dict[str, object] = {
@@ -40,37 +30,21 @@ class TestTestStructureScannerMatching:
             },
             "php": None,
         }
-        python_overrides = overrides.pop("python", None)
-        if isinstance(python_overrides, dict):
-            base_python = settings["python"]
-            assert isinstance(base_python, dict)
-            for key, value in python_overrides.items():
-                if isinstance(value, dict) and isinstance(base_python.get(key), dict):
-                    base_python[key].update(value)
-                else:
-                    base_python[key] = value
+        python_overrides = overrides.pop("python", {})
+        assert isinstance(python_overrides, dict)
+        base_python = settings["python"]
+        assert isinstance(base_python, dict)
+        for key, value in python_overrides.items():
+            if isinstance(value, dict) and isinstance(base_python.get(key), dict):
+                base_python[key].update(value)
+            else:  # pragma: no cover — every caller here passes dict overrides
+                base_python[key] = value
         settings.update(overrides)
         meta = dirpath / ".zolletta-metaskill"
         meta.mkdir(parents=True, exist_ok=True)
         path = meta / "settings.json"
         path.write_text(json.dumps(settings))
         return path
-
-    def _make_project(self, tmp_path: Path) -> tuple[Path, Path]:
-        """Create a realistic src/ and tests/ structure."""
-        src_pkg = tmp_path / "src" / "mypkg"
-        test_pkg = tmp_path / "tests" / "mypkg"
-        src_pkg.mkdir(parents=True)
-        test_pkg.mkdir(parents=True)
-        (src_pkg / "__init__.py").write_text("")
-        (test_pkg / "__init__.py").write_text("")
-        return (src_pkg, test_pkg)
-
-    def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> int:
-        """Chdir into tmp_path and run main() with *argv*."""
-        monkeypatch.chdir(tmp_path)
-        monkeypatch.setattr(sys, "argv", argv)
-        return TestStructureScanner.main()
 
     # --- Tests for TestStructureScanner._resolve_packages(). ---
 
@@ -282,18 +256,26 @@ class TestTestStructureScannerMatching:
 
     def test_match_test_to_source_exact_match_returns_cache_py(self) -> None:
         index = {"cache.py": {"prefixes": {"test_cache"}, "dir": "."}}
-        assert TestStructureScanner._match_test_to_source("test_cache.py", index) == "cache.py"
+        assert (
+            TestStructureScanner._match_test_to_source("test_cache.py", index, test_dir=".")
+            == "cache.py"
+        )
 
     def test_match_test_to_source_suffix_match_returns_cache_py(self) -> None:
         index = {"cache.py": {"prefixes": {"test_cache"}, "dir": "."}}
         assert (
-            TestStructureScanner._match_test_to_source("test_cache_operations.py", index)
+            TestStructureScanner._match_test_to_source(
+                "test_cache_operations.py", index, test_dir="."
+            )
             == "cache.py"
         )
 
     def test_match_test_to_source_no_match_returns_none(self) -> None:
         index = {"cache.py": {"prefixes": {"test_cache"}, "dir": "."}}
-        assert TestStructureScanner._match_test_to_source("test_unknown.py", index) is None
+        assert (
+            TestStructureScanner._match_test_to_source("test_unknown.py", index, test_dir=".")
+            is None
+        )
 
     def test_longest_prefix_wins(self) -> None:
         index = {
@@ -301,7 +283,9 @@ class TestTestStructureScannerMatching:
             "scenario_writer.py": {"prefixes": {"test_scenario_writer"}, "dir": "."},
         }
         assert (
-            TestStructureScanner._match_test_to_source("test_scenario_writer.py", index)
+            TestStructureScanner._match_test_to_source(
+                "test_scenario_writer.py", index, test_dir="."
+            )
             == "scenario_writer.py"
         )
 
@@ -324,4 +308,325 @@ class TestTestStructureScannerMatching:
         assert result == "a/cache.py"
 
     def test_match_test_to_source_empty_index_returns_none(self) -> None:
-        assert TestStructureScanner._match_test_to_source("test_cache.py", {}) is None
+        assert TestStructureScanner._match_test_to_source("test_cache.py", {}, test_dir=".") is None
+
+    def test_match_test_to_source_shorter_later_prefix_keeps_longer_match(self) -> None:
+        """A shorter prefix appearing later in the index must not displace the winner."""
+        index = {
+            "ab/thing_one.py": {"prefixes": {"test_thing_one"}, "dir": "ab"},
+            "cd/thing.py": {"prefixes": {"test_thing"}, "dir": "cd"},
+        }
+        result = TestStructureScanner._match_test_to_source(
+            "test_thing_one.py", index, test_dir="."
+        )
+        assert result == "ab/thing_one.py"
+
+    def test_match_test_to_source_second_same_dir_prefix_keeps_first(self) -> None:
+        """Once a same-dir match wins, a later equal-length same-dir match must not."""
+        index = {
+            "b/cache.py": {"prefixes": {"test_cache"}, "dir": "b"},
+            "a1/cache.py": {"prefixes": {"test_cache"}, "dir": "a"},
+            "a2/cache.py": {"prefixes": {"test_cache"}, "dir": "a"},
+        }
+        result = TestStructureScanner._match_test_to_source("test_cache.py", index, test_dir="a")
+        assert result == "a1/cache.py"
+
+    # --- Tests for TestStructureScanner._auto_detect_package() init preference. ---
+
+    def test_auto_detect_package_prefers_init_dir_over_first_dir(self, tmp_path: Path) -> None:
+        """A dir with ``__init__.py`` wins over an alphabetically earlier plain dir."""
+        src = tmp_path / "src"
+        (src / "aaa").mkdir(parents=True)
+        pkg = src / "mypkg"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text("")
+        assert TestStructureScanner._auto_detect_package(src) == "mypkg"
+
+    def test_auto_detect_package_init_filename_is_exact(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The probe asks for ``__init__.py`` by that exact name.
+
+        On a case-insensitive filesystem ``(pkg / "__INIT__.PY").exists()``
+        returns ``True`` anyway, so the filename casing is pinned by
+        monkeypatching ``Path.exists`` to be case-strict.
+        """
+        src = tmp_path / "src"
+        (src / "aaa").mkdir(parents=True)
+        pkg = src / "mypkg"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text("")
+        real_exists = Path.exists
+
+        def strict_exists(self: Path) -> bool:
+            return self.name == "__init__.py" and real_exists(self)
+
+        monkeypatch.setattr(Path, "exists", strict_exists)
+        assert TestStructureScanner._auto_detect_package(src) == "mypkg"
+
+    # --- Tests for TestStructureScanner._build_source_index() edge cases. ---
+
+    def test_build_source_index_init_with_class_returns_empty(self, tmp_path: Path) -> None:
+        """``__init__.py`` is never indexed, even when it defines a class."""
+        pkg = tmp_path / "mypkg"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text("class Exported:\n    pass\n")
+        assert TestStructureScanner._build_source_index(pkg) == {}
+
+    def test_build_source_index_class_prefix_differs_from_stem(self, tmp_path: Path) -> None:
+        """Both the stem prefix and the class-derived prefix must be recorded."""
+        pkg = tmp_path / "mypkg"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text("")
+        (pkg / "mod.py").write_text("class UserService:\n    pass\n")
+        index = TestStructureScanner._build_source_index(pkg)
+        assert index["mod.py"]["prefixes"] == {"test_mod", "test_user_service"}
+
+    # --- Tests for TestStructureScanner._resolve_packages() custom roots. ---
+
+    def test_resolve_packages_custom_source_root_resolves_pkg(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._write_settings(tmp_path, python={"paths": {"source": ["lib"]}})
+        (tmp_path / "lib" / "mypkg").mkdir(parents=True)
+        (tmp_path / "tests").mkdir()
+        monkeypatch.chdir(tmp_path)
+        src_pkgs, _test_pkgs = TestStructureScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        )
+        assert src_pkgs == [Path("lib") / "mypkg"]
+
+    def test_resolve_packages_custom_test_root_falls_back_to_root(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._write_settings(tmp_path, python={"paths": {"tests": ["specs"]}})
+        self._make_src_pkg(tmp_path)
+        (tmp_path / "specs").mkdir()
+        monkeypatch.chdir(tmp_path)
+        _src_pkgs, test_pkgs = TestStructureScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        )
+        assert test_pkgs == [Path("specs")]
+
+    def test_resolve_packages_missing_source_reports_exact_error(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        self._write_settings(tmp_path)
+        (tmp_path / "tests").mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)
+        assert TestStructureScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        ) == (None, None)
+        assert capsys.readouterr().err == (
+            "Error: no configured source directories exist on disk\n"
+        )
+
+    def test_resolve_packages_missing_tests_reports_exact_error(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        self._write_settings(tmp_path)
+        self._make_src_pkg(tmp_path)
+        monkeypatch.chdir(tmp_path)
+        assert TestStructureScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        ) == (None, None)
+        assert capsys.readouterr().err == ("Error: no configured test directories exist on disk\n")
+
+    def test_resolve_packages_no_package_detectable_reports_exact_error(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        self._write_settings(tmp_path, python={"paths": {"package": None}})
+        (tmp_path / "src").mkdir(parents=True)
+        (tmp_path / "tests").mkdir()
+        monkeypatch.chdir(tmp_path)
+        assert TestStructureScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        ) == (None, None)
+        assert capsys.readouterr().err == ("Error: could not auto-detect package under src/\n")
+
+    def test_resolve_packages_absent_pkg_reports_exact_error(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        self._write_settings(tmp_path)
+        (tmp_path / "src" / "other").mkdir(parents=True)
+        (tmp_path / "tests").mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)
+        assert TestStructureScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        ) == (None, None)
+        assert capsys.readouterr().err == (
+            "Error: source package 'mypkg' does not exist under any configured source root\n"
+        )
+
+    # --- Tests for TestStructureScanner._classify_one_test(). ---
+
+    def test_classify_one_test_prefers_same_dir_source(self, tmp_path: Path) -> None:
+        """The caller-supplied test_dir decides the same-dir tiebreak."""
+        index = {
+            "a/cache.py": {
+                "stem": "cache",
+                "classes": ["Cache"],
+                "prefixes": {"test_cache"},
+                "dir": "a",
+            },
+            "b/cache.py": {
+                "stem": "cache",
+                "classes": ["Cache"],
+                "prefixes": {"test_cache"},
+                "dir": "b",
+            },
+        }
+        result = TestStructureScanner._classify_one_test(
+            "b/test_cache.py", tmp_path, "", index, {"Cache": "a/cache.py"}
+        )
+        assert result["covered"] == {"b/cache.py"}
+        assert result["misplaced"] is None
+        assert result["test_ref"]["primary_source"] == "b/cache.py"
+
+    def test_classify_one_test_name_match_wrong_dir_reports_misplaced(self, tmp_path: Path) -> None:
+        index = {
+            "models/item.py": {
+                "stem": "item",
+                "classes": ["Item"],
+                "prefixes": {"test_item"},
+                "dir": "models",
+            }
+        }
+        result = TestStructureScanner._classify_one_test(
+            "test_item.py", tmp_path, "", index, {"Item": "models/item.py"}
+        )
+        assert result["covered"] == {"models/item.py"}
+        assert result["misnamed"] is None
+        assert result["orphaned"] is None
+        assert result["misplaced"] == {
+            "test_file": "test_item.py",
+            "source_file": "models/item.py",
+            "test_dir": ".",
+            "expected_dir": "models",
+        }
+        assert result["test_ref"] == {
+            "test_file": "test_item.py",
+            "primary_source": "models/item.py",
+            "primary_classes": {"Item"},
+            "referenced_classes": [],
+        }
+
+    def test_classify_one_test_misnamed_picks_most_referenced_source(self, tmp_path: Path) -> None:
+        """The primary source is the one with the most referenced classes."""
+        index = {
+            "z.py": {"stem": "z", "classes": ["Zeta"], "prefixes": {"test_z"}, "dir": "."},
+            "a.py": {
+                "stem": "a",
+                "classes": ["AlphaOne", "AlphaTwo"],
+                "prefixes": {"test_a"},
+                "dir": ".",
+            },
+        }
+        class_to_source = {"Zeta": "z.py", "AlphaOne": "a.py", "AlphaTwo": "a.py"}
+        content = "Zeta AlphaOne AlphaTwo"
+        result = TestStructureScanner._classify_one_test(
+            "test_wrong.py", tmp_path, content, index, class_to_source
+        )
+        assert result["covered"] == {"z.py", "a.py"}
+        assert result["misplaced"] is None
+        assert result["orphaned"] is None
+        assert result["misnamed"] == {
+            "test_file": "test_wrong.py",
+            "referenced_classes": "AlphaOne, AlphaTwo, Zeta",
+            "expected_prefix": "test_a*.py",
+            "expected_dir": ".",
+        }
+        assert result["test_ref"] == {
+            "test_file": "test_wrong.py",
+            "primary_source": "a.py",
+            "primary_classes": {"AlphaOne", "AlphaTwo"},
+            "referenced_classes": ["Zeta", "AlphaOne", "AlphaTwo"],
+        }
+
+    def test_classify_one_test_misnamed_wrong_dir_reports_misplaced(self, tmp_path: Path) -> None:
+        index = {
+            "models/item.py": {
+                "stem": "item",
+                "classes": ["Item"],
+                "prefixes": {"test_item"},
+                "dir": "models",
+            }
+        }
+        result = TestStructureScanner._classify_one_test(
+            "other/test_wrong.py", tmp_path, "Item", index, {"Item": "models/item.py"}
+        )
+        assert result["covered"] == {"models/item.py"}
+        assert result["misnamed"] == {
+            "test_file": "other/test_wrong.py",
+            "referenced_classes": "Item",
+            "expected_prefix": "test_item*.py",
+            "expected_dir": "models",
+        }
+        assert result["misplaced"] == {
+            "test_file": "other/test_wrong.py",
+            "source_file": "models/item.py",
+            "test_dir": "other",
+            "expected_dir": "models",
+        }
+        assert result["test_ref"] == {
+            "test_file": "other/test_wrong.py",
+            "primary_source": "models/item.py",
+            "primary_classes": {"Item"},
+            "referenced_classes": ["Item"],
+        }
+
+    # --- Tests for TestStructureScanner._find_indirect_refs() exact output. ---
+
+    def test_find_indirect_refs_multiple_sources_reports_sorted_join(self) -> None:
+        test_refs = [
+            {
+                "test_file": "test_a.py",
+                "primary_source": "a.py",
+                "primary_classes": {"A"},
+                "referenced_classes": ["A", "B", "C"],
+            }
+        ]
+        refs, covered = TestStructureScanner._find_indirect_refs(
+            test_refs, {"A": "a.py", "B": "b.py", "C": "c.py"}, set()
+        )
+        assert refs == [
+            {
+                "test_file": "test_a.py",
+                "primary_source": "a.py",
+                "indirectly_tested_sources": "b.py, c.py",
+                "indirectly_tested_classes": "B, C",
+            }
+        ]
+        assert covered == {"b.py", "c.py"}
+
+    # --- Tests for TestStructureScanner._find_missing_tests() exact output. ---
+
+    def test_find_missing_tests_multi_class_source_joins_classes(self) -> None:
+        index = {
+            "multi.py": {
+                "stem": "multi",
+                "classes": ["Foo", "Bar"],
+                "prefixes": {"test_multi"},
+                "dir": ".",
+            }
+        }
+        assert TestStructureScanner._find_missing_tests(index, set(), set()) == [
+            {
+                "source_file": "multi.py",
+                "classes": "Foo, Bar",
+                "expected_prefix": "test_multi*.py",
+                "expected_dir": ".",
+            }
+        ]

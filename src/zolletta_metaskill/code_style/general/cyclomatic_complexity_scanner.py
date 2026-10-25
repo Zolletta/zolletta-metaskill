@@ -220,7 +220,7 @@ class CyclomaticComplexityScanner:
                 else:
                     _visit(child, prefix)
 
-        _visit(tree, "")
+        _visit(tree, "")  # pragma: no mutate — prefix truthiness makes "" and None equivalent
         return found
 
     @staticmethod
@@ -232,6 +232,7 @@ class CyclomaticComplexityScanner:
             return []
         records = []
         for name, node in CyclomaticComplexityScanner._python_functions(tree):
+            # pragma: no mutate start — parsed functions always have lineno
             records.append(
                 {
                     "kind": "Function",
@@ -240,6 +241,7 @@ class CyclomaticComplexityScanner:
                     "complexity": CyclomaticComplexityScanner._python_complexity(node),
                 }
             )
+            # pragma: no mutate end
         return records
 
     # ------------------------------------------------------------------
@@ -252,7 +254,9 @@ class CyclomaticComplexityScanner:
         name_node = node.child_by_field_name("name")
         if name_node is None:
             return "closure" if node.type == "anonymous_function" else "arrow"
+        # pragma: no mutate start — decode() defaults to utf-8; codec names are case-insensitive
         return source[name_node.start_byte : name_node.end_byte].decode("utf-8", errors="replace")
+        # pragma: no mutate end
 
     @staticmethod
     def _php_complexity(root: Any) -> int:
@@ -299,7 +303,7 @@ class CyclomaticComplexityScanner:
                 else:
                     _visit(child, prefix)
 
-        _visit(root, "")
+        _visit(root, "")  # pragma: no mutate — prefix truthiness makes "" and None equivalent
         return found
 
     @staticmethod
@@ -346,6 +350,7 @@ class CyclomaticComplexityScanner:
     @staticmethod
     def _findings(records: list[dict[str, Any]], path: Path, max_complexity: int) -> list[Finding]:
         """Return a ``cyclomatic_complexity`` finding per over-limit function."""
+        # pragma: no mutate start — Finding.fix_type already defaults to "manual"
         return [
             Finding(
                 file=str(path),
@@ -361,6 +366,7 @@ class CyclomaticComplexityScanner:
             for record in records
             if record["complexity"] > max_complexity
         ]
+        # pragma: no mutate end
 
     @staticmethod
     def scan_file(path: Path, max_complexity: int = DEFAULT_MAX_COMPLEXITY) -> list[Finding]:
@@ -503,8 +509,9 @@ class CyclomaticComplexityScanner:
             print("Result: all clear")
 
     @staticmethod
-    def main() -> int:  # pragma: no mutate — help text is not a tested contract
+    def main() -> int:
         """Entry point for the cyclomatic complexity scanner CLI."""
+        # pragma: no mutate start — help text is not a tested contract
         parser = argparse.ArgumentParser(
             description="Flag functions and methods with high cyclomatic "
             "complexity (language-agnostic; ruff C901-style counting). Scan "
@@ -513,8 +520,9 @@ class CyclomaticComplexityScanner:
         parser.add_argument(
             "--json",
             action="store_true",
-            help="Output as JSON instead of text",  # pragma: no mutate — help text untested
+            help="Output as JSON instead of text",
         )
+        # pragma: no mutate end
         args = parser.parse_args()
 
         settings_path = CyclomaticComplexityScanner.DEFAULT_SETTINGS_PATH

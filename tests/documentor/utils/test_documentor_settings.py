@@ -45,6 +45,52 @@ class TestDocumentorSettings:
         resolved = DocumentorSettings.from_settings(settings)
         assert set(resolved.quadrants) >= {"tutorials", "how-to", "reference", "explanation"}
 
+    def test_from_settings_cache_dir_is_a_path(self, tmp_path: Path) -> None:
+        settings = {"runs_dir": str(tmp_path / "runs"), "documentation": {}}
+        resolved = DocumentorSettings.from_settings(settings)
+        assert isinstance(resolved.cache_dir, Path)
+
+    def test_from_settings_cache_dir_under_configured_runs_dir(self, tmp_path: Path) -> None:
+        runs = tmp_path / "custom_runs"
+        runs.mkdir()
+        settings = {"runs_dir": str(runs), "documentation": {}}
+        resolved = DocumentorSettings.from_settings(settings)
+        assert resolved.cache_dir == runs / "cache"
+
+    def test_from_settings_translations_file_shapes_quadrants_and_sections(
+        self, tmp_path: Path
+    ) -> None:
+        """The translations file reaches both quadrant and required-section resolution."""
+        trans_file = tmp_path / "translations.json"
+        trans_file.write_text(
+            '{"quadrants": {"reference": {"dir_names": ["referenza"]}},'
+            ' "readme_sections": ["installazione"]}',
+            encoding="utf-8",
+        )
+        settings = {
+            "runs_dir": str(tmp_path / "runs"),
+            "documentation": {"diataxis_translations": str(trans_file)},
+        }
+        resolved = DocumentorSettings.from_settings(settings)
+        assert "referenza" in resolved.quadrants["reference"]["dir_names"]
+        assert resolved.required_sections == ("installazione",)
+
+    def test_from_settings_non_bool_include_referential_is_false(self, tmp_path: Path) -> None:
+        settings = {
+            "runs_dir": str(tmp_path / "runs"),
+            "documentation": {"include_referential": "yes"},
+        }
+        resolved = DocumentorSettings.from_settings(settings)
+        assert resolved.include_referential is False
+
+    def test_from_settings_non_bool_check_external_is_false(self, tmp_path: Path) -> None:
+        settings = {
+            "runs_dir": str(tmp_path / "runs"),
+            "documentation": {"check_external": "yes"},
+        }
+        resolved = DocumentorSettings.from_settings(settings)
+        assert resolved.check_external is False
+
     # --- staleness weights ---
 
     def test_resolve_staleness_weights_defaults_when_unset(self) -> None:
@@ -89,6 +135,16 @@ class TestDocumentorSettings:
         }
         weights = DocumentorSettings._resolve_staleness_weights(settings)
         assert sum(weights.values()) == 0.0
+
+    def test_resolve_staleness_weights_small_total_is_normalized(self) -> None:
+        """A sub-1.0 total is still renormalized up to 1."""
+        settings = {
+            "documentation": {
+                "staleness_weights": dict.fromkeys(DocumentorSettings.DEFAULT_WEIGHTS, 0.1)
+            }
+        }
+        weights = DocumentorSettings._resolve_staleness_weights(settings)
+        assert abs(sum(weights.values()) - 1.0) < 0.001
 
     def test_resolve_staleness_weights_returns_a_fresh_mapping(self) -> None:
         """The class attribute must never be handed out, or a caller could mutate it."""
@@ -235,6 +291,18 @@ class TestDocumentorSettings:
     def test_rename_window_days_rejects_wrong_type(self) -> None:
         settings = {"documentation": {"rename_window_days": "30"}}
         assert DocumentorSettings._resolve_rename_window_days(settings) == 90
+
+    def test_rename_window_days_accepts_one(self) -> None:
+        settings = {"documentation": {"rename_window_days": 1}}
+        assert DocumentorSettings._resolve_rename_window_days(settings) == 1
+
+    def test_rename_window_days_rejects_negative(self) -> None:
+        settings = {"documentation": {"rename_window_days": -5}}
+        assert DocumentorSettings._resolve_rename_window_days(settings) == 90
+
+    def test_translations_path_rejects_non_string(self) -> None:
+        settings = {"documentation": {"diataxis_translations": 5}}
+        assert DocumentorSettings._translations_path(settings) is None
 
     def test_rename_window_reaches_the_struct(self) -> None:
         settings = DocumentorSettings.from_settings({"documentation": {"rename_window_days": 7}})

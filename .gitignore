@@ -23,3 +23,4 @@ site/
 .devin/
 playground/.zolletta-metaskill/*
 !playground/.zolletta-metaskill/settings.json
+mutmut.log

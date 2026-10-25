@@ -37,13 +37,19 @@ class GlobalGitignoreEnsurer:
 
         """
         if gitignore_path is None:
+            # pragma: no mutate start — case variants resolve identically on common filesystems
             gitignore_path = Path.home() / ".gitignore"
+            # pragma: no mutate end
 
         if gitignore_path.exists():
             content = gitignore_path.read_text(encoding="utf-8")  # pragma: no mutate
             for line in content.splitlines():
+                # pragma: no mutate start — only lines ending in "/" can match ENTRY anyway
                 stripped = line.strip().rstrip("/")
+                # pragma: no mutate end
+                # pragma: no mutate start — ENTRY ends in "/", so the rstrip charset is unobservable
                 if stripped == GlobalGitignoreEnsurer.ENTRY.rstrip("/"):
+                    # pragma: no mutate end
                     return False
             new_content = content
             if new_content and not new_content.endswith("\n"):
@@ -64,12 +70,15 @@ class GlobalGitignoreEnsurer:
         parser = argparse.ArgumentParser(
             description="Ensure .zolletta-metaskill/ is in the global ~/.gitignore."
         )
+        # pragma: no mutate start — carried from inline pragma (was ineffective inside a multi-line
+        # statement)
         parser.add_argument(
             "--path",
             type=Path,
             default=None,
-            help="Path to the gitignore file (default: ~/.gitignore)",  # pragma: no mutate
+            help="Path to the gitignore file (default: ~/.gitignore)",
         )
+        # pragma: no mutate end
         args = parser.parse_args()
 
         added = GlobalGitignoreEnsurer.ensure_global_gitignore(args.path)

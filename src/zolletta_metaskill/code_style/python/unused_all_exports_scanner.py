@@ -126,14 +126,14 @@ class UnusedAllExportsScanner:
     @staticmethod
     def main() -> int:
         """Entry point for the unused ``__all__`` exports scanner CLI."""
+        # pragma: no mutate start — help text is not a tested contract
         parser = argparse.ArgumentParser(
             description="Find names in __all__ that are never imported anywhere. "
             "Complements vulture, which treats __all__ entries as used. "
             "Scan roots come from python.paths.source in settings.json."
         )
-        parser.add_argument(
-            "--json", action="store_true", help="Output as JSON"
-        )  # pragma: no mutate — help text is not a tested contract  # noqa: E501
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        # pragma: no mutate end
         args = parser.parse_args()
 
         settings = ProjectConfig.load_settings()

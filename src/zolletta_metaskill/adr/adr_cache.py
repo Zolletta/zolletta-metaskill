@@ -35,10 +35,13 @@ class ADRCache:
     def save(self, cache: dict[str, dict[str, Any]]) -> None:
         """Save the ADR mtime cache as JSON."""
         self.cache_path.parent.mkdir(parents=True, exist_ok=True)
+        # pragma: no mutate start — carried from inline pragma (was ineffective inside a multi-line
+        # statement)
         self.cache_path.write_text(
             json.dumps(cache, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",  # pragma: no mutate — equivalent on UTF-8 locales
+            encoding="utf-8",
         )
+        # pragma: no mutate end
 
     @staticmethod
     def key(record: ADRRecord) -> str:

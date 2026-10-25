@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [setup, review, patterns, documentor, python-*, php-*]
+skills: [setup, review, patterns, documentor, grice, python-*, php-*]
 ---
 
 # Zolletta-metaskill
@@ -52,6 +52,7 @@ For a focused review, run a single subcommand:
 ```text
 /zolletta-metaskill patterns         # God classes and SOLID
 /zolletta-metaskill documentor        # documentation review
+/zolletta-metaskill grice             # Grice maxims over the doc corpus
 /zolletta-metaskill python-code-style # Python style only
 ```
 
@@ -59,7 +60,7 @@ New to Zolletta-metaskill? Read the [getting started tutorial](https://metaskill
 
 ## API
 
-Zolletta-metaskill exposes no library API — it is a set of agent skills driven from the command line. The interface is the `/zolletta-metaskill <subcommand>` invocation, where `<subcommand>` selects exactly one skill: `setup`, `review`, `patterns`, `documentor`, `python-code-style`, `python-testing-style`, `php-code-style`, `php-testing-style`, `adr-distiller`, or `help`.
+Zolletta-metaskill exposes no library API — it is a set of agent skills driven from the command line. The interface is the `/zolletta-metaskill <subcommand>` invocation, where `<subcommand>` selects exactly one skill: `setup`, `review`, `patterns`, `documentor`, `grice`, `python-code-style`, `python-testing-style`, `php-code-style`, `php-testing-style`, `adr-distiller`, or `help`.
 
 Each subcommand is self-contained: it reads its thresholds and scan roots from `.zolletta-metaskill/settings.json`, runs the scanners under `src/zolletta_metaskill/`, and writes a report into the run folder. The scanners are plain scripts with a `[--json]` flag and no positional arguments, so they can also be run directly from the repository root in CI or for dogfooding. See the [subcommands reference](https://metaskill.zolletta.org/reference/subcommands/) for the dispatch contract and the [scripts reference](https://metaskill.zolletta.org/reference/code/scripts/) for the command-line contract.
 

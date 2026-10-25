@@ -164,6 +164,17 @@ class TestTestGodClassesScanner:
         assert len(results) == 1
         assert isinstance(results[0], Finding)
         assert results[0].category == "test_god_class"
+        assert results[0].severity == "low"
+        assert results[0].fix_type == "skip"
+
+    # --- ResolveTopN ---
+
+    def test_resolve_top_n_defaults_to_30(self) -> None:
+        assert TestGodClassesScanner._resolve_top_n({}, {"python"}) == 30
+
+    def test_resolve_top_n_ignores_bool_setting(self) -> None:
+        settings = {"python": {"patterns": {"test_god_classes_top": True}}}
+        assert TestGodClassesScanner._resolve_top_n(settings, {"python"}) == 30
 
     # --- Main ---
 
@@ -201,6 +212,7 @@ class TestTestGodClassesScanner:
         rc = _run(tmp_path, monkeypatch, ["prog", "--show-methods"])
         out = capsys.readouterr().out
         assert rc == 0
+        assert "=== TestFoo" in out
         assert "test_a" in out
         assert "test_b" in out
 
@@ -217,7 +229,7 @@ class TestTestGodClassesScanner:
         rc = _run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 0
-        assert "No test classes found" in err
+        assert "No test classes found" in err.splitlines()
 
     def test_main_missing_test_dir(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -226,7 +238,7 @@ class TestTestGodClassesScanner:
         rc = _run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "no configured test directories" in err
+        assert "Error: no configured test directories exist on disk" in err.splitlines()
 
     def test_main_check_disabled(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -235,7 +247,10 @@ class TestTestGodClassesScanner:
         (tmp_path / "tests").mkdir()
         rc = _run(tmp_path, monkeypatch, ["prog"])
         assert rc == 0
-        assert "SKIPPED" in capsys.readouterr().out
+        assert (
+            "Result: SKIPPED (check_test_god_classes disabled in settings.json)"
+            in capsys.readouterr().out.splitlines()
+        )
 
     def test_main_check_disabled_json(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -246,6 +261,7 @@ class TestTestGodClassesScanner:
         report = json.loads(capsys.readouterr().out)
         assert rc == 0
         assert report["skipped"] is True
+        assert report["reason"] == "check_test_god_classes disabled in settings.json"
 
     def test_main_top_limit_setting(
         self,
@@ -278,8 +294,11 @@ class TestTestGodClassesScanner:
         tests.mkdir()
         (tests / "test_mod.py").write_text("class TestFoo:\n    def test_a(self):\n        pass\n")
         rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
-        report = json.loads(capsys.readouterr().out)
+        raw = capsys.readouterr().out
+        assert '\n  "top":' in raw
+        report = json.loads(raw)
         assert rc == 0
+        assert report["top"] == 30
         assert report["total_classes"] == 1
         assert report["classes"][0]["class"] == "TestFoo"
         assert report["classes"][0]["method_names"] == ["test_a"]
@@ -321,6 +340,21 @@ class TestTestGodClassesScanner:
         err = capsys.readouterr().err
         assert rc == 0
         assert "No test classes found" in err
+
+    def test_main_uses_configured_tests_path(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _write_settings(tmp_path, python={"paths": {"tests": ["spec"]}})
+        spec = tmp_path / "spec"
+        spec.mkdir()
+        (spec / "test_mod.py").write_text("class TestFoo:\n    def test_a(self):\n        pass\n")
+        rc = _run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "TestFoo" in out
 
     # --- Text contract ---
 

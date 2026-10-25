@@ -80,7 +80,10 @@ class DocstringReportWriter:
             by_kind.setdefault(f.kind, []).append(f)
 
         for kind, label in DocstringReportWriter.KIND_LABELS.items():
+            # pragma: no mutate start — the default is only consumed by ``not items``, where [] and
+            # None behave alike
             items = by_kind.get(kind, [])
+            # pragma: no mutate end
             if not items:
                 continue
             print(f"\n## {label} ({len(items)} finding{'s' if len(items) != 1 else ''})\n")

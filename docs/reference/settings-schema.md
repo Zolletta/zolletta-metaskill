@@ -105,6 +105,7 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
   "subcommands": {
     "patterns": { "model": null },
     "documentor": { "model": null },
+    "grice": { "model": null },
     "python-code-style": { "model": null },
     "python-testing-style": { "model": null },
     "php-code-style": { "model": null },
@@ -210,6 +211,7 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
   "subcommands": {
     "patterns": { "model": null },
     "documentor": { "model": null },
+    "grice": { "model": null },
     "python-code-style": { "model": null },
     "python-testing-style": { "model": null },
     "php-code-style": { "model": null },
@@ -239,7 +241,7 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
 ## Top-level fields
 
 | Field                 | Type              | Description                                                                                                                                                                                                                              |
-|-----------------------|-------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| --------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `setup_version`       | string            | Matches the skill version that wrote the file                                                                                                                                                                                            |
 | `setup_timestamp`     | string (ISO 8601) | Timestamp of the last setup run                                                                                                                                                                                                          |
 | `language`            | string            | Detected project language (`python`, `php`, `go`, `rust`, etc.)                                                                                                                                                                          |
@@ -256,16 +258,16 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
 
 Each key is a subcommand name; each value is an object with a `model` field. The review orchestrator reads each subcommand's `model` and passes it to `run_subagent` when launching that subcommand's subagent. When `model` is `null`, the harness default is used — behavior is unchanged from v1.x.
 
-Profile/model ids are harness-specific. The user supplies a value that exists in their harness; the skill never hardcodes one. This is the opt-in mechanism for [Smart Plan, Cheap Execution](../explanation/patterns.md#19-smart-plan-cheap-execution) — set a strong model for judgment-heavy subagents (`patterns`, `documentor`) and a cheaper one for mechanical ones (`*-code-style`, `*-testing-style`), or leave all at `null`.
+Profile/model ids are harness-specific. The user supplies a value that exists in their harness; the skill never hardcodes one. This is the opt-in mechanism for [Smart Plan, Cheap Execution](../explanation/patterns.md#19-smart-plan-cheap-execution) — set a strong model for judgment-heavy subagents (`patterns`, `documentor`) and a cheaper one for mechanical ones (`grice`, `*-code-style`, `*-testing-style`), or leave all at `null`.
 
 | Field                      | Type           | Default | Description                                                                         |
-|----------------------------|----------------|---------|-------------------------------------------------------------------------------------|
+| -------------------------- | -------------- | ------- | ----------------------------------------------------------------------------------- |
 | `subcommands.<name>.model` | string \| null | `null`  | Harness-specific profile/model id for subcommand `<name>`. `null` = harness default |
 
 The six subcommand keys:
 
 | Key                    | Subcommand                       | Default `model` | Notes                                                    |
-|------------------------|----------------------------------|-----------------|----------------------------------------------------------|
+| ---------------------- | -------------------------------- | --------------- | -------------------------------------------------------- |
 | `patterns`             | `/zolletta-metaskill patterns`   | `null`          | Judgment-heavy — design pattern analysis                 |
 | `documentor`           | `/zolletta-metaskill documentor` | `null`          | Judgment-heavy — documentation review + drift detection  |
 | `python-code-style`    | `python-code-style`              | `null`          | Mechanical — linting, formatting, naming (Python only)   |
@@ -280,18 +282,19 @@ The six subcommand keys:
 ## `documentation` — documentation configuration
 
 | Field                                    | Type           | Default                                                       | Description                                                                                                                                                                                                                       |
-|------------------------------------------|----------------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ---------------------------------------- | -------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `documentation.language`                 | string         | `"en"`                                                        | ISO 639-1 code for documentation language. When not `"en"`, the `documentor` skill translates Diátaxis signpost headings before running the staleness scorer                                                                      |
 | `documentation.dir`                      | string         | `"docs"`                                                      | Directory where project documentation lives, plus the root documents `README.md`, `CONTRIBUTING.md` and `AGENTS.md`. Documentation is markdown only                                                                               |
 | `documentation.adrs`                     | string \| null | `null`                                                        | Relative path within `documentation.dir` where architecture ADRs live (e.g. `"adr"` or `"adr/architecture"` when an `ACT` archive exists), `""` if scattered in docs root, or `null` if no ADRs found. Auto-detected during setup |
 | `documentation.min_severity`             | string         | `"high"`                                                      | Minimum severity reported by `quality/quality_review.py` (`critical`, `high`, `medium`, `low`, `info`)                                                                                                                            |
-| `documentation.staleness_threshold`      | number \| null | `null`                                                        | If set, `quality/quality_review.py` and `documentor_client.py` exit 1 when the freshness score falls below this value (0–100). `null` = report-only                                                                                  |
+| `documentation.staleness_threshold`      | number \| null | `null`                                                        | If set, `quality/quality_review.py` and `documentor_client.py` exit 1 when the freshness score falls below this value (0–100). `null` = report-only                                                                               |
 | `documentation.readme_focus`             | boolean        | `false`                                                       | When `true`, `quality/quality_review.py` only scores the README                                                                                                                                                                   |
 | `documentation.readme_sections`          | array          | `["installation", "usage", "api", "contributing", "license"]` | Section names a README is expected to contain (completeness dimension of `quality/quality_review.py`)                                                                                                                             |
 | `documentation.diataxis_translations`    | string \| null | `null`                                                        | Path to a JSON file mapping Diátaxis signpost headings to translations. `null` = built-in translations                                                                                                                            |
 | `documentation.staleness_weights`        | object \| null | `null`                                                        | Custom dimension weights for `quality/quality_review.py` (`last_updated`, `code_doc_alignment`, `link_health`, `completeness`, `accuracy`; normalized to sum 1.0)                                                                 |
 | `documentation.check_external`           | boolean        | `false`                                                       | When `true`, `links/link_checker.py` verifies external http(s) links too                                                                                                                                                          |
 | `documentation.check_unwrapped_prose`    | boolean        | `false`                                                       | When `true`, `quality/unwrapped_prose_scanner.py` reports markdown paragraphs broken mid-sentence. Opt-in: clear the backlog first, or formatting noise buries real drift findings                                                |
+| `documentation.check_grice`              | boolean        | `false`                                                       | When `true`, `grice/grice_scanner.py` scores documentation against Grice's Quantity, Quality, Relation and Manner maxims as indices relative to the corpus itself. Opt-in: an index is a judgement about prose, not a defect list |
 | `documentation.include_referential`      | boolean        | `false`                                                       | When `true`, `quality/quality_review.py` also reports referential drift, not just broken links                                                                                                                                    |
 | `documentation.rename_window_days`       | integer        | `90`                                                          | How far back git rename drift is examined. Renames older than this are not reported as referential drift. Was a hardcoded `90 days ago` string at the git call site                                                               |
 | `documentation.api_doc_recursive`        | boolean        | `true`                                                        | When `true`, `api_doc/api_doc_validator.py` scans source roots recursively                                                                                                                                                        |
@@ -307,7 +310,7 @@ The `python` object merges four concerns into one place: tool availability and c
 The source and test roots every review script scans — the equivalent of what PHP projects get via `composer.json` `autoload` mappings. Detected by `python_paths_detector.py` during setup (Step 8) from `pyproject.toml` build config (`[tool.hatch.build.targets.wheel] packages`, `[tool.setuptools] package-dir`/`packages.find where`, `[tool.poetry] packages`), pytest `testpaths`, and the directory layout.
 
 | Field                  | Type           | Default     | Description                                                                                        |
-|------------------------|----------------|-------------|----------------------------------------------------------------------------------------------------|
+| ---------------------- | -------------- | ----------- | -------------------------------------------------------------------------------------------------- |
 | `python.paths.source`  | array          | `["src"]`   | Source roots scanned by every source scanner                                                       |
 | `python.paths.tests`   | array          | `["tests"]` | Test roots scanned by test scanners (test_naming, test_structure, test_god_classes, test_splitter) |
 | `python.paths.package` | string \| null | `null`      | Top-level package name used by mirror-structure checks (`naming_conventions`, `test_structure`)    |
@@ -317,7 +320,7 @@ The source and test roots every review script scans — the equivalent of what P
 Each tool is an object with an `available` boolean. Tools that have configuration (ruff, mypy, ty, pytest) also carry their effective config extracted from `pyproject.toml`. When a tool's `[tool.*]` section is absent, setup stores the tool's **real built-in defaults** (not skill-invented fallbacks) and prints an "unconfigured" warning.
 
 | Field                  | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-|------------------------|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ---------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `python.tools.uv`      | object | `{ "available": boolean }` — uv has no config beyond availability                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `python.tools.ruff`    | object | `{ "available": boolean, "line_length": integer, "target_version": string, "select": array, "ignore": array, "max_args": integer or null, "max_statements": integer or null, "max_complexity": integer or null }` — effective ruff config; `max_args` / `max_statements` mirror `[tool.ruff.lint.pylint] max-args` / `max-statements`, `max_complexity` mirrors `[tool.ruff.lint.mccabe] max-complexity` (`null` when unconfigured — ruff's built-in defaults are 5, 50, and 10) |
 | `python.tools.pytest`  | object | `{ "available": boolean, "addopts": array, "testpaths": array, "minversion": string or null }` — effective pytest config                                                                                                                                                                                                                                                                                                                                                         |
@@ -333,7 +336,7 @@ Each tool is an object with an `available` boolean. Tools that have configuratio
 These control which checks the `python-code-style` skill enforces. All default to `true` (or `80` for the confidence threshold). Set to `false` to disable a check for the project.
 
 | Key                              | Type    | Default | Area       | Rule                                                                                                                                                                                    |
-|----------------------------------|---------|---------|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| -------------------------------- | ------- | ------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `check_acronym_casing`           | boolean | `true`  | Naming     | Acronyms stay uppercase in class names (`HTTPClientFactory`)                                                                                                                            |
 | `check_no_relative_imports`      | boolean | `true`  | Imports    | Absolute imports only, no relative imports                                                                                                                                              |
 | `check_one_class_per_file`       | boolean | `true`  | Structure  | One class per file (all classes, not just public)                                                                                                                                       |
@@ -366,7 +369,7 @@ These control which checks the `python-code-style` skill enforces. All default t
 These control which checks the `python-testing-style` skill enforces and the coverage thresholds it uses.
 
 | Key                               | Type    | Default   | Area     | Rule                                                                                                                          |
-|-----------------------------------|---------|-----------|----------|-------------------------------------------------------------------------------------------------------------------------------|
+| --------------------------------- | ------- | --------- | -------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `coverage_gap_threshold`          | integer | `50`      | Coverage | Coverage below this % is a gap (0–100)                                                                                        |
 | `coverage_well_covered_threshold` | integer | `80`      | Coverage | Coverage above this % is well-covered — do not flag (0–100)                                                                   |
 | `check_test_naming`               | boolean | `true`    | Naming   | Test naming convention (`test_<unit>_<scenario>_<expected>`)                                                                  |
@@ -383,7 +386,7 @@ These control which checks the `python-testing-style` skill enforces and the cov
 These control which checks the `patterns` skill's deterministic scanners run for Python, and their thresholds. All `check_*` toggles default to `true`.
 
 | Key                       | Type    | Default                                                                                 | Rule                                                                                               |
-|---------------------------|---------|-----------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
+| ------------------------- | ------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | `check_ocp`               | boolean | `true`                                                                                  | Open/closed: flag if/elif chains that should be polymorphic (`open_closed_scanner.py`)             |
 | `check_isp`               | boolean | `true`                                                                                  | Interface segregation: flag fat interfaces (`interface_segregation_scanner.py`)                    |
 | `check_dip`               | boolean | `true`                                                                                  | Dependency inversion: flag high-level modules importing low-level concretions                      |
@@ -409,7 +412,7 @@ The `php` object mirrors the `python` object and merges the same concerns: tool 
 Each tool is an object with an `available` boolean. Tools that have configuration (phpunit, phpstan, psalm, phpcs) also carry their effective config extracted from `composer.json` and the tool's config file. When a tool's config file is absent, setup stores the tool's **real built-in defaults** (not skill-invented fallbacks) and prints an "unconfigured" warning. The `php_cs_fixer` config file is executable PHP code and is not parsed by setup — the `php-code-style` skill reads it at review time if needed.
 
 | Field                    | Type   | Description                                                                                                                                                             |
-|--------------------------|--------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ------------------------ | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `php.tools.phpunit`      | object | `{ "available": boolean, "bootstrap": string or null, "testpaths": array, "coverage_config": boolean or null }` — effective phpunit config extracted from `phpunit.xml` |
 | `php.tools.phpstan`      | object | `{ "available": boolean, "level": integer or null, "paths": array, "memory_limit": string or null }` — effective phpstan config extracted from `phpstan.neon`           |
 | `php.tools.psalm`        | object | `{ "available": boolean, "error_level": integer or null, "paths": array }` — effective psalm config extracted from `psalm.xml`                                          |
@@ -424,7 +427,7 @@ Each tool is an object with an `available` boolean. Tools that have configuratio
 These control which checks the `php-code-style` skill enforces. All default to `true`. Set to `false` to disable a check for the project. Rules whose minimum PHP version is higher than the detected `php_version` are silently skipped (not flagged) — the skill prints a note listing which rules were skipped.
 
 | Key                           | Type    | Default | Area        | Rule                                                                                                               | Min PHP |
-|-------------------------------|---------|---------|-------------|--------------------------------------------------------------------------------------------------------------------|---------|
+| ----------------------------- | ------- | ------- | ----------- | ------------------------------------------------------------------------------------------------------------------ | ------- |
 | `check_acronym_casing`        | boolean | `true`  | Naming      | Acronyms stay uppercase in class names (`HTTPClientFactory`)                                                       | all     |
 | `check_union_types`           | boolean | `true`  | Types       | Union types declared where multiple types are possible                                                             | 8.0+    |
 | `check_intersection_types`    | boolean | `true`  | Types       | Intersection types for interface composition                                                                       | 8.1+    |
@@ -454,7 +457,7 @@ These control which checks the `php-code-style` skill enforces. All default to `
 These control which checks the `php-testing-style` skill enforces and the coverage thresholds it uses.
 
 | Key                               | Type    | Default   | Area     | Rule                                                                                                                                                      |
-|-----------------------------------|---------|-----------|----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| --------------------------------- | ------- | --------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `coverage_gap_threshold`          | integer | `50`      | Coverage | Coverage below this % is a gap (0–100)                                                                                                                    |
 | `coverage_well_covered_threshold` | integer | `80`      | Coverage | Coverage above this % is well-covered — do not flag (0–100)                                                                                               |
 | `check_test_naming`               | boolean | `true`    | Naming   | PHPUnit test naming convention (`*Test.php`, methods start with `test_`)                                                                                  |
@@ -470,7 +473,7 @@ These control which checks the `php-testing-style` skill enforces and the covera
 Same role as `python.patterns` for the PHP SOLID scanners. PHP has no `check_lsp`/`check_test_structure` (no PHP LSP or mirror-structure scanner) and the ISP threshold defaults to 7.
 
 | Key                | Type    | Default | Rule                                                                                     |
-|--------------------|---------|---------|------------------------------------------------------------------------------------------|
+| ------------------ | ------- | ------- | ---------------------------------------------------------------------------------------- |
 | `check_ocp`        | boolean | `true`  | Open/closed: flag if/elseif chains that should be polymorphic                            |
 | `check_isp`        | boolean | `true`  | Interface segregation: flag fat interfaces                                               |
 | `check_dip`        | boolean | `true`  | Dependency inversion: flag high-level modules depending on low-level concretions         |
@@ -482,7 +485,7 @@ Same role as `python.patterns` for the PHP SOLID scanners. PHP has no `check_lsp
 PSR-4 namespace → directory mapping extracted from `composer.json`. The `php-code-style` and `php-testing-style` skills use this to resolve namespaces to directories (equivalent to how Python skills use `[tool.hatch.build.targets.wheel] packages`).
 
 | Field                    | Type   | Description                                                                                                                         |
-|--------------------------|--------|-------------------------------------------------------------------------------------------------------------------------------------|
+| ------------------------ | ------ | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `php.autoload.psr-4`     | object | Production namespace → directory mapping from `composer.json` `autoload.psr-4` (e.g. `{"App\\": "src/"}`). Empty object if absent   |
 | `php.autoload.psr-4-dev` | object | Test namespace → directory mapping from `composer.json` `autoload-dev.psr-4` (e.g. `{"Tests\\": "tests/"}`). Empty object if absent |
 

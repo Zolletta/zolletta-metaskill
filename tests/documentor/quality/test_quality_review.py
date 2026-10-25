@@ -325,7 +325,12 @@ class TestQualityReview:
         monkeypatch.chdir(tmp_path)
         monkeypatch.setattr(sys, "argv", argv)
         monkeypatch.setattr(ProjectConfig, "load_settings", lambda: settings)
-        monkeypatch.setattr(DocumentorSettings, "resolve_cache_dir", lambda s: cache_dir)
+
+        def fake_cache_dir(s: dict[str, Any]) -> Path:
+            assert s is settings
+            return cache_dir
+
+        monkeypatch.setattr(DocumentorSettings, "resolve_cache_dir", fake_cache_dir)
         monkeypatch.setattr(QualityReview, "run", fake_run)
         return cache_dir
 
@@ -409,7 +414,7 @@ class TestQualityReview:
         captured = capsys.readouterr()
         assert rc == 1
         assert captured.err == ""
-        assert json.loads(captured.out) == payload
+        assert captured.out == json.dumps(payload, indent=2) + "\n"
 
     def test_main_score_above_threshold_returns_0(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -458,3 +463,381 @@ class TestQualityReview:
         }
         self._patch_main(monkeypatch, tmp_path, payload, settings, ["quality_review.py"])
         assert QualityReview.main() == 0
+
+    # --- Mutation-driven gaps in ``run`` orchestration. ---
+
+    def test_no_docs_empty_record_exact_payload(self, tmp_path: Path) -> None:
+        cache_dir = tmp_path / "cache"
+        QualityReview.run(str(tmp_path), self._settings(), cache_dir)
+        data = self._read_cache(cache_dir)
+        assert sorted(data) == [
+            "documents",
+            "issues",
+            "repository",
+            "scan_date",
+            "skipped_reason",
+            "summary",
+        ]
+        assert data["repository"] == str(tmp_path.resolve())
+        assert data["scan_date"] is None
+        assert data["summary"] == {
+            "total_docs": 0,
+            "aggregate_score": 0.0,
+            "aggregate_label": "unknown",
+            "drifted_docs": 0,
+            "total_issues": 0,
+            "by_severity": {},
+            "by_category": {},
+            "by_fix_type": {},
+        }
+        assert data["skipped_reason"] == "No documentation files found"
+
+    def test_no_docs_cache_file_is_indented_with_trailing_newline(self, tmp_path: Path) -> None:
+        cache_dir = tmp_path / "cache"
+        QualityReview.run(str(tmp_path), self._settings(), cache_dir)
+        text = (cache_dir / "quality.json").read_text()
+        assert text.endswith("\n")
+        assert '\n  "repository"' in text
+
+    def test_run_creates_nested_cache_dir(self, tmp_path: Path) -> None:
+        cache_dir = tmp_path / "deep" / "nested" / "cache"
+        cache_path = QualityReview.run(str(tmp_path), self._settings(), cache_dir)
+        assert cache_path.exists()
+
+    def test_readme_focus_absent_does_not_filter_docs(self, tmp_path: Path) -> None:
+        """Without the setting, non-README docs are scored too."""
+        (tmp_path / "docs").mkdir()
+        (tmp_path / "docs" / "guide.md").write_text("# Guide\n\n" + "content\n" * 15)
+        cache_dir = tmp_path / "cache"
+        p = self._patch_git()
+        with p[0], p[1], p[2], p[3], p[4]:
+            QualityReview.run(str(tmp_path), self._settings(), cache_dir)
+        assert self._read_cache(cache_dir)["summary"]["total_docs"] == 1
+
+    def test_run_passes_repo_path_and_window_to_git_helpers(self, tmp_path: Path) -> None:
+        (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
+        cache_dir = tmp_path / "cache"
+        with (
+            patch.object(GitHelper, "get_file_last_commit_date", return_value=None),
+            patch.object(GitHelper, "get_latest_tag", return_value=None) as tag,
+            patch.object(GitHelper, "get_files_changed_since", return_value=[]),
+            patch.object(GitHelper, "get_renamed_files", return_value=[]) as renamed,
+            patch.object(GitHelper, "get_code_changes_since", return_value=0),
+        ):
+            QualityReview.run(str(tmp_path), self._settings(), cache_dir)
+        renamed.assert_called_once_with(str(tmp_path), "90 days ago")
+        tag.assert_called_with(str(tmp_path))
+
+    def test_run_empty_source_dirs_scans_repo_root(self, tmp_path: Path) -> None:
+        (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
+        cache_dir = tmp_path / "cache"
+        p = self._patch_git()
+        with (
+            p[0],
+            p[1],
+            p[2],
+            p[3],
+            p[4],
+            patch.object(ProjectConfig, "existing_roots", return_value=[]),
+            patch.object(DocCodeMapper, "find_code_files", return_value=[]) as mock_files,
+            patch.object(DocCodeMapper, "map_docs_to_code", return_value={}),
+        ):
+            QualityReview.run(str(tmp_path), self._settings(), cache_dir)
+        mock_files.assert_called_once_with(str(tmp_path), "")
+
+    def test_run_find_code_files_gets_repo_path_and_scope(self, tmp_path: Path) -> None:
+        (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
+        cache_dir = tmp_path / "cache"
+        p = self._patch_git()
+        with (
+            p[0],
+            p[1],
+            p[2],
+            p[3],
+            p[4],
+            patch.object(ProjectConfig, "existing_roots", return_value=[Path("src")]),
+            patch.object(DocCodeMapper, "find_code_files", return_value=["a.py"]) as mock_files,
+            patch.object(DocCodeMapper, "map_docs_to_code", return_value={}),
+        ):
+            QualityReview.run(str(tmp_path), self._settings(), cache_dir)
+        mock_files.assert_called_once_with(str(tmp_path), "src")
+
+    def test_run_source_roots_called_with_settings(self, tmp_path: Path) -> None:
+        (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
+        cache_dir = tmp_path / "cache"
+        p = self._patch_git()
+        with (
+            p[0],
+            p[1],
+            p[2],
+            p[3],
+            p[4],
+            patch.object(ProjectConfig, "source_roots", return_value=[Path("src")]) as roots,
+        ):
+            QualityReview.run(str(tmp_path), self._settings(), cache_dir)
+        assert roots.call_args.args == (self._settings(), {"python"})
+
+    def test_run_git_run_context_carries_repo_renames_and_version(self, tmp_path: Path) -> None:
+        (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
+        cache_dir = tmp_path / "cache"
+        with (
+            patch.object(GitHelper, "get_file_last_commit_date", return_value=None),
+            patch.object(GitHelper, "get_latest_tag", return_value="v2.0") as tag,
+            patch.object(GitHelper, "get_files_changed_since", return_value=[]),
+            patch.object(GitHelper, "get_renamed_files", return_value=[("old.md", "new.md")]),
+            patch.object(GitHelper, "get_code_changes_since", return_value=0),
+            patch.object(DriftDetector, "detect_drift_for_doc", return_value=[]) as detect,
+        ):
+            QualityReview.run(str(tmp_path), self._settings(), cache_dir)
+        ctx = detect.call_args.args[0]
+        assert ctx.repo_root == str(tmp_path)
+        assert ctx.renames == (("old.md", "new.md"),)
+        assert ctx.current_version == "v2.0"
+        assert tag.call_args_list
+        assert all(c.args == (str(tmp_path),) for c in tag.call_args_list)
+
+    def test_run_associated_dirs_come_from_doc_code_map(self, tmp_path: Path) -> None:
+        (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
+        cache_dir = tmp_path / "cache"
+        p = self._patch_git()
+        with (
+            p[0],
+            p[1],
+            p[2],
+            p[3],
+            p[4],
+            patch.object(DocCodeMapper, "map_docs_to_code", return_value={"README.md": ["pkg"]}),
+            patch.object(DriftDetector, "detect_drift_for_doc", return_value=[]) as detect,
+        ):
+            QualityReview.run(str(tmp_path), self._settings(), cache_dir)
+        assert detect.call_args.args[3] == ["pkg"]
+
+    def test_run_missing_doc_key_falls_back_to_root_scope(self, tmp_path: Path) -> None:
+        (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
+        cache_dir = tmp_path / "cache"
+        p = self._patch_git()
+        with (
+            p[0],
+            p[1],
+            p[2],
+            p[3],
+            p[4],
+            patch.object(DocCodeMapper, "map_docs_to_code", return_value={}),
+            patch.object(DriftDetector, "detect_drift_for_doc", return_value=[]) as detect,
+        ):
+            QualityReview.run(str(tmp_path), self._settings(), cache_dir)
+        assert detect.call_args.args[3] == [""]
+
+    def test_run_score_document_receives_configured_quadrants(self, tmp_path: Path) -> None:
+        (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
+        cache_dir = tmp_path / "cache"
+        p = self._patch_git()
+        with (
+            p[0],
+            p[1],
+            p[2],
+            p[3],
+            p[4],
+            patch.object(
+                QualityScorer,
+                "score_document",
+                return_value={
+                    "file": "README.md",
+                    "total_score": 50.0,
+                    "label": "fair",
+                    "dimensions": {},
+                },
+            ) as score,
+        ):
+            QualityReview.run(str(tmp_path), self._settings(), cache_dir)
+        assert (
+            score.call_args.args[4] == DocumentorSettings.from_settings(self._settings()).quadrants
+        )
+
+    def test_min_severity_boundary_keeps_equal_and_drops_lower(self, tmp_path: Path) -> None:
+        """``<=`` matters: an issue at exactly min_severity is kept, one below dropped."""
+        (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
+        cache_dir = tmp_path / "cache"
+        issues = [
+            {"file": "README.md", "severity": "low", "description": "below"},
+            {"file": "README.md", "severity": "medium", "description": "at"},
+            {"file": "README.md", "severity": "high", "description": "above"},
+        ]
+        p = self._patch_git()
+        with (
+            p[0],
+            p[1],
+            p[2],
+            p[3],
+            p[4],
+            patch.object(DriftDetector, "detect_drift_for_doc", return_value=issues),
+            patch.object(
+                QualityScorer,
+                "score_document",
+                return_value={
+                    "file": "README.md",
+                    "total_score": 50.0,
+                    "label": "fair",
+                    "dimensions": {},
+                },
+            ),
+        ):
+            QualityReview.run(str(tmp_path), self._settings(min_severity="medium"), cache_dir)
+        kept = [i["description"] for i in self._read_cache(cache_dir)["issues"]]
+        assert kept == ["at", "above"]
+
+    def test_issue_missing_severity_defaults_to_info_and_is_filtered(self, tmp_path: Path) -> None:
+        """A dict without ``severity`` counts as ``info`` — the .get() default is observable."""
+        (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
+        cache_dir = tmp_path / "cache"
+        issues = [
+            {"file": "README.md", "description": "no severity key"},
+            {"file": "README.md", "severity": "high", "description": "kept"},
+        ]
+        p = self._patch_git()
+        with (
+            p[0],
+            p[1],
+            p[2],
+            p[3],
+            p[4],
+            patch.object(DriftDetector, "detect_drift_for_doc", return_value=issues),
+            patch.object(
+                QualityScorer,
+                "score_document",
+                return_value={
+                    "file": "README.md",
+                    "total_score": 50.0,
+                    "label": "fair",
+                    "dimensions": {},
+                },
+            ),
+        ):
+            QualityReview.run(str(tmp_path), self._settings(min_severity="medium"), cache_dir)
+        kept = [i["description"] for i in self._read_cache(cache_dir)["issues"]]
+        assert kept == ["kept"]
+
+    def test_unknown_severity_string_falls_past_every_threshold(self, tmp_path: Path) -> None:
+        """An unmapped severity resolves through the 99 sentinel — always filtered out."""
+        (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
+        cache_dir = tmp_path / "cache"
+        issues = [
+            {"file": "README.md", "severity": "bogus", "description": "unmapped"},
+            {"file": "README.md", "severity": "info", "description": "kept"},
+        ]
+        p = self._patch_git()
+        with (
+            p[0],
+            p[1],
+            p[2],
+            p[3],
+            p[4],
+            patch.object(DriftDetector, "detect_drift_for_doc", return_value=issues),
+            patch.object(
+                QualityScorer,
+                "score_document",
+                return_value={
+                    "file": "README.md",
+                    "total_score": 50.0,
+                    "label": "fair",
+                    "dimensions": {},
+                },
+            ),
+        ):
+            QualityReview.run(str(tmp_path), self._settings(min_severity="info"), cache_dir)
+        kept = [i["description"] for i in self._read_cache(cache_dir)["issues"]]
+        assert kept == ["kept"]
+
+    def test_main_json_payload_passes_settings_and_repo_path(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        payload = {"summary": {"total_issues": 0, "total_docs": 0}}
+        with (
+            patch.object(
+                QualityReview, "run", return_value=tmp_path / "cache" / "quality.json"
+            ) as run,
+            patch.object(ProjectConfig, "load_settings", return_value={"language": "python"}),
+            patch.object(
+                __import__(
+                    "zolletta_metaskill.documentor.utils.documentor_settings",
+                    fromlist=["DocumentorSettings"],
+                ).DocumentorSettings,
+                "resolve_cache_dir",
+                return_value=tmp_path / "cache",
+            ),
+        ):
+            monkeypatch.chdir(tmp_path)
+            monkeypatch.setattr(sys, "argv", ["quality_review.py", "--json"])
+            (tmp_path / "cache").mkdir()
+            (tmp_path / "cache" / "quality.json").write_text(json.dumps(payload))
+            assert QualityReview.main() == 0
+        run.assert_called_once_with(str(tmp_path), {"language": "python"}, tmp_path / "cache")
+
+    def test_min_severity_info_keeps_unkeyed_issue(self, tmp_path: Path) -> None:
+        """Severity-less issue is kept at ``min_severity='info'`` (kills ``get`` defaults)."""
+        (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
+        cache_dir = tmp_path / "cache"
+        issues = [{"file": "README.md", "description": "no sev key"}]
+        p = self._patch_git()
+        with (
+            p[0],
+            p[1],
+            p[2],
+            p[3],
+            p[4],
+            patch.object(DriftDetector, "detect_drift_for_doc", return_value=issues),
+            patch.object(
+                QualityScorer,
+                "score_document",
+                return_value={
+                    "file": "README.md",
+                    "total_score": 50.0,
+                    "label": "fair",
+                    "dimensions": {},
+                },
+            ),
+        ):
+            QualityReview.run(str(tmp_path), self._settings(min_severity="info"), cache_dir)
+        kept = [i["description"] for i in self._read_cache(cache_dir)["issues"]]
+        assert kept == ["no sev key"]
+
+    def test_unknown_min_severity_defaults_to_low_and_drops_info(self, tmp_path: Path) -> None:
+        """Unmapped ``min_severity`` falls back to low and drops an info issue."""
+        (tmp_path / "README.md").write_text("# Installation\n\n" + "content\n" * 15)
+        cache_dir = tmp_path / "cache"
+        issues = [
+            {"file": "README.md", "severity": "info", "description": "dropped"},
+            {"file": "README.md", "severity": "low", "description": "kept"},
+        ]
+        p = self._patch_git()
+        with (
+            p[0],
+            p[1],
+            p[2],
+            p[3],
+            p[4],
+            patch.object(DriftDetector, "detect_drift_for_doc", return_value=issues),
+            patch.object(
+                QualityScorer,
+                "score_document",
+                return_value={
+                    "file": "README.md",
+                    "total_score": 50.0,
+                    "label": "fair",
+                    "dimensions": {},
+                },
+            ),
+        ):
+            QualityReview.run(str(tmp_path), self._settings(min_severity="bogus"), cache_dir)
+        kept = [i["description"] for i in self._read_cache(cache_dir)["issues"]]
+        assert kept == ["kept"]
+
+    def test_main_prints_defaults_when_summary_keys_absent(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Missing ``summary``/keys print the 0-defaults — kills the .get() mutants."""
+        payload: dict[str, Any] = {"documents": [], "issues": []}
+        self._patch_main(monkeypatch, tmp_path, payload, {"language": "python"}, ["x.py"])
+        assert QualityReview.main() == 0
+        out = capsys.readouterr().out
+        assert "0 drift issue(s) across 0 doc(s)" in out

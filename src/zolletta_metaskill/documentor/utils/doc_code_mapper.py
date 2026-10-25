@@ -60,7 +60,10 @@ class DocCodeMapper:
         file are two answers waiting to disagree.
         """
         root = Path(repo_path)
+        # pragma: no mutate start — ``root / ""`` equals ``root``, so the truthiness check is
+        # unobservable
         search_path = root / scope if scope else root
+        # pragma: no mutate end
         if not search_path.is_dir():
             return []
         found = ProjectConfig.iter_files(search_path, set(DocCodeMapper.CODE_EXTENSIONS))
@@ -159,7 +162,9 @@ class DocCodeMapper:
         for match in func_pattern.finditer(content):
             refs["functions"].add(match.group(1))
 
+        # pragma: no mutate start — IGNORECASE makes literal casing in the pattern unobservable
         version_pattern = re.compile(r"(?:v|version[:\s]*)(\d+\.\d+(?:\.\d+)?)", re.IGNORECASE)
+        # pragma: no mutate end
         for match in version_pattern.finditer(content):
             refs["versions"].add(match.group(1))
 

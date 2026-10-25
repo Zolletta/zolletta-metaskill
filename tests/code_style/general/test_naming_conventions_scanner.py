@@ -480,7 +480,7 @@ class TestNamingConventionsScanner:
         rc = self._run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "auto-detect" in err
+        assert err.startswith("Error: could not auto-detect package under src/")
 
     def test_main_src_package_not_exist(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -749,3 +749,211 @@ class TestNamingConventionsScanner:
         with patch.object(NamingConventionsScanner, "_ACRONYMS_JSON", bad):
             result = NamingConventionsScanner._known_acronyms()
         assert result == frozenset({"ADR", "API", "CLI", "HTTP", "JSON", "PHP", "URL"})
+
+    # --- Tests for NamingConventionsScanner._check_name_mismatches(). ---
+
+    def test_check_name_mismatches_init_file_skipped(self, tmp_path: Path) -> None:
+        """``__init__.py`` is skipped even when it defines a mismatched class."""
+        src_pkg = tmp_path / "pkg"
+        src_pkg.mkdir(parents=True)
+        (src_pkg / "__init__.py").write_text("class Whatever:\n    pass\n")
+        assert NamingConventionsScanner._check_name_mismatches([src_pkg]) == []
+
+    def test_check_name_mismatches_multiple_files_reports_all(self, tmp_path: Path) -> None:
+        src_pkg = tmp_path / "pkg"
+        src_pkg.mkdir(parents=True)
+        (src_pkg / "alpha.py").write_text("class Beta:\n    pass\n")
+        (src_pkg / "gamma.py").write_text("class Delta:\n    pass\n")
+        mismatches = NamingConventionsScanner._check_name_mismatches([src_pkg])
+        assert {m["file"] for m in mismatches} == {"alpha.py", "gamma.py"}
+
+    def test_check_name_mismatches_skipped_file_does_not_stop_scan(self, tmp_path: Path) -> None:
+        """A skipped (multi-class) file must not stop scanning later files."""
+        src_pkg = tmp_path / "pkg"
+        src_pkg.mkdir(parents=True)
+        (src_pkg / "a_multi.py").write_text("class Foo:\n    pass\nclass Bar:\n    pass\n")
+        (src_pkg / "z_bad.py").write_text("class Mismatch:\n    pass\n")
+        mismatches = NamingConventionsScanner._check_name_mismatches([src_pkg])
+        assert [m["file"] for m in mismatches] == ["z_bad.py"]
+
+    def test_check_name_mismatches_entry_reports_file_and_expected(self, tmp_path: Path) -> None:
+        src_pkg = tmp_path / "pkg"
+        src_pkg.mkdir(parents=True)
+        (src_pkg / "user_store.py").write_text("class Vehicle:\n    pass\n")
+        (mismatch,) = NamingConventionsScanner._check_name_mismatches([src_pkg])
+        assert mismatch["file"] == "user_store.py"
+        assert mismatch["expected"] == "UserStore"
+
+    # --- Tests for NamingConventionsScanner._check_one_test_file(). ---
+
+    def test_check_one_test_file_orphan_entry_reports_filename(self, tmp_path: Path) -> None:
+        test_pkg = tmp_path / "tests"
+        test_pkg.mkdir()
+        orphan = test_pkg / "test_orphan.py"
+        orphan.write_text("def test_x():\n    pass\n")
+        entry = NamingConventionsScanner._check_one_test_file(
+            orphan, test_pkg, {Path("."): {"test_cache"}}
+        )
+        assert entry is not None
+        assert entry["file"] == "test_orphan.py"
+
+    def test_check_one_test_file_no_source_dir_entry_reports_filename(self, tmp_path: Path) -> None:
+        test_pkg = tmp_path / "tests"
+        (test_pkg / "sub").mkdir(parents=True)
+        orphan = test_pkg / "sub" / "test_orphan.py"
+        orphan.write_text("def test_x():\n    pass\n")
+        entry = NamingConventionsScanner._check_one_test_file(
+            orphan, test_pkg, {Path("."): {"test_cache"}}
+        )
+        assert entry is not None
+        assert entry["file"] == str(Path("sub") / "test_orphan.py")
+        assert "no source directory" in entry["reason"]
+
+    # --- Tests for NamingConventionsScanner._resolve_packages() error paths. ---
+
+    def test_resolve_packages_custom_source_root_used(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A non-default ``python.paths.source`` must drive src_roots."""
+        _write_settings(
+            tmp_path,
+            python={
+                "code_style": {},
+                "paths": {"source": ["lib"], "tests": ["tests"], "package": "mypkg"},
+            },
+        )
+        (tmp_path / "lib" / "mypkg").mkdir(parents=True)
+        (tmp_path / "tests").mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)
+        resolved = NamingConventionsScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        )
+        assert resolved is not None
+        assert resolved[0] == [Path("lib")]
+
+    def test_resolve_packages_custom_test_root_used(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(
+            tmp_path,
+            python={
+                "code_style": {},
+                "paths": {"source": ["src"], "tests": ["spec"], "package": "mypkg"},
+            },
+        )
+        (tmp_path / "src" / "mypkg").mkdir(parents=True)
+        (tmp_path / "spec").mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)
+        resolved = NamingConventionsScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        )
+        assert resolved is not None
+        assert resolved[1] == [Path("spec")]
+
+    def test_resolve_packages_missing_src_error_prefixed(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        (tmp_path / "tests").mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)
+        assert (
+            NamingConventionsScanner._resolve_packages(ProjectConfig.load_settings(), {"python"})
+            is None
+        )
+        assert capsys.readouterr().err.startswith(
+            "Error: no configured source directories exist on disk"
+        )
+
+    def test_resolve_packages_missing_tests_error_prefixed(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        self._make_src_pkg(tmp_path)
+        monkeypatch.chdir(tmp_path)
+        assert (
+            NamingConventionsScanner._resolve_packages(ProjectConfig.load_settings(), {"python"})
+            is None
+        )
+        assert capsys.readouterr().err.startswith(
+            "Error: no configured test directories exist on disk"
+        )
+
+    def test_resolve_packages_bad_package_error_prefixed(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        (tmp_path / "src").mkdir(parents=True)
+        (tmp_path / "tests").mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)
+        assert (
+            NamingConventionsScanner._resolve_packages(ProjectConfig.load_settings(), {"python"})
+            is None
+        )
+        err = capsys.readouterr().err
+        assert err.startswith("Error:")
+        assert err.strip().endswith("configured source root")
+
+    # --- Tests for NamingConventionsScanner._emit_json(). ---
+
+    def test_emit_json_directories_include_tests_root(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        NamingConventionsScanner._emit_json([Path("src")], [Path("tests")], "mypkg", [], [])
+        report = json.loads(capsys.readouterr().out)
+        assert report["directories"]["tests"] == ["tests"]
+        assert report["violation_count"] == 0
+
+    def test_emit_json_indented_output_uses_two_spaces(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        NamingConventionsScanner._emit_json([Path("src")], [Path("tests")], "mypkg", [], [])
+        assert '\n  "package": "mypkg"' in capsys.readouterr().out
+
+    # --- Tests for NamingConventionsScanner._emit_text() all-clear path. ---
+
+    def test_emit_text_no_findings_reports_none_sections(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        NamingConventionsScanner._emit_text([Path("src/mypkg")], [Path("tests/mypkg")], [], [])
+        out = capsys.readouterr().out
+        lines = out.splitlines()
+        assert "## Source file name != class name: none" in lines
+        assert "## Test files not matching naming convention: none" in lines
+        assert "Result: all clear" in out.splitlines()
+
+    def test_emit_text_multiple_packages_joined_with_comma(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        NamingConventionsScanner._emit_text(
+            [Path("src/aaa"), Path("src/bbb")], [Path("tests/ccc"), Path("tests/ddd")], [], []
+        )
+        out = capsys.readouterr().out
+        assert "src/aaa, src/bbb" in out
+        assert "tests/ccc, tests/ddd" in out
+
+    # --- Tests for NamingConventionsScanner.main() skipped path. ---
+
+    def test_main_check_disabled_json_reports_reason(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path, python={"code_style": {"check_filename_matches_class": False}})
+        self._make_project(tmp_path)
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["reason"] == "check_filename_matches_class disabled in settings.json"
+
+    def test_main_check_disabled_text_full_banner(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path, python={"code_style": {"check_filename_matches_class": False}})
+        self._make_project(tmp_path)
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "=" * 70 in out
+        assert out.splitlines().count("=" * 70) == 2
+        assert "NAMING CONVENTIONS — VALIDATION REPORT" in out.splitlines()
+        skipped = "Result: SKIPPED (check_filename_matches_class disabled in settings.json)"
+        assert skipped in out.splitlines()
+        assert out.rstrip("\n").endswith("settings.json)")
