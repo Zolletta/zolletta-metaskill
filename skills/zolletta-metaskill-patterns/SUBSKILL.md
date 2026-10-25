@@ -3,15 +3,7 @@ name: zolletta-metaskill-patterns
 license: MIT + Commons Clause
 description: >
   Analyzes class structure for God classes, SOLID violations, and coupling problems via AST metrics and manual principles. Use when evaluating structural quality or planning refactoring. Do not use for style or test review.
-allowed-tools:
-  - read
-  - grep
-  - glob
-  - exec
-  - edit
-  - write
-  - mcp_call_tool
-  - mcp_list_tools
+allowed-tools: read grep glob exec edit write mcp_call_tool mcp_list_tools
 ---
 
 # Zolletta-metaskill Design Patterns

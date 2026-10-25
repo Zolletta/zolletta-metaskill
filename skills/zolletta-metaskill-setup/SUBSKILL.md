@@ -3,16 +3,7 @@ name: zolletta-metaskill-setup
 license: MIT + Commons Clause
 description: >
   Creates .zolletta-metaskill/ and settings.json: detects project language, Docker, tokensave, and Python/PHP tooling on first run. Use when settings.json is missing or on /zolletta-metaskill setup. Do not use to change existing settings.
-allowed-tools:
-  - read
-  - grep
-  - glob
-  - exec
-  - edit
-  - write
-  - mcp_call_tool
-  - mcp_list_tools
-  - skill
+allowed-tools: read grep glob exec edit write mcp_call_tool mcp_list_tools skill
 metadata:
   permissions:
     allow:

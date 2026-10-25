@@ -3,20 +3,7 @@ name: zolletta-metaskill-review
 license: MIT + Commons Clause
 description: >
   Runs full project reviews: dispatches specialist skills as parallel subagents, writes dated reports, and builds a prioritized TODO.md. Use for whole-project reviews. Do not use for single-aspect checks — invoke the specialist directly.
-allowed-tools:
-  - read
-  - grep
-  - glob
-  - exec
-  - edit
-  - write
-  - skill
-  - run_subagent
-  - read_subagent
-  - todo_write
-  - ask_user_question
-  - mcp_call_tool
-  - mcp_list_tools
+allowed-tools: read grep glob exec edit write skill run_subagent read_subagent todo_write ask_user_question mcp_call_tool mcp_list_tools
 metadata:
   subagent: true
   permissions:

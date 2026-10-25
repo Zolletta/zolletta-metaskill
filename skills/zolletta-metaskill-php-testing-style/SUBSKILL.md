@@ -3,16 +3,7 @@ name: zolletta-metaskill-php-testing-style
 license: MIT + Commons Clause
 description: >
   Reviews PHPUnit test code for naming, directory mirroring, coverage gaps, mocking, data providers, and AAA structure. Use when reviewing PHP tests or setting up suites. Do not use for application code review.
-allowed-tools:
-  - read
-  - grep
-  - glob
-  - exec
-  - edit
-  - write
-  - mcp_call_tool
-  - mcp_list_tools
-  - skill
+allowed-tools: read grep glob exec edit write mcp_call_tool mcp_list_tools skill
 metadata:
   permissions:
     allow:

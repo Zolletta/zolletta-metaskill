@@ -3,16 +3,7 @@ name: zolletta-metaskill-php-code-style
 license: MIT + Commons Clause
 description: >
   Reviews PHP code for strict typing, PHP 8.x features, PSR-12 compliance, naming, error handling, performance, and security. Use when reviewing PHP code style or feature adoption. Do not use for PHPUnit review.
-allowed-tools:
-  - read
-  - grep
-  - glob
-  - exec
-  - edit
-  - write
-  - mcp_call_tool
-  - mcp_list_tools
-  - skill
+allowed-tools: read grep glob exec edit write mcp_call_tool mcp_list_tools skill
 metadata:
   permissions:
     allow:
