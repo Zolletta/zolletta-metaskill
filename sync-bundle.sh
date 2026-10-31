@@ -167,6 +167,20 @@ sync() {
             sed -e 's|skills/zolletta-metaskill/||g' \
                 -e 's/skillszolletta-metaskill\([a-z0-9_]\)/\1/g' \
                 "$f" > "$dest"
+            # The prefix strip shortens table cells that carry a
+            # skills/zolletta-metaskill/ path without re-padding the column,
+            # so copied tables can lose their markdown-table-prettify layout
+            # (documentation.8). Re-align only files that contain a table —
+            # npx stays idle on table-less docs.
+            if command -v npx >/dev/null 2>&1 && grep -qE '^[[:space:]]*\|.*\|' "$dest"; then
+                npx --yes markdown-table-prettify@4.1.0 < "$dest" > "$dest.pretty"
+                # The prettifier drops the trailing newline — restore it
+                # (general.1 requires it on every file).
+                if [ -s "$dest.pretty" ] && [ "$(tail -c1 "$dest.pretty" | wc -l)" -eq 0 ]; then
+                    printf '\n' >> "$dest.pretty"
+                fi
+                mv "$dest.pretty" "$dest"
+            fi
         else
             cp "$f" "$dest"
         fi

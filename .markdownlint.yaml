@@ -54,3 +54,10 @@ MD055:
   style: leading_and_trailing   # repo tables carry both outer pipes
 MD056: true            # table column count matches the header
 MD058: true            # tables are surrounded by blank lines
+
+# --- AGENTS.md documentation.8: "markdown-table-prettify layout" ---
+# MD060 demands "aligned" pipes by markdownlint's own width math, which counts
+# emoji (✅/❌) one cell narrower than markdown-table-prettify does — a table
+# with emoji cannot satisfy both tools. The prettifier is canonical here, and
+# the AGENTS.md OS-tools loop checks its output directly, so MD060 is off.
+MD060: false

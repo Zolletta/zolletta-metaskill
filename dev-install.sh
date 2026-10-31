@@ -10,8 +10,8 @@
 # (the copy list lives in bundle-files.txt), then `npx skills add` copies
 # skills/zolletta-metaskill into ~/.agents/skills/zolletta-metaskill and links
 # it into every detected AI agent tool's skills directory. Also activates
-# .githooks/pre-commit for this clone so the generated copies stay in sync on
-# every commit.
+# .githooks/pre-commit for this clone so the generated copies stay in sync and
+# staged files get their newline/table fixes on every commit.
 #
 # The local path form installs whatever is on disk — uncommitted changes
 # included — which is the whole point of a dev install. Requires Node.js (npx).

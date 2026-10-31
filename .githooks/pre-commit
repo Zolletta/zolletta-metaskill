@@ -1,5 +1,56 @@
 #!/bin/sh
-# Keep the installable bundle's generated copies in sync with their sources.
+# Auto-fixes applied on every commit:
+#  - sync-bundle.sh regenerates the bundle's copies and they are re-staged
+#  - staged text files get a trailing newline (AGENTS.md general.1)
+#  - staged markdown tables are re-aligned (AGENTS.md documentation.8)
+# These two rules are syntactic, so the hook fixes instead of reporting; the
+# semantic checks stay in AGENTS.md because a finding there means refactoring.
 # Installed via `git config core.hooksPath .githooks` — dev-install.sh sets it.
+set -e
 ROOT="$(git rev-parse --show-toplevel)"
-exec sh -c '"$0/sync-bundle.sh" && git -C "$0" add -A -- skills/zolletta-metaskill' "$ROOT"
+cd "$ROOT"
+
+"$ROOT/sync-bundle.sh"
+git add -A -- skills/zolletta-metaskill
+
+STAGED="$(git diff --cached --name-only --diff-filter=ACMR)"
+
+# general.1 — every staged text file ends with a newline. CHANGELOG.md is
+# excluded: python-semantic-release regenerates it in CI where no hook runs,
+# so fixing it here would stage a generated artifact into an unrelated commit.
+printf '%s\n' "$STAGED" | while IFS= read -r f; do
+    [ -s "$f" ] || continue                      # an empty file has no last byte
+    [ "$f" = "CHANGELOG.md" ] && continue
+    grep -qI . "$f" 2>/dev/null || continue       # skip binaries
+    if [ "$(tail -c1 "$f" | wc -l)" -eq 0 ]; then
+        printf '\n' >> "$f" && git add -- "$f"
+    fi
+done
+
+# documentation.8 — staged markdown tables keep the markdown-table-prettify
+# layout. Same exclusions as .markdownlint-cli2.jsonc: the bundle copies are
+# re-aligned by sync-bundle.sh, CHANGELOG.md/TODO.md are generated/scratch.
+if command -v npx >/dev/null 2>&1; then
+    printf '%s\n' "$STAGED" | grep '\.md$' | grep -v \
+        -e '^CHANGELOG\.md$' -e '^TODO\.md$' \
+        -e '^skills/zolletta-metaskill/docs/' \
+        -e '^skills/zolletta-metaskill/README\.md$' \
+        -e '^skills/zolletta-metaskill/CONTRIBUTING\.md$' | while IFS= read -r f; do
+        [ -f "$f" ] || continue
+        # Re-align only files that contain a table — npx stays idle on
+        # table-less docs (same gate as sync-bundle.sh).
+        grep -qE '^[[:space:]]*\|.*\|' "$f" || continue
+        if npx --yes markdown-table-prettify@4.1.0 < "$f" > "$f.pretty" 2>/dev/null; then
+            # The prettifier drops the trailing newline — restore it
+            # (general.1 requires it on every file).
+            if [ -s "$f.pretty" ] && [ "$(tail -c1 "$f.pretty" | wc -l)" -eq 0 ]; then
+                printf '\n' >> "$f.pretty"
+            fi
+            if ! cmp -s "$f" "$f.pretty"; then
+                mv "$f.pretty" "$f"
+                git add -- "$f"
+            fi
+        fi
+        rm -f "$f.pretty"
+    done
+fi
