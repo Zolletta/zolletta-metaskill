@@ -145,7 +145,7 @@ class JWTDecoder { ... }
 class JwtDecoder { ... }       // should be JWTDecoder
 ```
 
-**Enforcement**: the acronym list is project-specific. The Python skill ships `src/zolletta_metaskill/code_style/python/acronym_casing_scanner.py` with an additive acronym list (shipped base + `settings.json` `acronyms` array + CLI override). A class name is flagged only when a word inside it case-insensitively matches a configured acronym but is not all-uppercase.
+**Enforcement**: the acronym list is project-specific. The Python skill ships `src/zolletta_metaskill/code_style/python/acronym_casing_scanner.py` with an additive acronym list (shipped `acronyms.json` + the top-level `acronyms` array in `settings.json`, merged). A class name is flagged only when a word inside it case-insensitively matches a configured acronym but is not all-uppercase.
 
 > The acronym rule is already enforced by the `python-code-style` skill (rule #3). It is restated here because it is a *cross-language* convention — a reviewer reading PHP code should apply the same rule.
 

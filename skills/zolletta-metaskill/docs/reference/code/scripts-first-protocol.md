@@ -20,7 +20,7 @@ Every review run (standalone or orchestrated) creates a timestamped run folder:
 
 ```text
 <runs_dir>/<YYYY-MM-DD-HH-MM>/
-├── reports/          ← LLM judgment (subcommand reports, SUMMARY.md, TODO.md)
+├── reports/          ← LLM judgment (subcommand reports, SUMMARY.md)
 └── cache/            ← deterministic artifacts (script outputs + shared context)
 ```
 

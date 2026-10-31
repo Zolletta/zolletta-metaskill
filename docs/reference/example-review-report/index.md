@@ -10,13 +10,13 @@ This is a real output from `/zolletta-metaskill review` run on `playground/` —
 
 ## Files
 
-| File                                                           | Description                                                                                                                    |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| [SUMMARY.md](SUMMARY.md)                                       | Executive summary: overall grade, grades by area, strengths, weaknesses, prioritized Open/Done items, previous-review status   |
-| [patterns.md](patterns.md)                                     | Design pattern review — God classes, SOLID, coupling, composition vs inheritance                                               |
-| [documentor.md](documentor.md)                                 | Documentation review — Diátaxis compliance, drift detection, broken links, API validation                                      |
-| [python-code-style.md](python-code-style.md)                   | Python source code style — ruff, mypy, naming, docstrings, type annotations                                                    |
-| [python-testing-patterns.md](python-testing-patterns.md)       | Python test code review — isolation, naming, coverage gaps, mutation testing, mocking, fixtures                                |
+| File                                                     | Description                                                                                                                  |
+|----------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| [SUMMARY.md](SUMMARY.md)                                 | Executive summary: overall grade, grades by area, strengths, weaknesses, prioritized Open/Done items, previous-review status |
+| [patterns.md](patterns.md)                               | Design pattern review — God classes, SOLID, coupling, composition vs inheritance                                             |
+| [documentor.md](documentor.md)                           | Documentation review — Diátaxis compliance, drift detection, broken links, API validation                                    |
+| [python-code-style.md](python-code-style.md)             | Python source code style — ruff, mypy, naming, docstrings, type annotations                                                  |
+| [python-testing-patterns.md](python-testing-patterns.md) | Python test code review — isolation, naming, coverage gaps, mutation testing, mocking, fixtures                              |
 
 ## Report structure
 

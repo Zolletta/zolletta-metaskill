@@ -6,7 +6,7 @@ skills: [documentor]
 
 # Drift Detection Tools Reference
 
-The `documentor` skill includes a top-level orchestrator plus four domain tools. All are Python 3.8+ stdlib only — no external dependencies required.
+The `documentor` skill includes a top-level orchestrator plus four domain tools. All run on the package's Python (>=3.12 per `pyproject.toml`) and import only the standard library plus the shared `zolletta_metaskill.core` helpers.
 
 ## Tools
 
@@ -18,7 +18,7 @@ The `documentor` skill includes a top-level orchestrator plus four domain tools.
 | `skills/zolletta-metaskill/src/zolletta_metaskill/documentor/links/link_checker.py`              | Audit all markdown links and anchors                                        | `python skills/zolletta-metaskill/src/zolletta_metaskill/documentor/links/link_checker.py [--broken-only]`       |
 | `skills/zolletta-metaskill/src/zolletta_metaskill/documentor/quality/unwrapped_prose_scanner.py` | Flag markdown paragraphs hard-wrapped mid-sentence (opt-in, run separately) | `python skills/zolletta-metaskill/src/zolletta_metaskill/documentor/quality/unwrapped_prose_scanner.py [--json]` |
 
-All tools: Python 3.8+ stdlib only, `[--json]`, run from the repository root, any OS. All configuration — docs directory, source roots, thresholds — comes from `.zolletta-metaskill/settings.json` under `documentation.*`.
+All tools: Python 3.12+, `[--json]`, run from the repository root, any OS. All configuration — docs directory, source roots, thresholds — comes from `.zolletta-metaskill/settings.json` under `documentation.*`.
 
 Each tool writes its own JSON cache artifact into the current run folder, `<runs_dir>/<YYYY-MM-DD-HH-MM>/cache/` — `.zolletta-metaskill/<timestamp>/cache/` with the default `runs_dir` — so each review keeps its own history instead of overwriting the last. Before the first run folder exists, artifacts land in `<runs_dir>/cache/`:
 
@@ -58,7 +58,7 @@ python skills/zolletta-metaskill/src/zolletta_metaskill/documentor/quality/quali
 | `documentation.staleness_weights`     | (defaults)   | Scoring weights for the five dimensions           |
 | `documentation.diataxis_translations` | (none)       | Translated README section names                   |
 
-`staleness_weights` is a mapping over `updated`, `alignment`, `links`, `completeness`, `accuracy`.
+`staleness_weights` is a mapping over `last_updated`, `code_doc_alignment`, `link_health`, `completeness`, `accuracy`.
 
 **Per-file factual drift**: only flags when specific referenced source files changed. Referential drift suppressed by default (`include_referential`); `skills/zolletta-metaskill/src/zolletta_metaskill/documentor/links/link_checker.py` covers broken links more reliably.
 

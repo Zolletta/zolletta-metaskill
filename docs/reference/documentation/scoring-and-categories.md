@@ -36,7 +36,7 @@ Documentation freshness is scored on a **0-100 scale** where **100 = perfectly c
 {
   "documentation": {
     "staleness_weights": {
-      "updated": 0.25, "alignment": 0.25, "links": 0.15,
+      "last_updated": 0.25, "code_doc_alignment": 0.25, "link_health": 0.15,
       "completeness": 0.20, "accuracy": 0.15
     },
     "staleness_threshold": 60

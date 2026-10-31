@@ -25,6 +25,7 @@ python3 src/zolletta_metaskill/patterns/general/class_metrics_scanner.py [--json
 | Setting                                   | Default | Description                       |
 |-------------------------------------------|---------|-----------------------------------|
 | `python.paths.source`                     | `[src]` | Source roots to scan              |
+| `python.patterns.check_class_metrics`     | true    | Check toggle                      |
 | `python.patterns.class_metrics_top`       | 30      | Show only the top N classes       |
 | `python.patterns.class_metrics_min_lines` | 50      | Skip classes shorter than N lines |
 
@@ -386,15 +387,37 @@ Returns the raw tree-sitter `Tree` and source bytes for a `.php` file. Used by P
 
 ### src/zolletta_metaskill/core/name_conventions.py
 
-The file↔class and test-file naming rules are a single domain convention, so the four scanners that need it (naming conventions, test structure, test splitter, one class per file) consume this module rather than each carrying a private copy that could diverge. All members are `@staticmethod`:
+The file↔class and test-file naming rules are a single domain convention, so the scanners that need it (naming conventions, test structure, test splitter, one class per file) consume this module rather than each carrying a private copy that could diverge. All members are `@staticmethod`:
 
-| Function                        | Description                                                                                         |
-|---------------------------------|-----------------------------------------------------------------------------------------------------|
-| `snake_to_pascal(name)`         | Convert snake_case to PascalCase (`my_class` → `MyClass`)                                           |
-| `pascal_to_snake(name)`         | Convert PascalCase to snake_case (`MyClass` → `my_class`), acronym-aware (`ADRCache` → `adr_cache`) |
-| `test_prefixes(stem, classes)`  | Return the accepted test-name prefixes for a file — the file stem and each class it defines         |
-| `get_class_names(path)`         | Return top-level class names in a source file, parsed through the registered language engine        |
-| `auto_detect_package(src_root)` | Return the package directory under a source root (first child with `__init__.py`, else first dir)   |
+| Function                        | Description                                                                                                         |
+|---------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| `snake_to_pascal(name)`         | Convert snake_case to PascalCase (`my_class` → `MyClass`)                                                           |
+| `pascal_to_snake(name)`         | Convert PascalCase to snake_case (`MyClass` → `my_class`) — one `_` per uppercase char (`ADRCache` → `a_d_r_cache`) |
+| `test_prefixes(stem, classes)`  | Return the accepted test-name prefixes for a file — the file stem and each class it defines                         |
+| `get_class_names(path)`         | Return top-level class names in a source file, parsed through the registered language engine                        |
+| `auto_detect_package(src_root)` | Return the package directory under a source root (first child with `__init__.py`, else first dir)                   |
+
+### src/zolletta_metaskill/core/project_config.py
+
+The single funnel for every scanner's configuration: all toggles, roots, and thresholds come from `.zolletta-metaskill/settings.json` through this module, never from the command line (AGENTS `cli.1`). It also owns the shared engine-registration and file-enumeration lifecycle so scanners don't re-implement it. Principal members (all `@staticmethod`/`@classmethod`):
+
+| Function                                                 | Description                                                                                                  |
+|----------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
+| `load_settings(path)`                                    | Load and parse `settings.json` (empty dict when missing)                                                     |
+| `setting(settings, dotted_path, default)`                | Read a nested setting by dotted path (`"python.patterns.check_dip"`)                                         |
+| `scan_languages(settings, toggle_path)`                  | Languages whose `toggle_path` check is enabled — the per-scanner on/off gate                                 |
+| `ensure_engines()`                                       | Register the engines for all configured languages (delegates to `EngineRegistry.ensure_*`, no eager imports) |
+| `source_roots(settings, languages)`                      | Resolve source scan roots from `python.paths.source` / `php.autoload.psr-4` (deduped)                        |
+| `test_roots(settings, languages)`                        | Resolve test roots from `python.paths.tests` / `php.autoload.psr-4-dev` (deduped)                            |
+| `existing_roots(roots)`                                  | Filter roots to those that exist on disk                                                                     |
+| `resolve_extensions(settings_path, toggle_path)`         | File extensions to scan, per language, optionally gated by a check toggle                                    |
+| `iter_files(root, extensions)`                           | Enumerate matching files under one root — git-ignore aware                                                   |
+| `iter_source_files(roots, extensions)`                   | `iter_files` across every root, deduplicated                                                                 |
+| `scan_files(roots, extensions, collect)`                 | Full lifecycle: roots → existing → enumerate → `ModuleInfo` per file via the registry                        |
+| `extensions_for(languages)`                              | Extension set for a language set (e.g. `{".py", ".php"}`)                                                    |
+| `languages_for_extensions(languages, extensions)`        | Restrict a language set to those owning the given extensions                                                 |
+| `any_enabled(settings, languages, toggle_path, default)` | True when the toggle is enabled for any language                                                             |
+| `emit_skipped(as_json, reason)`                          | Print the standard SKIPPED report and reason                                                                 |
 
 ## Dead Code Script
 
@@ -477,7 +500,7 @@ python3 src/zolletta_metaskill/testing_style/python/test_splitter.py <test_file>
 |---------------|--------------------------------|------------------------------------------------|
 | `<test_file>` | (req)                          | Path to the test file to split                 |
 | `--mapping`   | auto-derived from method names | JSON/explicit SUT mapping                      |
-| `--class`     | (all test classes)             | Split only this class                          |
+| `--class`     | first test class in the file   | Split only this class                          |
 | `--dry-run`   | off                            | Show what would be split without writing files |
 | `--json`      | off                            | Output the split plan as JSON                  |
 

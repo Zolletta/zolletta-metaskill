@@ -137,7 +137,7 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 | Where                                                   | What                                                                                                 | How it follows the pattern                                      |
 |---------------------------------------------------------|------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------|
-| `SKILL.md` line 40                                      | "Subcommands link back to rules and only narrow behavior — they never override or restate the rules" | Rules are stated once and always in context when the skill runs |
+| `SKILL.md` Rules section                                | "Subcommands link back to rules and only narrow behavior — they never override or restate the rules" | Rules are stated once and always in context when the skill runs |
 | `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 2 | Reads `_context.md` which inlines settings and ADR directives                                        | Ground rules are loaded into context, not paraphrased           |
 | `settings.json`                                         | Project-level configuration auto-read by every subcommand                                            | Project ground truth lives in one place                         |
 
@@ -237,7 +237,7 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 | Where                                                     | What                                                 | How it follows the pattern                                       |
 |-----------------------------------------------------------|------------------------------------------------------|------------------------------------------------------------------|
-| `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 7-8 | SUMMARY.md + TODO.md designed for team consumption   | An executive overview and an action list both humans and AI read |
+| `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 7-8 | SUMMARY.md designed for team consumption             | An executive overview and an action list both humans and AI read |
 | Report structure                                          | Each finding links to the detailed specialist report | Linkable, shareable artifacts — point at a specific finding      |
 | Report format                                             | Standard markdown, readable in any tool              | No platform lock-in; the canvas is the file system               |
 

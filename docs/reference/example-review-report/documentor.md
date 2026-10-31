@@ -13,12 +13,12 @@ skills: [review]
 
 ## Grade: 62/100 — Fair
 
-| Section                       | Points   |
-| ----------------------------- | -------- |
-| Diátaxis structure            | 20/30    |
-| Accuracy vs codebase          | 24/30    |
-| Freshness (staleness score)   | 11/25    |
-| Link integrity                | 7/15     |
+| Section                     | Points |
+|-----------------------------|--------|
+| Diátaxis structure          | 20/30  |
+| Accuracy vs codebase        | 24/30  |
+| Freshness (staleness score) | 11/25  |
+| Link integrity              | 7/15   |
 
 Justification: the docs corpus is tiny (2 files) and freshly committed, but `docs/index.md` scores 45.2/100 (critical) on the staleness scorer, contains a broken local link, an absolute GitHub URL forbidden by `documentation.4`, and a hard-wrapped paragraph. Aggregate freshness is 71.3 (aging). One high-severity finding; under `documentation.min_severity=high` the medium/low items below are informational.
 
@@ -26,23 +26,23 @@ Justification: the docs corpus is tiny (2 files) and freshly committed, but `doc
 
 ## Summary
 
-| Metric                        | Value            |
-| ----------------------------- | ---------------- |
-| Documentation files scanned   | 2                |
-| Files with drift detected     | 0                |
-| Overall staleness score       | 71.3/100 (aging) |
-| Broken links found            | 1                |
-| API mismatches found          | 0                |
+| Metric                      | Value            |
+|-----------------------------|------------------|
+| Documentation files scanned | 2                |
+| Files with drift detected   | 0                |
+| Overall staleness score     | 71.3/100 (aging) |
+| Broken links found          | 1                |
+| API mismatches found        | 0                |
 
 Findings: 0 critical, 1 high, 1 medium, 2 low.
 
 ## Staleness Scores
 
-| File                              | Score      | Last Updated   | Status      |
-| --------------------------------- | ---------- | -------------- | ----------- |
-| docs/index.md                     | 45.2/100   | 2026-10-24     | critical    |
-| docs/explanation/adr/ADR-001.md   | 96.2/100   | 2026-10-24     | excellent   |
-| README.md (out of scope)          | 72.5/100   | 2026-10-24     | good        |
+| File                            | Score    | Last Updated | Status    |
+|---------------------------------|----------|--------------|-----------|
+| docs/index.md                   | 45.2/100 | 2026-10-24   | critical  |
+| docs/explanation/adr/ADR-001.md | 96.2/100 | 2026-10-24   | excellent |
+| README.md (out of scope)        | 72.5/100 | 2026-10-24   | good      |
 
 `docs/index.md` dimension detail: last_updated 100, code_doc_alignment 0 (1 referenced path, 0 exist — the `missing/page.md` link), link_health 0 (1/1 links broken), completeness 70, accuracy 75.
 
@@ -56,22 +56,22 @@ Findings: 0 critical, 1 high, 1 medium, 2 low.
 
 ### High
 
-| ID   | File            | Line   | Issue                                                                         | Category      | Fix Type   |
-| ---- | --------------- | ------ | ----------------------------------------------------------------------------- | ------------- | ---------- |
-| D1   | docs/index.md   | 7      | Broken local link `[a missing page](missing/page.md)` — target does not exist | referential   | [MANUAL]   |
+| ID | File          | Line | Issue                                                                         | Category    | Fix Type |
+|----|---------------|------|-------------------------------------------------------------------------------|-------------|----------|
+| D1 | docs/index.md | 7    | Broken local link `[a missing page](missing/page.md)` — target does not exist | referential | [MANUAL] |
 
 ### Medium
 
-| ID   | File            | Line   | Issue                                                                                                                                                  | Category     | Fix Type   |
-| ---- | --------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------ | ---------- |
-| D2   | docs/index.md   | 7      | Absolute URL `https://github.com/Zolletta/zolletta-metaskill/blob/main/docs/index.md` — `documentation.4` requires repo-root-relative links in `docs/` | structural   | [MANUAL]   |
+| ID | File          | Line | Issue                                                                                                                                                  | Category   | Fix Type |
+|----|---------------|------|--------------------------------------------------------------------------------------------------------------------------------------------------------|------------|----------|
+| D2 | docs/index.md | 7    | Absolute URL `https://github.com/Zolletta/zolletta-metaskill/blob/main/docs/index.md` — `documentation.4` requires repo-root-relative links in `docs/` | structural | [MANUAL] |
 
 ### Low
 
-| ID   | File            | Line   | Issue                                                                                                                                                                     | Category       | Fix Type   |
-| ---- | --------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ---------- |
-| D3   | docs/index.md   | 3–5    | Paragraph hard-wrapped across lines 3–5 — join into one line (`documentation.1` / check_unwrapped_prose)                                                                  | temporal/style | [AUTO]     |
-| D4   | docs/           | —      | Structural gap: `docs/` holds only `index.md` and a lone ADR — no tutorials/, how-to/, or reference/ quadrant coverage, and `index.md` sits outside any Diátaxis quadrant | structural     | [MANUAL]   |
+| ID | File          | Line | Issue                                                                                                                                                                     | Category       | Fix Type |
+|----|---------------|------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|----------|
+| D3 | docs/index.md | 3–5  | Paragraph hard-wrapped across lines 3–5 — join into one line (`documentation.1` / check_unwrapped_prose)                                                                  | temporal/style | [AUTO]   |
+| D4 | docs/         | —    | Structural gap: `docs/` holds only `index.md` and a lone ADR — no tutorials/, how-to/, or reference/ quadrant coverage, and `index.md` sits outside any Diátaxis quadrant | structural     | [MANUAL] |
 
 ## Diátaxis Compliance
 
@@ -80,7 +80,7 @@ Findings: 0 critical, 1 high, 1 medium, 2 low.
 
 ## API Doc Validation
 
-`skills/zolletta-metaskill/src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py`: 36 source signatures extracted, 0 documented items, **0 issues**. 30 undocumented items emitted as suggestions only (12 medium / 18 low) — `documentation.suggest_coverage` coverage hints, not findings, and no file in `docs/` is an API reference document.
+`skills/zolletta-metaskill/src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py`: 36 source signatures extracted, 0 documented items, **0 issues**. 30 undocumented items emitted as suggestions only (12 medium / 18 low) — `documentation.api_doc_suggest_coverage` coverage hints, not findings, and no file in `docs/` is an API reference document.
 
 ## Auto-Fixable Issues
 

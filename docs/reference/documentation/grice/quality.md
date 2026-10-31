@@ -13,7 +13,7 @@ All three metrics are on a 0-100 scale, oriented so that higher is better.
 ## Metrics
 
 | Metric                 | Measures                                                        |
-| ---------------------- | --------------------------------------------------------------- |
+|------------------------|-----------------------------------------------------------------|
 | `link_resolution`      | Percentage of internal links and anchors that resolve           |
 | `reference_resolution` | Percentage of file references that exist on disk                |
 | `lexical_alignment`    | How much of the document's vocabulary the source tree also uses |

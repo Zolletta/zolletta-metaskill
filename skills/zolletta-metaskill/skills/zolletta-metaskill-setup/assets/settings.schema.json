@@ -801,6 +801,8 @@
         "check_dip",
         "check_lsp",
         "check_test_structure",
+        "check_class_metrics",
+        "check_test_god_classes",
         "ocp_min_branches",
         "isp_min_methods",
         "dip_entry_points",
@@ -833,6 +835,16 @@
           "type": "boolean",
           "default": true,
           "description": "Mirror-structure check between source and test trees (test_structure_scanner)."
+        },
+        "check_class_metrics": {
+          "type": "boolean",
+          "default": true,
+          "description": "Class-size triage check (class_metrics_scanner)."
+        },
+        "check_test_god_classes": {
+          "type": "boolean",
+          "default": true,
+          "description": "Test God-class check (test_god_classes_scanner)."
         },
         "ocp_min_branches": {
           "type": "integer",

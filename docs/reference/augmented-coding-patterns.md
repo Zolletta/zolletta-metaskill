@@ -44,22 +44,22 @@ Short description definitions of the patterns and anti-patterns from [Augmented 
 
 ## How zolletta-metaskill maps to these patterns
 
-| Skill / mechanism                                     | Follows                             | Avoids                                    |
-|-------------------------------------------------------|-------------------------------------|-------------------------------------------|
-| Subcommand dispatch (meta-skill → focused subcommand) | Focused Agent                       | Distracted Agent                          |
-| One subagent per review area, parallel                | Focused Agent, Chain of Small Steps | Distracted Agent, Big Chunk Working       |
-| Scripts-first protocol (Phase A → B → C)              | Chain of Small Steps, Feedback Loop | Unvalidated Leaps                         |
-| Separate SUMMARY.md + TODO.md + specialist reports    | Slice for Review                    | Big Chunk Working, Cognitive Overload     |
-| `cache/_context.md` (shared context digest)           | —                                   | Cognitive Overload, Obsess Over Rules     |
-| "No borderline — emit or suppress, never hedge"       | Active Partner                      | Tell Me a Lie, AI Slop                    |
-| "Reason to change" test before God class verdict      | Active Partner                      | Unvalidated Leaps, Perfect Recall Fallacy |
-| Coverage cross-check before "missing tests" finding   | —                                   | Unvalidated Leaps                         |
-| Suppress-with-reason convention for `Any`/`mixed`     | Active Partner                      | Silent Misalignment                       |
-| Review-mode (read-only, no fixes)                     | —                                   | Sunk Cost                                 |
-| Fresh timestamped run folder per review               | Happy to Delete                     | Sunk Cost                                 |
-| Previous review comparison (carry-forward)            | Feedback Loop                       | Flying Blind                              |
-| Team-facing reports in standard markdown              | Shared Canvas                       | AI Isolation                              |
-| Deterministic scanner output in reports               | —                                   | AI Slop                                   |
-| External review on modified files only                | Slice for Review                    | Flying Blind                              |
+| Skill / mechanism                                                 | Follows                             | Avoids                                    |
+|-------------------------------------------------------------------|-------------------------------------|-------------------------------------------|
+| Subcommand dispatch (meta-skill → focused subcommand)             | Focused Agent                       | Distracted Agent                          |
+| One subagent per review area, parallel                            | Focused Agent, Chain of Small Steps | Distracted Agent, Big Chunk Working       |
+| Scripts-first protocol (Phase A → B → C)                          | Chain of Small Steps, Feedback Loop | Unvalidated Leaps                         |
+| Separate SUMMARY.md (overview + action list) + specialist reports | Slice for Review                    | Big Chunk Working, Cognitive Overload     |
+| `cache/_context.md` (shared context digest)                       | —                                   | Cognitive Overload, Obsess Over Rules     |
+| "No borderline — emit or suppress, never hedge"                   | Active Partner                      | Tell Me a Lie, AI Slop                    |
+| "Reason to change" test before God class verdict                  | Active Partner                      | Unvalidated Leaps, Perfect Recall Fallacy |
+| Coverage cross-check before "missing tests" finding               | —                                   | Unvalidated Leaps                         |
+| Suppress-with-reason convention for `Any`/`mixed`                 | Active Partner                      | Silent Misalignment                       |
+| Review-mode (read-only, no fixes)                                 | —                                   | Sunk Cost                                 |
+| Fresh timestamped run folder per review                           | Happy to Delete                     | Sunk Cost                                 |
+| Previous review comparison (carry-forward)                        | Feedback Loop                       | Flying Blind                              |
+| Team-facing reports in standard markdown                          | Shared Canvas                       | AI Isolation                              |
+| Deterministic scanner output in reports                           | —                                   | AI Slop                                   |
+| External review on modified files only                            | Slice for Review                    | Flying Blind                              |
 
 Full analysis with evidence and enhancement suggestions: [Anti-patterns audit](../explanation/anti-patterns.md).

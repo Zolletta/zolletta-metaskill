@@ -13,7 +13,7 @@ Accurate technical description of the tools. Aimed at users who need facts.
 Scanners, review conventions, and language-specific style rules.
 
 | Document                                                 | Description                                                      |
-| -------------------------------------------------------- | ---------------------------------------------------------------- |
+|----------------------------------------------------------|------------------------------------------------------------------|
 | [Scripts reference](code/scripts.md)                     | All scanning scripts: usage, options, examples                   |
 | [Scripts-first protocol](code/scripts-first-protocol.md) | Batch-run scripts, cache output, judgment only on deferred items |
 | [Review mode](code/review-mode.md)                       | Read-only review conventions                                     |
@@ -26,7 +26,7 @@ Scanners, review conventions, and language-specific style rules.
 Drift detection, staleness scoring, and operational conventions.
 
 | Document                                                        | Description                                                    |
-| --------------------------------------------------------------- | -------------------------------------------------------------- |
+|-----------------------------------------------------------------|----------------------------------------------------------------|
 | [Drift detection tools](documentation/drift-detection-tools.md) | documentor_client, quality review, API validator, link checker |
 | [Workflows & tools](documentation/workflows-and-tools.md)       | Quick start, 5 core workflows, CI recipes                      |
 | [Scoring & categories](documentation/scoring-and-categories.md) | Staleness scoring model, drift categories, troubleshooting     |
@@ -38,7 +38,7 @@ Drift detection, staleness scoring, and operational conventions.
 Settings, subcommands, CI/CD, frontmatter, reports, and tool messages.
 
 | Document                                                  | Description                                                    |
-| --------------------------------------------------------- | -------------------------------------------------------------- |
+|-----------------------------------------------------------|----------------------------------------------------------------|
 | [Settings schema](settings-schema.md)                     | Full field-by-field reference for `settings.json`              |
 | [Subcommands](subcommands.md)                             | All Zolletta-metaskill subcommands                             |
 | [CI/CD workflows](ci-cd-workflows.md)                     | GitHub Actions workflows: scope and triggers                   |
@@ -52,7 +52,7 @@ Settings, subcommands, CI/CD, frontmatter, reports, and tool messages.
 A real review output from dogfooding — see what the reports look like.
 
 | Document                                                                       | Description                                                        |
-| ------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+|--------------------------------------------------------------------------------|--------------------------------------------------------------------|
 | [Overview](example-review-report/index.md)                                     | Real review output from dogfooding — overview and files            |
 | [SUMMARY.md](example-review-report/SUMMARY.md)                                 | Executive summary with overall grade, trend, and prioritized items |
 | [patterns.md](example-review-report/patterns.md)                               | Design pattern review — God classes, SOLID, coupling               |

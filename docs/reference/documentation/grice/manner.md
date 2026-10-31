@@ -13,7 +13,7 @@ Manner carries more metrics than the other maxims because clarity is the maxim w
 ## Metrics
 
 | Metric              | Measures                                                    | Language |
-| ------------------- | ----------------------------------------------------------- | -------- |
+|---------------------|-------------------------------------------------------------|----------|
 | `readability`       | Flesch Reading Ease                                         | English  |
 | `grade_level`       | Gunning Fog, inverted so that simpler is higher             | English  |
 | `smog`              | SMOG index, inverted the same way                           | English  |

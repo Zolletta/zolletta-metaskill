@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [setup, review, patterns, documentor, python-*]
+skills: [setup, review, patterns, documentor, grice, python-*, php-*]
 ---
 
 # zolletta-metaskill
@@ -24,7 +24,7 @@ It runs as an AI agent skill inside tools like Claude Code, Cursor, Devin, and W
 - **Code style** — naming, typing, docstrings, linting (ruff, mypy, ty, PHPStan, Psalm)
 - **Testing style** — test isolation, naming, coverage gaps, mocking patterns
 - **Documentation** — Diátaxis compliance, drift detection, API validation
-- **Architecture** — ADR distillation, external-LLM review of modified files
+- **Architecture** — ADR distillation into review-ready directives
 
 ## Installation
 
@@ -45,7 +45,7 @@ cd /path/to/your/project
 
 The first time you run any subcommand in a project, the **setup guard** automatically runs `/zolletta-metaskill setup` if `.zolletta-metaskill/settings.json` does not exist.
 
-The orchestrator detects the language, runs all applicable skills in parallel, and writes reports to `.zolletta-metaskill/<timestamp>/reports/`. Start with `SUMMARY.md` for the overall grade and `TODO.md` for prioritized action items.
+The orchestrator detects the language, runs all applicable skills in parallel, and writes reports to `.zolletta-metaskill/<timestamp>/reports/`. Start with `SUMMARY.md` for the overall grade and the prioritized action items.
 
 For a focused review, run a single subcommand:
 
@@ -63,7 +63,7 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for development setup, testing, and th
 
 ## License
 
-MIT + Commons Clause. See [LICENSE](../LICENSE) and the `license` field in each subcommand's `SKILL.md` frontmatter.
+MIT + Commons Clause. See [LICENSE](../LICENSE) and the `license` field in each subcommand's `SUBCOMMAND.md` frontmatter.
 
 ## Attributions
 

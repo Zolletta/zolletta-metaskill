@@ -34,8 +34,7 @@ Each skill runs as a subagent and writes its findings to a markdown report in th
 
 The orchestrator collects all subcommand reports and creates:
 
-- `SUMMARY.md` — overall grade, grades by area, top strengths and weaknesses, priority items
-- `TODO.md` — aggregated action items from all skills, sorted by priority
+- `SUMMARY.md` — overall grade, grades by area, top strengths and weaknesses, and the aggregated action items from all skills, sorted by priority in the Open table
 
 The reports are saved to `.zolletta-metaskill/<timestamp>/reports/`.
 

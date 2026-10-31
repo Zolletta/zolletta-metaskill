@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [setup, review, patterns, documentor, grice, python-*]
+skills: [setup, review, patterns, documentor, grice, python-*, php-*]
 ---
 
 # Reports Reference

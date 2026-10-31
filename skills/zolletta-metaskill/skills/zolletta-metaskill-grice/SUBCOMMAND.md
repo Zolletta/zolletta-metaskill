@@ -38,7 +38,7 @@ The corpus is the documentor's, by construction: `DocumentationFilesFinder.find(
 ## Procedure
 
 1. Read `AGENTS.md` and any documentation rules in your agent configuration.
-2. Confirm the toggle. Read `documentation.check_grice` from `.zolletta-metaskill/settings.json`; when it is absent or `false`, write the report as `SKIPPED (check_grice disabled in settings.json)` and stop. The scanner does the same and exits 0 — it is opt-in because a relative index is a judgement about prose, and an unasked-for judgement is noise.
+2. Confirm the toggle. Read `documentation.check_grice` from `.zolletta-metaskill/settings.json`; when it is `false`, write the report as `SKIPPED (check_grice disabled in settings.json)` and stop — the toggle is on by default, so an absent key means the scan runs. The scanner does the same and exits 0; it is toggleable rather than always-on because a relative index is a judgement about prose.
 3. Run the scanner and persist its JSON, from the project root:
 
    ```bash

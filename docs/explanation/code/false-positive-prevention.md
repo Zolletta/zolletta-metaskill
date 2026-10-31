@@ -6,7 +6,7 @@ skills: [patterns]
 
 # False Positive Prevention
 
-The patterns skill includes three mechanisms to prevent verdict oscillation between reviews. These mechanisms ensure that automated triage signals are never reported as findings without human judgment.
+The patterns skill includes mechanisms to prevent verdict oscillation between reviews. They ensure that automated triage signals are never reported as findings without human judgment.
 
 ## 1. Mandatory judgment step for God class detection
 

@@ -30,7 +30,7 @@ Missing file references are the deliberate half-way case: they lower the `refere
 
 ## The corpus
 
-The corpus is the documentor's, by construction. `DocumentationFilesFinder.find()` names it, so the scan covers the markdown under `documentation.dir` plus the root documents `README.md`, `CONTRIBUTING.md` and `AGENTS.md`. `skills/`, `SKILL.md` and `CHANGELOG.md` are never scored — they are hand-maintained contracts and generated release output, so a percentile over them would measure something the author cannot act on.
+The corpus is the documentor's, by construction. `DocumentationFilesFinder.find(settings, repo_path)` names it, so the scan covers the markdown under `documentation.dir` plus the root documents `README.md`, `CONTRIBUTING.md` and `AGENTS.md`. `skills/`, `SKILL.md` and `CHANGELOG.md` are never scored — they are hand-maintained contracts and generated release output, so a percentile over them would measure something the author cannot act on.
 
 Two scans of the same tree produce the same numbers. Nothing here reads git history, network state or wall-clock time; the metrics are computed from the document text and the file tree alone.
 

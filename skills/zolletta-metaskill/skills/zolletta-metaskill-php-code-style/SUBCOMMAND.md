@@ -70,7 +70,7 @@ Review PHP code for type safety, modern PHP feature adoption, PSR-12 compliance,
 | 33 | Perf      | Native string functions over regex | `check_string_functions`                                   | `true`        | all     |
 | 34 | Structure | File length limit                  | `check_file_length`, `max_file_length`                     | `true`, `800` | all     |
 | 35 | Structure | Cyclomatic complexity limit        | `check_cyclomatic_complexity`, `max_cyclomatic_complexity` | `true`, `12`  | all     |
-| 36 | Structure | Function length limit              | `check_function_length`, `max_function_length`             | `true`, `100` | all     |
+| 36 | Structure | Function length limit              | `check_function_length`, `max_function_length`             | `true`, `125` | all     |
 | 37 | Structure | Max arguments limit                | `check_max_arguments`, `max_arguments`                     | `true`, `5`   | all     |
 
 ## Version gating
@@ -211,7 +211,7 @@ python3 ../../src/zolletta_metaskill/code_style/general/file_length_scanner.py
 python3 ../../src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py
 ```
 
-- **#36 Function length limit** — functions and methods must not span more than `max_function_length` lines (default: `100`, read from `php.code_style.max_function_length` in `settings.json`). The metric is a line span (signature through end of body, docblock excluded) — not a statement count. PHPStan and Psalm have no built-in function-length rule, so the tree-sitter-backed `function_length_scanner.py` is the deterministic check (it requires the optional `tree-sitter-php` dependency; without it `.php` files warn and are skipped). A long function serving one purpose is not necessarily a finding — the sensor flags it for review; the usual fix is extracting a collaborator:
+- **#36 Function length limit** — functions and methods must not span more than `max_function_length` lines (default: `125` as setup writes it to `settings.json`; the scanner falls back to `100` only when the key is absent — read from `php.code_style.max_function_length` in `settings.json`). The metric is a line span (signature through end of body, docblock excluded) — not a statement count. PHPStan and Psalm have no built-in function-length rule, so the tree-sitter-backed `function_length_scanner.py` is the deterministic check (it requires the optional `tree-sitter-php` dependency; without it `.php` files warn and are skipped). A long function serving one purpose is not necessarily a finding — the sensor flags it for review; the usual fix is extracting a collaborator:
 
 ```bash
 python3 ../../src/zolletta_metaskill/code_style/general/function_length_scanner.py

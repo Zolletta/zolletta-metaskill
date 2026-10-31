@@ -52,7 +52,7 @@ git clone https://github.com/Zolletta/zolletta-metaskill.git ~/src/zolletta-meta
 ln -s ~/src/zolletta-metaskill/skills/zolletta-metaskill ~/.agents/skills/zolletta-metaskill
 ```
 
-Symlinking (rather than copying) keeps the installation in sync with the working tree — the same layout `dev-install.sh` uses for development checkouts.
+Symlinking (rather than copying) keeps the installation in sync with the working tree — useful for development checkouts where edits should be picked up immediately. `dev-install.sh` is the scripted alternative: it installs the local bundle through `npx skills add`, which copies rather than links, so it reflects the tree at install time rather than tracking it live.
 
 ### Verify installation
 
@@ -62,7 +62,7 @@ The skill should appear in the agent's available skills list. Invoke it with:
 /zolletta-metaskill
 ```
 
-This should list the available subcommands: `setup`, `documentor`, `patterns`, `review`, `python-code-style`, `python-testing-style`.
+This should list the available subcommands: `help`, `version`, `setup`, `documentor`, `grice`, `patterns`, `review`, `adr-distiller`, `python-code-style`, `python-testing-style`, `php-code-style`, `php-testing-style`.
 
 ## Post-installation
 

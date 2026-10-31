@@ -13,7 +13,7 @@ All three metrics are on a 0-100 scale and produce no findings. Relevance is a c
 ## Metrics
 
 | Metric                | Compares                                    | Measured when                |
-| --------------------- | ------------------------------------------- | ---------------------------- |
+|-----------------------|---------------------------------------------|------------------------------|
 | `heading_body`        | Each heading against its own section        | The document has headings    |
 | `frontmatter_content` | The frontmatter block against the body      | The frontmatter is non-blank |
 | `corpus_pertinence`   | The document against the rest of the corpus | Always                       |

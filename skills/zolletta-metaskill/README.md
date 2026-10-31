@@ -45,7 +45,7 @@ cd /path/to/your/project
 
 The first time you run any subcommand in a project, the **setup guard** automatically runs `/zolletta-metaskill setup` if `.zolletta-metaskill/settings.json` does not exist.
 
-The orchestrator detects the language, runs all applicable skills in parallel, and writes reports to `.zolletta-metaskill/<timestamp>/reports/`. Start with `SUMMARY.md` for the overall grade and `TODO.md` for prioritized action items.
+The orchestrator detects the language, runs all applicable skills in parallel, and writes reports to `.zolletta-metaskill/<timestamp>/reports/`. Start with `SUMMARY.md` for the overall grade and the prioritized action items.
 
 For a focused review, run a single subcommand:
 
@@ -60,7 +60,7 @@ New to Zolletta-metaskill? Read the [getting started tutorial](https://metaskill
 
 ## API
 
-Zolletta-metaskill exposes no library API — it is a set of agent skills driven from the command line. The interface is the `/zolletta-metaskill <subcommand>` invocation, where `<subcommand>` selects exactly one skill: `setup`, `review`, `patterns`, `documentor`, `grice`, `python-code-style`, `python-testing-style`, `php-code-style`, `php-testing-style`, `adr-distiller`, or `help`.
+Zolletta-metaskill exposes no library API — it is a set of agent skills driven from the command line. The interface is the `/zolletta-metaskill <subcommand>` invocation, where `<subcommand>` selects exactly one skill: `setup`, `review`, `patterns`, `documentor`, `grice`, `python-code-style`, `python-testing-style`, `php-code-style`, `php-testing-style`, `adr-distiller`, `version`, or `help`.
 
 Each subcommand is self-contained: it reads its thresholds and scan roots from `.zolletta-metaskill/settings.json`, runs the scanners under `src/zolletta_metaskill/`, and writes a report into the run folder. The scanners are plain scripts with a `[--json]` flag and no positional arguments, so they can also be run directly from the repository root in CI or for dogfooding. See the [subcommands reference](https://metaskill.zolletta.org/reference/subcommands/) for the dispatch contract and the [scripts reference](https://metaskill.zolletta.org/reference/code/scripts/) for the command-line contract.
 
@@ -70,7 +70,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and the q
 
 ## License
 
-MIT + Commons Clause. See [LICENSE](LICENSE) and the `license` field in each subcommand's `SKILL.md` frontmatter.
+MIT + Commons Clause. See [LICENSE](LICENSE) and the `license` field in each subcommand's `SUBCOMMAND.md` frontmatter.
 
 ## Attributions
 

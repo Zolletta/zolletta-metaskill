@@ -60,7 +60,7 @@ What becomes easier or harder to do because of this change?
 
 ## ADR Distillation
 
-The ADR distiller finds ADRs under the directory configured as `documentation.adrs` in `settings.json` (this project: `docs/explanation/adr/architecture/`) and distills each **Accepted** ADR into a one-line directive in `adr-distilled.md`. The generated file lives inside the ADR corpus directory and serves as an executable architectural manifest — a quick-reference index of the rules in force.
+The ADR distiller finds ADRs under the directory configured as `documentation.adrs` in `settings.json` — a path relative to `documentation.dir` (this project: `explanation/adr/architecture`) — and distills each **Accepted** ADR into a one-line directive in `adr-distilled.md`. The generated file lives inside the ADR corpus directory and serves as an executable architectural manifest — a quick-reference index of the rules in force.
 
 ### How it works
 

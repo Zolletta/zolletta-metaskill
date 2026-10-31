@@ -23,9 +23,9 @@ skills: [review]
 
 ### Class Metrics (top candidates)
 
-| Class        | File                               | Lines   | Methods   | Attributes   | Verdict     |
-| ------------ | ---------------------------------- | ------- | --------- | ------------ | ----------- |
-| ApiHandler   | src/playground/user_manager.py:27  | 172     | 3         | 0            | God class   |
+| Class      | File                              | Lines | Methods | Attributes | Verdict   |
+|------------|-----------------------------------|-------|---------|------------|-----------|
+| ApiHandler | src/playground/user_manager.py:27 | 172   | 3       | 0          | God class |
 
 **Reason-to-change test on `ApiHandler`:**
 
@@ -37,20 +37,20 @@ Changes arrive from at least two unrelated domains — business rules and presen
 
 **Test god classes (top-N, all trivially small):**
 
-| Lines   | Methods   | Class             | File                              |
-| ------- | --------- | ----------------- | --------------------------------- |
-| 11      | 3         | TestStringUtils   | tests/test_string_utils.py:6-16   |
-| 6       | 2         | TestThings        | tests/test_stuff.py:7-12          |
-| 6       | 2         | TestOtherThings   | tests/test_stuff.py:15-20         |
+| Lines | Methods | Class           | File                            |
+|-------|---------|-----------------|---------------------------------|
+| 11    | 3       | TestStringUtils | tests/test_string_utils.py:6-16 |
+| 6     | 2       | TestThings      | tests/test_stuff.py:7-12        |
+| 6     | 2       | TestOtherThings | tests/test_stuff.py:15-20       |
 
 No test God classes — all are small; no finding.
 
 ### Structural Conventions
 
-| Check                           | Status   | Details                                                                                                                                                                                                                                                                      |
-| ------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| One class per file              | FAIL     | 7 files: `src-php/CheckoutService.php` (3), `src-php/OrderProcessor.php` (6), `src/playground/checkout_service.py` (3), `src/playground/notification_service.py` (2), `src/playground/report_engine.py` (5), `src/playground/user_manager.py` (2), `tests/test_stuff.py` (2) |
-| Test structure mirrors source   | FAIL     | 4 source files missing test mirrors (all at 0% coverage); 2 orphaned test files                                                                                                                                                                                              |
+| Check                         | Status | Details                                                                                                                                                                                                                                                                      |
+|-------------------------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| One class per file            | FAIL   | 7 files: `src-php/CheckoutService.php` (3), `src-php/OrderProcessor.php` (6), `src/playground/checkout_service.py` (3), `src/playground/notification_service.py` (2), `src/playground/report_engine.py` (5), `src/playground/user_manager.py` (2), `tests/test_stuff.py` (2) |
+| Test structure mirrors source | FAIL   | 4 source files missing test mirrors (all at 0% coverage); 2 orphaned test files                                                                                                                                                                                              |
 
 #### Test structure scanner (verbatim from `cache/test_structure.md`)
 
@@ -61,14 +61,14 @@ No test God classes — all are small; no finding.
 **3. Orphaned tests (2):**
 
 | Test file              |
-| ---------------------- |
+|------------------------|
 | `test_string_utils.py` |
 | `test_stuff.py`        |
 
 **4. Missing tests (4):**
 
-| Source file               | Classes                                                    | Expected prefix                 | Expected dir |
-| ------------------------- | ---------------------------------------------------------- | ------------------------------- | ------------ |
+| Source file | Classes | Expected prefix | Expected dir |
+|-------------|---------|-----------------|--------------|
 | `checkout_service.py`     | StripeGateway, MysqlOrderRepository, CheckoutService       | `test_checkout_service*.py`     | `./          |
 | `notification_service.py` | BroadChannel, NotificationService                          | `test_notification_service*.py` | `./          |
 | `report_engine.py`        | HtmlReport, CsvReport, JsonReport, XmlReport, ReportEngine | `test_report_engine*.py`        | `./          |
@@ -82,9 +82,9 @@ Coverage cross-check (`pytest tests --cov=src`, 7 tests pass): `checkout_service
 
 `cache/integration_graph.json`: 1 internal edge, 3 external imports, 9 files scanned.
 
-| Integration (from → to)                                                                    | Strength               | Distance             | Volatility                    | Balanced?   | Verdict               |
-| ------------------------------------------------------------------------------------------ | ---------------------- | -------------------- | ----------------------------- | ----------- | --------------------- |
-| `src/playground/user_manager.py` → `src/playground/string_utils.py` (`shout`, import-only) | Contract (import-only) | Low (same package)   | Low (generic utils — assumed) | Yes         | Balanced — no finding |
+| Integration (from → to)                                                                    | Strength               | Distance           | Volatility                    | Balanced? | Verdict               |
+|--------------------------------------------------------------------------------------------|------------------------|--------------------|-------------------------------|-----------|-----------------------|
+| `src/playground/user_manager.py` → `src/playground/string_utils.py` (`shout`, import-only) | Contract (import-only) | Low (same package) | Low (generic utils — assumed) | Yes       | Balanced — no finding |
 
 Only *unbalanced AND volatile* integrations are findings. The single edge is weak-strength across a low-distance, low-volatility boundary — balanced. Volatility inferred from `string_utils` being a generic utility module (assumption; no ADR directives exist to refine it). `ApiHandler`'s breadth is a within-class (intrusive) concern already captured by P1.
 
@@ -96,39 +96,39 @@ Only *unbalanced AND volatile* integrations are findings. The single edge is wea
 
 ### High
 
-| #    | File                                     | Class/Symbol                 | Issue                                                                                                                             | Principle       | Suggested Fix                                                                                                      |
-| ---- | ---------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------ |
-| P1   | src/playground/user_manager.py:27        | ApiHandler                   | God class — user creation, account-tier reconciliation, and report formatting in one class (multiple unrelated reasons to change) | SRP / God class | Split into `UserService` (create_user), `AccountReconciler` (reconcile_accounts), `ReportFormatter` (build_report) |
-| P2   | src/playground/report_engine.py:23       | ReportEngine.render          | OCP — isinstance if/elif type ladder over 4 report types (plus nested tail at :25); each new report type edits this method        | OCP             | Move `render()` onto each report class (polymorphism) or use a strategy registry                                   |
-| P3   | src-php/OrderProcessor.php:25            | OrderProcessor::ship         | OCP — instanceof if/elseif ladder over 4 carriers; each new carrier edits this method                                             | OCP             | Give carriers a common `Carrier::label()` interface and dispatch polymorphically                                   |
-| P4   | src/playground/notification_service.py:7 | BroadChannel                 | ISP — fat ABC with 6 methods; `NotificationService` stubs 4 of them with `NotImplementedError` (:40,:43,:46,:49)                  | ISP             | Split into focused abstractions (e.g. `EmailChannel`, `SmsChannel`, `DigestScheduler`)                             |
-| P5   | src-php/OrderProcessor.php:6             | Worker                       | ISP — fat interface with 6 methods (process, validate, persist, notify, audit, rollback)                                          | ISP             | Split into smaller role interfaces                                                                                 |
-| P6   | src/playground/checkout_service.py:17    | CheckoutService.**init**     | DIP — instantiates `StripeGateway` (:17) and `MysqlOrderRepository` (:18) internally                                              | DIP             | Constructor-inject both dependencies                                                                               |
-| P7   | src-php/CheckoutService.php:28           | CheckoutService::__construct | DIP — `new StripeGateway()` (:28) and `new MysqlOrderRepository()` (:29) inside constructor                                       | DIP             | Constructor-inject both dependencies                                                                               |
+| #  | File                                     | Class/Symbol                 | Issue                                                                                                                             | Principle       | Suggested Fix                                                                                                      |
+|----|------------------------------------------|------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|-----------------|--------------------------------------------------------------------------------------------------------------------|
+| P1 | src/playground/user_manager.py:27        | ApiHandler                   | God class — user creation, account-tier reconciliation, and report formatting in one class (multiple unrelated reasons to change) | SRP / God class | Split into `UserService` (create_user), `AccountReconciler` (reconcile_accounts), `ReportFormatter` (build_report) |
+| P2 | src/playground/report_engine.py:23       | ReportEngine.render          | OCP — isinstance if/elif type ladder over 4 report types (plus nested tail at :25); each new report type edits this method        | OCP             | Move `render()` onto each report class (polymorphism) or use a strategy registry                                   |
+| P3 | src-php/OrderProcessor.php:25            | OrderProcessor::ship         | OCP — instanceof if/elseif ladder over 4 carriers; each new carrier edits this method                                             | OCP             | Give carriers a common `Carrier::label()` interface and dispatch polymorphically                                   |
+| P4 | src/playground/notification_service.py:7 | BroadChannel                 | ISP — fat ABC with 6 methods; `NotificationService` stubs 4 of them with `NotImplementedError` (:40,:43,:46,:49)                  | ISP             | Split into focused abstractions (e.g. `EmailChannel`, `SmsChannel`, `DigestScheduler`)                             |
+| P5 | src-php/OrderProcessor.php:6             | Worker                       | ISP — fat interface with 6 methods (process, validate, persist, notify, audit, rollback)                                          | ISP             | Split into smaller role interfaces                                                                                 |
+| P6 | src/playground/checkout_service.py:17    | CheckoutService.**init**     | DIP — instantiates `StripeGateway` (:17) and `MysqlOrderRepository` (:18) internally                                              | DIP             | Constructor-inject both dependencies                                                                               |
+| P7 | src-php/CheckoutService.php:28           | CheckoutService::__construct | DIP — `new StripeGateway()` (:28) and `new MysqlOrderRepository()` (:29) inside constructor                                       | DIP             | Constructor-inject both dependencies                                                                               |
 
 ### Medium
 
-| #     | File                                          | Class/Symbol                                         | Issue                                                                                                  | Principle           | Suggested Fix                                           |
-| ----- | --------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------- | ------------------------------------------------------- |
-| P8    | src/playground/notification_service.py:40-49  | NotificationService                                  | LSP — 4 overridden methods raise `NotImplementedError` where the parent contract raises nothing        | LSP                 | Resolved by P4 (segregated interfaces remove the stubs) |
-| P9    | src-php/OrderProcessor.php                    | UpsCarrier..UspsCarrier, OrderProcessor, Worker      | One-class-per-file violated — 6 types in one file                                                      | classes.3           | One file per class                                      |
-| P10   | src-php/CheckoutService.php                   | StripeGateway, MysqlOrderRepository, CheckoutService | One-class-per-file violated — 3 classes in one file                                                    | classes.3           | One file per class                                      |
-| P11   | src/playground/report_engine.py               | HtmlReport..XmlReport, ReportEngine                  | One-class-per-file violated — 5 classes in one file                                                    | classes.3           | One file per class                                      |
-| P12   | src/playground/checkout_service.py            | —                                                    | Missing test mirror `test_checkout_service*.py`; 0% coverage, no indirect references                   | tests.1             | Add mirrored test file                                  |
-| P13   | src/playground/notification_service.py        | —                                                    | Missing test mirror `test_notification_service*.py`; 0% coverage                                       | tests.1             | Add mirrored test file                                  |
-| P14   | src/playground/report_engine.py               | —                                                    | Missing test mirror `test_report_engine*.py`; 0% coverage                                              | tests.1             | Add mirrored test file                                  |
-| P15   | src/playground/user_manager.py                | —                                                    | Missing test mirror `test_user_manager*.py`; 0% coverage                                               | tests.1             | Add mirrored test file                                  |
-| P16   | src/playground/checkout_service.py            | StripeGateway, MysqlOrderRepository, CheckoutService | One-class-per-file violated — 3 classes in one file                                                    | classes.3           | One file per class                                      |
-| P17   | src/playground/notification_service.py        | BroadChannel, NotificationService                    | One-class-per-file violated — 2 classes in one file                                                    | classes.3           | One file per class                                      |
-| P18   | src/playground/user_manager.py                | ApiHandler, UnusedHelper                             | One-class-per-file violated — 2 classes in one file; `ApiHandler` also misnamed vs filename            | classes.3/classes.1 | Split; file should be `api_handler.py`                  |
+| #   | File                                         | Class/Symbol                                         | Issue                                                                                           | Principle           | Suggested Fix                                           |
+|-----|----------------------------------------------|------------------------------------------------------|-------------------------------------------------------------------------------------------------|---------------------|---------------------------------------------------------|
+| P8  | src/playground/notification_service.py:40-49 | NotificationService                                  | LSP — 4 overridden methods raise `NotImplementedError` where the parent contract raises nothing | LSP                 | Resolved by P4 (segregated interfaces remove the stubs) |
+| P9  | src-php/OrderProcessor.php                   | UpsCarrier..UspsCarrier, OrderProcessor, Worker      | One-class-per-file violated — 6 types in one file                                               | classes.3           | One file per class                                      |
+| P10 | src-php/CheckoutService.php                  | StripeGateway, MysqlOrderRepository, CheckoutService | One-class-per-file violated — 3 classes in one file                                             | classes.3           | One file per class                                      |
+| P11 | src/playground/report_engine.py              | HtmlReport..XmlReport, ReportEngine                  | One-class-per-file violated — 5 classes in one file                                             | classes.3           | One file per class                                      |
+| P12 | src/playground/checkout_service.py           | —                                                    | Missing test mirror `test_checkout_service*.py`; 0% coverage, no indirect references            | tests.1             | Add mirrored test file                                  |
+| P13 | src/playground/notification_service.py       | —                                                    | Missing test mirror `test_notification_service*.py`; 0% coverage                                | tests.1             | Add mirrored test file                                  |
+| P14 | src/playground/report_engine.py              | —                                                    | Missing test mirror `test_report_engine*.py`; 0% coverage                                       | tests.1             | Add mirrored test file                                  |
+| P15 | src/playground/user_manager.py               | —                                                    | Missing test mirror `test_user_manager*.py`; 0% coverage                                        | tests.1             | Add mirrored test file                                  |
+| P16 | src/playground/checkout_service.py           | StripeGateway, MysqlOrderRepository, CheckoutService | One-class-per-file violated — 3 classes in one file                                             | classes.3           | One file per class                                      |
+| P17 | src/playground/notification_service.py       | BroadChannel, NotificationService                    | One-class-per-file violated — 2 classes in one file                                             | classes.3           | One file per class                                      |
+| P18 | src/playground/user_manager.py               | ApiHandler, UnusedHelper                             | One-class-per-file violated — 2 classes in one file; `ApiHandler` also misnamed vs filename     | classes.3/classes.1 | Split; file should be `api_handler.py`                  |
 
 ### Low
 
-| #     | File                           | Class/Symbol                | Issue                                                                                            | Principle       | Suggested Fix                                                                |
-| ----- | ------------------------------ | --------------------------- | ------------------------------------------------------------------------------------------------ | --------------- | ---------------------------------------------------------------------------- |
-| P19   | tests/test_stuff.py            | TestThings, TestOtherThings | Two `Test*` classes in one file; file tests no mirrored source (orphaned); no section comments   | tests.1/tests.2 | Split into `test_<unit>.py` mirrors or delete                                |
-| P20   | tests/test_stuff.py            | —                           | Orphaned test file — tests `string_utils` internals already covered by `test_string_utils.py`    | tests.1         | Merge into `test_string_utils.py` or delete                                  |
-| P21   | src/playground/string_utils.py | —                           | Module-level functions, zero classes (utility module)                                            | classes.3 (low) | Acceptable as a utility module; no action unless conventions require a class |
+| #   | File                           | Class/Symbol                | Issue                                                                                          | Principle       | Suggested Fix                                                                |
+|-----|--------------------------------|-----------------------------|------------------------------------------------------------------------------------------------|-----------------|------------------------------------------------------------------------------|
+| P19 | tests/test_stuff.py            | TestThings, TestOtherThings | Two `Test*` classes in one file; file tests no mirrored source (orphaned); no section comments | tests.1/tests.2 | Split into `test_<unit>.py` mirrors or delete                                |
+| P20 | tests/test_stuff.py            | —                           | Orphaned test file — tests `string_utils` internals already covered by `test_string_utils.py`  | tests.1         | Merge into `test_string_utils.py` or delete                                  |
+| P21 | src/playground/string_utils.py | —                           | Module-level functions, zero classes (utility module)                                          | classes.3 (low) | Acceptable as a utility module; no action unless conventions require a class |
 
 ## Informational
 

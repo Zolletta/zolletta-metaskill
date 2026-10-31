@@ -150,15 +150,15 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Run full doc review
         # runs quality review + API doc validation + link check, prints aggregated report
-        run: python engineering/zolletta-documentor/src/zolletta_metaskill/documentor/documentor_client.py --json > drift-report.json
+        run: python src/zolletta_metaskill/documentor/documentor_client.py --json > drift-report.json
 
       - name: Check staleness score
         # set documentation.staleness_threshold: 50 in .zolletta-metaskill/settings.json
-        run: python engineering/zolletta-documentor/src/zolletta_metaskill/documentor/documentor_client.py
+        run: python src/zolletta_metaskill/documentor/documentor_client.py
 
       - name: Upload drift report
         if: always()
@@ -175,7 +175,7 @@ jobs:
 # .git/hooks/pre-commit
 # Fail commit if docs are severely stale
 # (requires documentation.staleness_threshold: 30 in .zolletta-metaskill/settings.json)
-python engineering/zolletta-documentor/src/zolletta_metaskill/documentor/quality/quality_review.py --json > /dev/null
+python src/zolletta_metaskill/documentor/quality/quality_review.py --json > /dev/null
 if [ $? -ne 0 ]; then
     echo "Documentation is critically stale. Update docs before committing."
     exit 1

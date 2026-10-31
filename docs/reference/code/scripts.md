@@ -25,6 +25,7 @@ python3 skills/zolletta-metaskill/src/zolletta_metaskill/patterns/general/class_
 | Setting                                   | Default | Description                       |
 |-------------------------------------------|---------|-----------------------------------|
 | `python.paths.source`                     | `[src]` | Source roots to scan              |
+| `python.patterns.check_class_metrics`     | true    | Check toggle                      |
 | `python.patterns.class_metrics_top`       | 30      | Show only the top N classes       |
 | `python.patterns.class_metrics_min_lines` | 50      | Skip classes shorter than N lines |
 
@@ -292,7 +293,7 @@ python3 skills/zolletta-metaskill/src/zolletta_metaskill/patterns/php/dependency
 |--------------------------|---------|--------------|
 | `php.patterns.check_dip` | true    | Check toggle |
 
-**How it works**: since `ModuleInfo` does not capture `new` expressions, this scanner calls `PHPEngine.parse_raw()` to access the tree-sitter AST directly and walks it for `new_expression` nodes inside class methods.
+**How it works**: since `ModuleInfo` does not capture `new` expressions, this scanner guards on `isinstance(engine, RawASTEngine)` and calls `parse_raw()` to access the tree-sitter AST directly, then walks it for `new_expression` nodes inside class methods.
 
 **Exclusions**: classes whose name contains `Factory` or `Builder` are treated as composition roots where object creation is expected. PHP built-in types (`stdClass`, `DateTime`, `Exception`, etc.) are excluded from dependency detection.
 
@@ -324,7 +325,7 @@ python3 skills/zolletta-metaskill/src/zolletta_metaskill/patterns/php/open_close
 | `php.patterns.check_ocp`        | true    | Check toggle                        |
 | `php.patterns.ocp_min_branches` | 3       | Minimum instanceof branches to flag |
 
-**How it works**: since `ModuleInfo` does not capture `instanceof` expressions, this scanner calls `PHPEngine.parse_raw()` to access the tree-sitter AST directly and counts `instanceof` branches in `if_statement` nodes.
+**How it works**: since `ModuleInfo` does not capture `instanceof` expressions, this scanner guards on `isinstance(engine, RawASTEngine)` and calls `parse_raw()` to access the tree-sitter AST directly, then counts `instanceof` branches in `if_statement` nodes.
 
 ## LanguageEngine Protocol
 
@@ -334,25 +335,26 @@ The `LanguageEngine` protocol is the seam between language-agnostic scanners and
 
 Defines the `LanguageEngine` protocol (`@runtime_checkable`). Every engine must implement:
 
-| Method / property      | Description                                                                |
-|------------------------|----------------------------------------------------------------------------|
-| `language`             | Language identifier (e.g. `"python"`, `"php"`)                             |
-| `parse_module(path)`   | Parse a source file and return a `ModuleInfo`                              |
-| `is_test_file(path)`   | Return `True` if the path is a test file for this language                 |
-| `is_source_file(path)` | Return `True` if the path is a source file for this language               |
-| `file_extensions()`    | Return the list of extensions handled (e.g. `[".py"]`, `[".php"]`)         |
-| `test_file_glob()`     | Return the glob pattern for test files (e.g. `"test_*.py"`, `"*Test.php"`) |
+| Method / property    | Description                                                        |
+|----------------------|--------------------------------------------------------------------|
+| `language`           | Language identifier (e.g. `"python"`, `"php"`)                     |
+| `parse_module(path)` | Parse a source file and return a `ModuleInfo`                      |
+| `file_extensions()`  | Return the list of extensions handled (e.g. `[".py"]`, `[".php"]`) |
 
 ### skills/zolletta-metaskill/src/zolletta_metaskill/core/engine/engine_registry.py
 
 Provides the engine registry — maps language names and file extensions to engines:
 
-| Function                | Description                                                                           |
-|-------------------------|---------------------------------------------------------------------------------------|
-| `register(engine)`      | Register an engine under its `language` identifier (raises `ValueError` on duplicate) |
-| `get(language)`         | Return the registered engine for a language (raises `KeyError` if not found)          |
-| `get_for_file(path)`    | Return the engine that handles a file path based on its extension, or `None`          |
-| `available_languages()` | Return a sorted list of registered language identifiers                               |
+| Function                | Description                                                                                                                        |
+|-------------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| `register(engine)`      | Register an engine under its `language` identifier (raises `ValueError` on duplicate)                                              |
+| `get(language)`         | Return the registered engine for a language (raises `KeyError` if not found)                                                       |
+| `get_for_file(path)`    | Return the engine that handles a file path based on its extension, or `None`                                                       |
+| `available_languages()` | Return a sorted list of registered language identifiers                                                                            |
+| `ensure(engine)`        | Register an engine only if its language is not already registered — idempotent, never raises                                       |
+| `ensure_python()`       | Register the bundled `PythonEngine` if no Python engine is registered (lazy import)                                                |
+| `ensure_php()`          | Register the bundled `PHPEngine` if no PHP engine is registered (lazy import; the grammar loads only when a `.php` file is parsed) |
+| `clear()`               | Remove all registered engines — primarily for test isolation                                                                       |
 
 ### skills/zolletta-metaskill/src/zolletta_metaskill/core/engine/python_engine.py & skills/zolletta-metaskill/src/zolletta_metaskill/core/engine/php_engine.py
 
@@ -360,6 +362,14 @@ Two implementations of the `LanguageEngine` protocol:
 
 - **`PythonEngine`** — wraps Python's `ast` module to parse `.py` files into `ModuleInfo`.
 - **`PHPEngine`** — wraps tree-sitter with the tree-sitter-php grammar to parse `.php` files into `ModuleInfo`. The `tree-sitter-php` package is an optional dependency (`uv pip install zolletta-metaskill[php]`); if not installed, the engine still instantiates but `parse_module()` raises a clear `ImportError`.
+
+### skills/zolletta-metaskill/src/zolletta_metaskill/core/engine/raw_ast_engine.py
+
+Defines the `RawASTEngine` capability protocol (`@runtime_checkable`, ADR-0010). `LanguageEngine` is language-neutral — it returns `ModuleInfo` and says nothing about the parser. Scanners that genuinely need the parser's own tree (PHP `new`/`instanceof` chains) guard on `isinstance(engine, RawASTEngine)` instead of coupling to the concrete `PHPEngine` — they depend on the capability, not on which language provides it. One member:
+
+| Method            | Description                                                                                                     |
+|-------------------|-----------------------------------------------------------------------------------------------------------------|
+| `parse_raw(path)` | Parse a file and return `(tree, source)` — the parser's own tree (typed `Any` on purpose) plus the file's bytes |
 
 ### PHPEngine.parse_raw()
 
@@ -372,6 +382,42 @@ Returns the raw tree-sitter `Tree` and source bytes for a `.php` file. Used by P
 **Parameters:**
 
 - `path` — Path to the `.php` file to parse.
+
+## Shared Helpers
+
+### skills/zolletta-metaskill/src/zolletta_metaskill/core/name_conventions.py
+
+The file↔class and test-file naming rules are a single domain convention, so the scanners that need it (naming conventions, test structure, test splitter, one class per file) consume this module rather than each carrying a private copy that could diverge. All members are `@staticmethod`:
+
+| Function                        | Description                                                                                                         |
+|---------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| `snake_to_pascal(name)`         | Convert snake_case to PascalCase (`my_class` → `MyClass`)                                                           |
+| `pascal_to_snake(name)`         | Convert PascalCase to snake_case (`MyClass` → `my_class`) — one `_` per uppercase char (`ADRCache` → `a_d_r_cache`) |
+| `test_prefixes(stem, classes)`  | Return the accepted test-name prefixes for a file — the file stem and each class it defines                         |
+| `get_class_names(path)`         | Return top-level class names in a source file, parsed through the registered language engine                        |
+| `auto_detect_package(src_root)` | Return the package directory under a source root (first child with `__init__.py`, else first dir)                   |
+
+### skills/zolletta-metaskill/src/zolletta_metaskill/core/project_config.py
+
+The single funnel for every scanner's configuration: all toggles, roots, and thresholds come from `.zolletta-metaskill/settings.json` through this module, never from the command line (AGENTS `cli.1`). It also owns the shared engine-registration and file-enumeration lifecycle so scanners don't re-implement it. Principal members (all `@staticmethod`/`@classmethod`):
+
+| Function                                                 | Description                                                                                                  |
+|----------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
+| `load_settings(path)`                                    | Load and parse `settings.json` (empty dict when missing)                                                     |
+| `setting(settings, dotted_path, default)`                | Read a nested setting by dotted path (`"python.patterns.check_dip"`)                                         |
+| `scan_languages(settings, toggle_path)`                  | Languages whose `toggle_path` check is enabled — the per-scanner on/off gate                                 |
+| `ensure_engines()`                                       | Register the engines for all configured languages (delegates to `EngineRegistry.ensure_*`, no eager imports) |
+| `source_roots(settings, languages)`                      | Resolve source scan roots from `python.paths.source` / `php.autoload.psr-4` (deduped)                        |
+| `test_roots(settings, languages)`                        | Resolve test roots from `python.paths.tests` / `php.autoload.psr-4-dev` (deduped)                            |
+| `existing_roots(roots)`                                  | Filter roots to those that exist on disk                                                                     |
+| `resolve_extensions(settings_path, toggle_path)`         | File extensions to scan, per language, optionally gated by a check toggle                                    |
+| `iter_files(root, extensions)`                           | Enumerate matching files under one root — git-ignore aware                                                   |
+| `iter_source_files(roots, extensions)`                   | `iter_files` across every root, deduplicated                                                                 |
+| `scan_files(roots, extensions, collect)`                 | Full lifecycle: roots → existing → enumerate → `ModuleInfo` per file via the registry                        |
+| `extensions_for(languages)`                              | Extension set for a language set (e.g. `{".py", ".php"}`)                                                    |
+| `languages_for_extensions(languages, extensions)`        | Restrict a language set to those owning the given extensions                                                 |
+| `any_enabled(settings, languages, toggle_path, default)` | True when the toggle is enabled for any language                                                             |
+| `emit_skipped(as_json, reason)`                          | Print the standard SKIPPED report and reason                                                                 |
 
 ## Dead Code Script
 
@@ -454,7 +500,7 @@ python3 skills/zolletta-metaskill/src/zolletta_metaskill/testing_style/python/te
 |---------------|--------------------------------|------------------------------------------------|
 | `<test_file>` | (req)                          | Path to the test file to split                 |
 | `--mapping`   | auto-derived from method names | JSON/explicit SUT mapping                      |
-| `--class`     | (all test classes)             | Split only this class                          |
+| `--class`     | first test class in the file   | Split only this class                          |
 | `--dry-run`   | off                            | Show what would be split without writing files |
 | `--json`      | off                            | Output the split plan as JSON                  |
 

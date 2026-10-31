@@ -77,7 +77,7 @@ Suppress false positives per [false-positive-prevention.md](../../explanation/co
 ## See also
 
 - [General principles](../../explanation/code/general-principles.md) — SOLID and other fundamental principles
-- [False-positive prevention](../../explanation/code/false-positive-prevention.md) — three mechanisms to avoid false positives
+- [False-positive prevention](../../explanation/code/false-positive-prevention.md) — how false positives are prevented
 - [Structural conventions](../../explanation/code/structural-conventions.md) — one class per file, test mirroring, naming
 - [Scripts reference](../../reference/code/scripts.md) — full reference for all scanning scripts
 - [Split a God test class](split-god-test-class.md) — how to split a test class that tests multiple SUTs

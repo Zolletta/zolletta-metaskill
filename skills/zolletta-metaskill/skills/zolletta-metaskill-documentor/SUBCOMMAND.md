@@ -35,7 +35,7 @@ Read shared guidelines from the meta-skill (parent directory):
 
 Local scripts and references are in these locations:
 
-- `../../src/zolletta_metaskill/documentor/` — drift detection tools (Python stdlib only)
+- `../../src/zolletta_metaskill/documentor/` — drift detection tools (Python 3.12+)
 - `../../docs/reference/documentation/` — drift scoring, workflow, and operational rules
 - `../../docs/explanation/documentation/` — drift prevention strategies and documentation standards
 - `assets/` — report templates and sample data
@@ -142,7 +142,7 @@ Every tool below reads **only the documentation** — the markdown under `docume
 | `links/link_checker.py`              | Audit links and anchors in every markdown file                                        | `python ../../src/zolletta_metaskill/documentor/links/link_checker.py [--broken-only]`       |
 | `quality/unwrapped_prose_scanner.py` | Flag paragraphs hard-wrapped across lines (opt-in, not run by `documentor_client.py`) | `python ../../src/zolletta_metaskill/documentor/quality/unwrapped_prose_scanner.py [--json]` |
 
-All tools: Python 3.8+ stdlib only, run from the repository root, `[--json]` and `--help`, any OS. Paths and thresholds come from `documentation.*` in `.zolletta-metaskill/settings.json` — see `../../docs/reference/settings-schema.md`. Each tool writes its JSON cache into the current run directory, `<runs_dir>/<YYYY-MM-DD-HH-MM>/cache/` — `.zolletta-metaskill/<timestamp>/cache/` with the default `runs_dir` — so each review keeps its own history instead of overwriting the last; before the first run directory exists, artifacts land in `<runs_dir>/cache/`.
+All tools: Python 3.12+ stdlib only at import time, run from the repository root, `[--json]` and `--help`, any OS. Paths and thresholds come from `documentation.*` in `.zolletta-metaskill/settings.json` — see `../../docs/reference/settings-schema.md`. Each tool writes its JSON cache into the current run directory, `<runs_dir>/<YYYY-MM-DD-HH-MM>/cache/` — `.zolletta-metaskill/<timestamp>/cache/` with the default `runs_dir` — so each review keeps its own history instead of overwriting the last; before the first run directory exists, artifacts land in `<runs_dir>/cache/`.
 
 ### False positive filtering
 
@@ -186,7 +186,7 @@ Load on demand — keep this file lean:
    - `api_doc/api_doc_validator.py` — API doc accuracy against source (AST) (`cache/api_doc_validator.json`)
    - `links/link_checker.py` — broken links and duplicate anchors (`cache/link_checker.json`)
    - `quality/unwrapped_prose_scanner.py` — only when `documentation.check_unwrapped_prose` is `true` in `settings.json`; redirect to `cache/unwrapped_prose.json`. It reports SKIPPED and exits 0 otherwise, so an unconfigured project is unaffected.
-   - **Non-English documentation**: if `documentation.language` in `settings.json` is not `"en"`, translate the English signpost headings and directory names before running the quality review. Write a JSON file (see `documentation.diataxis_translations` in `docs/reference/code/scripts.md` for the format) with the translated equivalents and set it via `documentation.diataxis_translations` in `settings.json`. The English signposts (e.g. `"tutorials"`, `"prerequisites"`, `"what we will learn"`) are the keys — translate each to the documentation language. Also translate the README section defaults (`installation`, `usage`, `api`, `contributing`, `license`) and include them as `readme_sections` in the JSON.
+   - **Non-English documentation**: if `documentation.language` in `settings.json` is not `"en"`, translate the English signpost headings and directory names before running the quality review. Write a JSON file (see `documentation.diataxis_translations` in `../../docs/reference/settings-schema.md` for the format) with the translated equivalents and set it via `documentation.diataxis_translations` in `settings.json`. The English signposts (e.g. `"tutorials"`, `"prerequisites"`, `"what we will learn"`) are the keys — translate each to the documentation language. Also translate the README section defaults (`installation`, `usage`, `api`, `contributing`, `license`) and include them as `readme_sections` in the JSON.
 3. **Filter false positives** using the rules above.
 4. **Inventory docs:** List all `.md` files in the documentation directory (`documentation.dir` from `settings.json`, default `docs/`) and classify by Diátaxis quadrant.
 5. **Review each document** against the Diátaxis compliance checklist (this is a doc-internal check — no source reading needed).

@@ -24,45 +24,45 @@ skills: [review]
 ### Ruff
 
 | Check                 | Status | Details                                                                                          |
-| --------------------- | ------ | ------------------------------------------------------------------------------------------------ |
+|-----------------------|--------|--------------------------------------------------------------------------------------------------|
 | `ruff check`          | FAIL   | 58 errors: D100×8, D101×15, D102×27, D103×4, F401×1, N802×1, PGH003×1, TID252×1 (1 auto-fixable) |
 | `ruff format --check` | FAIL   | 1 file would be reformatted (`src/playground/user_manager.py:81`, `build_report` signature)      |
 
 ### Type Checker (skipped)
 
-| Check         | Status  | Details                                                                                |
-| ------------- | ------- | -------------------------------------------------------------------------------------- |
-| Type checking | SKIPPED | `mypy`/`ty` exclude `playground/` by project design — `functions.4` cannot fire here   |
+| Check         | Status  | Details                                                                              |
+|---------------|---------|--------------------------------------------------------------------------------------|
+| Type checking | SKIPPED | `mypy`/`ty` exclude `playground/` by project design — `functions.4` cannot fire here |
 
 ### Vulture (dead code)
 
 | Check     | Status | Details                                                                                                                        |
-| --------- | ------ | ------------------------------------------------------------------------------------------------------------------------------ |
+|-----------|--------|--------------------------------------------------------------------------------------------------------------------------------|
 | Dead code | FAIL   | 14 hits ≥80% confidence: unused `Iterable` import (90%), unused `verbose` param, 12 unused params in `notification_service.py` |
 
 ## Scanner Results
 
-| Scanner                        | Result      | Findings                                                                                                   |
-| ------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------- |
-| `one_class_per_file` (cached)  | violations  | 7 files with 2–6 classes; 1 zero-class file (`string_utils.py`)                                            |
-| `naming_conventions`           | violations  | `tests/test_stuff.py` — no source file/class matching `stuff`                                              |
-| `file_length`                  | all clear   | —                                                                                                          |
-| `function_length`              | all clear   | —                                                                                                          |
-| `cyclomatic_complexity`        | violations  | `ApiHandler.reconcile_accounts` = 16 (over by 4)                                                           |
-| `max_arguments`                | violations  | `build_report` (8), `create_user` (7), `ApiClient::fetchDataFromRemoteEndpoint` (6)                        |
-| `suppression_reason`           | violations  | `user_manager.py:7` (missing code), `user_manager.py:38` (missing code and reason)                         |
-| `acronym_casing` (python)      | violations  | `HtmlReport`, `JsonReport`, `XmlReport`, `ApiHandler`                                                      |
-| `acronym_casing` (php)         | violations  | `ApiClient`                                                                                                |
-| `unused_all_exports`           | violations  | `ApiHandler`, `UnusedHelper`, `DEFAULT_ROLE` — all 3 `__all__` entries unimported                          |
+| Scanner                       | Result     | Findings                                                                            |
+|-------------------------------|------------|-------------------------------------------------------------------------------------|
+| `one_class_per_file` (cached) | violations | 7 files with 2–6 classes; 1 zero-class file (`string_utils.py`)                     |
+| `naming_conventions`          | violations | `tests/test_stuff.py` — no source file/class matching `stuff`                       |
+| `file_length`                 | all clear  | —                                                                                   |
+| `function_length`             | all clear  | —                                                                                   |
+| `cyclomatic_complexity`       | violations | `ApiHandler.reconcile_accounts` = 16 (over by 4)                                    |
+| `max_arguments`               | violations | `build_report` (8), `create_user` (7), `ApiClient::fetchDataFromRemoteEndpoint` (6) |
+| `suppression_reason`          | violations | `user_manager.py:7` (missing code), `user_manager.py:38` (missing code and reason)  |
+| `acronym_casing` (python)     | violations | `HtmlReport`, `JsonReport`, `XmlReport`, `ApiHandler`                               |
+| `acronym_casing` (php)        | violations | `ApiClient`                                                                         |
+| `unused_all_exports`          | violations | `ApiHandler`, `UnusedHelper`, `DEFAULT_ROLE` — all 3 `__all__` entries unimported   |
 
 ## Auto-Fixable (Informational)
 
 > These issues do not count toward the grade. They can be fixed automatically with `ruff check --fix` or `ruff format`.
 
-| #  | File                              | Rule ID | Issue                                          | Fix                          |
-| -- | --------------------------------- | ------- | ---------------------------------------------- | ---------------------------- |
-| A1 | src/playground/user_manager.py:13 | F401    | `collections.abc.Iterable` imported but unused | `ruff check --fix` (remove)  |
-| A2 | src/playground/user_manager.py:81 | format  | `build_report` signature exceeds line layout   | `ruff format`                |
+| #  | File                              | Rule ID | Issue                                          | Fix                         |
+|----|-----------------------------------|---------|------------------------------------------------|-----------------------------|
+| A1 | src/playground/user_manager.py:13 | F401    | `collections.abc.Iterable` imported but unused | `ruff check --fix` (remove) |
+| A2 | src/playground/user_manager.py:81 | format  | `build_report` signature exceeds line layout   | `ruff format`               |
 
 ## Findings
 
@@ -72,53 +72,53 @@ skills: [review]
 
 ### High
 
-| #  | File                                   | Symbol                            | Rule ID                          | Issue                                                                                         | Suggested Fix                                          |
-| -- | -------------------------------------- | --------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| S1 | src/playground/user_manager.py:40      | `ApiHandler.reconcile_accounts`   | #23 / functions.3                | Cyclomatic complexity 16 > 12                                                                 | Extract tier-resolution and retry-policy collaborators |
-| S2 | src/playground/user_manager.py:19      | `__all__`                         | #22 / imports.3                  | All 3 exports (`ApiHandler`, `UnusedHelper`, `DEFAULT_ROLE`) never imported — dead public API | Remove `__all__` or delete the symbols                 |
-| S3 | src/playground/user_manager.py:10-13   | module                            | imports.1                        | `if TYPE_CHECKING:` block — repo convention bans it                                           | Import `Iterable` directly (or drop it — unused)       |
-| S4 | src/playground/user_manager.py:15      | `from .string_utils import shout` | #7 / TID252 / imports.2          | Relative import                                                                               | `from playground.string_utils import shout`            |
-| S5 | src-php/ApiClient.php:1                | file                              | PHP #1                           | Missing `declare(strict_types=1);`                                                            | Add as first statement after `<?php`                   |
-| S6 | src-php/CheckoutService.php:1          | file                              | PHP #1                           | Missing `declare(strict_types=1);`                                                            | Add as first statement after `<?php`                   |
-| S7 | src-php/OrderProcessor.php:1           | file                              | PHP #1                           | Missing `declare(strict_types=1);`                                                            | Add as first statement after `<?php`                   |
-| S8 | src-php/CheckoutService.php:21-22      | `CheckoutService`                 | PHP #4                           | Untyped properties `$gateway`, `$repo`                                                        | Declare `private StripeGateway $gateway;` etc.         |
+| #  | File                                 | Symbol                            | Rule ID                 | Issue                                                                                         | Suggested Fix                                          |
+|----|--------------------------------------|-----------------------------------|-------------------------|-----------------------------------------------------------------------------------------------|--------------------------------------------------------|
+| S1 | src/playground/user_manager.py:40    | `ApiHandler.reconcile_accounts`   | #23 / functions.3       | Cyclomatic complexity 16 > 12                                                                 | Extract tier-resolution and retry-policy collaborators |
+| S2 | src/playground/user_manager.py:19    | `__all__`                         | #22 / imports.3         | All 3 exports (`ApiHandler`, `UnusedHelper`, `DEFAULT_ROLE`) never imported — dead public API | Remove `__all__` or delete the symbols                 |
+| S3 | src/playground/user_manager.py:10-13 | module                            | imports.1               | `if TYPE_CHECKING:` block — repo convention bans it                                           | Import `Iterable` directly (or drop it — unused)       |
+| S4 | src/playground/user_manager.py:15    | `from .string_utils import shout` | #7 / TID252 / imports.2 | Relative import                                                                               | `from playground.string_utils import shout`            |
+| S5 | src-php/ApiClient.php:1              | file                              | PHP #1                  | Missing `declare(strict_types=1);`                                                            | Add as first statement after `<?php`                   |
+| S6 | src-php/CheckoutService.php:1        | file                              | PHP #1                  | Missing `declare(strict_types=1);`                                                            | Add as first statement after `<?php`                   |
+| S7 | src-php/OrderProcessor.php:1         | file                              | PHP #1                  | Missing `declare(strict_types=1);`                                                            | Add as first statement after `<?php`                   |
+| S8 | src-php/CheckoutService.php:21-22    | `CheckoutService`                 | PHP #4                  | Untyped properties `$gateway`, `$repo`                                                        | Declare `private StripeGateway $gateway;` etc.         |
 
 ### Medium
 
-| #   | File                                    | Symbol                                                     | Rule ID                    | Issue                                                                     | Suggested Fix                                              |
-| --- | --------------------------------------- | ---------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| S9  | src/playground/user_manager.py:28       | `ApiHandler.create_user`                                   | #25 / functions.1          | 7 parameters (> 5)                                                        | Introduce a `UserSpec` value object                        |
-| S10 | src/playground/user_manager.py:81       | `ApiHandler.build_report`                                  | #25 / functions.1          | 8 parameters (> 5)                                                        | Introduce a `ReportOptions` parameter object               |
-| S11 | src-php/ApiClient.php:6                 | `ApiClient::fetchDataFromRemoteEndpoint`                   | #37 / PHP #37              | 6 parameters (> 5), all untyped                                           | Parameter object (e.g. `RequestSpec`) + types              |
-| S12 | src/playground/report_engine.py:5,13,17 | `HtmlReport`, `JsonReport`, `XmlReport`                    | #3 / classes.2             | Acronyms `Html`, `Json`, `Xml` must be `HTML`, `JSON`, `XML`              | Rename to `HTMLReport`, `JSONReport`, `XMLReport`          |
-| S13 | src/playground/user_manager.py:27       | `ApiHandler`                                               | #3 / classes.2             | `Api` must be `API`                                                       | Rename to `APIHandler`                                     |
-| S14 | src-php/ApiClient.php:4                 | `ApiClient`                                                | PHP acronym casing         | `Api` must be `API`                                                       | Rename to `APIClient` (and file `APIClient.php`)           |
-| S15 | src/playground/user_manager.py:7,38     | `# type: ignore` ×2                                        | suppressions.1 / PGH003    | Bare suppressions — missing error code (line 7) and code+reason (line 38) | Add `type: ignore[code] — reason`                          |
-| S16 | src-php/OrderProcessor.php              | `Worker`, 4 carriers, `OrderProcessor`                     | #8 / classes.3             | 6 classes in one file                                                     | Split into one file per class                              |
-| S17 | src-php/CheckoutService.php             | `StripeGateway`, `MysqlOrderRepository`, `CheckoutService` | #8 / classes.3             | 3 classes in one file                                                     | Split into one file per class                              |
-| S18 | src/playground/report_engine.py         | 5 classes                                                  | #8 / classes.3             | `HtmlReport`, `CsvReport`, `JsonReport`, `XmlReport`, `ReportEngine`      | Split into one file per class                              |
-| S19 | src/playground/checkout_service.py      | 3 classes                                                  | #8 / classes.3             | `StripeGateway`, `MysqlOrderRepository`, `CheckoutService`                | Split into one file per class                              |
-| S20 | src/playground/notification_service.py  | 2 classes                                                  | #8 / classes.3             | `BroadChannel`, `NotificationService`                                     | Split into one file per class                              |
-| S21 | src/playground/user_manager.py          | 2 classes                                                  | #8 / classes.3             | `ApiHandler`, `UnusedHelper`                                              | Split into one file per class                              |
-| S22 | tests/test_stuff.py                     | 2 classes                                                  | #8 / tests.2               | `TestThings`, `TestOtherThings` in one file                               | Split (mirror: `test_<name>_<aspect>.py`)                  |
-| S23 | src/playground/user_manager.py:23       | `hash_password`                                            | classes.4                  | Module-level function — repo convention bans them                         | Move onto owning class as `@staticmethod`                  |
-| S24 | src/playground/user_manager.py:17-18    | `DEFAULT_ROLE`, `MAX_RETRIES`                              | classes.5                  | Module-level constants — repo convention bans them                        | Move to class attributes                                   |
-| S25 | src/ + tests/ (all modules)             | —                                                          | #12 / docstrings.1         | 54 missing-docstring violations (D100×8, D101×15, D102×27, D103×4)        | Add docstrings to public modules/classes/methods           |
-| S26 | src-php/ApiClient.php:6                 | `fetchDataFromRemoteEndpoint`                              | PHP #2, #3                 | No return type, no param types                                            | Add `: array` return + typed params                        |
-| S27 | src-php/CheckoutService.php:7,15        | `charge`, `save`                                           | PHP #2, #3                 | Missing return and param types                                            | `charge(float $amount): float`, `save(Order $order): bool` |
-| S28 | src-php/OrderProcessor.php:23           | `OrderProcessor::ship`                                     | PHP #2, #3                 | Missing return and param types                                            | `ship(Order $order, Carrier $carrier): string`             |
-| S29 | src-php/OrderProcessor.php:8-13         | `Worker` interface methods                                 | PHP #2                     | 6 methods with no return types                                            | Add `void`/`bool` return declarations                      |
-| S30 | src-php/*.php                           | all classes                                                | PHP #16, #19               | No `namespace App\...` — PSR-4 maps `App\` → `src-php/`                   | Add namespaces matching directory structure                |
+| #   | File                                    | Symbol                                                     | Rule ID                 | Issue                                                                     | Suggested Fix                                              |
+|-----|-----------------------------------------|------------------------------------------------------------|-------------------------|---------------------------------------------------------------------------|------------------------------------------------------------|
+| S9  | src/playground/user_manager.py:28       | `ApiHandler.create_user`                                   | #25 / functions.1       | 7 parameters (> 5)                                                        | Introduce a `UserSpec` value object                        |
+| S10 | src/playground/user_manager.py:81       | `ApiHandler.build_report`                                  | #25 / functions.1       | 8 parameters (> 5)                                                        | Introduce a `ReportOptions` parameter object               |
+| S11 | src-php/ApiClient.php:6                 | `ApiClient::fetchDataFromRemoteEndpoint`                   | #37 / PHP #37           | 6 parameters (> 5), all untyped                                           | Parameter object (e.g. `RequestSpec`) + types              |
+| S12 | src/playground/report_engine.py:5,13,17 | `HtmlReport`, `JsonReport`, `XmlReport`                    | #3 / classes.2          | Acronyms `Html`, `Json`, `Xml` must be `HTML`, `JSON`, `XML`              | Rename to `HTMLReport`, `JSONReport`, `XMLReport`          |
+| S13 | src/playground/user_manager.py:27       | `ApiHandler`                                               | #3 / classes.2          | `Api` must be `API`                                                       | Rename to `APIHandler`                                     |
+| S14 | src-php/ApiClient.php:4                 | `ApiClient`                                                | PHP acronym casing      | `Api` must be `API`                                                       | Rename to `APIClient` (and file `APIClient.php`)           |
+| S15 | src/playground/user_manager.py:7,38     | `# type: ignore` ×2                                        | suppressions.1 / PGH003 | Bare suppressions — missing error code (line 7) and code+reason (line 38) | Add `type: ignore[code] — reason`                          |
+| S16 | src-php/OrderProcessor.php              | `Worker`, 4 carriers, `OrderProcessor`                     | #8 / classes.3          | 6 classes in one file                                                     | Split into one file per class                              |
+| S17 | src-php/CheckoutService.php             | `StripeGateway`, `MysqlOrderRepository`, `CheckoutService` | #8 / classes.3          | 3 classes in one file                                                     | Split into one file per class                              |
+| S18 | src/playground/report_engine.py         | 5 classes                                                  | #8 / classes.3          | `HtmlReport`, `CsvReport`, `JsonReport`, `XmlReport`, `ReportEngine`      | Split into one file per class                              |
+| S19 | src/playground/checkout_service.py      | 3 classes                                                  | #8 / classes.3          | `StripeGateway`, `MysqlOrderRepository`, `CheckoutService`                | Split into one file per class                              |
+| S20 | src/playground/notification_service.py  | 2 classes                                                  | #8 / classes.3          | `BroadChannel`, `NotificationService`                                     | Split into one file per class                              |
+| S21 | src/playground/user_manager.py          | 2 classes                                                  | #8 / classes.3          | `ApiHandler`, `UnusedHelper`                                              | Split into one file per class                              |
+| S22 | tests/test_stuff.py                     | 2 classes                                                  | #8 / tests.2            | `TestThings`, `TestOtherThings` in one file                               | Split (mirror: `test_<name>_<aspect>.py`)                  |
+| S23 | src/playground/user_manager.py:23       | `hash_password`                                            | classes.4               | Module-level function — repo convention bans them                         | Move onto owning class as `@staticmethod`                  |
+| S24 | src/playground/user_manager.py:17-18    | `DEFAULT_ROLE`, `MAX_RETRIES`                              | classes.5               | Module-level constants — repo convention bans them                        | Move to class attributes                                   |
+| S25 | src/ + tests/ (all modules)             | —                                                          | #12 / docstrings.1      | 54 missing-docstring violations (D100×8, D101×15, D102×27, D103×4)        | Add docstrings to public modules/classes/methods           |
+| S26 | src-php/ApiClient.php:6                 | `fetchDataFromRemoteEndpoint`                              | PHP #2, #3              | No return type, no param types                                            | Add `: array` return + typed params                        |
+| S27 | src-php/CheckoutService.php:7,15        | `charge`, `save`                                           | PHP #2, #3              | Missing return and param types                                            | `charge(float $amount): float`, `save(Order $order): bool` |
+| S28 | src-php/OrderProcessor.php:23           | `OrderProcessor::ship`                                     | PHP #2, #3              | Missing return and param types                                            | `ship(Order $order, Carrier $carrier): string`             |
+| S29 | src-php/OrderProcessor.php:8-13         | `Worker` interface methods                                 | PHP #2                  | 6 methods with no return types                                            | Add `void`/`bool` return declarations                      |
+| S30 | src-php/*.php                           | all classes                                                | PHP #16, #19            | No `namespace App\...` — PSR-4 maps `App\` → `src-php/`                   | Add namespaces matching directory structure                |
 
 ### Low
 
-| #   | File                                         | Symbol          | Rule ID             | Issue                                                                                    | Suggested Fix                                    |
-| --- | -------------------------------------------- | --------------- | ------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| S31 | src/playground/string_utils.py               | file            | #8 / classes.3      | Zero-class file (utility module)                                                         | Acceptable if intentional; else wrap as class    |
-| S32 | src/playground/notification_service.py:17-49 | params          | #22 (vulture)       | 12 unused parameters (`device`, `channel`, `data`, `event`, `url`, `frequency` ×2 impls) | Prefix `_` or remove if truly unused             |
-| S33 | src/playground/user_manager.py:40            | `verbose` param | #22 (vulture)       | Unused parameter                                                                         | Remove or use                                    |
-| S34 | tests/test_stuff.py:11                       | `testItWorks`   | N802 / tests.3      | Function name not lowercase; also < 3 naming segments                                    | Rename `test_<unit>_<scenario>_<expected>`       |
-| S35 | tests/test_stuff.py                          | file            | naming_conventions  | `test_stuff.py` matches no source file/class `stuff`                                     | Rename to `test_<source_stem>.py` or remove      |
+| #   | File                                         | Symbol          | Rule ID            | Issue                                                                                    | Suggested Fix                                 |
+|-----|----------------------------------------------|-----------------|--------------------|------------------------------------------------------------------------------------------|-----------------------------------------------|
+| S31 | src/playground/string_utils.py               | file            | #8 / classes.3     | Zero-class file (utility module)                                                         | Acceptable if intentional; else wrap as class |
+| S32 | src/playground/notification_service.py:17-49 | params          | #22 (vulture)      | 12 unused parameters (`device`, `channel`, `data`, `event`, `url`, `frequency` ×2 impls) | Prefix `_` or remove if truly unused          |
+| S33 | src/playground/user_manager.py:40            | `verbose` param | #22 (vulture)      | Unused parameter                                                                         | Remove or use                                 |
+| S34 | tests/test_stuff.py:11                       | `testItWorks`   | N802 / tests.3     | Function name not lowercase; also < 3 naming segments                                    | Rename `test_<unit>_<scenario>_<expected>`    |
+| S35 | tests/test_stuff.py                          | file            | naming_conventions | `test_stuff.py` matches no source file/class `stuff`                                     | Rename to `test_<source_stem>.py` or remove   |
 
 ## Recommendations
 

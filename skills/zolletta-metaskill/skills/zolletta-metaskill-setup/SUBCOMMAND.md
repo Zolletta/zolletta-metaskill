@@ -45,9 +45,9 @@ If `.zolletta-metaskill/settings.json` already exists, read it and check `setup_
   4. The v3.2.0 keys listed above (tool detection + four `testing` keys per language).
   5. **Merge only**: preserve every user-customized value; only add keys that are absent.
 - **`"1.x"` or absent** — migrate before writing the new file, then apply the `"3.2.0"` migration above:
-  1. If the old `subagent_profile` field exists and is non-null, it applied to all review subagents — set `subcommands.patterns.model`, `subcommands.documentor.model`, `subcommands.python-code-style.model`, `subcommands.python-testing-style.model`, `subcommands.php-code-style.model`, and `subcommands.php-testing-style.model` to its value. If it is `null` or absent, leave all review subcommand models at `null`.
+  1. If the old `subagent_profile` field exists and is non-null, it applied to all review subagents — set `subcommands.patterns.model`, `subcommands.documentor.model`, `subcommands.grice.model`, `subcommands.python-code-style.model`, `subcommands.python-testing-style.model`, `subcommands.php-code-style.model`, and `subcommands.php-testing-style.model` to its value. If it is `null` or absent, leave all review subcommand models at `null`.
   2. Remove `external_review_model` and `subagent_profile` from the file. (`external_review_model` was for the removed `external-review` subcommand — it is not migrated.)
-  3. Add the full `subcommands` object with all six keys, preserving migrated values and defaulting unmigrated ones to `null`.
+  3. Add the full `subcommands` object with all seven keys, preserving migrated values and defaulting unmigrated ones to `null`.
   4. Apply the v3.0.0 + v3.1.0 + v3.2.0 backfill described above (`paths`, `patterns`, new `code_style`/`testing`/`documentation` keys, mutation-testing keys).
   5. Write the migrated file.
 

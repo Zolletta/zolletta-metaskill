@@ -63,9 +63,9 @@ cat .zolletta-metaskill/settings.json
 /zolletta-metaskill review
 ```
 
-The review orchestrator runs all applicable skills in parallel — general skills (`patterns`, `documentor`) plus language-specific skills. See [subcommands.md](../reference/subcommands.md) for the full table.
+The review orchestrator runs all applicable skills in parallel — general skills (`patterns`, `documentor`, `grice`) plus language-specific skills. See [subcommands.md](../reference/subcommands.md) for the full table.
 
-Each skill writes a report to `.zolletta-metaskill/<timestamp>/reports/`. The orchestrator creates `reports/SUMMARY.md` with the overall grade and `reports/TODO.md` with aggregated action items.
+Each skill writes a report to `.zolletta-metaskill/<timestamp>/reports/`. The orchestrator creates `reports/SUMMARY.md` with the overall grade and the aggregated action items.
 
 ## Step 4 — Read the report
 
@@ -77,7 +77,7 @@ Open `.zolletta-metaskill/<timestamp>/reports/SUMMARY.md` to see:
 - **Top weaknesses** — what needs improvement
 - **Priority items** — the most important findings to address
 
-Then open `TODO.md` for the aggregated action items sorted by priority (P1 = critical, P2 = high, P3 = medium, P4 = low).
+The same `SUMMARY.md` carries the aggregated action items — the **Open** table lists them sorted by priority (Critical, High, Medium, Low) with links back to the specialist findings.
 
 ## Step 5 — Run individual skills
 

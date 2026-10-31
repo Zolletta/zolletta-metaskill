@@ -21,33 +21,33 @@ skills: [review]
 
 ## Coverage Summary
 
-| Metric                    | Value   |
-| ------------------------- | ------- |
-| Total coverage            | 3%      |
-| Modules scanned           | 6       |
-| Modules below threshold   | 4       |
+| Metric                  | Value |
+|-------------------------|-------|
+| Total coverage          | 3%    |
+| Modules scanned         | 6     |
+| Modules below threshold | 4     |
 
 Coverage tool: `pytest --cov` (pytest-cov 7.1.0). Thresholds: gap < 45% (`coverage_gap_threshold`), well-covered ≥ 75% (`coverage_well_covered_threshold`). Raw output: `cache/pytest_cov.txt`.
 
-| Module                                 | Stmts   | Cover   | Missing   |
-| -------------------------------------- | ------- | ------- | --------- |
-| src/playground/**init**.py             | 0       | 100%    | —         |
-| src/playground/string_utils.py         | 7       | 100%    | —         |
-| src/playground/checkout_service.py     | 13      | 0%      | 5-22      |
-| src/playground/notification_service.py | 33      | 0%      | 4-50      |
-| src/playground/report_engine.py        | 19      | 0%      | 5-31      |
-| src/playground/user_manager.py         | 167     | 0%      | 8-203     |
+| Module                                 | Stmts | Cover | Missing |
+|----------------------------------------|-------|-------|---------|
+| src/playground/**init**.py             | 0     | 100%  | —       |
+| src/playground/string_utils.py         | 7     | 100%  | —       |
+| src/playground/checkout_service.py     | 13    | 0%    | 5-22    |
+| src/playground/notification_service.py | 33    | 0%    | 4-50    |
+| src/playground/report_engine.py        | 19    | 0%    | 5-31    |
+| src/playground/user_manager.py         | 167   | 0%    | 8-203   |
 
 > `skills/zolletta-metaskill/src/zolletta_metaskill/testing_style/general/test_structure_scanner.py` already flagged these four files as structurally missing test files (`cache/test_structure.md`, owned by the patterns review). This report confirms they are also genuinely uncovered: 0% executed, zero direct references, and zero callers — real or mocked — in the test suite.
 
 ## Coverage Gaps
 
-| Module                                 | Coverage   | Direct Tests   | Indirect Coverage   | Suggested Fix                                                                                                                                                   |
-| -------------------------------------- | ---------- | -------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| src/playground/user_manager.py         | 0%         | no             | no callers at all   | Add `tests/test_user_manager.py` covering `ApiHandler.create_user`, `reconcile_accounts` (all status branches), `build_report`, `hash_password`, `UnusedHelper` |
-| src/playground/notification_service.py | 0%         | no             | no callers at all   | Add `tests/test_notification_service.py` covering `NotificationService.send_email`/`send_sms` and the `NotImplementedError` stubs                               |
-| src/playground/report_engine.py        | 0%         | no             | no callers at all   | Add `tests/test_report_engine.py` covering `ReportEngine.render` per report type plus the `ValueError` path                                                     |
-| src/playground/checkout_service.py     | 0%         | no             | no callers at all   | Add `tests/test_checkout_service.py` covering `CheckoutService.checkout`, `StripeGateway.charge`, `MysqlOrderRepository.save`                                   |
+| Module                                 | Coverage | Direct Tests | Indirect Coverage | Suggested Fix                                                                                                                                                   |
+|----------------------------------------|----------|--------------|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| src/playground/user_manager.py         | 0%       | no           | no callers at all | Add `tests/test_user_manager.py` covering `ApiHandler.create_user`, `reconcile_accounts` (all status branches), `build_report`, `hash_password`, `UnusedHelper` |
+| src/playground/notification_service.py | 0%       | no           | no callers at all | Add `tests/test_notification_service.py` covering `NotificationService.send_email`/`send_sms` and the `NotImplementedError` stubs                               |
+| src/playground/report_engine.py        | 0%       | no           | no callers at all | Add `tests/test_report_engine.py` covering `ReportEngine.render` per report type plus the `ValueError` path                                                     |
+| src/playground/checkout_service.py     | 0%       | no           | no callers at all | Add `tests/test_checkout_service.py` covering `CheckoutService.checkout`, `StripeGateway.charge`, `MysqlOrderRepository.save`                                   |
 
 ## Mutation Testing
 
@@ -59,44 +59,44 @@ Scanner: `skills/zolletta-metaskill/src/zolletta_metaskill/testing_style/python/
 
 - Functions scanned: 5 — Violations: 2 (40.0%)
 
-| File                | Line   | Function   | Segments   |
-| ------------------- | ------ | ---------- | ---------- |
-| tests/test_stuff.py | 8      | `test_x`   | 1          |
-| tests/test_stuff.py | 16     | `test_y`   | 1          |
+| File                | Line | Function | Segments |
+|---------------------|------|----------|----------|
+| tests/test_stuff.py | 8    | `test_x` | 1        |
+| tests/test_stuff.py | 16   | `test_y` | 1        |
 
 ## Findings
 
 ### Critical
 
-| #   | File                                                | Test/Symbol    | Issue                                                                                                                                                                                                                                                                       | Rule           | Suggested Fix                                                                                                                                                                                      |
-| --- | --------------------------------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| T1  | tests/test_string_utils.py:3, tests/test_stuff.py:4 | module imports | `from playground.src.playground.string_utils import …` only resolves with `PYTHONPATH=<parent repo>`; `pytest tests` run from `playground/` fails collection with `ModuleNotFoundError: No module named 'playground'` — the suite is not runnable from its own project root | Isolation (#2) | Import via the package on the project source path (e.g. `from src.playground.string_utils import …` with a `src`-rooted config, or configure `pythonpath = ["src"]` in playground's pytest config) |
+| #  | File                                                | Test/Symbol    | Issue                                                                                                                                                                                                                                                                       | Rule           | Suggested Fix                                                                                                                                                                                      |
+|----|-----------------------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| T1 | tests/test_string_utils.py:3, tests/test_stuff.py:4 | module imports | `from playground.src.playground.string_utils import …` only resolves with `PYTHONPATH=<parent repo>`; `pytest tests` run from `playground/` fails collection with `ModuleNotFoundError: No module named 'playground'` — the suite is not runnable from its own project root | Isolation (#2) | Import via the package on the project source path (e.g. `from src.playground.string_utils import …` with a `src`-rooted config, or configure `pythonpath = ["src"]` in playground's pytest config) |
 
 ### High
 
-| #   | File                                   | Test/Symbol                                          | Issue                                                                                                                 | Rule              | Suggested Fix                                                                                         |
-| --- | -------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------- |
-| T2  | src/playground/user_manager.py         | ApiHandler, UnusedHelper, hash_password              | 0% coverage, no direct tests, no callers in tests — 167 statements of dead-weight production code verified by nothing | Coverage (#3, #5) | Add `tests/test_user_manager.py` covering all `reconcile_accounts` branches and `build_report`        |
-| T3  | src/playground/notification_service.py | BroadChannel, NotificationService                    | 0% coverage, no direct tests, no callers in tests                                                                     | Coverage (#3, #5) | Add `tests/test_notification_service.py` covering implemented senders and `NotImplementedError` stubs |
-| T4  | src/playground/report_engine.py        | ReportEngine + 4 report types                        | 0% coverage, no direct tests, no callers in tests                                                                     | Coverage (#3, #5) | Add `tests/test_report_engine.py` covering each `isinstance` branch and the `ValueError` fallback     |
-| T5  | src/playground/checkout_service.py     | CheckoutService, StripeGateway, MysqlOrderRepository | 0% coverage, no direct tests, no callers in tests                                                                     | Coverage (#3, #5) | Add `tests/test_checkout_service.py`; inject/mocked gateway + repo to verify `checkout` orchestration |
+| #  | File                                   | Test/Symbol                                          | Issue                                                                                                                 | Rule              | Suggested Fix                                                                                         |
+|----|----------------------------------------|------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|-------------------|-------------------------------------------------------------------------------------------------------|
+| T2 | src/playground/user_manager.py         | ApiHandler, UnusedHelper, hash_password              | 0% coverage, no direct tests, no callers in tests — 167 statements of dead-weight production code verified by nothing | Coverage (#3, #5) | Add `tests/test_user_manager.py` covering all `reconcile_accounts` branches and `build_report`        |
+| T3 | src/playground/notification_service.py | BroadChannel, NotificationService                    | 0% coverage, no direct tests, no callers in tests                                                                     | Coverage (#3, #5) | Add `tests/test_notification_service.py` covering implemented senders and `NotImplementedError` stubs |
+| T4 | src/playground/report_engine.py        | ReportEngine + 4 report types                        | 0% coverage, no direct tests, no callers in tests                                                                     | Coverage (#3, #5) | Add `tests/test_report_engine.py` covering each `isinstance` branch and the `ValueError` fallback     |
+| T5 | src/playground/checkout_service.py     | CheckoutService, StripeGateway, MysqlOrderRepository | 0% coverage, no direct tests, no callers in tests                                                                     | Coverage (#3, #5) | Add `tests/test_checkout_service.py`; inject/mocked gateway + repo to verify `checkout` orchestration |
 
 ### Medium
 
-| #   | File                   | Test/Symbol                     | Issue                                                                                                                                                                         | Rule                         | Suggested Fix                                                       |
-| --- | ---------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------- |
-| T6  | tests/test_stuff.py:16 | `test_y`                        | Vacuous test — `assert True` exercises no production code; it inflates the pass count and hides the missing coverage above                                                    | AAA/Assert (#1)              | Replace with an assertion against real code or delete               |
-| T7  | tests/test_stuff.py:19 | `test2`                         | Vacuous test — `assert 1 + 1 == 2` exercises no production code; also named without the `test_<unit>_<scenario>_<expected>` convention                                        | AAA/Assert (#1), Naming (#7) | Replace with an assertion against real code or delete               |
-| T8  | tests/test_stuff.py    | `TestThings`, `TestOtherThings` | File duplicates coverage of `string_utils` already provided by the mirrored `test_string_utils.py`, and its second class contains only vacuous tests — redundant suite weight | Isolation/Scope (#2, #4)     | Merge meaningful cases into `test_string_utils.py`; remove the file |
+| #  | File                   | Test/Symbol                     | Issue                                                                                                                                                                         | Rule                         | Suggested Fix                                                       |
+|----|------------------------|---------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------|---------------------------------------------------------------------|
+| T6 | tests/test_stuff.py:16 | `test_y`                        | Vacuous test — `assert True` exercises no production code; it inflates the pass count and hides the missing coverage above                                                    | AAA/Assert (#1)              | Replace with an assertion against real code or delete               |
+| T7 | tests/test_stuff.py:19 | `test2`                         | Vacuous test — `assert 1 + 1 == 2` exercises no production code; also named without the `test_<unit>_<scenario>_<expected>` convention                                        | AAA/Assert (#1), Naming (#7) | Replace with an assertion against real code or delete               |
+| T8 | tests/test_stuff.py    | `TestThings`, `TestOtherThings` | File duplicates coverage of `string_utils` already provided by the mirrored `test_string_utils.py`, and its second class contains only vacuous tests — redundant suite weight | Isolation/Scope (#2, #4)     | Merge meaningful cases into `test_string_utils.py`; remove the file |
 
 ### Low
 
-| #   | File                   | Test/Symbol   | Issue                                                                                                                                                | Rule           | Suggested Fix                                                                         |
-| --- | ---------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------- |
-| T9  | tests/test_stuff.py:8  | `test_x`      | Naming violation — 1 segment after `test_` (scanner-confirmed); body is a duplicate of `test_shout_uppercases_text`                                  | Naming (#7)    | Rename to `test_shout_with_short_text_returns_uppercased_bang` or remove as duplicate |
-| T10 | tests/test_stuff.py:16 | `test_y`      | Naming violation — 1 segment after `test_` (scanner-confirmed)                                                                                       | Naming (#7)    | Rename or delete (see T6)                                                             |
-| T11 | tests/helper.py        | `make_user`   | Non-test file under `tests/` outside `tests/fixtures/` (tests.4, unenforced — informational), and it is never imported by any test: dead helper code | Fixture design | Move to `tests/fixtures/` when a test needs it, or delete                             |
-| T12 | tests/test_stuff.py    | file          | No `# --- section ---` grouping comments (tests.5, unenforced — informational) and no AAA separation; tests are bare asserts                         | Structure (#1) | Add section comments if the file is kept                                              |
+| #   | File                   | Test/Symbol | Issue                                                                                                                                                | Rule           | Suggested Fix                                                                         |
+|-----|------------------------|-------------|------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|---------------------------------------------------------------------------------------|
+| T9  | tests/test_stuff.py:8  | `test_x`    | Naming violation — 1 segment after `test_` (scanner-confirmed); body is a duplicate of `test_shout_uppercases_text`                                  | Naming (#7)    | Rename to `test_shout_with_short_text_returns_uppercased_bang` or remove as duplicate |
+| T10 | tests/test_stuff.py:16 | `test_y`    | Naming violation — 1 segment after `test_` (scanner-confirmed)                                                                                       | Naming (#7)    | Rename or delete (see T6)                                                             |
+| T11 | tests/helper.py        | `make_user` | Non-test file under `tests/` outside `tests/fixtures/` (tests.4, unenforced — informational), and it is never imported by any test: dead helper code | Fixture design | Move to `tests/fixtures/` when a test needs it, or delete                             |
+| T12 | tests/test_stuff.py    | file        | No `# --- section ---` grouping comments (tests.5, unenforced — informational) and no AAA separation; tests are bare asserts                         | Structure (#1) | Add section comments if the file is kept                                              |
 
 ### Informational / Out of scope
 

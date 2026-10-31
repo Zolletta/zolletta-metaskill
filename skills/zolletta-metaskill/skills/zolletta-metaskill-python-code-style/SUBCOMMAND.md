@@ -51,7 +51,7 @@ Consistent code style and clear documentation make codebases maintainable and co
 | 21 | Structure  | File length limit                                         | `check_file_length`, `max_file_length`                     | `true`, `800` |
 | 22 | Dead code  | Vulture minimum confidence + unused `__all__` exports     | `vulture_min_confidence`                                   | `80`          |
 | 23 | Structure  | Cyclomatic complexity limit                               | `check_cyclomatic_complexity`, `max_cyclomatic_complexity` | `true`, `12`  |
-| 24 | Structure  | Function length limit                                     | `check_function_length`, `max_function_length`             | `true`, `100` |
+| 24 | Structure  | Function length limit                                     | `check_function_length`, `max_function_length`             | `true`, `125` |
 | 25 | Structure  | Max arguments per function/method                         | `check_max_arguments`, `max_arguments`                     | `true`, `5`   |
 
 ## Detailed rule explanations
@@ -199,7 +199,7 @@ python3 ../../src/zolletta_metaskill/code_style/general/cyclomatic_complexity_sc
 
 **#24 — Function length limit** *(configurable: `check_function_length`, `max_function_length`)*
 
-Functions and methods must not span more than `max_function_length` lines (default: `100`, read from `python.code_style.max_function_length` in `settings.json`). The metric is a line span — signature through end of body, docstring included, decorators excluded — **not** a statement count: comments and blank lines count too, which is why the default is lenient (ruff `PLR0915` measures statements with a built-in default of 50). A long function serving one purpose is not necessarily a finding — the sensor flags it for review; the usual fix is extracting a collaborator. If the project's ruff config enables `PLR0915`, `ruff check` reports statement-count violations as well (`python.tools.ruff.max_statements` surfaces that threshold) — report overlapping findings once under this rule.
+Functions and methods must not span more than `max_function_length` lines (default: `125` as setup writes it to `settings.json`; the scanner falls back to `100` only when the key is absent — read from `python.code_style.max_function_length` in `settings.json`). The metric is a line span — signature through end of body, docstring included, decorators excluded — **not** a statement count: comments and blank lines count too, which is why the default is lenient (ruff `PLR0915` measures statements with a built-in default of 50). A long function serving one purpose is not necessarily a finding — the sensor flags it for review; the usual fix is extracting a collaborator. If the project's ruff config enables `PLR0915`, `ruff check` reports statement-count violations as well (`python.tools.ruff.max_statements` surfaces that threshold) — report overlapping findings once under this rule.
 
 - **Enforcement**: `function_length_scanner.py` from `../../src/zolletta_metaskill/code_style/general/` (deterministic, language-agnostic).
 

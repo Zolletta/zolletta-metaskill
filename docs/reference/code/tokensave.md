@@ -48,7 +48,7 @@ If spawning an explore agent is unavoidable, include the tokensave-only directiv
 The `tokensave_*` MCP tools expose the same tool surface through `tokensave serve`. Where a server is registered they are fully equivalent to the CLI forms above; the CLI is canonical in this documentation because it works whether or not the server is registered.
 
 | Scope                 | Configuration location                           | Example                         |
-| --------------------- | ------------------------------------------------ | ------------------------------- |
+|-----------------------|--------------------------------------------------|---------------------------------|
 | Global (all projects) | `~/.config/devin/config.json` → `mcpServers`     | Default tokensave server        |
 | Per-project           | `.devin/config.json` → `mcpServers`              | Project-specific tokensave path |
 | Per-session           | Agent CLI flag                                   | `--mcp-server tokensave=...`    |

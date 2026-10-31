@@ -13,7 +13,7 @@ All five metrics are on a 0-100 scale, oriented so that higher is better. None o
 ## Metrics
 
 | Metric                | Measures                                                               |
-| --------------------- | ---------------------------------------------------------------------- |
+|-----------------------|------------------------------------------------------------------------|
 | `section_balance`     | Words per section against the corpus median                            |
 | `section_redundancy`  | How much the document's sections repeat each other                     |
 | `sentence_redundancy` | How much its sentences repeat each other                               |
