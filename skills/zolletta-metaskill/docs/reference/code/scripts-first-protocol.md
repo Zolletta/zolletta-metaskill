@@ -79,13 +79,13 @@ The canonical script reference is [`scripts.md`](scripts.md) — refer to it for
 
 ### `python-code-style`
 
-| Script                                                                                                     | Cache file                        | Condition                                       |
-|------------------------------------------------------------------------------------------------------------|-----------------------------------|-------------------------------------------------|
-| `ruff check`                                                                                               | `cache/ruff.txt`                  | `python.tools.ruff.available`                   |
-| `ruff format --check`                                                                                      | `cache/ruff_format.txt`           | `python.tools.ruff.available`                   |
-| `ty check`                                                                                                 | `cache/ty.txt`                    | `python.tools.ty.available`                     |
-| `mypy`                                                                                                     | `cache/mypy.txt`                  | `python.tools.mypy.available`                   |
-| `vulture src/ --min-confidence N`                                                                          | `cache/vulture.txt`               | `python.tools.vulture.available`                |
+| Script                                                                           | Cache file                        | Condition                                       |
+|----------------------------------------------------------------------------------|-----------------------------------|-------------------------------------------------|
+| `ruff check`                                                                     | `cache/ruff.txt`                  | `python.tools.ruff.available`                   |
+| `ruff format --check`                                                            | `cache/ruff_format.txt`           | `python.tools.ruff.available`                   |
+| `ty check`                                                                       | `cache/ty.txt`                    | `python.tools.ty.available`                     |
+| `mypy`                                                                           | `cache/mypy.txt`                  | `python.tools.mypy.available`                   |
+| `vulture src/ --min-confidence N`                                                | `cache/vulture.txt`               | `python.tools.vulture.available`                |
 | `src/zolletta_metaskill/code_style/python/acronym_casing_scanner.py --json`      | `cache/acronym_casing.json`       | `python.code_style.check_acronym_casing`        |
 | `src/zolletta_metaskill/code_style/python/unused_all_exports_scanner.py --json`  | `cache/unused_all_exports.json`   | always                                          |
 | `src/zolletta_metaskill/code_style/general/one_class_per_file_scanner.py`        | `cache/one_class_per_file.txt`    | `python.code_style.check_one_class_per_file`    |
@@ -97,17 +97,17 @@ The canonical script reference is [`scripts.md`](scripts.md) — refer to it for
 
 ### `python-testing-style`
 
-| Script                                                                                                | Cache file                  | Condition                                                                                                |
-|-------------------------------------------------------------------------------------------------------|-----------------------------|----------------------------------------------------------------------------------------------------------|
-| `pytest --cov --cov-report=term-missing -q`                                                           | `cache/pytest_cov.txt`      | `python.tools.pytest.available`                                                                          |
+| Script                                                                      | Cache file                  | Condition                                                                                                |
+|-----------------------------------------------------------------------------|-----------------------------|----------------------------------------------------------------------------------------------------------|
+| `pytest --cov --cov-report=term-missing -q`                                 | `cache/pytest_cov.txt`      | `python.tools.pytest.available`                                                                          |
 | `src/zolletta_metaskill/testing_style/python/test_naming_scanner.py --json` | `cache/test_naming.json`    | `python.testing.check_test_naming`                                                                       |
-| `mutmut run`                                                                                          | `cache/mutmut.txt`          | `python.tools.mutmut.available` AND `python.testing.check_mutation_testing` AND `pytest --cov` succeeded |
+| `mutmut run`                                                                | `cache/mutmut.txt`          | `python.tools.mutmut.available` AND `python.testing.check_mutation_testing` AND `pytest --cov` succeeded |
 | `src/zolletta_metaskill/testing_style/python/mutmut_survived_reporter.py`   | `cache/mutmut_survived.txt` | `python.tools.mutmut.available` AND `python.testing.check_mutation_testing`                              |
 
 ### `patterns`
 
-| Script                                                                                                  | Cache file                        | Condition       |
-|---------------------------------------------------------------------------------------------------------|-----------------------------------|-----------------|
+| Script                                                                        | Cache file                        | Condition       |
+|-------------------------------------------------------------------------------|-----------------------------------|-----------------|
 | `src/zolletta_metaskill/patterns/general/class_metrics_scanner.py`            | `cache/class_metrics.txt`         | always (Python) |
 | `src/zolletta_metaskill/patterns/general/test_god_classes_scanner.py`         | `cache/test_god_classes.txt`      | always (Python) |
 | `src/zolletta_metaskill/code_style/general/one_class_per_file_scanner.py`     | `cache/one_class_per_file.txt`    | always (Python) |
@@ -124,8 +124,8 @@ For PHP projects, run the PHP equivalents from `src/zolletta_metaskill/patterns/
 
 `src/zolletta_metaskill/documentor/documentor_client.py` runs all three tools and prints the aggregated report; each tool writes its own cache file:
 
-| Script                                                                                     | Cache file                     | Condition |
-|--------------------------------------------------------------------------------------------|--------------------------------|-----------|
+| Script                                                           | Cache file                     | Condition |
+|------------------------------------------------------------------|--------------------------------|-----------|
 | `src/zolletta_metaskill/documentor/documentor_client.py --json`  | (aggregates all caches)        | always    |
 | `src/zolletta_metaskill/documentor/quality/quality_review.py`    | `cache/quality.json`           | always    |
 | `src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py` | `cache/api_doc_validator.json` | always    |
@@ -135,20 +135,20 @@ See [`documentation/operational-rules.md`](../documentation/operational-rules.md
 
 ### `grice`
 
-| Script                                                                           | Cache file         | Condition                   |
-|----------------------------------------------------------------------------------|--------------------|-----------------------------|
+| Script                                                 | Cache file         | Condition                   |
+|--------------------------------------------------------|--------------------|-----------------------------|
 | `src/zolletta_metaskill/grice/grice_scanner.py --json` | `cache/grice.json` | `documentation.check_grice` |
 
 The scanner writes `cache/grice.json` itself, into the run folder it resolves from `settings.json`, so the redirect is only a safeguard. When the toggle is off it prints `SKIPPED` and exits 0 — record that in the report instead of grading it.
 
 ### `php-code-style`
 
-| Script                                                                                                     | Cache file                        | Condition                                    |
-|------------------------------------------------------------------------------------------------------------|-----------------------------------|----------------------------------------------|
-| `vendor/bin/phpstan analyse`                                                                               | `cache/phpstan.txt`               | `php.tools.phpstan.available`                |
-| `vendor/bin/psalm`                                                                                         | `cache/psalm.txt`                 | `php.tools.psalm.available`                  |
-| `vendor/bin/php-cs-fixer fix --dry-run`                                                                    | `cache/php_cs_fixer.txt`          | `php.tools.php_cs_fixer.available`           |
-| `vendor/bin/phpcs`                                                                                         | `cache/phpcs.txt`                 | `php.tools.phpcs.available`                  |
+| Script                                                                           | Cache file                        | Condition                                    |
+|----------------------------------------------------------------------------------|-----------------------------------|----------------------------------------------|
+| `vendor/bin/phpstan analyse`                                                     | `cache/phpstan.txt`               | `php.tools.phpstan.available`                |
+| `vendor/bin/psalm`                                                               | `cache/psalm.txt`                 | `php.tools.psalm.available`                  |
+| `vendor/bin/php-cs-fixer fix --dry-run`                                          | `cache/php_cs_fixer.txt`          | `php.tools.php_cs_fixer.available`           |
+| `vendor/bin/phpcs`                                                               | `cache/phpcs.txt`                 | `php.tools.phpcs.available`                  |
 | `src/zolletta_metaskill/code_style/general/file_length_scanner.py`               | `cache/file_length.txt`           | `php.code_style.check_file_length`           |
 | `src/zolletta_metaskill/code_style/general/function_length_scanner.py`           | `cache/function_length.txt`       | `php.code_style.check_function_length`       |
 | `src/zolletta_metaskill/code_style/general/max_arguments_scanner.py`             | `cache/max_arguments.txt`         | `php.code_style.check_max_arguments`         |
@@ -166,8 +166,8 @@ The scanner writes `cache/grice.json` itself, into the run folder it resolves fr
 
 When running as part of `/zolletta-metaskill review`, the orchestrator runs these shared scripts once and writes them to `cache/` before launching subagents. Subagents read from cache instead of re-running them:
 
-| Script                                                                                              | Cache file                     | Used by                         |
-|-----------------------------------------------------------------------------------------------------|--------------------------------|---------------------------------|
+| Script                                                                    | Cache file                     | Used by                         |
+|---------------------------------------------------------------------------|--------------------------------|---------------------------------|
 | `src/zolletta_metaskill/code_style/general/one_class_per_file_scanner.py` | `cache/one_class_per_file.txt` | `patterns`, `python-code-style` |
 | `src/zolletta_metaskill/testing_style/general/test_structure_scanner.py`  | `cache/test_structure.md`      | `patterns`                      |
 

@@ -57,23 +57,30 @@ class AcronymCasingScanner:
 
     # Path to the shipped acronym list — check skill folder first, then src/.
     _SCRIPT_DIR = Path(__file__).resolve().parent
-    # Source layout: _SCRIPT_DIR is <repo>/src/zolletta_metaskill/code_style/python/,
-    # so parents[3] is the repo root and the shipped list lives under skills/.
+    # Source layout: _SCRIPT_DIR is <bundle>/src/zolletta_metaskill/code_style/python/,
+    # so parents[3] is the bundle root and the shipped list lives under its skills/.
     # The previous path was parents[3] / "python-code-style" — <repo>/python-code-style
     # — which never existed, so the shipped 57-entry list silently degraded to the
     # 14-entry fallback, and ADR and PHP looked "missing" from the list.
-    _SOURCE_LAYOUT_JSON = (
+    _ACRONYMS_CANDIDATES = [
+        _SCRIPT_DIR / "assets" / "acronyms.json",  # installed package layout
         _SCRIPT_DIR.parents[3]
         / "skills"
         / "zolletta-metaskill-python-code-style"
         / "assets"
-        / "acronyms.json"
-    )
-    _ACRONYMS_JSON = (
-        _SCRIPT_DIR / "assets" / "acronyms.json"  # installed package layout
-        if (_SCRIPT_DIR / "assets" / "acronyms.json").exists()
-        else _SOURCE_LAYOUT_JSON
-    )
+        / "acronyms.json",
+        # Bundle-root layout reached through the repo's src/ symlink (or the
+        # mutants sandbox, where src/ is a real copy): parents[3] is the repo
+        # root and the skills tree sits under skills/zolletta-metaskill/skills/.
+        _SCRIPT_DIR.parents[3]
+        / "skills"
+        / "zolletta-metaskill"
+        / "skills"
+        / "zolletta-metaskill-python-code-style"
+        / "assets"
+        / "acronyms.json",
+    ]
+    _ACRONYMS_JSON = next((c for c in _ACRONYMS_CANDIDATES if c.exists()), _ACRONYMS_CANDIDATES[0])
 
     @staticmethod
     def _load_default_acronyms() -> list[str]:

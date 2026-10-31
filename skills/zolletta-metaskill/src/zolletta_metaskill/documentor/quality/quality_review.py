@@ -64,7 +64,10 @@ class QualityReview:
         inventory = DocumentationFilesFinder.find(settings, repo_path)
         doc_files = list(inventory.all_paths)
 
+        # pragma: no mutate start — bool() normalizes None and False identically, so the
+        # mutated default is unobservable
         readme_focus = bool(ProjectConfig.setting(settings, "documentation.readme_focus", False))
+        # pragma: no mutate end
         if readme_focus:
             doc_files = [d for d in doc_files if os.path.basename(d).lower().startswith("readme")]
 
@@ -86,7 +89,7 @@ class QualityReview:
                 "issues": [],
                 "skipped_reason": inventory.skipped_reason or "No documentation files found",
             }
-            cache_path.write_text(json.dumps(empty_data, indent=2, default=str) + "\n")
+            cache_path.write_text(json.dumps(empty_data, indent=2) + "\n")
             return cache_path
 
         doc_settings = DocumentorSettings.from_settings(settings)
@@ -122,7 +125,10 @@ class QualityReview:
         all_issues: list[dict[str, Any]] = []
 
         for doc in doc_files:
+            # pragma: no mutate start — the next line remaps every falsy value to [""],
+            # so a None or missing-arg default is unobservable
             associated_dirs = doc_code_map.get(doc, [""])
+            # pragma: no mutate end
             if not associated_dirs:
                 associated_dirs = [""]
 

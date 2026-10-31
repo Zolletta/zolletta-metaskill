@@ -24,20 +24,20 @@ skills: [python-code-style]
 ### Ruff
 
 | Check                 | Status        | Details     |
-| --------------------- | ------------- | ----------- |
+|-----------------------|---------------|-------------|
 | `ruff check`          | {{pass_fail}} | {{details}} |
 | `ruff format --check` | {{pass_fail}} | {{details}} |
 
 ### Type Checker ({{type_checker}})
 
 | Check         | Status        | Details     |
-| ------------- | ------------- | ----------- |
+|---------------|---------------|-------------|
 | Type checking | {{pass_fail}} | {{details}} |
 
 ### Vulture (dead code)
 
 | Check     | Status        | Details     |
-| --------- | ------------- | ----------- |
+|-----------|---------------|-------------|
 | Dead code | {{pass_fail}} | {{details}} |
 
 ## Auto-Fixable (Informational)
@@ -45,7 +45,7 @@ skills: [python-code-style]
 > These issues do not count toward the grade. They can be fixed automatically with `ruff check --fix`, `ruff format`, or `ty check --fix`.
 
 | #     | File                   | Rule ID     | Issue       | Fix          |
-| ----- | ---------------------- | ----------- | ----------- | ------------ |
+|-------|------------------------|-------------|-------------|--------------|
 | {{n}} | {{file_path}}:{{line}} | {{rule_id}} | {{problem}} | {{auto_fix}} |
 
 ## Findings
@@ -53,25 +53,25 @@ skills: [python-code-style]
 ### Critical
 
 | #     | File                   | Symbol     | Rule ID     | Issue       | Suggested Fix |
-| ----- | ---------------------- | ---------- | ----------- | ----------- | ------------- |
+|-------|------------------------|------------|-------------|-------------|---------------|
 | {{n}} | {{file_path}}:{{line}} | {{symbol}} | {{rule_id}} | {{problem}} | {{fix}}       |
 
 ### High
 
 | #     | File                   | Symbol     | Rule ID     | Issue       | Suggested Fix |
-| ----- | ---------------------- | ---------- | ----------- | ----------- | ------------- |
+|-------|------------------------|------------|-------------|-------------|---------------|
 | {{n}} | {{file_path}}:{{line}} | {{symbol}} | {{rule_id}} | {{problem}} | {{fix}}       |
 
 ### Medium
 
 | #     | File                   | Symbol     | Rule ID     | Issue       | Suggested Fix |
-| ----- | ---------------------- | ---------- | ----------- | ----------- | ------------- |
+|-------|------------------------|------------|-------------|-------------|---------------|
 | {{n}} | {{file_path}}:{{line}} | {{symbol}} | {{rule_id}} | {{problem}} | {{fix}}       |
 
 ### Low
 
 | #     | File                   | Symbol     | Rule ID     | Issue       | Suggested Fix |
-| ----- | ---------------------- | ---------- | ----------- | ----------- | ------------- |
+|-------|------------------------|------------|-------------|-------------|---------------|
 | {{n}} | {{file_path}}:{{line}} | {{symbol}} | {{rule_id}} | {{problem}} | {{fix}}       |
 
 ## Recommendations

@@ -54,15 +54,15 @@ The `patterns` skill runs `src/zolletta_metaskill/testing_style/general/test_str
 
 The skill reads its configurable rules from the `python.testing` object in `settings.json`. Seven settings are available:
 
-| Key                               | Type            | Default   | Description                                                                                                                                                                                     |
-|-----------------------------------|-----------------|-----------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `coverage_gap_threshold`          | integer (0–100) | `50`      | Module coverage below this percentage is a candidate gap (combined with the other two conditions from Step 3)                                                                                   |
-| `coverage_well_covered_threshold` | integer (0–100) | `80`      | Module coverage above this percentage is never flagged as a gap, even with no direct test references                                                                                            |
+| Key                               | Type            | Default   | Description                                                                                                                                                           |
+|-----------------------------------|-----------------|-----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `coverage_gap_threshold`          | integer (0–100) | `50`      | Module coverage below this percentage is a candidate gap (combined with the other two conditions from Step 3)                                                         |
+| `coverage_well_covered_threshold` | integer (0–100) | `80`      | Module coverage above this percentage is never flagged as a gap, even with no direct test references                                                                  |
 | `check_test_naming`               | boolean         | `true`    | When `true`, the skill runs `src/zolletta_metaskill/testing_style/python/test_naming_scanner.py` to enforce the `test_<unit>_<scenario>_<expected>` naming convention |
-| `check_mutation_testing`          | boolean         | `true`    | When `true` and `python.tools.mutmut.available`, the skill runs `mutmut` — set `false` to opt out of the slow mutation run without uninstalling the tool                                        |
-| `mutation_score_threshold`        | integer (0–100) | `80`      | Mutation score below this percentage is a high-severity finding                                                                                                                                 |
-| `mutation_target`                 | string          | `changed` | `changed` = mutate only files changed vs the default branch; `all` = full run (slow, for scheduled reviews)                                                                                     |
-| `mutation_max_mutants`            | integer         | `50`      | Cap on survived mutants detailed in the report                                                                                                                                                  |
+| `check_mutation_testing`          | boolean         | `true`    | When `true` and `python.tools.mutmut.available`, the skill runs `mutmut` — set `false` to opt out of the slow mutation run without uninstalling the tool              |
+| `mutation_score_threshold`        | integer (0–100) | `80`      | Mutation score below this percentage is a high-severity finding                                                                                                       |
+| `mutation_target`                 | string          | `changed` | `changed` = mutate only files changed vs the default branch; `all` = full run (slow, for scheduled reviews)                                                           |
+| `mutation_max_mutants`            | integer         | `50`      | Cap on survived mutants detailed in the report                                                                                                                        |
 
 The remaining rules — AAA pattern, test isolation, mandatory coverage gap detection, and the scope boundary with `patterns` — are always-on and cannot be disabled. Follows [review mode](../../../reference/code/review-mode.md) — read-only, two-bucket classification, no fixes applied.
 

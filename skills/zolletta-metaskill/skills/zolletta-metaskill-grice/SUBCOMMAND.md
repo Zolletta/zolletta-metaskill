@@ -42,7 +42,7 @@ The corpus is the documentor's, by construction: `DocumentationFilesFinder.find(
 3. Run the scanner and persist its JSON, from the project root:
 
    ```bash
-   uv run python src/zolletta_metaskill/grice/grice_scanner.py --json > <runs_dir>/<YYYY-MM-DD-HH-MM>/cache/grice.json
+   uv run python ../../src/zolletta_metaskill/grice/grice_scanner.py --json > <runs_dir>/<YYYY-MM-DD-HH-MM>/cache/grice.json
    ```
 
    The scanner also writes the same payload to `cache/grice.json` under the run directory resolved by `DocumentorSettings.resolve_cache_dir`, so the cache is present even when the redirect is forgotten. It prints `Result: SKIPPED (no documentation files found)` and exits 0 when the corpus is empty — that is a "nothing to review" result, not an error.
@@ -54,7 +54,7 @@ The corpus is the documentor's, by construction: `DocumentationFilesFinder.find(
 Each maxim is an aggregate of several raw metrics, normalised per metric across the corpus and averaged. A metric that was not measured for a document (no headings, no frontmatter, too few words) is left out of that document's average rather than scored as zero.
 
 | Maxim        | Metrics                                                                                                                                                                                                                      |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|--------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **Quantity** | `section_balance` (words per section against the corpus median), `section_redundancy`, `sentence_redundancy`, `corpus_duplication` (1 − similarity to the nearest peer), `content_ratio` (prose share, boilerplate excluded) |
 | **Quality**  | `link_resolution` (internal links and anchors that resolve), `reference_resolution` (file references that exist), `lexical_alignment` (vocabulary shared with `src/`)                                                        |
 | **Relation** | `heading_body` (heading against its own section), `frontmatter_content` (frontmatter against the body), `corpus_pertinence` (document against the corpus mean)                                                               |

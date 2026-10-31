@@ -98,12 +98,12 @@ Re-run the orchestrator and verify the JSON report returns empty `new`/`stale` l
 
 ## Files
 
-| File         | Location                                         | Purpose                                                         |
-|--------------|--------------------------------------------------|-----------------------------------------------------------------|
-| Orchestrator | `src/zolletta_metaskill/adr/adr_orchestrator.py` | Coordinates discovery + distillation + cache                    |
-| CLI          | `src/zolletta_metaskill/adr/adr_client.py`       | CLI entry point — argument parsing, report formatting, `main()` |
-| Discovery    | `src/zolletta_metaskill/adr/adr_discovery.py`    | Finds ADR files, parses status                                  |
-| Distiller    | `src/zolletta_metaskill/adr/adr_distiller.py`    | Extracts directive from a single ADR                            |
-| Cache        | `src/zolletta_metaskill/adr/adr_cache.py`        | mtime cache (`.zolletta-metaskill/adr-cache.json`)              |
-| Structs      | `src/zolletta_metaskill/adr/structs/`            | `ADRRecord`, `DistillReport` data models                        |
-| Output       | `<docs_dir>/<adrs_path>/adr-distilled.md`        | Distilled directives file                                       |
+| File         | Location                                               | Purpose                                                         |
+|--------------|--------------------------------------------------------|-----------------------------------------------------------------|
+| Orchestrator | `../../src/zolletta_metaskill/adr/adr_orchestrator.py` | Coordinates discovery + distillation + cache                    |
+| CLI          | `../../src/zolletta_metaskill/adr/adr_client.py`       | CLI entry point — argument parsing, report formatting, `main()` |
+| Discovery    | `../../src/zolletta_metaskill/adr/adr_discovery.py`    | Finds ADR files, parses status                                  |
+| Distiller    | `../../src/zolletta_metaskill/adr/adr_distiller.py`    | Extracts directive from a single ADR                            |
+| Cache        | `../../src/zolletta_metaskill/adr/adr_cache.py`        | mtime cache (`.zolletta-metaskill/adr-cache.json`)              |
+| Structs      | `../../src/zolletta_metaskill/adr/structs/`            | `ADRRecord`, `DistillReport` data models                        |
+| Output       | `<docs_dir>/<adrs_path>/adr-distilled.md`              | Distilled directives file                                       |

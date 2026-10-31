@@ -32,7 +32,7 @@ When no subcommand is given, or the subcommand is `help`, the help table is disp
 All subcommands read from this skill's subdirectories:
 
 | Resource   | Path                                | Contents                                                                                                               |
-| ---------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+|------------|-------------------------------------|------------------------------------------------------------------------------------------------------------------------|
 | References | `docs/`                             | Shared guidelines (Diátaxis, review workflow, grading rubric, tool messages)                                           |
 | Scripts    | `src/zolletta_metaskill/`           | Scanning scripts organized by skill (patterns/, code_style/, testing_style/, documentor/, grice/, adr/, core/, setup/) |
 | Settings   | `.zolletta-metaskill/settings.json` | Project-wide configuration written by `setup` (language, tool availability, reports dir)                               |

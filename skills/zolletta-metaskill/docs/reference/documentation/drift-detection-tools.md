@@ -10,8 +10,8 @@ The `documentor` skill includes a top-level orchestrator plus four domain tools.
 
 ## Tools
 
-| Tool                                                                                             | Purpose                                                                     | Command                                                                                                          |
-|--------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
+| Tool                                                                   | Purpose                                                                     | Command                                                                                |
+|------------------------------------------------------------------------|-----------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
 | `src/zolletta_metaskill/documentor/documentor_client.py`               | Run all tools and aggregate into one report                                 | `python src/zolletta_metaskill/documentor/documentor_client.py [--json]`               |
 | `src/zolletta_metaskill/documentor/quality/quality_review.py`          | Unified drift + staleness review (writes `quality.json`)                    | `python src/zolletta_metaskill/documentor/quality/quality_review.py [--json]`          |
 | `src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py`       | Validate API docs against Python source (AST)                               | `python src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py [--json]`       |
@@ -22,8 +22,8 @@ All tools: Python 3.8+ stdlib only, `[--json]`, run from the repository root, an
 
 Each tool writes its own JSON cache artifact into the current run folder, `<runs_dir>/<YYYY-MM-DD-HH-MM>/cache/` — `.zolletta-metaskill/<timestamp>/cache/` with the default `runs_dir` — so each review keeps its own history instead of overwriting the last. Before the first run folder exists, artifacts land in `<runs_dir>/cache/`:
 
-| Tool cache file          | Produced by                                                                                |
-|--------------------------|--------------------------------------------------------------------------------------------|
+| Tool cache file          | Produced by                                                      |
+|--------------------------|------------------------------------------------------------------|
 | `quality.json`           | `src/zolletta_metaskill/documentor/quality/quality_review.py`    |
 | `api_doc_validator.json` | `src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py` |
 | `link_checker.json`      | `src/zolletta_metaskill/documentor/links/link_checker.py`        |

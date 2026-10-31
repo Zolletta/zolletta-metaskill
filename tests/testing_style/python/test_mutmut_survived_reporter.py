@@ -442,6 +442,57 @@ class TestMutmutSurvivedReporter:
             is None
         )
 
+    def test_survivor_entry_sandbox_diff_path_keeps_resolved_scope(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "pkg.py").write_text("def f():\n    return 1\n")
+        (tmp_path / "mutants" / "src").mkdir(parents=True)
+        (tmp_path / "mutants" / "src" / "pkg.py").write_text("def f():\n    return 1\n")
+        show = (
+            "# pkg.x_f__mutmut_1: survived\n"
+            "--- mutants/src/pkg.py\n"
+            "@@ -2 +2 @@\n"
+            "-    return 1\n"
+            "+    return 2\n"
+        )
+        _install_mutmut(monkeypatch, {("show", "pkg.x_f__mutmut_1"): _proc(show)})
+        entry = MutmutSurvivedReporter._survivor_entry("pkg.x_f__mutmut_1", "survived", ["src"])
+        assert entry is not None
+        assert entry["file"] == "src/pkg.py"
+
+    def test_survivor_entry_unresolvable_module_uses_diff_file(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A module whose file exists outside the roots falls back to the diff path."""
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "vendor.py").write_text("x = 1\n")
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "pkg.py").write_text("def f():\n    return 1\n")
+        show = (
+            "# vendor.x_f__mutmut_1: survived\n"
+            "--- src/pkg.py\n"
+            "@@ -2 +2 @@\n"
+            "-    return 1\n"
+            "+    return 2\n"
+        )
+        _install_mutmut(monkeypatch, {("show", "vendor.x_f__mutmut_1"): _proc(show)})
+        entry = MutmutSurvivedReporter._survivor_entry("vendor.x_f__mutmut_1", "survived", ["src"])
+        assert entry is not None
+        assert entry["file"] == "src/pkg.py"
+
+    def test_survivor_entry_unresolvable_module_without_show_keeps_none_file(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """No show output and no resolvable file leaves ``file`` as ``None``."""
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "vendor.py").write_text("x = 1\n")
+        _install_mutmut(monkeypatch, {})
+        entry = MutmutSurvivedReporter._survivor_entry("vendor.x_f__mutmut_1", "survived", ["src"])
+        assert entry is not None
+        assert entry["file"] is None
+
     # --- ``_report`` assembles counts, score, and capped survivors. ---
 
     def test_report_mixed_statuses_scores_evaluated_mutants(

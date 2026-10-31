@@ -134,13 +134,13 @@ Every tool below reads **only the documentation** — the markdown under `docume
 
 ### Tools
 
-| Tool                                   | Purpose                                                                               | Command                                                                                  |
-|----------------------------------------|---------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------|
-| `documentor_client.py`                 | Run all documentor tools and aggregate into one report                                | `python src/zolletta_metaskill/documentor/documentor_client.py [--json]`                 |
-| `quality/quality_review.py`            | Unified drift + staleness review (writes `quality.json`)                              | `python src/zolletta_metaskill/documentor/quality/quality_review.py [--json]`            |
-| `api_doc/api_doc_validator.py`         | Validate API docs against Python source (AST)                                         | `python src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py [--json]`         |
-| `links/link_checker.py`                | Audit links and anchors in every markdown file                                        | `python src/zolletta_metaskill/documentor/links/link_checker.py [--broken-only]`         |
-| `quality/unwrapped_prose_scanner.py`   | Flag paragraphs hard-wrapped across lines (opt-in, not run by `documentor_client.py`) | `python src/zolletta_metaskill/documentor/quality/unwrapped_prose_scanner.py [--json]`   |
+| Tool                                 | Purpose                                                                               | Command                                                                                      |
+|--------------------------------------|---------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
+| `documentor_client.py`               | Run all documentor tools and aggregate into one report                                | `python ../../src/zolletta_metaskill/documentor/documentor_client.py [--json]`               |
+| `quality/quality_review.py`          | Unified drift + staleness review (writes `quality.json`)                              | `python ../../src/zolletta_metaskill/documentor/quality/quality_review.py [--json]`          |
+| `api_doc/api_doc_validator.py`       | Validate API docs against Python source (AST)                                         | `python ../../src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py [--json]`       |
+| `links/link_checker.py`              | Audit links and anchors in every markdown file                                        | `python ../../src/zolletta_metaskill/documentor/links/link_checker.py [--broken-only]`       |
+| `quality/unwrapped_prose_scanner.py` | Flag paragraphs hard-wrapped across lines (opt-in, not run by `documentor_client.py`) | `python ../../src/zolletta_metaskill/documentor/quality/unwrapped_prose_scanner.py [--json]` |
 
 All tools: Python 3.8+ stdlib only, run from the repository root, `[--json]` and `--help`, any OS. Paths and thresholds come from `documentation.*` in `.zolletta-metaskill/settings.json` — see `../../docs/reference/settings-schema.md`. Each tool writes its JSON cache into the current run directory, `<runs_dir>/<YYYY-MM-DD-HH-MM>/cache/` — `.zolletta-metaskill/<timestamp>/cache/` with the default `runs_dir` — so each review keeps its own history instead of overwriting the last; before the first run directory exists, artifacts land in `<runs_dir>/cache/`.
 

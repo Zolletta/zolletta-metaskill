@@ -215,11 +215,12 @@ class MutmutSurvivedReporter:
     def _survivor_entry(name: str, status: str, source_dirs: list[str]) -> dict[str, Any] | None:
         """Build one survivor record; ``None`` when the mutant is out of scope."""
         module, function = MutmutSurvivedReporter._split_mutant_name(name)
-        file = MutmutSurvivedReporter._resolve_file(module, source_dirs)
+        resolved = MutmutSurvivedReporter._resolve_file(module, source_dirs)
+        diff_file: str | None = None
         entry: dict[str, Any] = {
             "name": name,
             "status": status,
-            "file": file,
+            "file": resolved,
             "line": None,
             "function": function,
             "mutation": None,
@@ -228,18 +229,24 @@ class MutmutSurvivedReporter:
         show_stdout = MutmutSurvivedReporter._show_stdout(name)
         if show_stdout is not None:
             diff_file, line, mutation, diff = MutmutSurvivedReporter._parse_show(show_stdout)
-            if diff_file is not None:
-                file = diff_file
             entry["line"] = line
             entry["mutation"] = mutation
             entry["diff"] = diff
-        if (
-            file is not None
-            and Path(file).is_file()
-            and not MutmutSurvivedReporter._under_source_root(file, source_dirs)
+        # ``mutmut show`` paths point into the mutants/ sandbox, never at the
+        # repo tree — a survivor is in scope when at least one resolvable path
+        # (module-derived or diff) sits under a source root.
+        checked = [
+            candidate
+            for candidate in (resolved, diff_file)
+            if candidate is not None and Path(candidate).is_file()
+        ]
+        if checked and not any(
+            MutmutSurvivedReporter._under_source_root(candidate, source_dirs)
+            for candidate in checked
         ):
             return None
-        entry["file"] = file
+        if entry["file"] is None:
+            entry["file"] = diff_file
         return entry
 
     @staticmethod

@@ -221,6 +221,8 @@ class DependencyInversionScanner:
             method_name = DependencyInversionScanner._find_method_name(member, source)
             new_calls = DependencyInversionScanner._find_new_in_method(member, source)
             for created_class, line in new_calls:
+                # pragma: no mutate start — explicit fix_type kwarg equals
+                # Finding's own default, so removing it is unobservable
                 findings.append(
                     Finding(
                         file=file_path,
@@ -235,6 +237,7 @@ class DependencyInversionScanner:
                         fix_type="manual",
                     )
                 )
+                # pragma: no mutate end
 
     @staticmethod
     def _scan_tree(path: Path) -> list[Finding]:

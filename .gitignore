@@ -6,6 +6,7 @@ dist/
 build/
 .cache/
 mutants/
+/src
 .tokensave/
 # Everything under .zolletta-metaskill/ is machine-local — caches, run folders,
 # the ADR distiller cache, plans. settings.json is the exception: it carries the

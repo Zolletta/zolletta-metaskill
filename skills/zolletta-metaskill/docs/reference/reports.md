@@ -35,7 +35,7 @@ The timestamp format (`YYYY-MM-DD-HH-MM`) is lexicographically sortable, so find
 Each subcommand writes its own report file:
 
 | Subcommand             | Report file                  | Content                                                                                 |
-| ---------------------- | ---------------------------- | --------------------------------------------------------------------------------------- |
+|------------------------|------------------------------|-----------------------------------------------------------------------------------------|
 | `patterns`             | `patterns.md`                | God class findings, SOLID violations, coupling analysis, structural convention results  |
 | `documentor`           | `documentor.md`              | Diátaxis compliance findings, drift detection results, staleness scores, link integrity |
 | `grice`                | `grice.md`                   | Corpus-relative maxim indices, broken-link and heading-hierarchy findings               |
@@ -47,7 +47,7 @@ Each subcommand writes its own report file:
 When running `/zolletta-metaskill review`, the orchestrator produces one additional file:
 
 | File         | Content                                                                                                                                       |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+|--------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
 | `SUMMARY.md` | Graded summary of all sub-reviews, links to each specialist report, and the aggregated action list (`Open`/`Done` tables ordered by severity) |
 
 ## Report format

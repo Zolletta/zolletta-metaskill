@@ -412,6 +412,55 @@ class TestInterfaceSegregationScanner:
         ]
         assert report["violation_count"] == 3
 
+    def test_main_text_forwards_stub_violations_to_emit_text(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """main() forwards the detected stub violations to ``_emit_text``."""
+        _write_settings(tmp_path, python={"patterns": {"isp_min_methods": 2}})
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "mod.py").write_text(
+            "class MyProto(Protocol):\n"
+            "    def a(self): pass\n"
+            "    def b(self): pass\n"
+            "class MyImpl(MyProto):\n"
+            "    def a(self):\n"
+            "        raise NotImplementedError()\n"
+            "    def b(self):\n"
+            "        pass\n"
+        )
+        captured: dict[str, Any] = {}
+
+        def _spy(
+            min_methods: int,
+            fat_interfaces: list[dict[str, Any]],
+            stub_violations: list[dict[str, Any]],
+            implementers: dict[str, list[str]],
+        ) -> None:
+            captured["stub_violations"] = stub_violations
+
+        monkeypatch.setattr(InterfaceSegregationScanner, "_emit_text", staticmethod(_spy))
+        rc = _run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
+        assert captured["stub_violations"] == [
+            {
+                "protocol": "MyProto",
+                "implementer": "MyImpl",
+                "method": "a",
+                "file": "mod.py",
+                "line": 5,
+                "issue": "raises NotImplementedError",
+            },
+            {
+                "protocol": "MyProto",
+                "implementer": "MyImpl",
+                "method": "b",
+                "file": "mod.py",
+                "line": 7,
+                "issue": "stub (pass/return None)",
+            },
+        ]
+
     def test_main_gitignored_dirs_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:

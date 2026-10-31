@@ -140,7 +140,10 @@ python_version = "3.12"
 cache_dir = ".cache/mypy"
 python_executable = ".venv/bin/python"
 mypy_path = "skills/zolletta-metaskill/src"
-exclude = ["playground/", "mutants/"]
+# src/ is an untracked symlink (a mutmut/human shim) to the same tree —
+# without this exclusion `mypy .` reports every module twice under
+# different module names.
+exclude = ["playground/", "mutants/", "^src/"]
 
 [[tool.mypy.overrides]]
 # Scoped to the optional grammar only (ADR-0004). `tree_sitter` itself is a hard
@@ -182,11 +185,14 @@ paths = ["skills/zolletta-metaskill/src"]
 exclude = [".venv/", "playground/", "mutants/"]
 
 [tool.mutmut]
+# source_paths must be a list — a bare string is iterated character by
+# character and the '/' element makes mutmut walk the filesystem root.
 # skills/zolletta-metaskill/skills/ ships runtime assets (e.g. acronym lists)
 # that tests assert on; the mutants/ sandbox must contain them or the
-# baseline run fails.
-paths_to_mutate = "skills/zolletta-metaskill/src/"
-also_copy = ["skills/"]
+# baseline run fails. Scope it to the assets dir — copying all of skills/
+# would also copy the source tree a second time.
+source_paths = ["src"]
+also_copy = ["skills/zolletta-metaskill/skills/"]
 # The unwrapped-prose repo guard uses `git ls-files` on the real repository;
 # inside mutants/ (a git-ignored, non-repo copy) it can only see 0 files, so it
 # is deselected for mutation runs only — it still runs in CI.

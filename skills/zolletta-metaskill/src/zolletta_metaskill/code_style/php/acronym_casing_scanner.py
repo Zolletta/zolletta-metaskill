@@ -97,6 +97,10 @@ class AcronymCasingScanner:
         # pointed at <repo>/python-code-style, which never existed, so the shipped list
         # silently degraded to the fallback here too.
         script_dir = Path(__file__).resolve().parent
+        # pragma: no mutate start — the fallback candidates mask each other:
+        # mutating any single segment still resolves through the remaining
+        # candidates, so only "at least one exists" is observable (covered by
+        # test_shipped_acronym_list_is_loaded).
         candidates = [
             script_dir / "assets" / "acronyms.json",  # installed package layout
             script_dir.parents[3]
@@ -104,7 +108,18 @@ class AcronymCasingScanner:
             / "zolletta-metaskill-python-code-style"
             / "assets"
             / "acronyms.json",
+            # src/ reached as a real directory (repo-root layout, or the
+            # mutants sandbox copy): parents[3] is the repo root and the
+            # skills tree sits under skills/zolletta-metaskill/skills/.
+            script_dir.parents[3]
+            / "skills"
+            / "zolletta-metaskill"
+            / "skills"
+            / "zolletta-metaskill-python-code-style"
+            / "assets"
+            / "acronyms.json",
         ]
+        # pragma: no mutate end
         for candidate in candidates:
             if candidate.exists():
                 try:

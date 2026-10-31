@@ -13,7 +13,7 @@ skills: [review]
 ## Grades by area
 
 | Area             | Skill            | Grade                    | Trend                |
-| ---------------- | ---------------- | ------------------------ | -------------------- |
+|------------------|------------------|--------------------------|----------------------|
 | Design patterns  | patterns         | {{patterns_grade}}/100   | {{patterns_trend}}   |
 | Documentation    | documentor       | {{documentor_grade}}/100 | {{documentor_trend}} |
 | {{lang_area_1}}  | {{lang_skill_1}} | {{lang_grade_1}}/100     | {{lang_trend_1}}     |
@@ -45,7 +45,7 @@ The grice row is advisory: its grade is a corpus-relative index (50 = the corpus
 For full findings (file paths, line numbers, impact, suggested fixes), see the specialist reports. Every action item names its source findings in a **Reported in** column using the per-report prefixes below:
 
 | Prefix              | Area            | Report file                                |
-| ------------------- | --------------- | ------------------------------------------ |
+|---------------------|-----------------|--------------------------------------------|
 | `P`                 | Design patterns | [patterns.md](patterns.md)                 |
 | `D`                 | Documentation   | [documentor.md](documentor.md)             |
 | `G`                 | Grice maxims    | [grice.md](grice.md)                       |
@@ -57,13 +57,13 @@ For full findings (file paths, line numbers, impact, suggested fixes), see the s
 ## Open
 
 | #     | Priority | Reported in | Action              |
-| ----- | -------- | ----------- | ------------------- |
+|-------|----------|-------------|---------------------|
 | {{N}} | {{P}}    | {{links}}   | {{action_one_line}} |
 
 ## Done
 
 | #     | Reported in | What was done    |
-| ----- | ----------- | ---------------- |
+|-------|-------------|------------------|
 | {{N}} | {{links}}   | {{fix_one_line}} |
 
 ## Previous review status
@@ -73,19 +73,19 @@ From `{{previous_run_timestamp}}` — **{{done_count}} ✅ done · {{partial_cou
 ### ✅ Done
 
 | #          | Item           | Evidence                    |
-| ---------- | -------------- | --------------------------- |
+|------------|----------------|-----------------------------|
 | {{prev_n}} | {{prev_title}} | {{commit_or_code_evidence}} |
 
 ### ⚠️ Partially done
 
 | #          | Item           | What remains       | Carried into |
-| ---------- | -------------- | ------------------ | ------------ |
+|------------|----------------|--------------------|--------------|
 | {{prev_n}} | {{prev_title}} | {{remaining_work}} | → new {{N}}  |
 
 ### ❌ Not done
 
 | #          | Item           | Why still open       | Carried into |
-| ---------- | -------------- | -------------------- | ------------ |
+|------------|----------------|----------------------|--------------|
 | {{prev_n}} | {{prev_title}} | {{evidence_unfixed}} | → new {{N}}  |
 
 ## Trend vs previous review

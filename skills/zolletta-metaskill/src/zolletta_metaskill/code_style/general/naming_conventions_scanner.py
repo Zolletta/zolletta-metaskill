@@ -55,19 +55,29 @@ from zolletta_metaskill.core.project_config import ProjectConfig
 class NamingConventionsScanner:
     """Check naming conventions for source files and test files."""
 
-    # The shipped acronym list — skill folder first, then the source layout.
-    # Source layout: _SCRIPT_DIR is <repo>/src/zolletta_metaskill/code_style/general/,
-    # so parents[3] is the repo root. Same two-path lookup the acronym casing scanners use.
+    # The shipped acronym list — skill folder first, then the source layouts.
+    # Source layout: _SCRIPT_DIR is <bundle>/src/zolletta_metaskill/code_style/general/,
+    # so parents[3] is the bundle root. Same lookup the acronym casing scanners use.
     _SCRIPT_DIR = Path(__file__).resolve().parent
-    _ACRONYMS_JSON = (
-        _SCRIPT_DIR / "assets" / "acronyms.json"  # installed package layout
-        if (_SCRIPT_DIR / "assets" / "acronyms.json").exists()
-        else _SCRIPT_DIR.parents[3]
+    _ACRONYMS_CANDIDATES = [
+        _SCRIPT_DIR / "assets" / "acronyms.json",  # installed package layout
+        _SCRIPT_DIR.parents[3]
         / "skills"
         / "zolletta-metaskill-python-code-style"
         / "assets"
-        / "acronyms.json"
-    )
+        / "acronyms.json",
+        # src/ reached as a real directory (repo-root layout, or the
+        # mutants sandbox copy): parents[3] is the repo root and the
+        # skills tree sits under skills/zolletta-metaskill/skills/.
+        _SCRIPT_DIR.parents[3]
+        / "skills"
+        / "zolletta-metaskill"
+        / "skills"
+        / "zolletta-metaskill-python-code-style"
+        / "assets"
+        / "acronyms.json",
+    ]
+    _ACRONYMS_JSON = next((c for c in _ACRONYMS_CANDIDATES if c.exists()), _ACRONYMS_CANDIDATES[0])
 
     @staticmethod
     def _known_acronyms() -> frozenset[str]:
