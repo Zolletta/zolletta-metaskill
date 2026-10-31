@@ -47,3 +47,10 @@ class TestADRCache:
         cache = ADRCache(cache_path)
         cache.save({})
         assert cache_path.exists()
+
+    def test_save_creates_nested_parent_dirs(self, tmp_path: Path) -> None:
+        """parents=True must hold for depth>1 — a shallow mkdir fails here."""
+        cache_path = tmp_path / "a" / "b" / "c" / "cache.json"
+        cache = ADRCache(cache_path)
+        cache.save({})
+        assert cache_path.exists()

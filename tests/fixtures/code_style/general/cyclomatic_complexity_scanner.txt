@@ -1,0 +1,14 @@
+======================================================================
+CYCLOMATIC COMPLEXITY — VALIDATION REPORT
+======================================================================
+
+Scanned 4 files under src (max complexity 12)
+
+## Functions exceeding the limit (2)
+
+      17  src/deep.py:12  walk  (over by 5)
+      14  src/state.py:40  StateMachine.step  (over by 2)
+
+  Fix: extract a collaborator or decompose the function, or raise max_cyclomatic_complexity in settings.json if the complexity is justified (parsers, state machines, generated code).
+
+Result: violations found (report-only mode)

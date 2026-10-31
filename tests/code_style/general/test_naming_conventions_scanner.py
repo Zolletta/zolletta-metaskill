@@ -5,13 +5,16 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 from zolletta_metaskill.code_style.general.naming_conventions_scanner import (
     NamingConventionsScanner,
 )
+from zolletta_metaskill.core.project_config import ProjectConfig
 
 
 def _write_settings(dirpath: Path, **overrides: object) -> Path:
@@ -38,103 +41,84 @@ def _git_init(root: Path) -> None:
 
 
 class TestNamingConventionsScanner:
-    # --- Tests for NamingConventionsScanner._snake_to_pascal(). ---
+    # --- Tests for NamingConventionsScanner._resolve_packages(). ---
 
-    def test_snake_to_pascal_simple_input_returns_myclass(self) -> None:
-        assert NamingConventionsScanner._snake_to_pascal("my_class") == "MyClass"
+    @staticmethod
+    def _make_src_pkg(root: Path) -> None:
+        (root / "src" / "mypkg").mkdir(parents=True, exist_ok=True)
+        (root / "src" / "mypkg" / "__init__.py").write_text("")
 
-    def test_snake_to_pascal_single_word_returns_cache(self) -> None:
-        assert NamingConventionsScanner._snake_to_pascal("cache") == "Cache"
+    def test_resolve_roots_accepts_flat_test_mirror(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A flat ``tests/<path>/`` mirror resolves — no package level required.
 
-    def test_snake_to_pascal_empty_input_returns_empty(self) -> None:
-        assert NamingConventionsScanner._snake_to_pascal("") == ""
+        This scanner carried a byte-identical copy of ``test_structure_scanner``'s
+        package-name guard, so both aborted with exit 1 and zero output for two
+        consecutive review runs on the layout AGENTS.md mandates.
+        """
+        _write_settings(tmp_path)
+        self._make_src_pkg(tmp_path)
+        (tmp_path / "tests" / "core").mkdir(parents=True)
+        (tmp_path / "tests" / "core" / "test_config.py").write_text("")
+        monkeypatch.chdir(tmp_path)
+        resolved = NamingConventionsScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        )
+        assert resolved is not None
+        assert resolved[4] == [Path("tests")]
 
-    def test_snake_to_pascal_multiple_words_returns_myawesomeclass(self) -> None:
-        assert NamingConventionsScanner._snake_to_pascal("my_awesome_class") == "MyAwesomeClass"
+    def test_resolve_roots_still_accepts_packaged_test_mirror(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        self._make_src_pkg(tmp_path)
+        (tmp_path / "tests" / "mypkg" / "core").mkdir(parents=True)
+        (tmp_path / "tests" / "mypkg" / "core" / "test_config.py").write_text("")
+        monkeypatch.chdir(tmp_path)
+        resolved = NamingConventionsScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        )
+        assert resolved is not None
+        assert resolved[4] == [Path("tests") / "mypkg"]
 
-    # --- Tests for NamingConventionsScanner._pascal_to_snake(). ---
+    def test_resolve_roots_prefers_packaged_when_both_exist(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        self._make_src_pkg(tmp_path)
+        (tmp_path / "tests" / "mypkg").mkdir(parents=True)
+        (tmp_path / "tests" / "mypkg" / "__init__.py").write_text("")
+        (tmp_path / "tests" / "core").mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)
+        resolved = NamingConventionsScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        )
+        assert resolved is not None
+        assert resolved[4] == [Path("tests") / "mypkg"]
 
-    def test_pascal_to_snake_simple_input_returns_my_class(self) -> None:
-        assert NamingConventionsScanner._pascal_to_snake("MyClass") == "my_class"
+    def test_resolve_roots_returns_none_when_source_package_absent(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        (tmp_path / "src").mkdir(parents=True)
+        (tmp_path / "tests").mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)
+        assert (
+            NamingConventionsScanner._resolve_packages(ProjectConfig.load_settings(), {"python"})
+            is None
+        )
 
-    def test_pascal_to_snake_single_word_returns_cache(self) -> None:
-        assert NamingConventionsScanner._pascal_to_snake("Cache") == "cache"
-
-    def test_pascal_to_snake_empty_input_returns_empty(self) -> None:
-        assert NamingConventionsScanner._pascal_to_snake("") == ""
-
-    def test_pascal_to_snake_multiple_words_returns_my_awesome_class(self) -> None:
-        assert NamingConventionsScanner._pascal_to_snake("MyAwesomeClass") == "my_awesome_class"
-
-    def test_pascal_to_snake_all_lower_returns_myclass(self) -> None:
-        assert NamingConventionsScanner._pascal_to_snake("myclass") == "myclass"
-
-    def test_pascal_to_snake_all_upper_returns_a_b_c(self) -> None:
-        assert NamingConventionsScanner._pascal_to_snake("ABC") == "a_b_c"
-
-    # --- Tests for NamingConventionsScanner._get_class_names(). ---
-
-    def test_get_class_names_single_class_returns_single_item(self, tmp_path: Path) -> None:
-        f = tmp_path / "user.py"
-        f.write_text("class User:\n    pass\n")
-        assert NamingConventionsScanner._get_class_names(f) == ["User"]
-
-    def test_get_class_names_multiple_classes_returns_multiple_items(self, tmp_path: Path) -> None:
-        f = tmp_path / "multi.py"
-        f.write_text("class Foo:\n    pass\nclass Bar:\n    pass\n")
-        assert NamingConventionsScanner._get_class_names(f) == ["Foo", "Bar"]
-
-    def test_get_class_names_no_classes_returns_empty_list(self, tmp_path: Path) -> None:
-        f = tmp_path / "utils.py"
-        f.write_text("def helper():\n    return 1\n")
-        assert NamingConventionsScanner._get_class_names(f) == []
-
-    def test_get_class_names_syntax_error_returns_empty_list(self, tmp_path: Path) -> None:
-        f = tmp_path / "bad.py"
-        f.write_text("def broken(:\n")
-        assert NamingConventionsScanner._get_class_names(f) == []
-
-    def test_get_class_names_nested_class_excludes_value(self, tmp_path: Path) -> None:
-        """Only top-level classes are returned (engine does not walk into nested)."""
-        f = tmp_path / "nested.py"
-        f.write_text("class Outer:\n    class Inner:\n        pass\n")
-        names = NamingConventionsScanner._get_class_names(f)
-        assert "Outer" in names
-        # Inner is nested inside Outer — the engine only extracts top-level classes
-        assert "Inner" not in names
-
-    # --- Tests for NamingConventionsScanner._auto_detect_package(). ---
-
-    def test_auto_detect_package_with_init_returns_mypkg(self, tmp_path: Path) -> None:
-        src = tmp_path / "src"
-        pkg = src / "mypkg"
-        pkg.mkdir(parents=True)
-        (pkg / "__init__.py").write_text("")
-        assert NamingConventionsScanner._auto_detect_package(src) == "mypkg"
-
-    def test_without_init_fallback(self, tmp_path: Path) -> None:
-        src = tmp_path / "src"
-        pkg = src / "mypkg"
-        pkg.mkdir(parents=True)
-        assert NamingConventionsScanner._auto_detect_package(src) == "mypkg"
-
-    def test_picks_first_with_init(self, tmp_path: Path) -> None:
-        src = tmp_path / "src"
-        (src / "aaa").mkdir(parents=True)
-        (src / "bbb").mkdir(parents=True)
-        (src / "bbb" / "__init__.py").write_text("")
-        assert NamingConventionsScanner._auto_detect_package(src) == "bbb"
-
-    def test_auto_detect_package_no_dirs_returns_none(self, tmp_path: Path) -> None:
-        src = tmp_path / "src"
-        src.mkdir()
-        assert NamingConventionsScanner._auto_detect_package(src) is None
-
-    def test_auto_detect_package_files_only_returns_none(self, tmp_path: Path) -> None:
-        src = tmp_path / "src"
-        src.mkdir()
-        (src / "file.py").write_text("")
-        assert NamingConventionsScanner._auto_detect_package(src) is None
+    def test_resolve_roots_returns_none_when_no_test_dir_on_disk(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        self._make_src_pkg(tmp_path)
+        monkeypatch.chdir(tmp_path)
+        assert (
+            NamingConventionsScanner._resolve_packages(ProjectConfig.load_settings(), {"python"})
+            is None
+        )
 
     # --- Tests for NamingConventionsScanner._build_source_index(). ---
 
@@ -398,7 +382,7 @@ class TestNamingConventionsScanner:
         rc = self._run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "auto-detect" in err
+        assert err.startswith("Error: could not auto-detect package under src/")
 
     def test_main_src_package_not_exist(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -417,18 +401,35 @@ class TestNamingConventionsScanner:
         assert rc == 1
         assert "does not exist" in err
 
-    def test_main_test_package_not_exist(
+    def test_main_flat_test_mirror_is_accepted_not_an_error(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        """A test root with no ``mypkg/`` subdir is a valid flat mirror, not an error.
+
+        This test previously asserted ``rc == 1`` — it encoded the bug. The
+        scanner required a package-named test directory, contradicting both
+        AGENTS.md and ``structural-conventions.md``, so it aborted with zero
+        output for two consecutive review runs.
+        """
         _write_settings(tmp_path)
         src = tmp_path / "src"
-        tests = tmp_path / "tests"
         (src / "mypkg").mkdir(parents=True)
-        tests.mkdir()
+        (src / "mypkg" / "__init__.py").write_text("")
+        (tmp_path / "tests" / "core").mkdir(parents=True)
+        (tmp_path / "tests" / "core" / "test_config.py").write_text("")
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        assert rc == 0
+
+    def test_main_test_dir_absent_is_an_error(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """No configured test directory on disk -> exit 1 naming the real cause."""
+        _write_settings(tmp_path)
+        (tmp_path / "src" / "mypkg").mkdir(parents=True)
         rc = self._run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "does not exist" in err
+        assert "no configured test directories exist on disk" in err
 
     def test_main_empty_dirs(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -531,3 +532,330 @@ class TestNamingConventionsScanner:
         out = capsys.readouterr().out
         assert rc == 0
         assert "test_conftest.py" not in out
+
+    # --- acronym-aware filename↔class matching ---
+
+    def test_known_acronyms_empty_list_falls_back_to_default(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        path = tmp_path / "acronyms.json"
+        path.write_text('{"acronyms": []}')
+        monkeypatch.setattr(NamingConventionsScanner, "_ACRONYMS_JSON", path)
+        assert NamingConventionsScanner._known_acronyms() == frozenset(
+            {"ADR", "API", "CLI", "HTTP", "JSON", "PHP", "URL"}
+        )
+
+    def test_acceptable_names_include_leading_acronym(self) -> None:
+        acronyms = NamingConventionsScanner._known_acronyms()
+        names = NamingConventionsScanner._acceptable_class_names("adr_cache", acronyms)
+        assert "ADRCache" in names
+        assert "AdrCache" in names
+
+    def test_acceptable_names_include_trailing_acronym(self) -> None:
+        acronyms = NamingConventionsScanner._known_acronyms()
+        names = NamingConventionsScanner._acceptable_class_names("adr_cli", acronyms)
+        assert "ADRCLI" in names
+        assert "AdrCLI" in names
+
+    def test_acceptable_names_for_non_acronym_word_unchanged(self) -> None:
+        acronyms = NamingConventionsScanner._known_acronyms()
+        assert NamingConventionsScanner._acceptable_class_names("user_store", acronyms) == {
+            "UserStore"
+        }
+
+    def test_shipped_acronym_list_is_loaded(self) -> None:
+        """The shipped list must load, not the hardcoded fallback."""
+        assert NamingConventionsScanner._ACRONYMS_JSON.exists()
+        acronyms = NamingConventionsScanner._known_acronyms()
+        assert len(acronyms) > 20
+        assert {"ADR", "PHP", "API", "CLI"} <= acronyms
+
+    def test_adr_class_not_flagged(self, tmp_path: Path) -> None:
+        """ADRCache in adr_cache.py is correct, not a violation."""
+        src_pkg = tmp_path / "pkg"
+        src_pkg.mkdir(parents=True)
+        (src_pkg / "adr_cache.py").write_text("class ADRCache:\n    pass\n")
+        assert NamingConventionsScanner._check_name_mismatches([src_pkg]) == []
+
+    def test_trailing_acronym_class_not_flagged(self, tmp_path: Path) -> None:
+        """ADRCLI in adr_cli.py is correct, not a violation."""
+        src_pkg = tmp_path / "pkg"
+        src_pkg.mkdir(parents=True)
+        (src_pkg / "adr_cli.py").write_text("class ADRCLI:\n    pass\n")
+        assert NamingConventionsScanner._check_name_mismatches([src_pkg]) == []
+
+    def test_wrongly_cased_acronym_is_owned_by_the_casing_rule(self, tmp_path: Path) -> None:
+        """``AdrCache`` in ``adr_cache.py`` corresponds to the filename.
+
+        The violation is the casing, and the acronym-casing rule owns it — two
+        scanners reporting one defect would double-count it. So this rule stays
+        silent while that one still fires.
+        """
+        from zolletta_metaskill.code_style.python.acronym_casing_scanner import (
+            AcronymCasingScanner,
+        )
+
+        src_pkg = tmp_path / "pkg"
+        src_pkg.mkdir(parents=True)
+        (src_pkg / "adr_cache.py").write_text("class AdrCache:\n    pass\n")
+
+        assert NamingConventionsScanner._check_name_mismatches([src_pkg]) == []
+
+        acronym_map = {a.lower(): a for a in AcronymCasingScanner._load_default_acronyms()}
+        violations = AcronymCasingScanner._check_class("AdrCache", 1, "adr_cache.py", acronym_map)
+        assert [(v["word"], v["expected"]) for v in violations] == [("Adr", "ADR")]
+
+    def test_unrelated_mismatch_still_flagged(self, tmp_path: Path) -> None:
+        """A genuine filename↔class mismatch is still reported."""
+        src_pkg = tmp_path / "pkg"
+        src_pkg.mkdir(parents=True)
+        (src_pkg / "user_store.py").write_text("class Vehicle:\n    pass\n")
+        mismatches = NamingConventionsScanner._check_name_mismatches([src_pkg])
+        assert [m["class"] for m in mismatches] == ["Vehicle"]
+
+    # --- Tests for NamingConventionsScanner._emit_text(). ---
+
+    def test_emit_text_matches_committed_contract(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The text report is a byte-for-byte contract that must not be loosened.
+
+        The captured output is the whole report — the banner, both violation
+        blocks and the result line. A legitimate change is
+        ``pytest --update-fixtures`` followed by a reviewed diff.
+        """
+        NamingConventionsScanner._emit_text(
+            [Path("src/mypkg")],
+            [Path("tests/mypkg")],
+            [{"file": "cache.py", "class": "WrongName", "expected": "Cache"}],
+            [
+                {
+                    "file": "test_orphan.py",
+                    "reason": "no source file or class matching 'orphan' in .",
+                }
+            ],
+        )
+        text_contract("code_style/general/naming_conventions_scanner.txt", capsys.readouterr().out)
+
+    def test_load_acronyms_missing_file_falls_back(self, tmp_path: Path) -> None:
+        missing = tmp_path / "nope.json"
+        with patch.object(NamingConventionsScanner, "_ACRONYMS_JSON", missing):
+            result = NamingConventionsScanner._known_acronyms()
+        assert result == frozenset({"ADR", "API", "CLI", "HTTP", "JSON", "PHP", "URL"})
+
+    def test_load_acronyms_invalid_json_falls_back(self, tmp_path: Path) -> None:
+        bad = tmp_path / "bad.json"
+        bad.write_text("{not json", encoding="utf-8")
+        with patch.object(NamingConventionsScanner, "_ACRONYMS_JSON", bad):
+            result = NamingConventionsScanner._known_acronyms()
+        assert result == frozenset({"ADR", "API", "CLI", "HTTP", "JSON", "PHP", "URL"})
+
+    # --- Tests for NamingConventionsScanner._check_name_mismatches(). ---
+
+    def test_check_name_mismatches_init_file_skipped(self, tmp_path: Path) -> None:
+        """``__init__.py`` is skipped even when it defines a mismatched class."""
+        src_pkg = tmp_path / "pkg"
+        src_pkg.mkdir(parents=True)
+        (src_pkg / "__init__.py").write_text("class Whatever:\n    pass\n")
+        assert NamingConventionsScanner._check_name_mismatches([src_pkg]) == []
+
+    def test_check_name_mismatches_multiple_files_reports_all(self, tmp_path: Path) -> None:
+        src_pkg = tmp_path / "pkg"
+        src_pkg.mkdir(parents=True)
+        (src_pkg / "alpha.py").write_text("class Beta:\n    pass\n")
+        (src_pkg / "gamma.py").write_text("class Delta:\n    pass\n")
+        mismatches = NamingConventionsScanner._check_name_mismatches([src_pkg])
+        assert {m["file"] for m in mismatches} == {"alpha.py", "gamma.py"}
+
+    def test_check_name_mismatches_skipped_file_does_not_stop_scan(self, tmp_path: Path) -> None:
+        """A skipped (multi-class) file must not stop scanning later files."""
+        src_pkg = tmp_path / "pkg"
+        src_pkg.mkdir(parents=True)
+        (src_pkg / "a_multi.py").write_text("class Foo:\n    pass\nclass Bar:\n    pass\n")
+        (src_pkg / "z_bad.py").write_text("class Mismatch:\n    pass\n")
+        mismatches = NamingConventionsScanner._check_name_mismatches([src_pkg])
+        assert [m["file"] for m in mismatches] == ["z_bad.py"]
+
+    def test_check_name_mismatches_entry_reports_file_and_expected(self, tmp_path: Path) -> None:
+        src_pkg = tmp_path / "pkg"
+        src_pkg.mkdir(parents=True)
+        (src_pkg / "user_store.py").write_text("class Vehicle:\n    pass\n")
+        (mismatch,) = NamingConventionsScanner._check_name_mismatches([src_pkg])
+        assert mismatch["file"] == "user_store.py"
+        assert mismatch["expected"] == "UserStore"
+
+    # --- Tests for NamingConventionsScanner._check_one_test_file(). ---
+
+    def test_check_one_test_file_orphan_entry_reports_filename(self, tmp_path: Path) -> None:
+        test_pkg = tmp_path / "tests"
+        test_pkg.mkdir()
+        orphan = test_pkg / "test_orphan.py"
+        orphan.write_text("def test_x():\n    pass\n")
+        entry = NamingConventionsScanner._check_one_test_file(
+            orphan, test_pkg, {Path("."): {"test_cache"}}
+        )
+        assert entry is not None
+        assert entry["file"] == "test_orphan.py"
+
+    def test_check_one_test_file_no_source_dir_entry_reports_filename(self, tmp_path: Path) -> None:
+        test_pkg = tmp_path / "tests"
+        (test_pkg / "sub").mkdir(parents=True)
+        orphan = test_pkg / "sub" / "test_orphan.py"
+        orphan.write_text("def test_x():\n    pass\n")
+        entry = NamingConventionsScanner._check_one_test_file(
+            orphan, test_pkg, {Path("."): {"test_cache"}}
+        )
+        assert entry is not None
+        assert entry["file"] == str(Path("sub") / "test_orphan.py")
+        assert "no source directory" in entry["reason"]
+
+    # --- Tests for NamingConventionsScanner._resolve_packages() error paths. ---
+
+    def test_resolve_packages_custom_source_root_used(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A non-default ``python.paths.source`` must drive src_roots."""
+        _write_settings(
+            tmp_path,
+            python={
+                "code_style": {},
+                "paths": {"source": ["lib"], "tests": ["tests"], "package": "mypkg"},
+            },
+        )
+        (tmp_path / "lib" / "mypkg").mkdir(parents=True)
+        (tmp_path / "tests").mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)
+        resolved = NamingConventionsScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        )
+        assert resolved is not None
+        assert resolved[0] == [Path("lib")]
+
+    def test_resolve_packages_custom_test_root_used(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(
+            tmp_path,
+            python={
+                "code_style": {},
+                "paths": {"source": ["src"], "tests": ["spec"], "package": "mypkg"},
+            },
+        )
+        (tmp_path / "src" / "mypkg").mkdir(parents=True)
+        (tmp_path / "spec").mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)
+        resolved = NamingConventionsScanner._resolve_packages(
+            ProjectConfig.load_settings(), {"python"}
+        )
+        assert resolved is not None
+        assert resolved[1] == [Path("spec")]
+
+    def test_resolve_packages_missing_src_error_prefixed(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        (tmp_path / "tests").mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)
+        assert (
+            NamingConventionsScanner._resolve_packages(ProjectConfig.load_settings(), {"python"})
+            is None
+        )
+        assert capsys.readouterr().err.startswith(
+            "Error: no configured source directories exist on disk"
+        )
+
+    def test_resolve_packages_missing_tests_error_prefixed(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        self._make_src_pkg(tmp_path)
+        monkeypatch.chdir(tmp_path)
+        assert (
+            NamingConventionsScanner._resolve_packages(ProjectConfig.load_settings(), {"python"})
+            is None
+        )
+        assert capsys.readouterr().err.startswith(
+            "Error: no configured test directories exist on disk"
+        )
+
+    def test_resolve_packages_bad_package_error_prefixed(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        (tmp_path / "src").mkdir(parents=True)
+        (tmp_path / "tests").mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)
+        assert (
+            NamingConventionsScanner._resolve_packages(ProjectConfig.load_settings(), {"python"})
+            is None
+        )
+        err = capsys.readouterr().err
+        assert err.startswith("Error:")
+        assert err.strip().endswith("configured source root")
+
+    # --- Tests for NamingConventionsScanner._emit_json(). ---
+
+    def test_emit_json_directories_include_tests_root(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        NamingConventionsScanner._emit_json([Path("src")], [Path("tests")], "mypkg", [], [])
+        report = json.loads(capsys.readouterr().out)
+        assert report["directories"]["tests"] == ["tests"]
+        assert report["violation_count"] == 0
+
+    def test_emit_json_indented_output_uses_two_spaces(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        NamingConventionsScanner._emit_json([Path("src")], [Path("tests")], "mypkg", [], [])
+        assert '\n  "package": "mypkg"' in capsys.readouterr().out
+
+    # --- Tests for NamingConventionsScanner._emit_text() all-clear path. ---
+
+    def test_emit_text_no_findings_reports_none_sections(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        NamingConventionsScanner._emit_text([Path("src/mypkg")], [Path("tests/mypkg")], [], [])
+        out = capsys.readouterr().out
+        lines = out.splitlines()
+        assert "## Source file name != class name: none" in lines
+        assert "## Test files not matching naming convention: none" in lines
+        assert "Result: all clear" in out.splitlines()
+
+    def test_emit_text_multiple_packages_joined_with_comma(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        NamingConventionsScanner._emit_text(
+            [Path("src/aaa"), Path("src/bbb")], [Path("tests/ccc"), Path("tests/ddd")], [], []
+        )
+        out = capsys.readouterr().out
+        assert "src/aaa, src/bbb" in out
+        assert "tests/ccc, tests/ddd" in out
+
+    # --- Tests for NamingConventionsScanner.main() skipped path. ---
+
+    def test_main_check_disabled_json_reports_reason(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path, python={"code_style": {"check_filename_matches_class": False}})
+        self._make_project(tmp_path)
+        rc = self._run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["reason"] == "check_filename_matches_class disabled in settings.json"
+
+    def test_main_check_disabled_text_full_banner(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path, python={"code_style": {"check_filename_matches_class": False}})
+        self._make_project(tmp_path)
+        rc = self._run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "=" * 70 in out
+        assert out.splitlines().count("=" * 70) == 2
+        assert "NAMING CONVENTIONS — VALIDATION REPORT" in out.splitlines()
+        skipped = "Result: SKIPPED (check_filename_matches_class disabled in settings.json)"
+        assert skipped in out.splitlines()
+        assert out.rstrip("\n").endswith("settings.json)")

@@ -10,7 +10,7 @@ Verbatim messages printed by the tool-failure handler.
 
 ---
 
-# Tool "unconfigured" warnings
+## Tool "unconfigured" warnings
 
 ## When a tool is not configured
 
@@ -154,7 +154,7 @@ Homepage: https://infection.codes/
 
 ---
 
-# Tool "unconfigured" warnings — per tool
+## Tool "unconfigured" warnings — per tool
 
 ## ruff (unconfigured)
 
@@ -228,7 +228,7 @@ See all available options at: https://docs.pytest.org/en/stable/reference/refere
 
 ---
 
-# Companion skill "not installed" messages
+## Companion skill "not installed" messages
 
 ## Companion skill not installed
 

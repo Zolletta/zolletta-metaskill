@@ -1,0 +1,69 @@
+---
+audience: human, ai
+status: stable
+skills: [patterns, documentor, review]
+---
+
+# Tools to Leverage
+
+Decision tree for choosing the right exploration tool. See [tokensave.md](tokensave.md) for tool reference.
+
+> **Scripts-first protocol takes precedence for review runs**: when running as part of a review (`/zolletta-metaskill review` or any standalone review subcommand), follow [`scripts-first-protocol.md`](scripts-first-protocol.md) — run scripts first (Phase A), assemble from cache (Phase B), and only use tokensave in Phase C for the judgment candidates the scripts surface. Do not use tokensave for exploration that scripts already cover.
+
+## Patterns-specific workflow with code graph tools
+
+The standard scanning workflow (see [`scripts.md`](scripts.md)) can be enhanced:
+
+1. Run `src/zolletta_metaskill/patterns/general/class_metrics_scanner.py` → get the largest classes (unchanged)
+2. For each top candidate, use `tokensave tool context` to understand its responsibilities **without reading the full file**
+3. Use `tokensave tool callees` to list what the class calls — group calls by domain (SQL, HTTP, formatting, etc.)
+4. Apply the "reason to change" test based on the domain grouping
+5. **Before splitting**: run `tokensave tool impact` (or `tokensave tool callers`) to assess blast radius — warn the user if risk is HIGH or CRITICAL
+6. After splitting: run `tokensave tool affected` to find which tests to run
+
+## Subagents
+
+When running as part of `/zolletta-metaskill review`, this skill is invoked by a subagent. When running standalone, you may spawn your own subagents for parallel work.
+
+### When to use subagents
+
+- **Parallel class analysis**: after `src/zolletta_metaskill/patterns/general/class_metrics_scanner.py` identifies 5+ candidates, spawn one background subagent per candidate to read the class and apply the "reason to change" test. Each subagent returns a structured verdict (God class / long-but-cohesive, with domain grouping).
+- **Parallel test file analysis**: after `src/zolletta_metaskill/patterns/general/test_god_classes_scanner.py --show-methods` identifies test God classes, spawn one subagent per class to list which SUTs it tests and whether each SUT has its own source file.
+
+### When NOT to use subagents
+
+- Don't spawn subagents for code exploration if tokensave is available — use `tokensave tool context` instead (per the rules file `tokensave install` writes into the agent configuration).
+- Don't spawn more than 3 background subagents at a time (batch if needed).
+- Don't use subagents for running the scanning scripts — run them directly with `exec`.
+
+### Subagent task template
+
+> The subagent must run under an exec-capable profile — `tokensave tool` is a shell command, so a read-only exploration profile cannot run it (it can still use the MCP fallback).
+
+```text
+You are analyzing a class for God class detection.
+
+Class: {class_name}
+File: {file_path}
+Lines: {line_count}
+Methods: {method_count}
+
+This project has tokensave initialised (.tokensave/ exists). Use
+`tokensave tool context` as your ONLY exploration tool. Do not call read, glob,
+grep, or list_directory — the source sections returned by `tokensave tool context`
+ARE the relevant code. On binaries older than 7.14 (where `tokensave tool` is
+unsupported), use the `tokensave_context` MCP tool instead.
+
+1. Use `tokensave tool context` to understand what {class_name} does and what it calls.
+2. List every reason this class could need to change.
+3. Group the reasons by domain (HTTP, business logic, data access, formatting,
+   configuration, I/O, etc.).
+4. Apply the "reason to change" test: if 2+ domains, it's a God class.
+5. If it's a God class, propose a split (which methods go to which new class).
+
+Return a structured verdict:
+- Verdict: God class | Long-but-cohesive
+- Domains: [list of domains with method counts]
+- Split proposal: [if God class, which methods go where]
+- Confidence: High | Medium | Low
+```

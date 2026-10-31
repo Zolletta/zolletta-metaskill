@@ -1,0 +1,40 @@
+Documentor Review Report
+============================================================
+Repository: repo
+Scan date:  2026-01-01T00:00:00Z
+
+OVERVIEW
+----------------------------------------
+Aggregate quality score: 72.5/100 (acceptable)
+Documents reviewed:        4
+Drift issues:              3
+API doc issues:            2
+API doc suggestions:       3
+Links checked:             20
+Broken links:              2
+Duplicate anchors:         1
+
+## Staleness + Drift
+
+Aggregate score: 72.5/100 (acceptable)
+Documents: 4
+Drifted docs: 2
+Total drift issues: 3
+
+- README.md: 80.0 (fresh)
+
+## API Documentation
+
+Source signatures: 10
+Documented items: 8
+Issues: 2
+Undocumented items: 3
+
+## Links
+
+Total links: 20
+Valid: 18
+Broken: 2
+Skipped: 0
+Duplicate anchors: 1
+

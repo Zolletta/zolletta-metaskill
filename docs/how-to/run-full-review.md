@@ -18,7 +18,7 @@ Run a comprehensive code review that combines all available review skills in par
 
 ### Step 1 — Invoke the review
 
-```
+```text
 /zolletta-metaskill review
 ```
 
@@ -26,16 +26,15 @@ The orchestrator reads `language` from `settings.json` and determines which skil
 
 ### Step 2 — Parallel skill execution
 
-The orchestrator runs general skills (`patterns`, `documentor`) always, and language-specific skills when the language matches. See [subcommands.md](../reference/subcommands.md) for the full skill table.
+The orchestrator runs general skills (`patterns`, `documentor`, and `grice` when `documentation.check_grice` is on) always, and language-specific skills when the language matches. See [subcommands.md](../reference/subcommands.md) for the full skill table.
 
 Each skill runs as a subagent and writes its findings to a markdown report in the timestamped report folder.
 
 ### Step 3 — Aggregated report
 
-The orchestrator collects all sub-skill reports and creates:
+The orchestrator collects all subcommand reports and creates:
 
-- `SUMMARY.md` — overall grade, grades by area, top strengths and weaknesses, priority items
-- `TODO.md` — aggregated action items from all skills, sorted by priority
+- `SUMMARY.md` — overall grade, grades by area, top strengths and weaknesses, and the aggregated action items from all skills, sorted by priority in the Open table
 
 The reports are saved to `.zolletta-metaskill/<timestamp>/reports/`.
 

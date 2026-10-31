@@ -22,8 +22,26 @@ classifiers = [
 ]
 dependencies = [
     "tree-sitter>=0.22.0",
-    "tree-sitter-php>=0.23.0",
+    # The ``grice`` subcommand scores documentation against Grice's maxims. Both
+    # are hard dependencies on purpose: a metric that silently disappears when
+    # an optional extra is missing would produce a different score on every
+    # machine, which is the one property a deterministic scanner cannot trade
+    # away. ``scikit-learn`` pulls in the compiled ``scipy`` wheel, so installing
+    # the metaskill is heavier than it used to be — an accepted cost.
+    "scikit-learn>=1.9.1",
+    "textstat>=0.7.13",
 ]
+
+[project.optional-dependencies]
+# ADR-0004 §Decision. `tree-sitter-php` is optional for *consumers*: without it
+# PHPEngine still imports and still satisfies the LanguageEngine protocol, and
+# parse_module raises a clear ImportError with installation instructions.
+#
+# `tree-sitter` itself is a hard dependency. php_engine.py imports
+# `from tree_sitter import Node, Parser, Tree` at module scope, so a missing
+# tree-sitter would break the import rather than degrade gracefully — which is
+# why ADR-0004 previously described both as optional and was wrong.
+php = ["tree-sitter-php>=0.23.0"]
 
 
 [dependency-groups]
@@ -38,17 +56,25 @@ dev = [
     "mutmut>=3.8.0",
     "python-semantic-release>=9.0",
     "gitpython>=3.1.59",
+    # The PHP grammar is optional for consumers, but the dev group carries it so
+    # `uv run pytest` exercises the PHP scanners instead of skipping all 41
+    # tests guarded on `PHPEngine._have_tree_sitter_php()`.
+    "tree-sitter-php>=0.23.0",
 ]
 
 [project.urls]
 Homepage = "https://github.com/Zolletta/zolletta-metaskill"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/zolletta_metaskill"]
+packages = ["skills/zolletta-metaskill/src/zolletta_metaskill"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+cache-dir = ".cache/ruff"
+# playground/ is intentionally defective scanner dogfooding input — like
+# mypy, vulture and ty, ruff must not lint it.
+exclude = ["playground/", "mutants/"]
 
 [tool.ruff.lint]
 # Selected rule families:
@@ -61,9 +87,13 @@ target-version = "py312"
 #   UP      — pyupgrade (modern syntax for target-version py312)
 #   T20     — flake8-print (no print/pprint in library code)
 #   SIM     — flake8-simplify (collapsible ifs, redundant code, ...)
-#   PGH003  — blanket `# type: ignore` must name the ignored error code (issue #41)
+#   N       — pep8-naming (N802: a test name must not embed a foreign-language
+#             class spelling, e.g. test_built_in_stdClass)
+#   TID     — flake8-tidy-imports (TID252: no relative imports — ADR-0015
+#             promises `python3 <script>.py [--json]` runnable from the project
+#             root with zero arguments, which a relative import makes impossible)#   PGH003  — blanket `# type: ignore` must name the ignored error code (issue #41)
 #   PGH004  — blanket `# noqa` must name the ignored rule codes (issue #41)
-select = ["E", "W", "F", "I", "B", "C4", "D", "UP", "T20", "SIM", "PGH003", "PGH004"]
+select = ["E", "W", "F", "I", "B", "C4", "D", "UP", "T20", "SIM", "N", "TID", "PGH003", "PGH004"]
 
 # Suppressed rules:
 #   B008  — function call in default argument; Typer/argparse defaults legitimately
@@ -77,11 +107,29 @@ select = ["E", "W", "F", "I", "B", "C4", "D", "UP", "T20", "SIM", "PGH003", "PGH
 #           we keep D212-style summaries on the first line)
 ignore = ["B008", "T201", "D104", "D107", "D203", "D213"]
 
+[tool.ruff.lint.flake8-tidy-imports]
+# "all", not ruff's default "parents".
+#
+# The default bans only `from ..pkg import x`; `from .sibling import x` still
+# passes. That is exactly the import that broke ADR-0015's documented
+# invocation — running link_checker.py or api_doc_validator.py directly aborted
+# with "attempted relative import with no known parent package" — while the
+# scanner reported all clear. "all" bans both forms, so the rule can no longer
+# pass vacuously.
+ban-relative-imports = "all"
+
 [tool.ruff.lint.per-file-ignores]
 # Tests are exempt from docstring rules (D100 module / D101 class / D102 method /
 # D103 function / D105 magic-method docstrings) and from B010 (setattr with a
 # constant attribute name — used to poke internals under test).
-"tests/**/*.py" = ["D100", "D101", "D102", "D103", "D105", "B010"]
+#
+# TID252 is exempt for a different reason. ADR-0015 constrains *scripts*:
+# `python3 <script>.py [--json]` must work from the project root, and a relative
+# import breaks that. Tests have no such requirement — pytest imports them as
+# modules of a real package — and `from .conftest import ...` is the idiomatic
+# way to reach a shared fixture. Exempting them keeps the rule pointed at the
+# case it exists to prevent rather than at conventional pytest style.
+"tests/**/*.py" = ["D100", "D101", "D102", "D103", "D105", "B010", "TID252"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["zolletta_metaskill"]
@@ -89,12 +137,27 @@ known-first-party = ["zolletta_metaskill"]
 [tool.mypy]
 strict = true
 python_version = "3.12"
+cache_dir = ".cache/mypy"
 python_executable = ".venv/bin/python"
-mypy_path = "src"
-exclude = ["zolletta-metaskill/"]
+mypy_path = "skills/zolletta-metaskill/src"
+# src/ is an untracked symlink (a mutmut/human shim) to the same tree —
+# without this exclusion `mypy .` reports every module twice under
+# different module names.
+exclude = ["playground/", "mutants/", "^src/"]
 
 [[tool.mypy.overrides]]
-module = ["tree_sitter.*"]
+# Scoped to the optional grammar only (ADR-0004). `tree_sitter` itself is a hard
+# dependency and must be typed normally: masking it would hide the one failure
+# this project can actually hit, namely tree-sitter not being installed.
+module = ["tree_sitter_php.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Neither package ships a ``py.typed`` marker and neither has a stubs package on
+# PyPI, so the two cannot be checked at all. The override is scoped to exactly
+# these modules and their submodules: an untyped *first-party* import still
+# fails, which is the case the strict setting exists to catch.
+module = ["sklearn.*", "textstat.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
@@ -102,18 +165,48 @@ module = "tests.*"
 strict = false
 
 [tool.pytest.ini_options]
+cache_dir = ".cache/pytest"
 addopts = ["-ra", "--tb=short"]
 testpaths = ["tests"]
 minversion = "8.0"
-pythonpath = ["src"]
+pythonpath = ["skills/zolletta-metaskill/src"]
+# An unclosed file or socket is a leak the suite should not tolerate silently.
+filterwarnings = ["error::ResourceWarning"]
+
+[tool.coverage.run]
+# Branch coverage is the measurement the testing-style review reads; statement
+# coverage hides an untaken branch behind a fully executed line.
+branch = true
+data_file = ".cache/coverage/.coverage"
 
 [tool.vulture]
 min_confidence = 80
-paths = ["src"]
-exclude = [".venv/"]
+paths = ["skills/zolletta-metaskill/src"]
+exclude = [".venv/", "playground/", "mutants/"]
+
+[tool.mutmut]
+# source_paths must be a list — a bare string is iterated character by
+# character and the '/' element makes mutmut walk the filesystem root.
+# skills/zolletta-metaskill/skills/ ships runtime assets (e.g. acronym lists)
+# that tests assert on; the mutants/ sandbox must contain them or the
+# baseline run fails. Scope it to the assets dir — copying all of skills/
+# would also copy the source tree a second time.
+source_paths = ["src"]
+also_copy = ["skills/zolletta-metaskill/skills/"]
+# The unwrapped-prose repo guard uses `git ls-files` on the real repository;
+# inside mutants/ (a git-ignored, non-repo copy) it can only see 0 files, so it
+# is deselected for mutation runs only — it still runs in CI.
+pytest_add_cli_args = [
+    "--deselect",
+    "tests/documentor/quality/test_unwrapped_prose_scanner_repo_guard.py",
+    # asserts on missing-sections output that the mutants/ sandbox copy does
+    # not produce; passes in the real tree, blocks stats collection here.
+    "--deselect",
+    "tests/documentor/test_report_aggregator.py::TestReportAggregator::test_format_markdown_all_missing_ends_with_blank_line",
+]
 
 [tool.semantic_release]
-version_toml = ["pyproject.toml:project.version"]
+version_toml = ["pyproject.toml:project.version", "skills/zolletta-metaskill/pyproject.toml:project.version"]
 build_command = "uv build"
 commit_parser = "conventional"
 commit_parser_options = { allowed_types = ["feat", "fix", "perf", "refactor"] }
@@ -130,3 +223,7 @@ exclude_commit_patterns = ["chore.*", "docs.*"]
 [tool.semantic_release.remote]
 name = "origin"
 type = "github"
+
+[tool.ty.src]
+# playground/ is intentionally defective scanner dogfooding input.
+exclude = ["playground"]

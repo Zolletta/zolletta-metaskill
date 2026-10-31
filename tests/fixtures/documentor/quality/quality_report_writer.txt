@@ -1,0 +1,44 @@
+Documentation Staleness + Drift Report
+============================================================
+Repository: repo
+Scan date:  2026-01-01T00:00:00Z
+Aggregate Score: 77.5/100 (acceptable)
+Documents:       2
+Drifted docs:    1
+Total issues:    2
+
+File                                           Score        Label
+-----------------------------------------------------------------
+README.md                                      70.0        aging
+docs/guide.md                                  85.0   acceptable
+
+DIMENSION BREAKDOWN (worst scoring files):
+------------------------------------------------------------
+
+  README.md (score: 70.0)
+    temporal                   50.0 (x0.20 =  10.0) [##########..........]
+
+  docs/guide.md (score: 85.0)
+    factual                    90.0 (x0.15 =  13.5) [##################..]
+
+DRIFT ISSUES:
+------------------------------------------------------------
+HIGH SEVERITY (1 issues):
+----------------------------------------
+  README.md
+    [SEMI] Referenced source file changed
+    Category: factual
+
+
+LOW SEVERITY (1 issues):
+----------------------------------------
+  docs/guide.md
+    [MANUAL] Documentation not updated in 200 days
+    Category: temporal
+
+
+FIX TYPE SUMMARY:
+----------------------------------------
+  Manual review: 1
+  Semi-automated: 1
+

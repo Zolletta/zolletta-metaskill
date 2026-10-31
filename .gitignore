@@ -4,13 +4,22 @@ __pycache__/
 *.egg-info/
 dist/
 build/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
+.cache/
+mutants/
+/src
 .tokensave/
-.zolletta-metaskill/
+# Everything under .zolletta-metaskill/ is machine-local — caches, run folders,
+# the ADR distiller cache, plans. settings.json is the exception: it carries the
+# thresholds and scan roots every sensor reads, so it is version-controlled or a
+# fresh clone silently runs the sensors on different numbers. The directory's
+# *contents* are ignored rather than the directory itself, because git does not
+# descend into an excluded directory and a negation inside one would not apply.
+.zolletta-metaskill/*
 coverage.xml
 .coverage
 TODO.md
 site/
 .devin/
+playground/.zolletta-metaskill/*
+!playground/.zolletta-metaskill/settings.json
+mutmut.log

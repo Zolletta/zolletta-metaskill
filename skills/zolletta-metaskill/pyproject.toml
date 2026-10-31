@@ -1,0 +1,9 @@
+# Version marker for the installed skill bundle.
+# The `version` subcommand reads [project] version from the pyproject.toml at
+# the skill root — this file IS that marker. `version` is bumped by
+# python-semantic-release (version_toml in the repository pyproject.toml);
+# everything else lives in the root pyproject.toml, this file is not a package
+# definition.
+[project]
+name = "zolletta-metaskill"
+version = "3.7.0"

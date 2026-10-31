@@ -26,14 +26,14 @@ Coupling is balanced when strength and distance are inversely related (high stre
 
 Ordered from weakest to strongest:
 
-| Level        | Knowledge shared                                          | Scanner signal                                                                     |
-|--------------|-----------------------------------------------------------|------------------------------------------------------------------------------------|
-| **Contract** | A stable, narrow public interface                         | `type` usage (type hints against a public API), `import-only`                      |
-| **Model**    | A shared data model — both sides know the same structures | `attribute` access to a shared record/DTO                                          |
-| **Functional** | Business-logic semantics — *how* the other side works   | `call`/`new` — behavior is invoked, not just referenced                            |
-| **Intrusive**  | Implementation details — privates, internals            | Reaching into internals; `extends` of a concrete class; monkey-patching            |
+| Level          | Knowledge shared                                          | Scanner signal                                                          |
+|----------------|-----------------------------------------------------------|-------------------------------------------------------------------------|
+| **Contract**   | A stable, narrow public interface                         | `type` usage (type hints against a public API), `import-only`           |
+| **Model**      | A shared data model — both sides know the same structures | `attribute` access to a shared record/DTO                               |
+| **Functional** | Business-logic semantics — *how* the other side works     | `call`/`new` — behavior is invoked, not just referenced                 |
+| **Intrusive**  | Implementation details — privates, internals              | Reaching into internals; `extends` of a concrete class; monkey-patching |
 
-Strength is a judgment call informed by the `integration_graph_scanner.py` usage hints, not derived from them — read the flagged edge's code when the hint alone is ambiguous (e.g. `call` on a stable public factory is contract-ish; `call` on a method exposing internals is functional or intrusive).
+Strength is a judgment call informed by the `skills/zolletta-metaskill/src/zolletta_metaskill/patterns/general/integration_graph_scanner.py` usage hints, not derived from them — read the flagged edge's code when the hint alone is ambiguous (e.g. `call` on a stable public factory is contract-ish; `call` on a method exposing internals is functional or intrusive).
 
 ## Distance
 
@@ -59,12 +59,12 @@ The reviewer infers the subdomain from naming, location, and what the module act
 
 The four extreme combinations and their verdicts:
 
-| Strength | Distance | Volatility | Verdict |
-|----------|----------|------------|---------|
+| Strength | Distance | Volatility | Verdict                                                                                                                                 |
+|----------|----------|------------|-----------------------------------------------------------------------------------------------------------------------------------------|
 | high     | high     | high       | **Unbalanced + volatile — finding.** Strong knowledge flow across a distant boundary that keeps changing: the worst form of complexity. |
-| high     | high     | low        | Tolerable tech debt — **note**, not a finding. |
-| low      | low      | any        | Over-engineering / cohesion-drift risk — **note**; unrelated logic may be forced into the same module. |
-| balanced | balanced | —          | No action. |
+| high     | high     | low        | Tolerable tech debt — **note**, not a finding.                                                                                          |
+| low      | low      | any        | Over-engineering / cohesion-drift risk — **note**; unrelated logic may be forced into the same module.                                  |
+| balanced | balanced | —          | No action.                                                                                                                              |
 
 **Severity discipline**: only *unbalanced AND volatile* integrations are reported as findings. Everything else is a note — high-strength + high-distance + low-volatility is stable enough to tolerate, and low-strength + low-distance risks cohesion rot rather than cascade. This mirrors the God-class discipline in `general-principles.md`: the scanner provides triage, the judgment pass decides.
 
@@ -89,10 +89,10 @@ This review runs without asking the user questions:
 
 ## Enforcement
 
-`integration_graph_scanner.py` emits the internal edges and usage hints that seed the assessment — it is a triage artifact, not a verdict. The judgment pass (see the patterns skill's mandatory coupling-assessment step) classifies strength, distance, and volatility per cross-module edge and applies the balance rule.
+`skills/zolletta-metaskill/src/zolletta_metaskill/patterns/general/integration_graph_scanner.py` emits the internal edges and usage hints that seed the assessment — it is a triage artifact, not a verdict. The judgment pass (see the patterns skill's mandatory coupling-assessment step) classifies strength, distance, and volatility per cross-module edge and applies the balance rule.
 
 ```bash
-python3 src/zolletta_metaskill/patterns/general/integration_graph_scanner.py --json
+python3 skills/zolletta-metaskill/src/zolletta_metaskill/patterns/general/integration_graph_scanner.py --json
 ```
 
 ## Attribution

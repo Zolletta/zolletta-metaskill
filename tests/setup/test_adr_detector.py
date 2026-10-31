@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -178,6 +179,41 @@ class TestADRDetector:
         assert result is not None
         assert result == []
 
+    def test_grep_invocation_args_and_timeout(self, tmp_path: Path) -> None:
+        """``grep`` must be located by name and invoked with expected argv/timeout."""
+        docs = tmp_path / "docs"
+        docs.mkdir()
+        which_calls: list[str] = []
+        run_calls: list[tuple[list[str], dict[str, object]]] = []
+
+        def _which(cmd: str) -> str:
+            which_calls.append(cmd)
+            return "/usr/bin/grep"
+
+        def _run(args: list[str], **kwargs: object) -> object:
+            run_calls.append((args, kwargs))
+            return __import__("subprocess").CompletedProcess(args, 0, "", "")
+
+        with (
+            patch("zolletta_metaskill.setup.adr_detector.shutil.which", side_effect=_which),
+            patch("zolletta_metaskill.setup.adr_detector.subprocess.run", side_effect=_run),
+        ):
+            result = ADRDetector._grep_adr_files(docs)
+
+        assert which_calls == ["grep"]
+        assert result == []
+        assert len(run_calls) == 1
+        args, kwargs = run_calls[0]
+        assert args == [
+            "grep",
+            "-ri",
+            "-l",
+            "--exclude=adr-distilled.md",
+            "adr",
+            str(docs),
+        ]
+        assert kwargs["timeout"] == 30
+
     # --- Tests for ADRDetector._scan_adr_headings(). ---
 
     def test_finds_adr_heading(self, tmp_path: Path) -> None:
@@ -206,6 +242,32 @@ class TestADRDetector:
             result = ADRDetector._scan_adr_headings([f])
         assert result == []
 
+    def test_scan_adr_headings_non_md_first_still_scans_rest(self, tmp_path: Path) -> None:
+        """A non-.md file early in the list must not stop the scan."""
+        txt = tmp_path / "a.txt"
+        txt.write_text("# ADR-001: Test\n", encoding="utf-8")
+        md = tmp_path / "b.md"
+        md.write_text("# ADR-002: Test\n", encoding="utf-8")
+        result = ADRDetector._scan_adr_headings([txt, md])
+        assert result == [md]
+
+    def test_scan_adr_headings_unreadable_first_still_scans_rest(self, tmp_path: Path) -> None:
+        """An unreadable file early in the list must not stop the scan."""
+        bad = tmp_path / "bad.md"
+        bad.write_text("# ADR-001: Test\n", encoding="utf-8")
+        good = tmp_path / "good.md"
+        good.write_text("# ADR-002: Test\n", encoding="utf-8")
+        real_read_text = Path.read_text
+
+        def _flaky(self: Path, *args: Any, **kwargs: Any) -> str:
+            if self == bad:
+                raise OSError("nope")
+            return real_read_text(self, *args, **kwargs)
+
+        with patch("pathlib.Path.read_text", _flaky):
+            result = ADRDetector._scan_adr_headings([bad, good])
+        assert result == [good]
+
     def test_scan_adr_headings_multiple_formats_returns_3(self, tmp_path: Path) -> None:
         f1 = tmp_path / "a.md"
         f1.write_text("# ADR-001: Title\n", encoding="utf-8")
@@ -215,6 +277,39 @@ class TestADRDetector:
         f3.write_text("### ADR-003: Title\n", encoding="utf-8")
         result = ADRDetector._scan_adr_headings([f1, f2, f3])
         assert len(result) == 3
+
+    def test_detect_adrs_calls_grep_with_docs_dir(self, tmp_path: Path) -> None:
+        """detect_adrs must pass docs_dir — not None — to the grep probe."""
+        docs = tmp_path / "docs"
+        docs.mkdir()
+        with patch(
+            "zolletta_metaskill.setup.adr_detector.ADRDetector._grep_adr_files",
+            return_value=None,
+        ) as mock_grep:
+            ADRDetector.detect_adrs(docs)
+        mock_grep.assert_called_once_with(docs)
+
+    def test_detect_adrs_grep_result_used_when_not_none(self, tmp_path: Path) -> None:
+        """A non-None grep result is used as the candidate list, not rglob."""
+        docs = tmp_path / "docs"
+        docs.mkdir()
+        _write_adr(docs / "0001-test.md", "001", "Test")
+        with patch(
+            "zolletta_metaskill.setup.adr_detector.ADRDetector._grep_adr_files",
+            return_value=[],
+        ):
+            assert ADRDetector.detect_adrs(docs) is None
+
+    def test_detect_adrs_fallback_excludes_adr_distilled(self, tmp_path: Path) -> None:
+        """The rglob fallback must exclude adr-distilled.md even when it has a heading."""
+        docs = tmp_path / "docs"
+        docs.mkdir()
+        (docs / "adr-distilled.md").write_text("# ADR-001: Distilled\n", encoding="utf-8")
+        with patch(
+            "zolletta_metaskill.setup.adr_detector.ADRDetector._grep_adr_files",
+            return_value=None,
+        ):
+            assert ADRDetector.detect_adrs(docs) is None
 
     # --- Tests for ADRDetector._determine_adrs_path(). ---
 
@@ -311,6 +406,17 @@ class TestADRDetector:
         assert rc == 0
         data = json.loads(out)
         assert data["adrs_path"] is None
+
+    def test_main_help_prints_description(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(sys, "argv", ["prog", "-h"])
+        with pytest.raises(SystemExit):
+            ADRDetector.main()
+        out = capsys.readouterr().out
+        assert "\nDetect the project's ADR folder within the docs directory." in out
 
     def test_main_default_docs_dir(
         self,

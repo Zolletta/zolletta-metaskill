@@ -1,0 +1,455 @@
+---
+audience: human, ai
+status: stable
+skills: [patterns, php-*]
+---
+
+# PHP Review Patterns
+
+PHP-specific design patterns that go beyond the language-agnostic principles in [general-principles.md](../general-principles.md). Read this when reviewing PHP source code for structural quality.
+
+> This file narrows down any eventual general rule about PHP, i.e. `php-rules.md`. If you maintain rules as part of your agent configuration, those are the single source of truth for their domain.
+
+## Strategy Pattern with Autodiscovery
+
+PHP does not have a built-in equivalent of Python's `Protocol` + decorator registration, but the strategy pattern can be implemented using interfaces and registration arrays or attribute-based discovery.
+
+### Interface + array registration
+
+```php
+<?php
+
+interface ScenarioStrategy {
+    public function generate(Spec $spec): array;
+    public function getName(): string;
+}
+
+// Registry pattern — strategies register themselves or are registered centrally
+class StrategyRegistry {
+    /** @var array<string, class-string<ScenarioStrategy>> */
+    private static array $strategies = [];
+
+    public static function register(string $name, string $class): void {
+        self::$strategies[$name] = $class;
+    }
+
+    public static function get(string $name): ScenarioStrategy {
+        $class = self::$strategies[$name];
+        return new $class();
+    }
+
+    /** @return array<string, class-string<ScenarioStrategy>> */
+    public static function all(): array {
+        return self::$strategies;
+    }
+}
+
+StrategyRegistry::register('feature_flag', FeatureFlagStrategy::class);
+StrategyRegistry::register('pipeline_type', PipelineTypeStrategy::class);
+```
+
+### Attribute-based registration (PHP 8.0+)
+
+```php
+<?php
+
+#[\Attribute(\Attribute::TARGET_CLASS)]
+class RegisterStrategy {
+    public function __construct(public readonly string $name) {}
+}
+
+#[RegisterStrategy('feature_flag')]
+class FeatureFlagStrategy implements ScenarioStrategy {
+    public function generate(Spec $spec): array { /* ... */ }
+    public function getName(): string { return 'feature_flag'; }
+}
+
+// Discovery via reflection
+class StrategyDiscovery {
+    /** @return array<string, class-string<ScenarioStrategy>> */
+    public static function discover(string $directory): array {
+        $strategies = [];
+        // Scan directory for PHP files, use reflection to find
+        // classes with #[RegisterStrategy] attribute
+        // ...
+        return $strategies;
+    }
+}
+```
+
+**Why this matters**: this is the OCP-compliant alternative to if/elseif type branching. Adding a new strategy requires zero modification to existing dispatch logic — just create a new class and register it. See [Strategy Pattern — Wikipedia](https://en.wikipedia.org/wiki/Strategy_pattern), [PHP 8 attributes](https://www.php.net/manual/en/language.attributes.php).
+
+## Interface vs Abstract Class
+
+PHP offers both interfaces and abstract classes for defining contracts. Choose the right one:
+
+- **Interface** (`interface`): use for pure contracts — a set of method signatures that implementers must provide. A class can implement multiple interfaces. No implementation is shared.
+- **Abstract class** (`abstract class`): use when you want to share implementation across related classes. A class can only extend one abstract class. Can mix abstract methods (must be implemented) with concrete methods (shared implementation).
+
+**Prefer interfaces** for defining contracts that multiple unrelated classes can satisfy. Use abstract classes when there is genuine shared implementation that would otherwise be duplicated.
+
+```php
+<?php
+
+// Interface: pure contract — any class can implement it
+interface Cacheable {
+    public function getCacheKey(): string;
+    public function getTtl(): int;
+}
+
+// Abstract class: shared implementation + contract
+abstract class BaseRepository {
+    public function __construct(protected Database $db) {}
+
+    // Shared implementation — subclasses don't reimplement this
+    public function findById(int $id): ?array {
+        return $this->db->fetchOne(
+            "SELECT * FROM {$this->getTableName()} WHERE id = ?",
+            [$id]
+        );
+    }
+
+    // Contract — subclasses must implement this
+    abstract protected function getTableName(): string;
+}
+```
+
+**ISP reminder**: keep interfaces thin. If an interface has 5+ methods and different implementers only use subsets, split it into smaller, focused interfaces. See [general-principles.md](../general-principles.md) → Interface Segregation.
+
+**Why this matters**: interfaces allow multiple inheritance of contract; abstract classes share implementation but limit to one parent. See [PHP interfaces](https://www.php.net/manual/en/language.oop5.interfaces.php), [PHP abstract classes](https://www.php.net/manual/en/language.oop5.abstract.php).
+
+## Trait Patterns
+
+PHP traits provide horizontal code reuse — a way to share methods across classes without inheritance. Use traits for small, focused pieces of shared behavior.
+
+**Guidelines**:
+
+- Keep traits small and focused (one responsibility per trait).
+- Traits should not define state (properties) unless absolutely necessary — prefer constructor injection.
+- A trait should be composable: a class should be able to use the trait without requiring other traits or specific class structure.
+- Name traits after the behavior they provide, not the class they serve (`SoftDeletes` not `UserTrait`).
+
+```php
+<?php
+
+// Good: small, focused, no state
+trait Timestampable {
+    public function touch(): void {
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function isStale(int $thresholdSeconds): bool {
+        $age = time() - $this->updatedAt->getTimestamp();
+        return $age > $thresholdSeconds;
+    }
+}
+
+// Avoid: trait with too many responsibilities
+trait BadTrait {
+    public function log() { /* ... */ }
+    public function cache() { /* ... */ }
+    public function validate() { /* ... */ }
+    public function serialize() { /* ... */ }
+    // This is a God trait — split it into focused traits
+}
+```
+
+**Why this matters**: small, focused, stateless traits are composable; fat traits with state recreate the God class problem horizontally. See [PHP traits](https://www.php.net/manual/en/language.oop5.traits.php).
+
+## SOLID Violation Patterns
+
+The following SOLID violations are common in PHP codebases. Each pattern includes a before/after example and references the automated scanner that detects it. For scanner usage details, see [scripts.md](../../../reference/code/scripts.md).
+
+### Dependency Inversion Principle (DIP)
+
+**Violation**: a class instantiates its dependencies with `new` in its constructor instead of receiving them via injection. The class is tightly coupled to a concrete implementation and cannot be substituted or tested in isolation.
+
+**Before** — `new ConcreteClass()` in constructor:
+
+```php
+<?php
+
+class OrderProcessor {
+    private SmtpMailer $mailer;
+    private FileLogger $logger;
+
+    public function __construct() {
+        $this->mailer = new SmtpMailer();       // tight coupling
+        $this->logger = new FileLogger('/var/log/app.log');
+    }
+
+    public function process(Order $order): void {
+        $this->mailer->send($order->getConfirmationEmail());
+        $this->logger->log("Processed order {$order->getId()}");
+    }
+}
+```
+
+**After** — dependencies injected via constructor:
+
+```php
+<?php
+
+class OrderProcessor {
+    public function __construct(
+        private MailerInterface $mailer,        // depends on abstraction
+        private LoggerInterface $logger,
+    ) {}
+
+    public function process(Order $order): void {
+        $this->mailer->send($order->getConfirmationEmail());
+        $this->logger->log("Processed order {$order->getId()}");
+    }
+}
+```
+
+**Scanner**: [`dependency_inversion_scanner`](../../../reference/code/scripts.md#srczolletta_metaskillpatternsphpdependency_inversion_scannerpy-dip-php) — detects `new ConcreteClass()` inside class methods. Excludes factories, builders, and PHP built-in types.
+
+**Why this matters**: injected dependencies are substitutable and testable; `new` in a constructor is a hard coupling. See [DIP — Clean Code](https://wiki.c2.com/?DependencyInversionPrinciple).
+
+### Interface Segregation Principle (ISP)
+
+**Violation**: a fat interface with many methods forces implementers to depend on methods they do not use. Implementers must provide stub or empty implementations for irrelevant methods.
+
+**Before** — fat interface with too many methods:
+
+```php
+<?php
+
+interface Worker {
+    public function work(): void;
+    public function eat(): void;
+    public function sleep(): void;
+    public function reportToManager(): void;
+    public function submitTimesheet(): void;
+    public function requestVacation(int $days): bool;
+    public function attendMeeting(string $topic): void;
+    public function writeReport(): string;
+}
+
+class Robot implements Worker {
+    public function work(): void { /* ... */ }
+
+    // Forced to implement irrelevant methods:
+    public function eat(): void { /* robots don't eat */ }
+    public function sleep(): void { /* robots don't sleep */ }
+    public function reportToManager(): void { /* ... */ }
+    public function submitTimesheet(): void { /* ... */ }
+    public function requestVacation(int $days): bool { return false; }
+    public function attendMeeting(string $topic): void { /* ... */ }
+    public function writeReport(): string { return ''; }
+}
+```
+
+**After** — split into focused interfaces:
+
+```php
+<?php
+
+interface Workable {
+    public function work(): void;
+}
+
+interface Reportable {
+    public function writeReport(): string;
+    public function reportToManager(): void;
+}
+
+interface Employable {
+    public function submitTimesheet(): void;
+    public function requestVacation(int $days): bool;
+}
+
+class Robot implements Workable, Reportable {
+    public function work(): void { /* ... */ }
+    public function writeReport(): string { /* ... */ }
+    public function reportToManager(): void { /* ... */ }
+}
+
+class HumanWorker implements Workable, Reportable, Employable {
+    public function work(): void { /* ... */ }
+    public function writeReport(): string { /* ... */ }
+    public function reportToManager(): void { /* ... */ }
+    public function submitTimesheet(): void { /* ... */ }
+    public function requestVacation(int $days): bool { /* ... */ }
+}
+```
+
+**Scanner**: [`interface_segregation_scanner`](../../../reference/code/scripts.md#srczolletta_metaskillpatternsphpinterface_segregation_scannerpy-isp-php) — flags interfaces with more than `php.patterns.isp_min_methods` (default: 7) methods.
+
+**Why this matters**: fat interfaces force implementers to stub methods they don't use. See [ISP — Clean Code](https://wiki.c2.com/?InterfaceSegregationPrinciple).
+
+### Open/Closed Principle (OCP)
+
+**Violation**: `instanceof` chains branch on subtypes. Adding a new subtype requires modifying the ladder instead of simply adding a new implementation.
+
+**Before** — `instanceof` ladder:
+
+```php
+<?php
+
+class PaymentProcessor {
+    public function process(Payment $payment): void {
+        if ($payment instanceof CreditCardPayment) {
+            $this->processCreditCard($payment);
+        } elseif ($payment instanceof PayPalPayment) {
+            $this->processPayPal($payment);
+        } elseif ($payment instanceof BankTransferPayment) {
+            $this->processBankTransfer($payment);
+        } elseif ($payment instanceof CryptoPayment) {
+            // Adding a new payment type means modifying this method
+            $this->processCrypto($payment);
+        } else {
+            throw new \InvalidArgumentException('Unknown payment type');
+        }
+    }
+}
+```
+
+**After** — polymorphism via interface:
+
+```php
+<?php
+
+interface PaymentStrategy {
+    public function process(): void;
+}
+
+class CreditCardPayment implements PaymentStrategy {
+    public function process(): void { /* credit card logic */ }
+}
+
+class PayPalPayment implements PaymentStrategy {
+    public function process(): void { /* PayPal logic */ }
+}
+
+class BankTransferPayment implements PaymentStrategy {
+    public function process(): void { /* bank transfer logic */ }
+}
+
+// Adding a new payment type = create a new class, no modification needed:
+class CryptoPayment implements PaymentStrategy {
+    public function process(): void { /* crypto logic */ }
+}
+
+class PaymentProcessor {
+    public function process(PaymentStrategy $payment): void {
+        $payment->process();  // closed for modification, open for extension
+    }
+}
+```
+
+**Scanner**: [`open_closed_scanner`](../../../reference/code/scripts.md#srczolletta_metaskillpatternsphpopen_closed_scannerpy-ocp-php) — detects `if/elseif` chains with 3+ `instanceof` branches.
+
+**Why this matters**: polymorphism via interface keeps the processor closed for modification. See [OCP — Clean Code](https://wiki.c2.com/?OpenClosedPrinciple).
+
+## Manual Detection Commands
+
+For PHP projects where AST-based scanners are not available (e.g. `tree-sitter-php` not installed), use grep for manual triage:
+
+```bash
+# Find if/elseif chains with instanceof or get_class (OCP violation signal)
+grep -rn "instanceof\|get_class(" src/ --include="*.php" | head -20
+
+# Find internal dependency creation in class constructors (DIP violation signal)
+grep -rn "new \|->.* = new " src/ --include="*.php" | grep -v "Factory\|Builder"
+
+# Find large classes (triage signal for God class detection)
+find src/ -name "*.php" -exec wc -l {} + | sort -rn | head -20
+
+# Find classes with many public methods (triage signal)
+grep -rn "public function" src/ --include="*.php" | cut -d: -f1 | sort | uniq -c | sort -rn | head -20
+```
+
+These commands produce triage signals, not verdicts. Always apply the "reason to change" test before reporting a class as a God class. See [false-positive-prevention.md](../false-positive-prevention.md) for the mandatory judgment steps.
+
+## Reusable Array Shapes with `@phpstan-import-type`
+
+PHPStan supports declaring a typed array shape once on an interface and importing it wherever the shape is reused. This prevents drift: the shape is defined in one place and every consumer references the canonical definition.
+
+```php
+<?php
+
+interface ArrayShapesInterface {
+    /** @return array{responseId: string, userId: int, username: string} */
+    public function getResponseShape(): array;
+}
+
+class JwtResponse {
+    /** @phpstan-import-type HeadersArrayShape from ArrayShapesInterface */
+
+    /** @param HeadersArrayShape $headers */
+    public function __construct(private readonly array $headers) {}
+
+    /** @return HeadersArrayShape */
+    public function getHeaders(): array {
+        return $this->headers;
+    }
+}
+```
+
+**Why this matters**: the array shape lives on the interface — changing it there updates every consumer. PHPStan resolves the imported type alias and type-checks every usage. See [PHPStan — importing types](https://phpstan.org/writing-php-code/phpdocs-basics#importing-types).
+
+## Aligned `=` and `=>` in Multi-Line Arrays
+
+In multi-line array literals and assignments, the `=` and `=>` operators are vertically aligned, enforced by `php-cs-fixer` via `binary_operator_spaces`.
+
+```php
+<?php
+
+return [
+    'responseId'   => $this->responseId,
+    'userId'       => $this->id,
+    'username'     => $this->username,
+    'creationDate' => $this->creationDate,
+];
+```
+
+**Enforcement**: `php-cs-fixer` config:
+
+```php
+'binary_operator_spaces' => [
+    'operators' => ['=' => 'align', '=>' => 'align'],
+],
+```
+
+**Why this matters**: aligned columns let the eye scan keys and values independently — a missing or mistyped key is immediately visible. See [PHP-CS-Fixer — binary_operator_spaces](https://github.com/PHP-CS-Fixer/PHP-CS-Fixer/blob/master/doc/rules/operator/binary_operator_spaces.rst).
+
+## `readonly class` for Immutable DTOs
+
+PHP 8.2 `readonly class` makes every property immutable by default. Use it for DTOs, value objects, and any class whose entire purpose is to carry data that should not change after construction.
+
+```php
+<?php
+
+readonly class GenericDataDTO {
+    public function __construct(
+        public readonly string $name,
+        public readonly string $requestType,
+        public readonly ?string $responseType,
+        /** @var array<string> */
+        public readonly array $exceptionsThrown,
+    ) {}
+}
+```
+
+**Why this matters**: every property is readonly without listing `readonly` on each one — immutability is a class-level contract. See [PHP readonly classes](https://www.php.net/manual/en/language.oop5.readonly.php#language.oop5.readonly.readonly-class).
+
+> This is the PHP analogue of Python's `@dataclass(frozen=True)`. See [structural-conventions.md](../structural-conventions.md) → Value-Object Suffixes for the naming convention.
+
+## Suppress-with-Reason for `mixed`
+
+Default: use a specific type or union — `mixed` only when the value is genuinely dynamic (decoded JSON, plugin payloads). When a specific type would add noise without value, `mixed` is an acceptable **judgment call** — but the PHPStan/Psalm diagnostic it produces must be suppressed **with an identifier and a reason**:
+
+```php
+/** @phpstan-ignore-next-line decoded JSON payload — typed at the consumer boundary */
+public function getPayload(): mixed { ... }
+
+// or Psalm:
+/** @psalm-suppress MixedReturnStatement decoded JSON payload — typed at the consumer boundary */
+public function getPayload(): mixed { ... }
+```
+
+PHPStan also supports the inline form with a dotted error identifier (`// @phpstan-ignore argument.type <reason>`); `@phpstan-ignore-next-line` and `@phpstan-ignore-line` have no identifier slot — the reason alone suffices. The reason must explain *why* the type is deliberately broad, not just that it is. Suppressions missing the identifier or the reason are findings under rule #7 — `src/zolletta_metaskill/code_style/general/suppression_reason_scanner.py` flags them deterministically.
+
+**Why this matters**: Fowler's [Maintainability sensors for coding agents](https://martinfowler.com/articles/sensors-for-coding-agents.html) ("Guidance for self-correction") — the sensor fires, the agent makes the judgment call, and when it suppresses it must document why. A reasonless suppression hides intent; a reasoned one records it for the next agent.

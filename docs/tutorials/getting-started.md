@@ -8,7 +8,7 @@ skills: [setup, review, patterns, documentor, python-*]
 
 Welcome to Zolletta-MetaSkill — a family of generic code review skills with specializations for Python and other languages. This tutorial walks through installing the skill, setting up a project, and running a first review.
 
-## What you will learn
+## What we will learn
 
 - How to install Zolletta-metaskill
 - How to set up a project for reviews
@@ -18,24 +18,24 @@ Welcome to Zolletta-MetaSkill — a family of generic code review skills with sp
 ## Prerequisites
 
 - An AI agent that supports skills (Devin, Claude, Cursor, or similar)
-- Git
+- Node.js (for the `npx` installer)
 - A project with source code to review
 
 ## Step 1 — Install
 
-Clone the repository into the agent's skills directory:
+Install the skill family with the skills CLI:
 
 ```bash
-git clone https://github.com/Zolletta/zolletta-metaskill.git ~/.agents/skills/zolletta-metaskill
+npx skills add zolletta/zolletta-metaskill
 ```
 
 Verify the installation by invoking the skill with no arguments:
 
-```
+```text
 /zolletta-metaskill
 ```
 
-Verify the list of available subcommands: `setup`, `documentor`, `patterns`, `review`, `python-code-style`, `python-testing-style`.
+Verify the list of available subcommands: `help`, `version`, `setup`, `documentor`, `grice`, `patterns`, `review`, `adr-distiller`, `python-code-style`, `python-testing-style`, `php-code-style`, `php-testing-style`.
 
 ## Step 2 — Set up the project
 
@@ -45,7 +45,7 @@ Navigate to the project to review and run setup:
 cd /path/to/our/project
 ```
 
-```
+```text
 /zolletta-metaskill setup
 ```
 
@@ -59,13 +59,13 @@ cat .zolletta-metaskill/settings.json
 
 ## Step 3 — Run a full review
 
-```
+```text
 /zolletta-metaskill review
 ```
 
-The review orchestrator runs all applicable skills in parallel — general skills (`patterns`, `documentor`) plus language-specific skills. See [subcommands.md](../reference/subcommands.md) for the full table.
+The review orchestrator runs all applicable skills in parallel — general skills (`patterns`, `documentor`, `grice`) plus language-specific skills. See [subcommands.md](../reference/subcommands.md) for the full table.
 
-Each skill writes a report to `.zolletta-metaskill/<timestamp>/reports/`. The orchestrator creates `reports/SUMMARY.md` with the overall grade and `reports/TODO.md` with aggregated action items.
+Each skill writes a report to `.zolletta-metaskill/<timestamp>/reports/`. The orchestrator creates `reports/SUMMARY.md` with the overall grade and the aggregated action items.
 
 ## Step 4 — Read the report
 
@@ -77,13 +77,13 @@ Open `.zolletta-metaskill/<timestamp>/reports/SUMMARY.md` to see:
 - **Top weaknesses** — what needs improvement
 - **Priority items** — the most important findings to address
 
-Then open `TODO.md` for the aggregated action items sorted by priority (P1 = critical, P2 = high, P3 = medium, P4 = low).
+The same `SUMMARY.md` carries the aggregated action items — the **Open** table lists them sorted by priority (Critical, High, Medium, Low) with links back to the specialist findings.
 
 ## Step 5 — Run individual skills
 
 Run any skill individually for a focused review:
 
-```
+```text
 /zolletta-metaskill patterns       # God classes and SOLID only
 /zolletta-metaskill documentor     # Documentation review only
 /zolletta-metaskill python-code-style    # Python code style only

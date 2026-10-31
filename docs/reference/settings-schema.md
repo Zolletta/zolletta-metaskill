@@ -10,13 +10,13 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
 
 `.zolletta-metaskill/settings.json` is created by `/zolletta-metaskill setup` and read by every other subcommand. This page documents every field.
 
-> **JSON Schema**: the machine-readable source of truth for the shape of `settings.json` lives at [`skills/zolletta-metaskill-setup/assets/settings.schema.json`](../../skills/zolletta-metaskill-setup/assets/settings.schema.json) (JSON Schema draft 2020-12). This prose doc is the human-readable counterpart and must stay in sync — when a field is added, removed, or renamed, update both files in the same change.
+> **JSON Schema**: the machine-readable source of truth for the shape of `settings.json` lives at [`skills/zolletta-metaskill/skills/zolletta-metaskill-setup/assets/settings.schema.json`](../../skills/zolletta-metaskill/skills/zolletta-metaskill-setup/assets/settings.schema.json) (JSON Schema draft 2020-12). This prose doc is the human-readable counterpart and must stay in sync — when a field is added, removed, or renamed, update both files in the same change.
 
 ## Example (Python project)
 
 ```json
 {
-  "setup_version": "3.2.0",
+  "setup_version": "3.3.0",
   "setup_timestamp": "2026-07-16T14:30:00",
   "language": "python",
   "container_name": "myproject",
@@ -73,8 +73,8 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
       "docstring_strip_obvious_init": false,
       "max_file_length": 800,
       "max_arguments": 5,
-      "max_function_length": 100,
-      "max_cyclomatic_complexity": 10,
+      "max_function_length": 125,
+      "max_cyclomatic_complexity": 12,
       "vulture_min_confidence": 80
     },
     "testing": {
@@ -93,6 +93,8 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
       "check_dip": true,
       "check_lsp": true,
       "check_test_structure": true,
+      "check_class_metrics": true,
+      "check_test_god_classes": true,
       "ocp_min_branches": 3,
       "isp_min_methods": 5,
       "dip_entry_points": ["main", "cli", "app", "__main__", "myproject", "manage", "wsgi", "asgi", "conftest"],
@@ -105,6 +107,7 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
   "subcommands": {
     "patterns": { "model": null },
     "documentor": { "model": null },
+    "grice": { "model": null },
     "python-code-style": { "model": null },
     "python-testing-style": { "model": null },
     "php-code-style": { "model": null },
@@ -120,9 +123,9 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
     "readme_sections": ["installation", "usage", "api", "contributing", "license"],
     "diataxis_translations": null,
     "staleness_weights": null,
-    "doc_patterns": ["*.md", "*.rst", "*.txt", "*.adoc"],
     "check_external": false,
     "include_referential": false,
+    "rename_window_days": 90,
     "api_doc_recursive": true,
     "api_doc_include_private": false,
     "api_doc_suggest_coverage": false
@@ -135,7 +138,7 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
 
 ```json
 {
-  "setup_version": "3.2.0",
+  "setup_version": "3.3.0",
   "setup_timestamp": "2026-07-16T14:30:00",
   "language": "php",
   "container_name": "myproject",
@@ -180,9 +183,9 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
       "check_max_arguments": true,
       "max_arguments": 5,
       "check_function_length": true,
-      "max_function_length": 100,
+      "max_function_length": 125,
       "check_cyclomatic_complexity": true,
-      "max_cyclomatic_complexity": 10
+      "max_cyclomatic_complexity": 12
     },
     "testing": {
       "coverage_gap_threshold": 50,
@@ -210,6 +213,7 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
   "subcommands": {
     "patterns": { "model": null },
     "documentor": { "model": null },
+    "grice": { "model": null },
     "python-code-style": { "model": null },
     "python-testing-style": { "model": null },
     "php-code-style": { "model": null },
@@ -225,9 +229,9 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
     "readme_sections": ["installation", "usage", "api", "contributing", "license"],
     "diataxis_translations": null,
     "staleness_weights": null,
-    "doc_patterns": ["*.md", "*.rst", "*.txt", "*.adoc"],
     "check_external": false,
     "include_referential": false,
+    "rename_window_days": 90,
     "api_doc_recursive": true,
     "api_doc_include_private": false,
     "api_doc_suggest_coverage": false
@@ -238,64 +242,67 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
 
 ## Top-level fields
 
-| Field                 | Type              | Description                                                                                                                                                                                                                              |
-|-----------------------|-------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `setup_version`       | string            | Matches the skill version that wrote the file                                                                                                                                                                                            |
-| `setup_timestamp`     | string (ISO 8601) | Timestamp of the last setup run                                                                                                                                                                                                          |
-| `language`            | string            | Detected project language (`python`, `php`, `go`, `rust`, etc.)                                                                                                                                                                          |
-| `container_name`      | string\|null      | Docker container name for running tools (`null` if no Docker)                                                                                                                                                                            |
-| `tokensave_available` | boolean           | `true` if `tokensave_status` responds (probed directly)                                                                                                                                                                                  |
-| `acronyms`            | array             | Project-specific acronyms that must stay uppercase in class names (e.g. `["CITE"]`). Extracted from `AGENTS.md` during setup; merged with the built-in list by `acronym_casing_scanner.py`. Always present, even for non-Python projects |
-| `python`              | object\|null      | Python tooling, rule toggles, and effective tool configuration (Python only; `null` otherwise) — see below                                                                                                                               |
-| `php`                 | object\|null      | PHP tooling, rule toggles, autoload mapping, and effective tool configuration (PHP only; `null` otherwise) — see below                                                                                                                   |
-| `subcommands`         | object            | Per-subcommand configuration — see below                                                                                                                                                                                                 |
-| `documentation`       | object            | Documentation configuration — see below                                                                                                                                                                                                  |
-| `runs_dir`            | string            | Directory where review run folders are created. Each run gets a timestamped subdirectory (`<runs_dir>/<YYYY-MM-DD-HH-MM>/`) containing `reports/` (LLM judgment) and `cache/` (deterministic script outputs)                             |
+| Field                 | Type              | Description                                                                                                                                                                                                                                                                                                 |
+|-----------------------|-------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `setup_version`       | string            | Matches the skill version that wrote the file                                                                                                                                                                                                                                                               |
+| `setup_timestamp`     | string (ISO 8601) | Timestamp of the last setup run                                                                                                                                                                                                                                                                             |
+| `language`            | string            | Detected project language (`python`, `php`, `go`, `rust`, etc.)                                                                                                                                                                                                                                             |
+| `container_name`      | string\|null      | Docker container name for running tools (`null` if no Docker)                                                                                                                                                                                                                                               |
+| `tokensave_available` | boolean           | `true` if tokensave is queryable — `tokensave tool status` responds (CLI, requires tokensave ≥ 7.14) or `tokensave_status` responds via MCP on older binaries (probed directly)                                                                                                                             |
+| `acronyms`            | array             | Project-specific acronyms that must stay uppercase in class names (e.g. `["CITE"]`). Extracted from `AGENTS.md` during setup; merged with the built-in list by `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/python/acronym_casing_scanner.py`. Always present, even for non-Python projects |
+| `python`              | object\|null      | Python tooling, rule toggles, and effective tool configuration (Python only; `null` otherwise) — see below                                                                                                                                                                                                  |
+| `php`                 | object\|null      | PHP tooling, rule toggles, autoload mapping, and effective tool configuration (PHP only; `null` otherwise) — see below                                                                                                                                                                                      |
+| `subcommands`         | object            | Per-subcommand configuration — see below                                                                                                                                                                                                                                                                    |
+| `documentation`       | object            | Documentation configuration — see below                                                                                                                                                                                                                                                                     |
+| `runs_dir`            | string            | Directory where review run folders are created. Each run gets a timestamped subdirectory (`<runs_dir>/<YYYY-MM-DD-HH-MM>/`) containing `reports/` (LLM judgment) and `cache/` (deterministic script outputs)                                                                                                |
 
 ## `subcommands` — per-subcommand model configuration
 
 Each key is a subcommand name; each value is an object with a `model` field. The review orchestrator reads each subcommand's `model` and passes it to `run_subagent` when launching that subcommand's subagent. When `model` is `null`, the harness default is used — behavior is unchanged from v1.x.
 
-Profile/model ids are harness-specific. The user supplies a value that exists in their harness; the skill never hardcodes one. This is the opt-in mechanism for [Smart Plan, Cheap Execution](../explanation/patterns.md#19-smart-plan-cheap-execution) — set a strong model for judgment-heavy subagents (`patterns`, `documentor`) and a cheaper one for mechanical ones (`*-code-style`, `*-testing-style`), or leave all at `null`.
+Profile/model ids are harness-specific. The user supplies a value that exists in their harness; the skill never hardcodes one. This is the opt-in mechanism for [Smart Plan, Cheap Execution](../explanation/patterns.md#19-smart-plan-cheap-execution) — set a strong model for judgment-heavy subagents (`patterns`, `documentor`) and a cheaper one for mechanical ones (`grice`, `*-code-style`, `*-testing-style`), or leave all at `null`.
 
 | Field                      | Type           | Default | Description                                                                         |
 |----------------------------|----------------|---------|-------------------------------------------------------------------------------------|
 | `subcommands.<name>.model` | string \| null | `null`  | Harness-specific profile/model id for subcommand `<name>`. `null` = harness default |
 
-The six subcommand keys:
+The seven subcommand keys:
 
 | Key                    | Subcommand                       | Default `model` | Notes                                                    |
 |------------------------|----------------------------------|-----------------|----------------------------------------------------------|
 | `patterns`             | `/zolletta-metaskill patterns`   | `null`          | Judgment-heavy — design pattern analysis                 |
 | `documentor`           | `/zolletta-metaskill documentor` | `null`          | Judgment-heavy — documentation review + drift detection  |
+| `grice`                | `/zolletta-metaskill grice`      | `null`          | Mechanical — Grice maxims corpus-relative scoring        |
 | `python-code-style`    | `python-code-style`              | `null`          | Mechanical — linting, formatting, naming (Python only)   |
 | `python-testing-style` | `python-testing-style`           | `null`          | Mechanical — test isolation, coverage gaps (Python only) |
 | `php-code-style`       | `php-code-style`                 | `null`          | Mechanical — PSR-12, naming, types (PHP only)            |
 | `php-testing-style`    | `php-testing-style`              | `null`          | Mechanical — PHPUnit, coverage gaps (PHP only)           |
 
-> **v1.x migration**: the `external_review_model` scalar (for the removed `external-review` subcommand) and the `subagent_profile` scalar (applied to all review subagents) are replaced by `subcommands` — a per-subcommand map. `external_review_model` is simply removed (the subcommand no longer exists); `subagent_profile` migrates to the 6 review subcommand entries. Setup migrates automatically — see `skills/zolletta-metaskill-setup/SUBSKILL.md` → "Step 0 — Migration and missing-keys backfill".
+> **v1.x migration**: the `external_review_model` scalar (for the removed `external-review` subcommand) and the `subagent_profile` scalar (applied to all review subagents) are replaced by `subcommands` — a per-subcommand map. `external_review_model` is simply removed (the subcommand no longer exists); `subagent_profile` migrates to the 6 review subcommand entries. Setup migrates automatically — see `skills/zolletta-metaskill/skills/zolletta-metaskill-setup/SUBCOMMAND.md` → "Step 0 — Migration and missing-keys backfill".
 >
 > **v3.0.0 backfill**: `python.paths`, `python.patterns`, `php.patterns`, and the new `code_style`/`testing`/`documentation` keys are added to existing settings.json files on the next setup run — additive only, user-customized values are preserved.
 
 ## `documentation` — documentation configuration
 
-| Field                                    | Type           | Default                                                       | Description                                                                                                                                                     |
-|------------------------------------------|----------------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `documentation.language`                 | string         | `"en"`                                                        | ISO 639-1 code for documentation language. When not `"en"`, the `documentor` skill translates Diátaxis signpost headings before running the staleness scorer    |
-| `documentation.dir`                      | string         | `"docs"`                                                      | Directory where project documentation lives. Used by the `documentor` skill to locate the Diátaxis docs tree for drift detection and staleness scoring          |
-| `documentation.adrs`                     | string \| null | `null`                                                        | Relative path within `documentation.dir` where ADRs live (e.g. `"adr"`), `""` if scattered in docs root, or `null` if no ADRs found. Auto-detected during setup |
-| `documentation.min_severity`             | string         | `"high"`                                                      | Minimum severity reported by `drift_analyzer.py` (`critical`, `high`, `medium`, `low`, `info`)                                                                  |
-| `documentation.staleness_threshold`      | number \| null | `null`                                                        | If set, `doc_staleness_scorer.py` exits 1 when the freshness score falls below this value (0–100). `null` = report-only                                         |
-| `documentation.readme_focus`             | boolean        | `false`                                                       | When `true`, `doc_staleness_scorer.py` only scores the README                                                                                                   |
-| `documentation.readme_sections`          | array          | `["installation", "usage", "api", "contributing", "license"]` | Section names a README is expected to contain (completeness dimension of `doc_staleness_scorer.py`)                                                             |
-| `documentation.diataxis_translations`    | string \| null | `null`                                                        | Path to a JSON file mapping Diátaxis signpost headings to translations. `null` = built-in translations                                                          |
-| `documentation.staleness_weights`        | object \| null | `null`                                                        | Custom dimension weights for `doc_staleness_scorer.py` (`last_updated`, `code_doc_alignment`, `link_health`, `completeness`, `accuracy`; normalized to sum 1.0) |
-| `documentation.doc_patterns`             | array          | `["*.md", "*.rst", "*.txt", "*.adoc"]`                        | Glob patterns for documentation files scanned by `drift_analyzer.py`                                                                                            |
-| `documentation.check_external`           | boolean        | `false`                                                       | When `true`, `link_checker.py` verifies external http(s) links too                                                                                              |
-| `documentation.include_referential`      | boolean        | `false`                                                       | When `true`, `drift_analyzer.py` also reports referential drift, not just broken links                                                                          |
-| `documentation.api_doc_recursive`        | boolean        | `true`                                                        | When `true`, `api_doc_validator.py` scans source roots recursively                                                                                              |
-| `documentation.api_doc_include_private`  | boolean        | `false`                                                       | When `true`, `api_doc_validator.py` also checks private/underscore modules                                                                                      |
-| `documentation.api_doc_suggest_coverage` | boolean        | `false`                                                       | When `true`, `api_doc_validator.py` suggests a documentation coverage target                                                                                    |
+| Field                                    | Type           | Default                                                       | Description                                                                                                                                                                                                                                                                               |
+|------------------------------------------|----------------|---------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `documentation.language`                 | string         | `"en"`                                                        | ISO 639-1 code for documentation language. When not `"en"`, the `documentor` skill translates Diátaxis signpost headings before running the staleness scorer                                                                                                                              |
+| `documentation.dir`                      | string         | `"docs"`                                                      | Directory where project documentation lives, plus the root documents `README.md`, `CONTRIBUTING.md` and `AGENTS.md`. Documentation is markdown only                                                                                                                                       |
+| `documentation.adrs`                     | string \| null | `null`                                                        | Relative path within `documentation.dir` where architecture ADRs live (e.g. `"adr"` or `"adr/architecture"` when an `ACT` archive exists), `""` if scattered in docs root, or `null` if no ADRs found. Auto-detected during setup                                                         |
+| `documentation.min_severity`             | string         | `"high"`                                                      | Minimum severity reported by `skills/zolletta-metaskill/src/zolletta_metaskill/documentor/quality/quality_review.py` (`critical`, `high`, `medium`, `low`, `info`)                                                                                                                        |
+| `documentation.staleness_threshold`      | number \| null | `null`                                                        | If set, `skills/zolletta-metaskill/src/zolletta_metaskill/documentor/quality/quality_review.py` and `skills/zolletta-metaskill/src/zolletta_metaskill/documentor/documentor_client.py` exit 1 when the freshness score falls below this value (0–100). `null` = report-only               |
+| `documentation.readme_focus`             | boolean        | `false`                                                       | When `true`, `skills/zolletta-metaskill/src/zolletta_metaskill/documentor/quality/quality_review.py` only scores the README                                                                                                                                                               |
+| `documentation.readme_sections`          | array          | `["installation", "usage", "api", "contributing", "license"]` | Section names a README is expected to contain (completeness dimension of `skills/zolletta-metaskill/src/zolletta_metaskill/documentor/quality/quality_review.py`)                                                                                                                         |
+| `documentation.diataxis_translations`    | string \| null | `null`                                                        | Path to a JSON file mapping Diátaxis signpost headings to translations. `null` = built-in translations                                                                                                                                                                                    |
+| `documentation.staleness_weights`        | object \| null | `null`                                                        | Custom dimension weights for `skills/zolletta-metaskill/src/zolletta_metaskill/documentor/quality/quality_review.py` (`last_updated`, `code_doc_alignment`, `link_health`, `completeness`, `accuracy`; normalized to sum 1.0)                                                             |
+| `documentation.check_external`           | boolean        | `false`                                                       | When `true`, `skills/zolletta-metaskill/src/zolletta_metaskill/documentor/links/link_checker.py` verifies external http(s) links too                                                                                                                                                      |
+| `documentation.check_unwrapped_prose`    | boolean        | `false`                                                       | When `true`, `skills/zolletta-metaskill/src/zolletta_metaskill/documentor/quality/unwrapped_prose_scanner.py` reports markdown paragraphs broken mid-sentence. Opt-in: clear the backlog first, or formatting noise buries real drift findings                                            |
+| `documentation.check_grice`              | boolean        | `true`                                                        | When `true`, `skills/zolletta-metaskill/src/zolletta_metaskill/grice/grice_scanner.py` scores documentation against Grice's Quantity, Quality, Relation and Manner maxims as indices relative to the corpus itself. On by default: an index is a judgement about prose, not a defect list |
+| `documentation.include_referential`      | boolean        | `false`                                                       | When `true`, `skills/zolletta-metaskill/src/zolletta_metaskill/documentor/quality/quality_review.py` also reports referential drift, not just broken links                                                                                                                                |
+| `documentation.rename_window_days`       | integer        | `90`                                                          | How far back git rename drift is examined. Renames older than this are not reported as referential drift. Was a hardcoded `90 days ago` string at the git call site                                                                                                                       |
+| `documentation.api_doc_recursive`        | boolean        | `true`                                                        | When `true`, `skills/zolletta-metaskill/src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py` scans source roots recursively                                                                                                                                                    |
+| `documentation.api_doc_include_private`  | boolean        | `false`                                                       | When `true`, `skills/zolletta-metaskill/src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py` also checks private/underscore modules                                                                                                                                            |
+| `documentation.api_doc_suggest_coverage` | boolean        | `false`                                                       | When `true`, `skills/zolletta-metaskill/src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py` suggests a documentation coverage target                                                                                                                                          |
 
 ## `python` — tooling, rules, and configuration
 
@@ -303,7 +310,7 @@ The `python` object merges four concerns into one place: tool availability and c
 
 ### `python.paths` — source/test layout
 
-The source and test roots every review script scans — the equivalent of what PHP projects get via `composer.json` `autoload` mappings. Detected by `python_paths_detector.py` during setup (Step 8) from `pyproject.toml` build config (`[tool.hatch.build.targets.wheel] packages`, `[tool.setuptools] package-dir`/`packages.find where`, `[tool.poetry] packages`), pytest `testpaths`, and the directory layout.
+The source and test roots every review script scans — the equivalent of what PHP projects get via `composer.json` `autoload` mappings. Detected by `skills/zolletta-metaskill/src/zolletta_metaskill/setup/python_paths_detector.py` during setup (Step 8) from `pyproject.toml` build config (`[tool.hatch.build.targets.wheel] packages`, `[tool.setuptools] package-dir`/`packages.find where`, `[tool.poetry] packages`), pytest `testpaths`, and the directory layout.
 
 | Field                  | Type           | Default     | Description                                                                                        |
 |------------------------|----------------|-------------|----------------------------------------------------------------------------------------------------|
@@ -331,69 +338,71 @@ Each tool is an object with an `available` boolean. Tools that have configuratio
 
 These control which checks the `python-code-style` skill enforces. All default to `true` (or `80` for the confidence threshold). Set to `false` to disable a check for the project.
 
-| Key                              | Type    | Default | Area       | Rule                                                                                                                                                                                    |
-|----------------------------------|---------|---------|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `check_acronym_casing`           | boolean | `true`  | Naming     | Acronyms stay uppercase in class names (`HTTPClientFactory`)                                                                                                                            |
-| `check_no_relative_imports`      | boolean | `true`  | Imports    | Absolute imports only, no relative imports                                                                                                                                              |
-| `check_one_class_per_file`       | boolean | `true`  | Structure  | One class per file (all classes, not just public)                                                                                                                                       |
-| `check_one_class_per_test_file`  | boolean | `true`  | Structure  | `one_class_per_file_scanner` also scans test roots: one test class per test file, named after its stem (`test_user.py` → `TestUser`)                                                    |
-| `check_zero_class_files`         | boolean | `true`  | Structure  | Report files with 0 classes (utility/helper modules). Set `false` to hide them — replaces the removed `--ignore-zero` flag                                                              |
-| `check_filename_matches_class`   | boolean | `true`  | Structure  | Filename matches class name (`snake_case.py` → `PascalCase`)                                                                                                                            |
-| `check_public_docstrings`        | boolean | `true`  | Docstrings | Docstrings required on public classes, methods, functions                                                                                                                               |
-| `check_docstring_no_type_repeat` | boolean | `true`  | Docstrings | No type repetition in docstring Args/Returns                                                                                                                                            |
-| `check_skip_obvious_docstrings`  | boolean | `true`  | Docstrings | Skip docstrings for obvious one-line functions                                                                                                                                          |
-| `check_line_length`              | boolean | `true`  | Formatting | Line length from `python.tools.ruff.line_length`                                                                                                                                        |
-| `check_file_length`              | boolean | `true`  | Structure  | Files must not exceed `max_file_length` lines                                                                                                                                           |
-| `check_function_length`          | boolean | `true`  | Structure  | Functions/methods must not exceed `max_function_length` lines (`function_length_scanner.py`)                                                                                            |
-| `check_max_arguments`            | boolean | `true`  | Structure  | Functions/methods must not exceed `max_arguments` declared parameters (`max_arguments_scanner.py`)                                                                                      |
-| `check_cyclomatic_complexity`    | boolean | `true`  | Structure  | Functions/methods must not exceed `max_cyclomatic_complexity` decision points (`cyclomatic_complexity_scanner.py`)                                                                      |
-| `check_unused_all_exports`       | boolean | `true`  | Dead code  | `__all__` entries must be used outside their module (`unused_all_exports_scanner.py`)                                                                                                   |
-| `docstring_strip_private`        | boolean | `false` | Docstrings | `docstring_streamliner.py` removes private-function docstrings when applying fixes                                                                                                      |
-| `docstring_strip_tests`          | boolean | `false` | Docstrings | `docstring_streamliner.py` removes test-function docstrings when applying fixes                                                                                                         |
-| `docstring_strip_nested`         | boolean | `false` | Docstrings | `docstring_streamliner.py` removes nested-function docstrings when applying fixes                                                                                                       |
-| `docstring_strip_obvious_init`   | boolean | `false` | Docstrings | `docstring_streamliner.py` removes obvious `__init__` docstrings when applying fixes                                                                                                    |
-| `max_file_length`                | integer | `800`   | Structure  | Maximum allowed lines per file (enforced by `file_length_scanner.py`)                                                                                                                   |
-| `max_arguments`                  | integer | `5`     | Structure  | Maximum declared parameters per function/method (enforced by `max_arguments_scanner.py`). Seeded from `python.tools.ruff.max_args` when configured                                      |
-| `max_function_length`            | integer | `100`   | Structure  | Maximum allowed line span per function/method (enforced by `function_length_scanner.py`). Lines are not statements — `python.tools.ruff.max_statements` exposes the PLR0915 alternative |
-| `max_cyclomatic_complexity`      | integer | `10`    | Structure  | Maximum allowed cyclomatic complexity per function/method (enforced by `cyclomatic_complexity_scanner.py`). Seeded from `python.tools.ruff.max_complexity` when configured              |
-| `vulture_min_confidence`         | integer | `80`    | Dead code  | Minimum confidence for vulture findings (0–100)                                                                                                                                         |
+| Key                              | Type    | Default | Area       | Rule                                                                                                                                                                                                                                                        |
+|----------------------------------|---------|---------|------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `check_acronym_casing`           | boolean | `true`  | Naming     | Acronyms stay uppercase in class names (`HTTPClientFactory`)                                                                                                                                                                                                |
+| `check_no_relative_imports`      | boolean | `true`  | Imports    | Absolute imports only, no relative imports                                                                                                                                                                                                                  |
+| `check_one_class_per_file`       | boolean | `true`  | Structure  | One class per file (all classes, not just public)                                                                                                                                                                                                           |
+| `check_one_class_per_test_file`  | boolean | `true`  | Structure  | `one_class_per_file_scanner` also scans test roots: one test class per test file, named after its stem (`test_user.py` → `TestUser`)                                                                                                                        |
+| `check_zero_class_files`         | boolean | `true`  | Structure  | Report files with 0 classes (utility/helper modules). Set `false` to hide them — replaces the removed `--ignore-zero` flag                                                                                                                                  |
+| `check_filename_matches_class`   | boolean | `true`  | Structure  | Filename matches class name (`snake_case.py` → `PascalCase`)                                                                                                                                                                                                |
+| `check_public_docstrings`        | boolean | `true`  | Docstrings | Docstrings required on public classes, methods, functions                                                                                                                                                                                                   |
+| `check_docstring_no_type_repeat` | boolean | `true`  | Docstrings | No type repetition in docstring Args/Returns                                                                                                                                                                                                                |
+| `check_skip_obvious_docstrings`  | boolean | `true`  | Docstrings | Skip docstrings for obvious one-line functions                                                                                                                                                                                                              |
+| `check_line_length`              | boolean | `true`  | Formatting | Line length from `python.tools.ruff.line_length`                                                                                                                                                                                                            |
+| `check_file_length`              | boolean | `true`  | Structure  | Files must not exceed `max_file_length` lines                                                                                                                                                                                                               |
+| `check_function_length`          | boolean | `true`  | Structure  | Functions/methods must not exceed `max_function_length` lines (`skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/function_length_scanner.py`)                                                                                            |
+| `check_max_arguments`            | boolean | `true`  | Structure  | Functions/methods must not exceed `max_arguments` declared parameters (`skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/max_arguments_scanner.py`)                                                                                      |
+| `check_cyclomatic_complexity`    | boolean | `true`  | Structure  | Functions/methods must not exceed `max_cyclomatic_complexity` decision points (`skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py`)                                                                      |
+| `check_unused_all_exports`       | boolean | `true`  | Dead code  | `__all__` entries must be used outside their module (`skills/zolletta-metaskill/src/zolletta_metaskill/code_style/python/unused_all_exports_scanner.py`)                                                                                                    |
+| `docstring_strip_private`        | boolean | `false` | Docstrings | `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/python/docstring_streamliner.py` removes private-function docstrings when applying fixes                                                                                                       |
+| `docstring_strip_tests`          | boolean | `false` | Docstrings | `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/python/docstring_streamliner.py` removes test-function docstrings when applying fixes                                                                                                          |
+| `docstring_strip_nested`         | boolean | `false` | Docstrings | `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/python/docstring_streamliner.py` removes nested-function docstrings when applying fixes                                                                                                        |
+| `docstring_strip_obvious_init`   | boolean | `false` | Docstrings | `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/python/docstring_streamliner.py` removes obvious `__init__` docstrings when applying fixes                                                                                                     |
+| `max_file_length`                | integer | `800`   | Structure  | Maximum allowed lines per file (enforced by `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/file_length_scanner.py`)                                                                                                                   |
+| `max_arguments`                  | integer | `5`     | Structure  | Maximum declared parameters per function/method (enforced by `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/max_arguments_scanner.py`). Seeded from `python.tools.ruff.max_args` when configured                                      |
+| `max_function_length`            | integer | `125`   | Structure  | Maximum allowed line span per function/method (enforced by `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/function_length_scanner.py`). Lines are not statements — `python.tools.ruff.max_statements` exposes the PLR0915 alternative |
+| `max_cyclomatic_complexity`      | integer | `12`    | Structure  | Maximum allowed cyclomatic complexity per function/method (enforced by `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py`). Seeded from `python.tools.ruff.max_complexity` when configured              |
+| `vulture_min_confidence`         | integer | `80`    | Dead code  | Minimum confidence for vulture findings (0–100)                                                                                                                                                                                                             |
 
-> Rules not listed here (naming conventions, import order, private/test function docstring exemptions, type hints for public APIs) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-python-code-style/SUBSKILL.md` → Table 1 for the full list.
+> Rules not listed here (naming conventions, import order, private/test function docstring exemptions, type hints for public APIs) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill/skills/zolletta-metaskill-python-code-style/SUBCOMMAND.md` → Table 1 for the full list.
 
 ### `python.testing` — configurable rule toggles
 
 These control which checks the `python-testing-style` skill enforces and the coverage thresholds it uses.
 
-| Key                               | Type    | Default   | Area     | Rule                                                                                                                          |
-|-----------------------------------|---------|-----------|----------|-------------------------------------------------------------------------------------------------------------------------------|
-| `coverage_gap_threshold`          | integer | `50`      | Coverage | Coverage below this % is a gap (0–100)                                                                                        |
-| `coverage_well_covered_threshold` | integer | `80`      | Coverage | Coverage above this % is well-covered — do not flag (0–100)                                                                   |
-| `check_test_naming`               | boolean | `true`    | Naming   | Test naming convention (`test_<unit>_<scenario>_<expected>`)                                                                  |
-| `test_naming_min_segments`        | integer | `3`       | Naming   | Minimum underscore-separated segments a test function name must have (`test_naming_scanner.py`)                               |
-| `check_mutation_testing`          | boolean | `true`    | Mutation | Run `mutmut` during the review when `python.tools.mutmut.available` — set `false` to opt out of the slow mutation run         |
-| `mutation_score_threshold`        | integer | `80`      | Mutation | Mutation score below this percentage is a high-severity finding (0–100)                                                       |
-| `mutation_target`                 | string  | `changed` | Mutation | `changed` = mutate only files changed vs the default branch plus working tree; `all` = full run (slow, for scheduled reviews) |
-| `mutation_max_mutants`            | integer | `50`      | Mutation | Cap on survived mutants detailed in the report                                                                                |
+| Key                               | Type    | Default   | Area     | Rule                                                                                                                                                                  |
+|-----------------------------------|---------|-----------|----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `coverage_gap_threshold`          | integer | `50`      | Coverage | Coverage below this % is a gap (0–100)                                                                                                                                |
+| `coverage_well_covered_threshold` | integer | `80`      | Coverage | Coverage above this % is well-covered — do not flag (0–100)                                                                                                           |
+| `check_test_naming`               | boolean | `true`    | Naming   | Test naming convention (`test_<unit>_<scenario>_<expected>`)                                                                                                          |
+| `test_naming_min_segments`        | integer | `3`       | Naming   | Minimum underscore-separated segments a test function name must have (`skills/zolletta-metaskill/src/zolletta_metaskill/testing_style/python/test_naming_scanner.py`) |
+| `check_mutation_testing`          | boolean | `true`    | Mutation | Run `mutmut` during the review when `python.tools.mutmut.available` — set `false` to opt out of the slow mutation run                                                 |
+| `mutation_score_threshold`        | integer | `80`      | Mutation | Mutation score below this percentage is a high-severity finding (0–100)                                                                                               |
+| `mutation_target`                 | string  | `changed` | Mutation | `changed` = mutate only files changed vs the default branch plus working tree; `all` = full run (slow, for scheduled reviews)                                         |
+| `mutation_max_mutants`            | integer | `50`      | Mutation | Cap on survived mutants detailed in the report                                                                                                                        |
 
-> Rules not listed here (AAA structure, test isolation, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-python-testing-style/SUBSKILL.md` → "Always-on rules" for the full list.
+> Rules not listed here (AAA structure, test isolation, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill/skills/zolletta-metaskill-python-testing-style/SUBCOMMAND.md` → "Always-on rules" for the full list.
 
 ### `python.patterns` — SOLID/pattern scanner configuration
 
 These control which checks the `patterns` skill's deterministic scanners run for Python, and their thresholds. All `check_*` toggles default to `true`.
 
-| Key                       | Type    | Default                                                                                 | Rule                                                                                               |
-|---------------------------|---------|-----------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
-| `check_ocp`               | boolean | `true`                                                                                  | Open/closed: flag if/elif chains that should be polymorphic (`open_closed_scanner.py`)             |
-| `check_isp`               | boolean | `true`                                                                                  | Interface segregation: flag fat interfaces (`interface_segregation_scanner.py`)                    |
-| `check_dip`               | boolean | `true`                                                                                  | Dependency inversion: flag high-level modules importing low-level concretions                      |
-| `check_lsp`               | boolean | `true`                                                                                  | Liskov substitution: flag subclasses that break the parent contract                                |
-| `check_test_structure`    | boolean | `true`                                                                                  | Test tree mirrors the source tree (`test_structure_scanner.py`)                                    |
-| `ocp_min_branches`        | integer | `3`                                                                                     | Minimum branches in an if/elif chain before `open_closed_scanner.py` flags it                      |
-| `isp_min_methods`         | integer | `5`                                                                                     | Minimum methods on an interface/class before `interface_segregation_scanner.py` flags it           |
-| `dip_entry_points`        | array   | `["main", "cli", "app", "__main__", "myproject", "manage", "wsgi", "asgi", "conftest"]` | Module names treated as composition roots — exempt from `dependency_inversion_scanner.py` findings |
-| `class_metrics_top`       | integer | `30`                                                                                    | How many largest classes `class_metrics_scanner.py` reports                                        |
-| `class_metrics_min_lines` | integer | `50`                                                                                    | Minimum class size (lines) `class_metrics_scanner.py` reports                                      |
-| `test_god_classes_top`    | integer | `30`                                                                                    | How many largest test classes `test_god_classes_scanner.py` reports                                |
+| Key                       | Type    | Default                                                                                 | Rule                                                                                                                                                                |
+|---------------------------|---------|-----------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `check_ocp`               | boolean | `true`                                                                                  | Open/closed: flag if/elif chains that should be polymorphic (`skills/zolletta-metaskill/src/zolletta_metaskill/patterns/python/open_closed_scanner.py`)             |
+| `check_isp`               | boolean | `true`                                                                                  | Interface segregation: flag fat interfaces (`skills/zolletta-metaskill/src/zolletta_metaskill/patterns/python/interface_segregation_scanner.py`)                    |
+| `check_dip`               | boolean | `true`                                                                                  | Dependency inversion: flag high-level modules importing low-level concretions                                                                                       |
+| `check_lsp`               | boolean | `true`                                                                                  | Liskov substitution: flag subclasses that break the parent contract                                                                                                 |
+| `check_test_structure`    | boolean | `true`                                                                                  | Test tree mirrors the source tree (`skills/zolletta-metaskill/src/zolletta_metaskill/testing_style/general/test_structure_scanner.py`)                              |
+| `check_class_metrics`     | boolean | `true`                                                                                  | Class-size triage (`skills/zolletta-metaskill/src/zolletta_metaskill/patterns/general/class_metrics_scanner.py`)                                                    |
+| `check_test_god_classes`  | boolean | `true`                                                                                  | Test God-class check (`skills/zolletta-metaskill/src/zolletta_metaskill/patterns/general/test_god_classes_scanner.py`)                                              |
+| `ocp_min_branches`        | integer | `3`                                                                                     | Minimum branches in an if/elif chain before `skills/zolletta-metaskill/src/zolletta_metaskill/patterns/python/open_closed_scanner.py` flags it                      |
+| `isp_min_methods`         | integer | `5`                                                                                     | Minimum methods on an interface/class before `skills/zolletta-metaskill/src/zolletta_metaskill/patterns/python/interface_segregation_scanner.py` flags it           |
+| `dip_entry_points`        | array   | `["main", "cli", "app", "__main__", "myproject", "manage", "wsgi", "asgi", "conftest"]` | Module names treated as composition roots — exempt from `skills/zolletta-metaskill/src/zolletta_metaskill/patterns/python/dependency_inversion_scanner.py` findings |
+| `class_metrics_top`       | integer | `30`                                                                                    | How many largest classes `skills/zolletta-metaskill/src/zolletta_metaskill/patterns/general/class_metrics_scanner.py` reports                                       |
+| `class_metrics_min_lines` | integer | `50`                                                                                    | Minimum class size (lines) `skills/zolletta-metaskill/src/zolletta_metaskill/patterns/general/class_metrics_scanner.py` reports                                     |
+| `test_god_classes_top`    | integer | `30`                                                                                    | How many largest test classes `skills/zolletta-metaskill/src/zolletta_metaskill/patterns/general/test_god_classes_scanner.py` reports                               |
 
 ### `python.pyproject_mtime` — staleness detection
 
@@ -422,31 +431,31 @@ Each tool is an object with an `available` boolean. Tools that have configuratio
 
 These control which checks the `php-code-style` skill enforces. All default to `true`. Set to `false` to disable a check for the project. Rules whose minimum PHP version is higher than the detected `php_version` are silently skipped (not flagged) — the skill prints a note listing which rules were skipped.
 
-| Key                           | Type    | Default | Area        | Rule                                                                                                               | Min PHP |
-|-------------------------------|---------|---------|-------------|--------------------------------------------------------------------------------------------------------------------|---------|
-| `check_acronym_casing`        | boolean | `true`  | Naming      | Acronyms stay uppercase in class names (`HTTPClientFactory`)                                                       | all     |
-| `check_union_types`           | boolean | `true`  | Types       | Union types declared where multiple types are possible                                                             | 8.0+    |
-| `check_intersection_types`    | boolean | `true`  | Types       | Intersection types for interface composition                                                                       | 8.1+    |
-| `check_enum_methods`          | boolean | `true`  | Modern      | Enums with methods instead of class constants for finite sets                                                      | 8.1+    |
-| `check_first_class_callables` | boolean | `true`  | Modern      | First-class callable syntax (`$obj->method(...)`)                                                                  | 8.1+    |
-| `check_readonly_classes`      | boolean | `true`  | Modern      | Readonly classes for immutable data                                                                                | 8.2+    |
-| `check_typed_constants`       | boolean | `true`  | Modern      | Typed class constants                                                                                              | 8.3+    |
-| `check_override_attribute`    | boolean | `true`  | Modern      | `#[\Override]` attribute on overriding methods                                                                     | 8.3+    |
-| `check_property_hooks`        | boolean | `true`  | Modern      | Property hooks for computed properties                                                                             | 8.4+    |
-| `check_asymmetric_visibility` | boolean | `true`  | Modern      | Asymmetric visibility (`public-read protected-set`)                                                                | 8.4+    |
-| `check_pipe_operator`         | boolean | `true`  | Modern      | Pipe operator (`\|>`) for function composition                                                                     | 8.5+    |
-| `check_array_functions`       | boolean | `true`  | Performance | Use native array functions over manual loops                                                                       | all     |
-| `check_string_functions`      | boolean | `true`  | Performance | Use native string functions over regex                                                                             | all     |
-| `check_file_length`           | boolean | `true`  | Structure   | Files must not exceed `max_file_length` lines                                                                      | all     |
-| `max_file_length`             | integer | `800`   | Structure   | Maximum allowed lines per file (enforced by `file_length_scanner.py`)                                              | all     |
-| `check_max_arguments`         | boolean | `true`  | Structure   | Functions/methods must not exceed `max_arguments` declared parameters (`max_arguments_scanner.py`)                 | all     |
-| `max_arguments`               | integer | `5`     | Structure   | Maximum declared parameters per function/method (enforced by `max_arguments_scanner.py`)                           | all     |
-| `check_function_length`       | boolean | `true`  | Structure   | Functions/methods must not exceed `max_function_length` lines (`function_length_scanner.py`)                       | all     |
-| `max_function_length`         | integer | `100`   | Structure   | Maximum allowed line span per function/method (enforced by `function_length_scanner.py`)                           | all     |
-| `check_cyclomatic_complexity` | boolean | `true`  | Structure   | Functions/methods must not exceed `max_cyclomatic_complexity` decision points (`cyclomatic_complexity_scanner.py`) | all     |
-| `max_cyclomatic_complexity`   | integer | `10`    | Structure   | Maximum allowed cyclomatic complexity per function/method (enforced by `cyclomatic_complexity_scanner.py`)         | all     |
+| Key                           | Type    | Default | Area        | Rule                                                                                                                                                                                   | Min PHP |
+|-------------------------------|---------|---------|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
+| `check_acronym_casing`        | boolean | `true`  | Naming      | Acronyms stay uppercase in class names (`HTTPClientFactory`)                                                                                                                           | all     |
+| `check_union_types`           | boolean | `true`  | Types       | Union types declared where multiple types are possible                                                                                                                                 | 8.0+    |
+| `check_intersection_types`    | boolean | `true`  | Types       | Intersection types for interface composition                                                                                                                                           | 8.1+    |
+| `check_enum_methods`          | boolean | `true`  | Modern      | Enums with methods instead of class constants for finite sets                                                                                                                          | 8.1+    |
+| `check_first_class_callables` | boolean | `true`  | Modern      | First-class callable syntax (`$obj->method(...)`)                                                                                                                                      | 8.1+    |
+| `check_readonly_classes`      | boolean | `true`  | Modern      | Readonly classes for immutable data                                                                                                                                                    | 8.2+    |
+| `check_typed_constants`       | boolean | `true`  | Modern      | Typed class constants                                                                                                                                                                  | 8.3+    |
+| `check_override_attribute`    | boolean | `true`  | Modern      | `#[\Override]` attribute on overriding methods                                                                                                                                         | 8.3+    |
+| `check_property_hooks`        | boolean | `true`  | Modern      | Property hooks for computed properties                                                                                                                                                 | 8.4+    |
+| `check_asymmetric_visibility` | boolean | `true`  | Modern      | Asymmetric visibility (`public-read protected-set`)                                                                                                                                    | 8.4+    |
+| `check_pipe_operator`         | boolean | `true`  | Modern      | Pipe operator (`\|>`) for function composition                                                                                                                                         | 8.5+    |
+| `check_array_functions`       | boolean | `true`  | Performance | Use native array functions over manual loops                                                                                                                                           | all     |
+| `check_string_functions`      | boolean | `true`  | Performance | Use native string functions over regex                                                                                                                                                 | all     |
+| `check_file_length`           | boolean | `true`  | Structure   | Files must not exceed `max_file_length` lines                                                                                                                                          | all     |
+| `max_file_length`             | integer | `800`   | Structure   | Maximum allowed lines per file (enforced by `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/file_length_scanner.py`)                                              | all     |
+| `check_max_arguments`         | boolean | `true`  | Structure   | Functions/methods must not exceed `max_arguments` declared parameters (`skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/max_arguments_scanner.py`)                 | all     |
+| `max_arguments`               | integer | `5`     | Structure   | Maximum declared parameters per function/method (enforced by `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/max_arguments_scanner.py`)                           | all     |
+| `check_function_length`       | boolean | `true`  | Structure   | Functions/methods must not exceed `max_function_length` lines (`skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/function_length_scanner.py`)                       | all     |
+| `max_function_length`         | integer | `125`   | Structure   | Maximum allowed line span per function/method (enforced by `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/function_length_scanner.py`)                           | all     |
+| `check_cyclomatic_complexity` | boolean | `true`  | Structure   | Functions/methods must not exceed `max_cyclomatic_complexity` decision points (`skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py`) | all     |
+| `max_cyclomatic_complexity`   | integer | `12`    | Structure   | Maximum allowed cyclomatic complexity per function/method (enforced by `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py`)         | all     |
 
-> Rules not listed here (`declare(strict_types=1)`, return/parameter/property type declarations, nullable types, `void`/`never`, avoid `mixed`, constructor promotion, match expression, nullsafe operator, named arguments, attributes, enums, readonly properties, arrow functions, PSR-4 autoloading, PSR-12 coding style, camelCase methods, namespace usage, no `@` suppression, file upload validation) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-php-code-style/SUBSKILL.md` → "Always-on rules" for the full list.
+> Rules not listed here (`declare(strict_types=1)`, return/parameter/property type declarations, nullable types, `void`/`never`, avoid `mixed`, constructor promotion, match expression, nullsafe operator, named arguments, attributes, enums, readonly properties, arrow functions, PSR-4 autoloading, PSR-12 coding style, camelCase methods, namespace usage, no `@` suppression, file upload validation) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill/skills/zolletta-metaskill-php-code-style/SUBCOMMAND.md` → "Always-on rules" for the full list.
 
 ### `php.testing` — configurable rule toggles
 
@@ -462,19 +471,19 @@ These control which checks the `php-testing-style` skill enforces and the covera
 | `mutation_target`                 | string  | `changed` | Mutation | `changed` = Infection's `--git-diff-filter` covers working tree + committed changes vs the default branch; `all` = full run (slow, for scheduled reviews) |
 | `mutation_max_mutants`            | integer | `50`      | Mutation | Cap on escaped mutants detailed in the report                                                                                                             |
 
-> Rules not listed here (one test class per SUT, test directory mirroring per PSR-4, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-php-testing-style/SUBSKILL.md` → "Always-on rules" for the full list.
+> Rules not listed here (one test class per SUT, test directory mirroring per PSR-4, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill/skills/zolletta-metaskill-php-testing-style/SUBCOMMAND.md` → "Always-on rules" for the full list.
 
 ### `php.patterns` — SOLID scanner configuration
 
 Same role as `python.patterns` for the PHP SOLID scanners. PHP has no `check_lsp`/`check_test_structure` (no PHP LSP or mirror-structure scanner) and the ISP threshold defaults to 7.
 
-| Key                | Type    | Default | Rule                                                                                     |
-|--------------------|---------|---------|------------------------------------------------------------------------------------------|
-| `check_ocp`        | boolean | `true`  | Open/closed: flag if/elseif chains that should be polymorphic                            |
-| `check_isp`        | boolean | `true`  | Interface segregation: flag fat interfaces                                               |
-| `check_dip`        | boolean | `true`  | Dependency inversion: flag high-level modules depending on low-level concretions         |
-| `ocp_min_branches` | integer | `3`     | Minimum branches in an if/elseif chain before `open_closed_scanner.py` flags it          |
-| `isp_min_methods`  | integer | `7`     | Minimum methods on an interface/class before `interface_segregation_scanner.py` flags it |
+| Key                | Type    | Default | Rule                                                                                                                                                   |
+|--------------------|---------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `check_ocp`        | boolean | `true`  | Open/closed: flag if/elseif chains that should be polymorphic                                                                                          |
+| `check_isp`        | boolean | `true`  | Interface segregation: flag fat interfaces                                                                                                             |
+| `check_dip`        | boolean | `true`  | Dependency inversion: flag high-level modules depending on low-level concretions                                                                       |
+| `ocp_min_branches` | integer | `3`     | Minimum branches in an if/elseif chain before `skills/zolletta-metaskill/src/zolletta_metaskill/patterns/php/open_closed_scanner.py` flags it          |
+| `isp_min_methods`  | integer | `7`     | Minimum methods on an interface/class before `skills/zolletta-metaskill/src/zolletta_metaskill/patterns/php/interface_segregation_scanner.py` flags it |
 
 ### `php.autoload` — PSR-4 namespace mapping
 
@@ -487,7 +496,7 @@ PSR-4 namespace → directory mapping extracted from `composer.json`. The `php-c
 
 ### `php.php_version` — minimum PHP version
 
-Minimum PHP version extracted from `composer.json` `require.php` (e.g. `">=8.2"` → `"8.2"`). Stored as a string. `null` if `require.php` is absent — in that case review skills cannot assume a specific PHP version and version-gated rules are skipped.
+Minimum PHP version extracted from `composer.json` `require.php` (e.g. `">=8.2"` → `"8.2"`). Stored as a string. `null` if `require.php` is absent — in that case review skills cannot assume a specific PHP version, so all rules are evaluated (the skill assumes the latest PHP version).
 
 ### `php.composer_mtime` — staleness detection
 
@@ -505,7 +514,7 @@ When `settings.json` exists and `php` is not `null`, the setup guard compares `c
 
 ## Tool-failure handler
 
-If any subcommand calls a tokensave MCP tool and receives a tool-not-found / server-not-found error, it:
+If a tokensave query fails on every available transport — `tokensave tool <name>` and, where the harness exposes them, the `tokensave_*` MCP tools — the subcommand:
 
 1. Updates `tokensave_available` in `settings.json` to `false`
 2. Prints the "not installed" message from `tool-messages.md`

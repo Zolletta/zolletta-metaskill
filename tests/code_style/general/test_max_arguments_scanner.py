@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -139,15 +140,11 @@ class TestMaxArgumentsScanner:
         assert MaxArgumentsScanner.resolve_max_args(settings) == 5
 
     def test_non_integer_limit_falls_back(self, tmp_path: Path) -> None:
-        settings = self._write_settings(
-            tmp_path, python={"code_style": {"max_arguments": "5"}}
-        )
+        settings = self._write_settings(tmp_path, python={"code_style": {"max_arguments": "5"}})
         assert MaxArgumentsScanner.resolve_max_args(settings) == 5
 
     def test_boolean_limit_falls_back(self, tmp_path: Path) -> None:
-        settings = self._write_settings(
-            tmp_path, python={"code_style": {"max_arguments": True}}
-        )
+        settings = self._write_settings(tmp_path, python={"code_style": {"max_arguments": True}})
         assert MaxArgumentsScanner.resolve_max_args(settings) == 5
 
     def test_disabled_language_limit_ignored(self, tmp_path: Path) -> None:
@@ -156,11 +153,56 @@ class TestMaxArgumentsScanner:
             tmp_path,
             language="python",
             python={"code_style": {"max_arguments": 7}},
-            php={
-                "code_style": {"check_max_arguments": False, "max_arguments": 1}
-            },
+            php={"code_style": {"check_max_arguments": False, "max_arguments": 1}},
         )
         assert MaxArgumentsScanner.resolve_max_args(settings) == 7
+
+    # --- Tests for MaxArgumentsScanner.resolve_max_dataclass_fields(). ---
+
+    def test_dataclass_fields_reads_limit_from_settings(self, tmp_path: Path) -> None:
+        settings = self._write_settings(
+            tmp_path, python={"code_style": {"max_dataclass_fields": 7}}
+        )
+        assert MaxArgumentsScanner.resolve_max_dataclass_fields(settings) == 7
+
+    def test_dataclass_fields_smallest_limit_wins(self, tmp_path: Path) -> None:
+        settings = self._write_settings(
+            tmp_path,
+            language="python",
+            python={"code_style": {"max_dataclass_fields": 12}},
+            php={"code_style": {"max_dataclass_fields": 4}},
+        )
+        assert MaxArgumentsScanner.resolve_max_dataclass_fields(settings) == 4
+
+    def test_dataclass_fields_no_config_falls_back(self, tmp_path: Path) -> None:
+        settings = self._write_settings(tmp_path)
+        assert MaxArgumentsScanner.resolve_max_dataclass_fields(settings) == 10
+
+    def test_dataclass_fields_missing_settings_falls_back(self, tmp_path: Path) -> None:
+        missing = tmp_path / ".zolletta-metaskill" / "settings.json"
+        assert MaxArgumentsScanner.resolve_max_dataclass_fields(missing) == 10
+
+    def test_dataclass_fields_non_integer_falls_back(self, tmp_path: Path) -> None:
+        settings = self._write_settings(
+            tmp_path, python={"code_style": {"max_dataclass_fields": "9"}}
+        )
+        assert MaxArgumentsScanner.resolve_max_dataclass_fields(settings) == 10
+
+    def test_dataclass_fields_boolean_falls_back(self, tmp_path: Path) -> None:
+        settings = self._write_settings(
+            tmp_path, python={"code_style": {"max_dataclass_fields": True}}
+        )
+        assert MaxArgumentsScanner.resolve_max_dataclass_fields(settings) == 10
+
+    def test_dataclass_fields_disabled_language_limit_ignored(self, tmp_path: Path) -> None:
+        """A disabled language's max_dataclass_fields does not lower the limit."""
+        settings = self._write_settings(
+            tmp_path,
+            language="python",
+            python={"code_style": {}},
+            php={"code_style": {"check_max_arguments": False, "max_dataclass_fields": 3}},
+        )
+        assert MaxArgumentsScanner.resolve_max_dataclass_fields(settings) == 10
 
     # --- Tests for MaxArgumentsScanner.scan_module(). ---
 
@@ -204,10 +246,96 @@ class TestMaxArgumentsScanner:
         assert len(findings) == 1
         assert "Method 'Foo.bar' has 7 parameters (max 5)" in findings[0].description
 
-    def test_scan_module_syntax_error_returns_empty(self, tmp_path: Path) -> None:
+    def test_scan_module_method_under_limit_ignored(self, tmp_path: Path) -> None:
         module = ModuleInfo(
-            path=tmp_path / "m.py", language="python", has_syntax_error=True
+            path=tmp_path / "m.py",
+            language="python",
+            classes=[
+                ClassInfo(
+                    name="Foo",
+                    lineno=1,
+                    end_lineno=5,
+                    methods=[self._function("bar", 3, lineno=2)],
+                )
+            ],
         )
+        assert MaxArgumentsScanner.scan_module(module, max_args=5) == []
+
+    def test_scan_module_dataclass_over_limit_flagged(self, tmp_path: Path) -> None:
+        module = ModuleInfo(
+            path=tmp_path / "m.py",
+            language="python",
+            classes=[
+                ClassInfo(
+                    name="Wide",
+                    lineno=1,
+                    end_lineno=9,
+                    is_dataclass=True,
+                    dataclass_fields=[f"f{i}" for i in range(11)],
+                )
+            ],
+        )
+        findings = MaxArgumentsScanner.scan_module(module, max_args=5, max_dataclass_fields=10)
+        assert len(findings) == 1
+        assert "Dataclass 'Wide' has 11 parameters (max 5)" in findings[0].description
+
+    def test_scan_module_dataclass_within_own_limit_passes(self, tmp_path: Path) -> None:
+        module = ModuleInfo(
+            path=tmp_path / "m.py",
+            language="python",
+            classes=[
+                ClassInfo(
+                    name="Dto",
+                    lineno=1,
+                    end_lineno=8,
+                    is_dataclass=True,
+                    dataclass_fields=[f"f{i}" for i in range(8)],
+                )
+            ],
+        )
+        assert MaxArgumentsScanner.scan_module(module, max_args=5, max_dataclass_fields=10) == []
+
+    def test_scan_module_non_dataclass_fields_not_counted(self, tmp_path: Path) -> None:
+        module = ModuleInfo(
+            path=tmp_path / "m.py",
+            language="python",
+            classes=[ClassInfo(name="Plain", lineno=1, end_lineno=5)],
+        )
+        assert MaxArgumentsScanner.scan_module(module, max_args=5) == []
+
+    def test_scan_module_method_at_limit_passes(self, tmp_path: Path) -> None:
+        module = ModuleInfo(
+            path=tmp_path / "m.py",
+            language="python",
+            classes=[
+                ClassInfo(
+                    name="Foo",
+                    lineno=1,
+                    end_lineno=5,
+                    methods=[self._function("bar", 5, lineno=2)],
+                )
+            ],
+        )
+        assert MaxArgumentsScanner.scan_module(module, max_args=5) == []
+
+    def test_scan_module_dataclass_at_limit_passes(self, tmp_path: Path) -> None:
+        module = ModuleInfo(
+            path=tmp_path / "m.py",
+            language="python",
+            classes=[
+                ClassInfo(
+                    name="Wide",
+                    lineno=1,
+                    end_lineno=12,
+                    is_dataclass=True,
+                    dataclass_fields=[f"f{i}" for i in range(10)],
+                )
+            ],
+        )
+        assert MaxArgumentsScanner.scan_module(module, max_args=5, max_dataclass_fields=10) == []
+
+    def test_scan_module_syntax_error_returns_empty(self, tmp_path: Path) -> None:
+        module = ModuleInfo(path=tmp_path / "m.py", language="python", has_syntax_error=True)
         assert MaxArgumentsScanner.scan_module(module, max_args=5) == []
 
     # --- Tests for MaxArgumentsScanner.scan_file(). ---
@@ -220,9 +348,7 @@ class TestMaxArgumentsScanner:
         assert "too_many" in findings[0].description
 
     def test_scan_file_keyword_only_params_counted(self, tmp_path: Path) -> None:
-        f = self._write(
-            tmp_path / "m.py", "def too_many(a, /, b, *, c, d, e, g):\n    pass\n"
-        )
+        f = self._write(tmp_path / "m.py", "def too_many(a, /, b, *, c, d, e, g):\n    pass\n")
         findings = MaxArgumentsScanner.scan_file(f, max_args=5)
         assert len(findings) == 1
         assert "has 6 parameters" in findings[0].description
@@ -230,6 +356,16 @@ class TestMaxArgumentsScanner:
     def test_scan_file_variadic_params_not_counted(self, tmp_path: Path) -> None:
         f = self._write(tmp_path / "m.py", "def ok(a, *args, b, **kwargs):\n    pass\n")
         assert MaxArgumentsScanner.scan_file(f, max_args=5) == []
+
+    def test_scan_file_dataclass_field_limit_forwarded(self, tmp_path: Path) -> None:
+        """max_dataclass_fields is forwarded to scan_module, not dropped."""
+        fields = "".join(f"    f{i}: int\n" for i in range(11))
+        f = self._write(
+            tmp_path / "wide.py",
+            "from dataclasses import dataclass\n\n@dataclass\nclass Wide:\n" + fields,
+        )
+        assert MaxArgumentsScanner.scan_file(f, max_args=5, max_dataclass_fields=12) == []
+        assert len(MaxArgumentsScanner.scan_file(f, max_args=5, max_dataclass_fields=10)) == 1
 
     def test_scan_file_unknown_extension_returns_empty(self, tmp_path: Path) -> None:
         f = self._write(tmp_path / "notes.txt", "def too_many(a, b, c, d, e, g): pass\n")
@@ -294,9 +430,7 @@ class TestMaxArgumentsScanner:
         root.mkdir()
         self._write(root / "a.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
         self._write(root / "b.php", "<?php\nfunction tooMany($a, $b, $c, $d, $e, $g) {}\n")
-        findings = MaxArgumentsScanner.scan_directory(
-            root, max_args=5, extensions={".py"}
-        )
+        findings = MaxArgumentsScanner.scan_directory(root, max_args=5, extensions={".py"})
         assert len(findings) == 1
         assert findings[0].file == str(root / "a.py")
 
@@ -305,9 +439,7 @@ class TestMaxArgumentsScanner:
         sub = root / "pkg" / "sub"
         sub.mkdir(parents=True)
         self._write(sub / "deep.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
-        findings = MaxArgumentsScanner.scan_directory(
-            root, max_args=5, extensions={".py"}
-        )
+        findings = MaxArgumentsScanner.scan_directory(root, max_args=5, extensions={".py"})
         assert len(findings) == 1
         assert findings[0].file == str(sub / "deep.py")
 
@@ -318,9 +450,7 @@ class TestMaxArgumentsScanner:
         root.mkdir()
         self._write(root / "ignored.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
         self._write(root / "real.py", "def ok(a):\n    pass\n")
-        findings = MaxArgumentsScanner.scan_directory(
-            root, max_args=5, extensions={".py"}
-        )
+        findings = MaxArgumentsScanner.scan_directory(root, max_args=5, extensions={".py"})
         assert findings == []
 
     def test_outside_git_repo_scans_everything(self, tmp_path: Path) -> None:
@@ -328,18 +458,13 @@ class TestMaxArgumentsScanner:
         vendor = root / "vendor"
         vendor.mkdir(parents=True)
         self._write(vendor / "dep.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
-        findings = MaxArgumentsScanner.scan_directory(
-            root, max_args=5, extensions={".py"}
-        )
+        findings = MaxArgumentsScanner.scan_directory(root, max_args=5, extensions={".py"})
         assert len(findings) == 1
 
     def test_empty_directory_returns_empty(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
         root.mkdir()
-        assert (
-            MaxArgumentsScanner.scan_directory(root, max_args=5, extensions={".py"})
-            == []
-        )
+        assert MaxArgumentsScanner.scan_directory(root, max_args=5, extensions={".py"}) == []
 
     def test_max_args_resolved_from_settings(self, tmp_path: Path) -> None:
         settings = self._write_settings(tmp_path, python={"code_style": {"max_arguments": 2}})
@@ -362,6 +487,36 @@ class TestMaxArgumentsScanner:
         assert len(findings) == 1
         assert findings[0].file == str(root / "m.py")
 
+    def test_dataclass_fields_resolved_from_settings(self, tmp_path: Path) -> None:
+        """The dataclass-field limit comes from settings.json and is passed on."""
+        fields = "".join(f"    f{i}: int\n" for i in range(11))
+        root = tmp_path / "src"
+        root.mkdir()
+        self._write(
+            root / "wide.py",
+            "from dataclasses import dataclass\n\n@dataclass\nclass Wide:\n" + fields,
+        )
+        wide_limit = self._write_settings(
+            tmp_path, python={"code_style": {"max_dataclass_fields": 12}}
+        )
+        assert (
+            MaxArgumentsScanner.scan_directory(
+                root, max_args=5, extensions={".py"}, settings_path=wide_limit
+            )
+            == []
+        )
+        tight_limit = self._write_settings(
+            tmp_path, python={"code_style": {"max_dataclass_fields": 10}}
+        )
+        assert (
+            len(
+                MaxArgumentsScanner.scan_directory(
+                    root, max_args=5, extensions={".py"}, settings_path=tight_limit
+                )
+            )
+            == 1
+        )
+
     def test_git_missing_falls_back_to_rglob(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -372,9 +527,7 @@ class TestMaxArgumentsScanner:
         root = tmp_path / "src"
         root.mkdir()
         self._write(root / "m.py", "def too_many(a, b, c, d, e, g):\n    pass\n")
-        findings = MaxArgumentsScanner.scan_directory(
-            root, max_args=5, extensions={".py"}
-        )
+        findings = MaxArgumentsScanner.scan_directory(root, max_args=5, extensions={".py"})
         assert len(findings) == 1
 
     # --- Tests for MaxArgumentsScanner.main(). ---
@@ -392,7 +545,7 @@ class TestMaxArgumentsScanner:
         rc = MaxArgumentsScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
-        assert "SKIPPED" in out
+        assert out == "Result: SKIPPED (check_max_arguments disabled in settings.json)\n"
 
     def test_main_check_disabled_json(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -405,7 +558,10 @@ class TestMaxArgumentsScanner:
         rc = MaxArgumentsScanner.main()
         report = json.loads(capsys.readouterr().out)
         assert rc == 0
-        assert report["skipped"] is True
+        assert report == {
+            "skipped": True,
+            "reason": "check_max_arguments disabled in settings.json",
+        }
 
     def test_main_missing_dir(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -417,7 +573,25 @@ class TestMaxArgumentsScanner:
         rc = MaxArgumentsScanner.main()
         err = capsys.readouterr().err
         assert rc == 1
-        assert "no configured source directories" in err
+        assert err == "Error: no configured source directories exist on disk (src)\n"
+
+    def test_main_missing_dirs_joined_with_comma(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Several missing roots are joined with ``', '`` in the error."""
+        monkeypatch.chdir(tmp_path)
+        self._write_settings(
+            tmp_path,
+            python={
+                "paths": {"source": ["lib", "app"], "tests": ["tests"], "package": "x"},
+                "code_style": {},
+            },
+        )
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        rc = MaxArgumentsScanner.main()
+        err = capsys.readouterr().err
+        assert rc == 1
+        assert err == "Error: no configured source directories exist on disk (lib, app)\n"
 
     def test_main_all_clear(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -431,6 +605,7 @@ class TestMaxArgumentsScanner:
         rc = MaxArgumentsScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
+        assert "Scanned 1 files under src (max 5 parameters)" in out.splitlines()
         assert "all clear" in out
 
     def test_main_violation_report_only(
@@ -641,6 +816,25 @@ class TestMaxArgumentsScanner:
         assert report["directories"] == ["lib"]
         assert report["violation_count"] == 1
 
+    def test_main_dataclass_limit_from_settings(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """_scan_roots applies max_dataclass_fields from settings.json."""
+        monkeypatch.chdir(tmp_path)
+        self._write_settings(tmp_path, python={"code_style": {"max_dataclass_fields": 12}})
+        fields = "".join(f"    f{i}: int\n" for i in range(11))
+        root = tmp_path / "src"
+        root.mkdir()
+        self._write(
+            root / "wide.py",
+            "from dataclasses import dataclass\n\n@dataclass\nclass Wide:\n" + fields,
+        )
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        rc = MaxArgumentsScanner.main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "all clear" in out
+
     def test_main_unreadable_file_warns_and_continues(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -662,3 +856,77 @@ class TestMaxArgumentsScanner:
         assert rc == 0
         assert captured.err.count("Warning: could not parse") == 2
         assert "all clear" in captured.out
+
+    # --- Text-output contract. ---
+
+    def test_emit_text_matches_committed_contract(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The captured text is a byte-for-byte contract that must not be loosened.
+
+        A legitimate change is ``pytest --update-fixtures`` plus a reviewed diff.
+        """
+        violations = [
+            {
+                "file": "src/dto.py",
+                "function": "build",
+                "kind": "Function",
+                "line": 8,
+                "params": 9,
+                "over": 4,
+            },
+            {
+                "file": "src/service.py",
+                "function": "Service.handle",
+                "kind": "Method",
+                "line": 15,
+                "params": 7,
+                "over": 2,
+            },
+        ]
+        MaxArgumentsScanner._emit_text([Path("src")], 5, 5, violations)
+        text_contract("code_style/general/max_arguments_scanner.txt", capsys.readouterr().out)
+
+    # --- Emit output edge cases. ---
+
+    def test_emit_json_output_is_indented(self, capsys: pytest.CaptureFixture[str]) -> None:
+        violations = [
+            {
+                "file": "src/m.py",
+                "function": "too_many",
+                "kind": "Function",
+                "line": 1,
+                "params": 6,
+                "over": 1,
+            }
+        ]
+        MaxArgumentsScanner._emit_json([Path("src")], 2, 5, violations)
+        expected = {
+            "directories": ["src"],
+            "scanned": 2,
+            "max_arguments": 5,
+            "violation_count": 1,
+            "violations": [
+                {
+                    "file": "src/m.py",
+                    "function": "too_many",
+                    "line": 1,
+                    "params": 6,
+                    "over": 1,
+                }
+            ],
+        }
+        assert capsys.readouterr().out == json.dumps(expected, indent=2) + "\n"
+
+    def test_emit_text_no_violations_lines(self, capsys: pytest.CaptureFixture[str]) -> None:
+        MaxArgumentsScanner._emit_text([Path("src")], 3, 5, [])
+        lines = capsys.readouterr().out.splitlines()
+        assert "## Functions exceeding the limit: none" in lines
+        assert "Result: all clear" in lines
+
+    def test_emit_text_multiple_roots_joined(self, capsys: pytest.CaptureFixture[str]) -> None:
+        MaxArgumentsScanner._emit_text([Path("src"), Path("lib")], 5, 5, [])
+        lines = capsys.readouterr().out.splitlines()
+        assert "Scanned 5 files under src, lib (max 5 parameters)" in lines

@@ -162,6 +162,8 @@ class TestClassMetricsScanner:
         assert len(results) == 1
         assert isinstance(results[0], Finding)
         assert results[0].category == "class_metrics"
+        assert results[0].severity == "low"
+        assert results[0].fix_type == "skip"
 
     # --- Main ---
 
@@ -182,7 +184,8 @@ class TestClassMetricsScanner:
         rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert "LINES" in out
+        assert f"{'LINES':>6} {'ALL':>4} {'PUB':>4} {'ATTRS':>5}  CLASS  (file:start-end)" in out
+        assert "-" * 110 in out.splitlines()
         assert "BigClass" in out
 
     def test_main_no_classes(
@@ -198,7 +201,7 @@ class TestClassMetricsScanner:
         rc = _run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 0
-        assert "No classes found" in err
+        assert err == "No classes found\n"
 
     def test_main_missing_src(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -207,7 +210,7 @@ class TestClassMetricsScanner:
         rc = _run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "no configured source directories" in err
+        assert err == "Error: no configured source directories exist on disk\n"
 
     def test_main_check_disabled(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -215,8 +218,9 @@ class TestClassMetricsScanner:
         _write_settings(tmp_path, python={"patterns": {"check_class_metrics": False}})
         (tmp_path / "src").mkdir()
         rc = _run(tmp_path, monkeypatch, ["prog"])
+        out = capsys.readouterr().out
         assert rc == 0
-        assert "SKIPPED" in capsys.readouterr().out
+        assert out == "Result: SKIPPED (check_class_metrics disabled in settings.json)\n"
 
     def test_main_check_disabled_json(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -226,7 +230,10 @@ class TestClassMetricsScanner:
         rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
         report = json.loads(capsys.readouterr().out)
         assert rc == 0
-        assert report["skipped"] is True
+        assert report == {
+            "skipped": True,
+            "reason": "check_class_metrics disabled in settings.json",
+        }
 
     def test_main_min_lines_setting(
         self,
@@ -256,13 +263,84 @@ class TestClassMetricsScanner:
             "class BigClass:\n" + "    def method(self):\n        pass\n" * 20
         )
         rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
-        report = json.loads(capsys.readouterr().out)
+        out = capsys.readouterr().out
         assert rc == 0
+        assert '\n  "total_classes"' in out
+        report = json.loads(out)
         assert report["total_classes"] == 1
         assert report["classes"][0]["class"] == "BigClass"
         assert report["min_lines"] == 5
         assert report["top"] == 30
         assert report["directories"] == ["src"]
+
+    def test_main_bool_min_lines_ignored(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A boolean class_metrics_min_lines is not a valid limit and is ignored."""
+        _write_settings(tmp_path, python={"patterns": {"class_metrics_min_lines": True}})
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "mod.py").write_text("class Small:\n    pass\n")
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["min_lines"] == 50
+        assert report["classes"] == []
+
+    def test_main_default_min_lines_includes_fifty_line_class(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """With no configured limit a class of exactly 50 lines is reported."""
+        _write_settings(tmp_path)
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "mod.py").write_text(
+            "class Fifty:\n" + "    def m(self):\n        pass\n" * 24 + "    x = 1\n"
+        )
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert report["min_lines"] == 50
+        assert [c["class"] for c in report["classes"]] == ["Fifty"]
+
+    def test_main_min_lines_boundary_included(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A class whose length equals min_lines is included (>= not >)."""
+        _write_settings(tmp_path, python={"patterns": {"class_metrics_min_lines": 2}})
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "mod.py").write_text("class Foo:\n    pass\n")
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert [c["class"] for c in report["classes"]] == ["Foo"]
+
+    def test_main_classes_sorted_by_lines_desc(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _write_settings(tmp_path, python={"patterns": {"class_metrics_min_lines": 2}})
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "mod.py").write_text(
+            "class Small:\n    pass\n\nclass Big:\n" + "    def m(self):\n        pass\n" * 10
+        )
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        report = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert [c["class"] for c in report["classes"]] == ["Big", "Small"]
 
     def test_main_top_limit_setting(
         self,

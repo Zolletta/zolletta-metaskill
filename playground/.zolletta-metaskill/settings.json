@@ -1,0 +1,151 @@
+{
+  "setup_version": "3.2.0",
+  "language": "python",
+  "acronyms": [],
+  "runs_dir": ".zolletta-metaskill",
+  "python": {
+    "paths": {
+      "source": [
+        "src"
+      ],
+      "tests": [
+        "tests"
+      ],
+      "package": null
+    },
+    "code_style": {
+      "check_acronym_casing": true,
+      "check_no_relative_imports": true,
+      "check_one_class_per_file": true,
+      "check_one_class_per_test_file": true,
+      "check_zero_class_files": true,
+      "check_filename_matches_class": true,
+      "check_public_docstrings": true,
+      "check_docstring_no_type_repeat": true,
+      "check_skip_obvious_docstrings": true,
+      "check_line_length": true,
+      "check_file_length": true,
+      "check_unused_all_exports": true,
+      "docstring_strip_private": false,
+      "docstring_strip_tests": false,
+      "docstring_strip_nested": false,
+      "docstring_strip_obvious_init": false,
+      "max_file_length": 800,
+      "vulture_min_confidence": 80,
+      "max_cyclomatic_complexity": 12,
+      "max_function_length": 125,
+      "max_dataclass_fields": 10,
+      "check_max_arguments": true,
+      "max_arguments": 5,
+      "check_function_length": true,
+      "check_cyclomatic_complexity": true,
+      "check_suppression_reasons": true
+    },
+    "testing": {
+      "coverage_gap_threshold": 45,
+      "coverage_well_covered_threshold": 75,
+      "check_test_naming": true,
+      "test_naming_min_segments": 3,
+      "check_mutation_testing": true,
+      "mutation_score_threshold": 80,
+      "mutation_target": "changed",
+      "mutation_max_mutants": 50
+    },
+    "patterns": {
+      "check_ocp": true,
+      "check_isp": true,
+      "check_dip": true,
+      "check_lsp": true,
+      "check_test_structure": true,
+      "check_test_god_classes": true,
+      "check_class_metrics": true,
+      "ocp_min_branches": 3,
+      "isp_min_methods": 5,
+      "dip_entry_points": [
+        "main",
+        "cli",
+        "app",
+        "__main__",
+        "myproject",
+        "manage",
+        "wsgi",
+        "asgi",
+        "conftest"
+      ],
+      "class_metrics_top": 30,
+      "class_metrics_min_lines": 50,
+      "test_god_classes_top": 30
+    }
+  },
+  "php": {
+    "autoload": {
+      "psr-4": {
+        "App\\\\": "src-php/"
+      },
+      "psr-4-dev": {
+        "Tests\\\\": "tests-php/"
+      }
+    },
+    "code_style": {
+      "check_acronym_casing": true,
+      "check_no_relative_imports": true,
+      "check_one_class_per_file": true,
+      "check_one_class_per_test_file": true,
+      "check_zero_class_files": true,
+      "check_filename_matches_class": true,
+      "check_public_docstrings": true,
+      "check_line_length": true,
+      "check_file_length": true,
+      "max_file_length": 800,
+      "max_cyclomatic_complexity": 12,
+      "max_function_length": 125,
+      "check_max_arguments": true,
+      "max_arguments": 5,
+      "check_function_length": true,
+      "check_cyclomatic_complexity": true
+    },
+    "testing": {
+      "check_test_naming": true,
+      "test_naming_min_segments": 3
+    },
+    "patterns": {
+      "check_ocp": true,
+      "check_isp": true,
+      "check_dip": true,
+      "check_lsp": true,
+      "check_test_structure": true,
+      "ocp_min_branches": 3,
+      "isp_min_methods": 5,
+      "dip_entry_points": [
+        "main",
+        "cli",
+        "app",
+        "index",
+        "public"
+      ]
+    }
+  },
+  "documentation": {
+    "language": "en",
+    "dir": "docs",
+    "adrs": "explanation/adr/architecture",
+    "min_severity": "high",
+    "staleness_threshold": null,
+    "readme_focus": false,
+    "readme_sections": [
+      "installation",
+      "usage",
+      "api",
+      "contributing",
+      "license"
+    ],
+    "diataxis_translations": null,
+    "staleness_weights": null,
+    "check_external": false,
+    "include_referential": false,
+    "api_doc_recursive": true,
+    "api_doc_include_private": false,
+    "api_doc_suggest_coverage": false,
+    "check_unwrapped_prose": true
+  }
+}

@@ -1,0 +1,21 @@
+======================================================================
+1 CLASS 1 FILE, 1 FILE 1 CLASS — VALIDATION REPORT
+======================================================================
+
+## Files with 2+ classes (1 files)
+
+  2 classes: Foo, Bar
+    -> src/multi.py
+    Fix: split into one file per class
+
+## Class name != filename (1 files)
+
+  Class 'WrongName' doesn't match filename. Expected 'User' (or rename file to match class) (line 3)
+    -> src/user.py
+
+## Files with 0 classes (1 files)
+
+  src/utils.py
+  (Low severity — utility/helper modules. Set check_zero_class_files=false in settings.json to hide.)
+
+Result: violations found (report-only mode)

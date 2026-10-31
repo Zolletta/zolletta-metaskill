@@ -66,7 +66,7 @@ class TestPyprojectSectionsDetector:
         result = PyprojectSectionsDetector.detect_pyproject_sections(pyproject)
         assert result["mutmut"]["available"] is True
 
-    def test_mutmut_absent(self, tmp_path: Path) -> None:
+    def test_detect_sections_no_mutmut_reports_unavailable(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text("[project]\ndependencies = []\n", encoding="utf-8")
         result = PyprojectSectionsDetector.detect_pyproject_sections(pyproject)
@@ -118,6 +118,39 @@ class TestPyprojectSectionsDetector:
         assert result["ruff"]["available"] is True
         assert result["mypy"]["available"] is False
 
+    def test_detect_sections_has_no_uv_project_key(self, tmp_path: Path) -> None:
+        """``uv_project`` is skipped in the section loop; only ``uv`` is reported."""
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text("[project]\n[tool.ruff]\n", encoding="utf-8")
+        result = PyprojectSectionsDetector.detect_pyproject_sections(pyproject)
+        assert "uv_project" not in result
+        assert result["uv"]["available"] is True
+
+    def test_uv_detected_when_project_section_not_first(self, tmp_path: Path) -> None:
+        """``[project]`` mid-file still marks uv available — the match is MULTILINE."""
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text("[build-system]\n[project]\n", encoding="utf-8")
+        result = PyprojectSectionsDetector.detect_pyproject_sections(pyproject)
+        assert result["uv"]["available"] is True
+
+    def test_uv_lock_filename_is_case_sensitive(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """``uv`` detection must look for ``uv.lock`` exactly — not a case variant."""
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text("[build-system]\n", encoding="utf-8")
+        real_exists = Path.exists
+
+        def _exists(self: Path) -> bool:
+            if self.name.lower() == "uv.lock":
+                return self.name == "uv.lock"
+            return real_exists(self)
+
+        monkeypatch.setattr(Path, "exists", _exists)
+        (tmp_path / "uv.lock").write_text("version = 1\n", encoding="utf-8")
+        result = PyprojectSectionsDetector.detect_pyproject_sections(pyproject)
+        assert result["uv"]["available"] is True
+
     # --- Tests for PyprojectSectionsDetector.main(). ---
 
     def test_main_prints_json(
@@ -150,3 +183,27 @@ class TestPyprojectSectionsDetector:
         assert rc == 0
         data = json.loads(out)
         assert data["uv"]["available"] is True
+
+    def test_main_output_is_indented_json(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text("[tool.ruff]\n", encoding="utf-8")
+        monkeypatch.setattr(sys, "argv", ["prog", str(pyproject)])
+        PyprojectSectionsDetector.main()
+        out = capsys.readouterr().out
+        assert '\n  "' in out
+
+    def test_main_help_prints_description(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(sys, "argv", ["prog", "-h"])
+        with pytest.raises(SystemExit):
+            PyprojectSectionsDetector.main()
+        out = capsys.readouterr().out
+        assert "\nDetect which [tool.*] sections exist in pyproject.toml." in out

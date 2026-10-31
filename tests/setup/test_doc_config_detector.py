@@ -57,6 +57,15 @@ class TestDocConfigDetector:
         (settings_dir / "settings.json").write_text("not json", encoding="utf-8")
         assert DocConfigDetector.detect_doc_dir(tmp_path) == "docs"
 
+    def test_detect_doc_dir_default_when_dir_is_not_a_string(self, tmp_path: Path) -> None:
+        """A non-string ``documentation.dir`` falls back to ``docs``."""
+        settings_dir = tmp_path / ".zolletta-metaskill"
+        settings_dir.mkdir()
+        (settings_dir / "settings.json").write_text(
+            json.dumps({"documentation": {"dir": 123}}), encoding="utf-8"
+        )
+        assert DocConfigDetector.detect_doc_dir(tmp_path) == "docs"
+
     # --- Tests for DocConfigDetector.main(). ---
 
     def test_main_prints_docs(

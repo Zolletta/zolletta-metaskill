@@ -1,0 +1,41 @@
+{
+  "summary": {
+    "total_links": 2,
+    "valid": 1,
+    "broken": 1,
+    "skipped": 0,
+    "duplicate_anchors": 0
+  },
+  "broken_links": [
+    {
+      "source_file": "docs/index.md",
+      "line": 7,
+      "text": "a missing page",
+      "target": "missing/page.md",
+      "type": "local_file",
+      "valid": false,
+      "error": "File not found: 'missing/page.md'"
+    }
+  ],
+  "duplicate_anchors": {},
+  "all_links": [
+    {
+      "source_file": "docs/index.md",
+      "line": 7,
+      "text": "the project on GitHub",
+      "target": "https://github.com/Zolletta/zolletta-metaskill/blob/main/docs/index.md",
+      "type": "external",
+      "valid": true,
+      "error": null
+    },
+    {
+      "source_file": "docs/index.md",
+      "line": 7,
+      "text": "a missing page",
+      "target": "missing/page.md",
+      "type": "local_file",
+      "valid": false,
+      "error": "File not found: 'missing/page.md'"
+    }
+  ]
+}

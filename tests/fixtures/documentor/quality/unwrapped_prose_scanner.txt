@@ -1,0 +1,13 @@
+======================================================================
+UNWRAPPED PROSE — VALIDATION REPORT
+======================================================================
+
+Scanned 3 files under docs
+
+## Wrapped paragraphs (1)
+
+  docs/guide.md:1  paragraph wraps across lines 1-2; join it into one line (no artificial line breaks)
+
+  Fix: join each paragraph onto one line. This is a formatting rule, not a wording one — the text renders identically either way.
+
+Result: violations found (report-only mode)

@@ -1,0 +1,371 @@
+#!/usr/bin/env python3
+"""Liskov Substitution Principle (LSP) validator.
+
+Detects subclass methods that break substitutability — where a subtype cannot
+replace its supertype without altering the correctness of the program.
+
+Checks:
+  - Overridden methods with incompatible signatures (narrower parameter types,
+    fewer parameters, extra required parameters)
+  - Overridden methods that raise new exception types not raised by the parent
+  - Overridden methods that weaken postconditions (return None when parent
+    always returns a value)
+  - Subclasses that override a method with a completely empty body (pass/None)
+    suggesting the method doesn't belong in the hierarchy
+
+Scan roots come from ``python.paths.source`` in ``settings.json``; the
+check runs when ``python.patterns.check_lsp`` is not ``false``. File
+enumeration is git-ignore aware.
+
+Usage:
+    python3 liskov_substitution_scanner.py [--json]
+
+Options:
+    --json            Output as JSON instead of markdown.
+
+Exit code: 0 always (report-only).
+
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
+from zolletta_metaskill.core.project_config import ProjectConfig
+from zolletta_metaskill.core.structs import ClassInfo, Finding, ModuleInfo
+
+
+class LiskovSubstitutionScanner:
+    """Liskov Substitution Principle (LSP) validator.
+
+    Detects subclass methods that break substitutability — where a subtype
+    cannot replace its supertype without altering the correctness of the
+    program.
+    """
+
+    @staticmethod
+    def _build_class_info(cls: ClassInfo) -> dict[str, Any]:
+        """Build an internal info dict from a :class:`ClassInfo`.
+
+        The dict format is consumed by :meth:`_check_lsp_violations`.
+
+        Args:
+            cls: The :class:`ClassInfo` to convert.
+
+        Returns:
+            A dict with ``name``, ``line``, ``bases``, and ``methods`` keys.
+
+        """
+        methods: dict[str, dict[str, Any]] = {}
+        for m in cls.methods:
+            methods[m.name] = {
+                "sig": {
+                    "name": m.name,
+                    "line": m.lineno,
+                    "pos_args": list(m.params),
+                    "required_count": len(m.params),
+                    "defaults_count": 0,
+                    "has_vararg": False,
+                    "has_kwarg": False,
+                    "returns_annotation": m.return_type,
+                },
+                "raised": set(m.raises),
+                "is_stub": False,
+            }
+        # Normalise base names: ``animals.Animal`` → ``Animal``
+        # pragma: no mutate start — any rsplit maxsplit ≥ 1 keeps the same last
+        # component, so those mutants are equivalent
+        bases = [base.rsplit(".", 1)[-1] for base in cls.bases]
+        # pragma: no mutate end
+        return {
+            "name": cls.name,
+            "line": cls.lineno,
+            "bases": bases,
+            "methods": methods,
+        }
+
+    @staticmethod
+    def _check_lsp_violations(
+        parent: dict[str, Any], child: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        """Check LSP violations between parent and child class.
+
+        Args:
+            parent: Parent class info dict (from :meth:`_build_class_info`).
+            child: Child class info dict (from :meth:`_build_class_info`).
+
+        Returns:
+            A list of violation dicts with keys ``type``, ``class``, ``method``,
+            ``line``, and ``detail``.
+
+        """
+        violations: list[dict[str, Any]] = []
+        parent_methods = parent["methods"]
+        child_methods = child["methods"]
+
+        for mname, parent_method in parent_methods.items():
+            if mname not in child_methods:
+                continue  # Not overridden — fine
+
+            child_method = child_methods[mname]
+            parent_sig = parent_method["sig"]
+            child_sig = child_method["sig"]
+
+            # Check 1: Extra required parameters
+            if child_sig["required_count"] > parent_sig["required_count"]:
+                violations.append(
+                    {
+                        "type": "extra_required_params",
+                        "class": child["name"],
+                        "method": mname,
+                        "line": child_sig["line"],
+                        "detail": (
+                            f"requires {child_sig['required_count']} params, "
+                            f"parent requires {parent_sig['required_count']}"
+                        ),
+                    }
+                )
+
+            # Check 2: Fewer parameters (can't accept what parent accepts)
+            if (
+                len(child_sig["pos_args"]) < len(parent_sig["pos_args"])
+                and not child_sig["has_vararg"]
+            ):
+                violations.append(
+                    {
+                        "type": "fewer_params",
+                        "class": child["name"],
+                        "method": mname,
+                        "line": child_sig["line"],
+                        "detail": (
+                            f"accepts {len(child_sig['pos_args'])} args, "
+                            f"parent accepts {len(parent_sig['pos_args'])}"
+                        ),
+                    }
+                )
+
+            # Check 3: New exception types
+            parent_exc = parent_method["raised"]
+            child_exc = child_method["raised"]
+            new_exc = child_exc - parent_exc
+            # Allow broader exceptions
+            broader = {"Exception", "BaseException", "ValueError", "RuntimeError", "TypeError"}
+            truly_new = new_exc - broader - parent_exc
+            if truly_new:
+                violations.append(
+                    {
+                        "type": "new_exceptions",
+                        "class": child["name"],
+                        "method": mname,
+                        "line": child_sig["line"],
+                        "detail": f"raises {truly_new}, parent raises {parent_exc or 'nothing'}",
+                    }
+                )
+
+            # Check 4: Stub override (pass/return None) when parent has real body
+            if child_method["is_stub"] and not parent_method["is_stub"]:
+                violations.append(
+                    {
+                        "type": "stub_override",
+                        "class": child["name"],
+                        "method": mname,
+                        "line": child_sig["line"],
+                        "detail": (
+                            "overrides with empty body (pass/return None) — weakens postcondition"
+                        ),
+                    }
+                )
+
+        return violations
+
+    @staticmethod
+    def scan_module(module: ModuleInfo) -> list[Finding]:
+        """Check LSP violations within a single :class:`ModuleInfo`.
+
+        Only violations where both the parent and child class are defined in the
+        same module are reported. Cross-file violations require a global class
+        registry and are handled by :meth:`main`.
+
+        Args:
+            module: The parsed module to inspect.
+
+        Returns:
+            A list of :class:`Finding` objects for each LSP violation.
+
+        """
+        classes: dict[str, dict[str, Any]] = {}
+        for cls in module.classes:
+            classes[cls.name] = LiskovSubstitutionScanner._build_class_info(cls)
+
+        findings: list[Finding] = []
+        for cls in module.classes:
+            info = classes[cls.name]
+            for base_name in info["bases"]:
+                if base_name in classes:
+                    parent = classes[base_name]
+                    lsp_violations = LiskovSubstitutionScanner._check_lsp_violations(parent, info)
+                    for v in lsp_violations:
+                        # pragma: no mutate start — removing fix_type is
+                        # equivalent: Finding.fix_type defaults to "manual"
+                        findings.append(
+                            Finding(
+                                file=str(module.path),
+                                line=v["line"],
+                                category="lsp_violation",
+                                severity="high",
+                                description=(
+                                    f"[{v['type']}] {v['class']}.{v['method']}() — "
+                                    f"{v['detail']} (parent: {base_name})"
+                                ),
+                                fix_type="manual",
+                            )
+                        )
+                        # pragma: no mutate end
+        return findings
+
+    @staticmethod
+    def scan_file(path: Path) -> list[Finding]:
+        """Backward-compatible wrapper that uses the registry to get an engine.
+
+        Args:
+            path: Path to a Python source file.
+
+        Returns:
+            A list of :class:`Finding` objects for LSP violations in the file.
+
+        """
+        EngineRegistry.ensure_python()
+        engine = EngineRegistry.get_for_file(path)
+        if engine is None:
+            return []
+        module = engine.parse_module(path)
+        return LiskovSubstitutionScanner.scan_module(module)
+
+    @staticmethod
+    def _collect_all_classes(roots: list[Path]) -> dict[str, dict[str, Any]]:
+        """Collect all classes across all files and all roots."""
+        all_classes: dict[str, dict[str, Any]] = {}
+        for root in roots:
+            for py in ProjectConfig.iter_files(root, {".py"}):
+                engine = EngineRegistry.get_for_file(py)
+                if engine is None:  # pragma: no cover
+                    continue
+                module = engine.parse_module(py)
+                if module.has_syntax_error:
+                    continue
+                for cls in module.classes:
+                    info = LiskovSubstitutionScanner._build_class_info(cls)
+                    info["file"] = str(py.relative_to(root))
+                    all_classes.setdefault(cls.name, info)
+        return all_classes
+
+    @staticmethod
+    def _check_all_violations(all_classes: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+        """Check each child class against its parent in the class index."""
+        violations: list[dict[str, Any]] = []
+        for _name, info in all_classes.items():
+            for base_name in info["bases"]:
+                if base_name in all_classes:
+                    parent = all_classes[base_name]
+                    lsp_violations = LiskovSubstitutionScanner._check_lsp_violations(parent, info)
+                    for v in lsp_violations:
+                        v["parent"] = base_name
+                        v["file"] = info["file"]
+                        violations.append(v)
+        return violations
+
+    @staticmethod
+    def _emit_json(roots: list[Path], violations: list[dict[str, Any]]) -> None:
+        """Emit JSON formatted LSP violations report."""
+        print(
+            json.dumps(
+                {
+                    "directories": [str(root) for root in roots],
+                    "violation_count": len(violations),
+                    "violations": violations,
+                },
+                indent=2,
+                default=str,
+            )
+        )
+
+    @staticmethod
+    def _emit_text(violations: list[dict[str, Any]]) -> None:
+        """Emit text formatted LSP violations report."""
+        print("=" * 70)
+        print("LISKOV SUBSTITUTION (LSP) — VALIDATION REPORT")
+        print("=" * 70)
+
+        if violations:
+            print(f"\n## LSP violations ({len(violations)} found)\n")
+            for v in violations:
+                print(f"  [{v['type']}] {v['class']}.{v['method']}() — {v['detail']}")
+                print(f"    Parent: {v['parent']}")
+                print(f"    -> {v['file']}:{v['line']}")
+                fixes = {
+                    "extra_required_params": "remove extra required params or make them optional",
+                    "fewer_params": "accept *args/**kwargs to maintain substitutability",
+                    "new_exceptions": (
+                        "catch and wrap new exceptions, or declare them in the parent"
+                    ),
+                    "stub_override": (
+                        "don't override if the method doesn't apply — reconsider the hierarchy"
+                    ),
+                }
+                fix = fixes.get(v["type"], "review the override")
+                print(f"    Fix: {fix}")
+        else:
+            print("\n## LSP violations: none")
+
+        print()
+        if violations:
+            print("Result: LSP violations found (report-only mode)")
+        else:
+            print("Result: all clear")
+
+    @staticmethod
+    def main() -> int:
+        """Entry point for the Liskov Substitution Principle validator CLI."""
+        # pragma: no mutate start — help text is not a tested contract
+        parser = argparse.ArgumentParser(
+            description="Liskov Substitution Principle (LSP) validator. "
+            "Roots come from .zolletta-metaskill/settings.json."
+        )
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        # pragma: no mutate end
+        args = parser.parse_args()
+
+        EngineRegistry.ensure_python()
+        settings = ProjectConfig.load_settings()
+        languages = ProjectConfig.scan_languages(settings, "patterns.check_lsp")
+        py_langs = ProjectConfig.languages_for_extensions(languages, {".py"})
+        if not py_langs:
+            ProjectConfig.emit_skipped(args.json, "check_lsp disabled in settings.json")
+            return 0
+
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, py_langs))
+        if not roots:
+            print(
+                "Error: no configured source directories exist on disk",
+                file=sys.stderr,
+            )
+            return 1
+
+        all_classes = LiskovSubstitutionScanner._collect_all_classes(roots)
+        violations = LiskovSubstitutionScanner._check_all_violations(all_classes)
+
+        if args.json:
+            LiskovSubstitutionScanner._emit_json(roots, violations)
+            return 0
+
+        LiskovSubstitutionScanner._emit_text(violations)
+        return 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    sys.exit(LiskovSubstitutionScanner.main())

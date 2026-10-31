@@ -72,3 +72,4 @@ class TestCompanionSkillDetector:
         data = json.loads(out)
         assert "php_pro" in data
         assert "python_development" in data
+        assert '\n  "php_pro"' in out

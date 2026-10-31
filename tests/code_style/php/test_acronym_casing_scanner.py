@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -56,6 +57,44 @@ class TestAcronymCasingScanner:
         assert "CI" in acronyms
         assert "HTTP" in acronyms
 
+    def test_load_default_acronyms_installed_layout_returns_exact_list(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The installed-package candidate is ``<scanner_dir>/assets/acronyms.json``."""
+        module_file = sys.modules[AcronymCasingScanner.__module__].__file__
+        assert module_file is not None
+        installed = Path(module_file).resolve().parent / "assets" / "acronyms.json"
+        monkeypatch.setattr(Path, "exists", lambda self: self == installed)
+        monkeypatch.setattr(
+            Path, "read_text", lambda self, encoding="utf-8": '{"acronyms": ["zzq", "API", 5]}'
+        )
+        acronyms = AcronymCasingScanner._load_default_acronyms()
+        assert acronyms == ["ZZQ", "API"]
+
+    def test_load_default_acronyms_repo_layout_uses_exact_shipped_path(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The checkout-layout candidate is probed at its exact path.
+
+        Comparing the probed path — not just the result — also pins down the
+        ``parents[3]`` index and each path segment's casing, which a
+        filesystem-level comparison cannot see on a case-insensitive volume.
+        """
+        module_file = sys.modules[AcronymCasingScanner.__module__].__file__
+        assert module_file is not None
+        shipped = (
+            Path(module_file).resolve().parent.parents[3]
+            / "skills"
+            / "zolletta-metaskill-python-code-style"
+            / "assets"
+            / "acronyms.json"
+        )
+        monkeypatch.setattr(Path, "exists", lambda self: self == shipped)
+        monkeypatch.setattr(
+            Path, "read_text", lambda self, encoding="utf-8": '{"acronyms": ["zzq"]}'
+        )
+        assert AcronymCasingScanner._load_default_acronyms() == ["ZZQ"]
+
     # --- AcronymCasingScanner._split_pascal_case ---
 
     @pytest.mark.parametrize(
@@ -72,6 +111,19 @@ class TestAcronymCasingScanner:
             ("HTTP2", ["HTTP", "2"]),
             ("V2Client", ["V", "2", "Client"]),
             ("MyClass2", ["My", "Class", "2"]),
+        ],
+        ids=[
+            "acronym_prefix_returns_acronym_then_words",
+            "two_acronyms_returns_both",
+            "mixed_case_returns_mixed",
+            "mid_acronym_returns_parts",
+            "mr_acronym_returns_parts",
+            "two_words_returns_both",
+            "single_word_returns_single",
+            "acronym_only_returns_single",
+            "acronym_digit_returns_split",
+            "leading_digit_splits_digit",
+            "trailing_digit_splits_digit",
         ],
     )
     def test_split_pascal_case_known_splits_returns_expected(
@@ -141,6 +193,132 @@ class TestAcronymCasingScanner:
         _write_php(f, "<?php\nclass {\n")
         assert AcronymCasingScanner._get_class_names(f) == []
 
+    # --- AcronymCasingScanner._check_skipped_tree_sitter ---
+
+    @staticmethod
+    def _patch_no_tree_sitter(monkeypatch: pytest.MonkeyPatch) -> None:
+        """Pretend tree-sitter-php is not installed."""
+        monkeypatch.setattr(
+            "zolletta_metaskill.core.engine.php_engine.PHPEngine._have_tree_sitter_php",
+            lambda: False,
+        )
+
+    def test_check_skipped_tree_sitter_json_mode_returns_exact_output(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        self._patch_no_tree_sitter(monkeypatch)
+        assert AcronymCasingScanner._check_skipped_tree_sitter(json_mode=True) is True
+        expected = (
+            json.dumps(
+                {
+                    "total_classes": 0,
+                    "violation_count": 0,
+                    "acronyms_checked": [],
+                    "violations": [],
+                    "skipped": "tree-sitter-php not installed",
+                },
+                indent=2,
+            )
+            + "\n"
+        )
+        assert capsys.readouterr().out == expected
+
+    def test_check_skipped_tree_sitter_text_mode_returns_exact_output(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        self._patch_no_tree_sitter(monkeypatch)
+        assert AcronymCasingScanner._check_skipped_tree_sitter(json_mode=False) is True
+        expected = (
+            "=" * 70
+            + "\nPHP ACRONYM CASING — VALIDATION REPORT\n"
+            + "=" * 70
+            + "\n\nResult: SKIPPED (tree-sitter-php not installed. "
+            "Install with: uv add tree-sitter tree-sitter-php)\n\n"
+        )
+        assert capsys.readouterr().out == expected
+
+    # --- AcronymCasingScanner._scan_classes ---
+
+    @_skip_no_ts
+    def test_scan_classes_two_files_returns_total_two(self, tmp_path: Path) -> None:
+        _write_php(tmp_path / "a" / "One.php", "<?php\nclass Foo {}\n")
+        _write_php(tmp_path / "b" / "Two.php", "<?php\nclass Bar {}\n")
+        total, violations = AcronymCasingScanner._scan_classes([tmp_path / "a", tmp_path / "b"], {})
+        assert total == 2
+        assert violations == []
+
+    @_skip_no_ts
+    def test_scan_classes_violation_reports_relative_path(self, tmp_path: Path) -> None:
+        root = tmp_path / "src"
+        _write_php(root / "Mod.php", "<?php\nclass ApiGateway {}\n")
+        total, violations = AcronymCasingScanner._scan_classes([root], {"api": "API"})
+        assert total == 1
+        assert violations == [
+            {
+                "file": "Mod.php",
+                "line": 2,
+                "class": "ApiGateway",
+                "word": "Api",
+                "expected": "API",
+            }
+        ]
+
+    # --- AcronymCasingScanner._emit_json ---
+
+    def test_emit_json_output_matches_exact_document(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        violations = [
+            {
+                "file": "Mod.php",
+                "line": 2,
+                "class": "ApiGateway",
+                "word": "Api",
+                "expected": "API",
+            }
+        ]
+        AcronymCasingScanner._emit_json(1, violations, ["API"], [Path("src")])
+        expected = (
+            json.dumps(
+                {
+                    "total_classes": 1,
+                    "violation_count": 1,
+                    "acronyms_checked": ["API"],
+                    "directories": ["src"],
+                    "violations": violations,
+                },
+                indent=2,
+            )
+            + "\n"
+        )
+        assert capsys.readouterr().out == expected
+
+    # --- AcronymCasingScanner._emit_text ---
+
+    def test_emit_text_two_roots_joined_by_comma_space(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        AcronymCasingScanner._emit_text(0, [], ["API"], [Path("src"), Path("lib")])
+        lines = capsys.readouterr().out.splitlines()
+        assert "Source directories: src, lib" in lines
+
+    def test_emit_text_no_violations_returns_exact_clean_output(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        AcronymCasingScanner._emit_text(1, [], ["API"], [Path("src")])
+        expected = (
+            "=" * 70
+            + "\nPHP ACRONYM CASING — VALIDATION REPORT\n"
+            + "=" * 70
+            + "\n\nSource directories: src\n"
+            "Acronyms checked: API\n"
+            "Total classes scanned: 1\n"
+            "Violations: 0\n"
+            "\n"
+            "All class names use acronyms in the correct uppercase form.\n\n"
+        )
+        assert capsys.readouterr().out == expected
+
     # --- AcronymCasingScanner._load_acronyms_from_settings ---
 
     def test_empty_settings_returns_empty(self) -> None:
@@ -201,7 +379,9 @@ class TestAcronymCasingScanner:
         rc = self._run(tmp_path, monkeypatch, ["scan"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert "SKIPPED" in out
+        assert (
+            "Result: SKIPPED (check_acronym_casing disabled in settings.json)" in out.splitlines()
+        )
 
     @_skip_no_ts
     def test_check_disabled_json(
@@ -218,7 +398,10 @@ class TestAcronymCasingScanner:
         rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
         report = json.loads(capsys.readouterr().out)
         assert rc == 0
-        assert report["skipped"] is True
+        assert report == {
+            "skipped": True,
+            "reason": "check_acronym_casing disabled in settings.json",
+        }
 
     @_skip_no_ts
     def test_no_php_language_reports_skipped(
@@ -241,14 +424,33 @@ class TestAcronymCasingScanner:
     def test_missing_source_dir_returns_one(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        self._write_settings(tmp_path)
+        self._write_settings(
+            tmp_path,
+            php={"autoload": {"psr-4": {"App\\": ["src/", "lib/"]}}, "code_style": {}},
+        )
         rc = self._run(tmp_path, monkeypatch, ["scan"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "no configured source directories" in err
+        assert err == "Error: no configured source directories exist on disk (src, lib)\n"
 
     @_skip_no_ts
-    def test_no_violations(
+    def test_non_default_source_root_scanned_returns_violation(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A configured psr-4 root other than ``src/`` must be used verbatim."""
+        self._write_settings(
+            tmp_path,
+            php={"autoload": {"psr-4": {"App\\": "lib/"}}, "code_style": {}},
+        )
+        _write_php(tmp_path / "lib" / "Mod.php", "<?php\nclass ApiGateway {}\n")
+        rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
+        data = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert data["total_classes"] == 1
+        assert data["violation_count"] == 1
+
+    @_skip_no_ts
+    def test_scan_clean_class_reports_zero_violations(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         self._write_settings(tmp_path)
@@ -256,7 +458,8 @@ class TestAcronymCasingScanner:
         rc = self._run(tmp_path, monkeypatch, ["scan"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert "Violations: 0" in out
+        assert "Total classes scanned: 1" in out.splitlines()
+        assert "Violations: 0" in out.splitlines()
 
     @_skip_no_ts
     def test_violation_report_only(
@@ -271,7 +474,7 @@ class TestAcronymCasingScanner:
         assert "API" in out
 
     @_skip_no_ts
-    def test_json_output(
+    def test_scan_json_flag_outputs_violation_json(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         self._write_settings(tmp_path)
@@ -279,9 +482,18 @@ class TestAcronymCasingScanner:
         rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
         data = json.loads(capsys.readouterr().out)
         assert rc == 0
+        assert data["total_classes"] == 1
+        assert data["directories"] == ["src"]
         assert data["violation_count"] == 1
-        assert data["violations"][0]["class"] == "ApiGateway"
-        assert data["violations"][0]["expected"] == "API"
+        assert data["violations"] == [
+            {
+                "file": "Mod.php",
+                "line": 2,
+                "class": "ApiGateway",
+                "word": "Api",
+                "expected": "API",
+            }
+        ]
 
     @_skip_no_ts
     def test_correct_casing_not_flagged(
@@ -474,3 +686,32 @@ class TestAcronymCasingScanner:
         data = json.loads(out)
         assert data["violation_count"] == 0
         assert data["skipped"] == "tree-sitter-php not installed"
+
+    # --- text-output contract (tests.4) ---
+
+    def test_emit_text_matches_committed_contract(
+        self, capsys: pytest.CaptureFixture[str], text_contract: Callable[[str, str], None]
+    ) -> None:
+        """The text report is a byte-for-byte contract that must not be loosened.
+
+        The committed fixture is the full captured stdout; a legitimate change is
+        ``pytest --update-fixtures`` plus a reviewed diff.
+        """
+        violations = [
+            {
+                "file": "src/ApiGateway.php",
+                "line": 12,
+                "class": "ApiGateway",
+                "word": "Api",
+                "expected": "API",
+            },
+            {
+                "file": "src/HttpClientFactory.php",
+                "line": 3,
+                "class": "HttpClientFactory",
+                "word": "Http",
+                "expected": "HTTP",
+            },
+        ]
+        AcronymCasingScanner._emit_text(4, violations, ["API", "HTTP", "JSON"], [Path("src")])
+        text_contract("code_style/php/acronym_casing_scanner.txt", capsys.readouterr().out)

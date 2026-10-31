@@ -1,0 +1,16 @@
+======================================================================
+ACRONYM CASING — VALIDATION REPORT
+======================================================================
+
+Source directories: src
+Acronyms checked: API, CLI
+Total classes scanned: 1
+Violations: 1
+
+File                                                     Line Class                               Word       Expected  
+------------------------------------------------------------------------------------------------------------------------
+mod.py                                                      1 ApiGateway                          Api        API       
+
+These class names contain an acronym in mixed case or lowercase.
+The convention requires acronyms to stay fully uppercase.
+Rename the class to use the uppercase acronym form.

@@ -1,3 +1,9 @@
+---
+audience: human, ai
+status: stable
+skills: [setup, review, patterns, documentor, python-*, php-*]
+---
+
 # Contributing to Zolletta-metaskill
 
 Thanks for your interest in contributing! This guide covers the practical steps to get a change merged.
@@ -16,7 +22,13 @@ cd zolletta-metaskill
 uv sync --all-extras
 ```
 
-This installs all optional dependency groups: `dev` (pytest, ruff, mypy, ty, vulture) and `php` (tree-sitter, tree-sitter-php). Both are needed to run the full test suite and quality gate locally.
+This installs all optional dependency groups: `dev` (pytest, ruff, mypy, ty, vulture) and `php` (tree-sitter-php — `tree-sitter` itself is a hard dependency). Both are needed to run the full test suite and quality gate locally.
+
+Point git at the tracked hooks so the bundle's generated copies stay in sync on every commit (`dev-install.sh` does this too):
+
+```bash
+git config core.hooksPath .githooks
+```
 
 ## Development workflow
 
@@ -24,15 +36,15 @@ This installs all optional dependency groups: `dev` (pytest, ruff, mypy, ty, vul
 2. **Make your changes**. Follow the existing code style — the project uses ruff, mypy, ty, and vulture (see `pyproject.toml` for configuration).
 3. **Run the full quality gate locally** before pushing:
 
-```bash
-uv run pytest --cov=zolletta_metaskill --cov-report=term -q
-uv run ruff check
-uv run ty check .
-uv run mypy .
-uv run vulture .
-```
+   ```bash
+   uv run pytest --cov=zolletta_metaskill --cov-report=term -q
+   uv run ruff check
+   uv run ty check .
+   uv run mypy .
+   uv run vulture .
+   ```
 
-These are the same checks CI runs (see `.github/workflows/ci.yml`). All four must pass.
+   These are the same checks CI runs (see the [Tests workflow](.github/workflows/tests.yml)). All five must pass.
 
 4. **Commit and push** your branch, then open a pull request against `main`.
 
@@ -54,7 +66,7 @@ This project follows [Conventional Commits](https://www.conventionalcommits.org/
 
 Example: `feat(setup): detect PHP tools from composer.json`
 
-Scope is optional but encouraged when the change targets a specific subcommand or module.
+Scope is optional but encouraged when the change targets a specific subcommand or module. Write commit messages in English.
 
 ## Dogfooding
 
@@ -68,10 +80,10 @@ Findings from a self-review don't need to be resolved if they're informational, 
 
 ## Tests
 
-- Test files live in `tests/`, mirroring the `src/zolletta_metaskill/` structure.
+- Test files live in `tests/`, mirroring the `skills/zolletta-metaskill/src/zolletta_metaskill/` structure.
 - Run the full suite: `uv run pytest`
 - Run a single module: `uv run pytest tests/setup/`
-- Coverage target: every file ≥92%. The setup package aims for 100%.
+- Coverage target: 100% project-wide (both project and patch), enforced by [`codecov.yml`](codecov.yml).
 
 ## Versioning
 
@@ -92,15 +104,20 @@ Then open <http://127.0.0.1:8000>.
 
 ## Project structure
 
-```
-src/zolletta_metaskill/   # Python package (scanning scripts, engines, setup)
-skills/                # SUBSKILL.md files for each subcommand (zolletta-metaskill-<name>/)
-docs/                     # Diátaxis-structured documentation
-tests/                    # Test suite (mirrors src/ structure)
-assets/                   # Logos and images
-install.sh                # One-command installer (clones latest git tag)
-dev-install.sh            # Dev installer (copies the working tree - You might want to use this when developing, it istall your working copy)
-install-manifest.txt      # Copy list shared by both installers
+```text
+skills/zolletta-metaskill/        # the installable bundle (what npx skills / gh skill ship)
+  SKILL.md                        # skill entry point
+  src/zolletta_metaskill/         # Python package (scanning scripts, engines, setup)
+  skills/zolletta-metaskill-*/    # SUBCOMMAND.md files for each subcommand
+  docs/                           # GENERATED — copies of the referenced docs (sync-bundle.sh)
+  pyproject.toml                  # version marker (bumped by semantic-release)
+docs/                           # Diátaxis-structured documentation (single source of truth)
+docs/assets/                    # Logos and images
+tests/                          # Test suite (mirrors src/ structure)
+dev-install.sh                  # Dev installer (npx skills add on the local bundle — use when developing)
+sync-bundle.sh                  # Regenerates the bundle's copied files from bundle-files.txt
+bundle-files.txt                # Copy list for the bundle's generated files
+.githooks/                      # Tracked hooks — pre-commit runs sync-bundle.sh
 ```
 
 ## License

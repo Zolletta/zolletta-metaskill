@@ -18,7 +18,7 @@ Initialize a project for use with Zolletta-metaskill review skills. Setup create
 
 ### Step 1 — Run setup
 
-```
+```text
 /zolletta-metaskill setup
 ```
 
@@ -32,7 +32,7 @@ Setup detects and records the following:
 |-----------------------------|-------------------------------------------------------------------------------|
 | **Project language**        | Python, TypeScript, PHP, Go, Rust, Java, Ruby, C/C++                          |
 | **Docker container**        | Service name from `compose.yml` / `docker-compose.yml`                        |
-| **tokensave**               | Whether the tokensave MCP server is available                                 |
+| **tokensave**               | Whether `tokensave tool` (≥ 7.14) or the `tokensave_*` MCP tools respond      |
 | **Acronyms**                | Project-specific acronyms extracted from `AGENTS.md`                          |
 | **Python tooling**          | ruff, pytest, ty, vulture, mypy, mutmut, uv availability                      |
 | **Python config**           | Line length, target version, ruff/mypy/ty/pytest config from `pyproject.toml` |
@@ -59,7 +59,7 @@ Check that:
 
 - `language` matches the project's primary language
 - `container_name` is correct (or `null` if no container)
-- `tokensave_available` is `true` if tokensave is installed
+- `tokensave_available` is `true` if tokensave is installed and queryable (`tokensave tool status` or the MCP fallback)
 - `acronyms` lists any project-specific acronyms extracted from `AGENTS.md`
 - `python.tools.*` objects have the correct `available` flags (Python projects)
 - `python.tools.*` has the correct configuration extracted from `pyproject.toml` (Python projects)

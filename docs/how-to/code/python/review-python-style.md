@@ -26,11 +26,11 @@ If `python.tools.ruff.available` is `true` in `settings.json`, the skill runs `r
 
 The skill runs all available type checkers to verify that all public APIs have type annotations. Run `ty` if `python.tools.ty.available` is `true` and `mypy` if `python.tools.mypy.available` is `true` — when both are available, both run. If neither is available, the type-checking step is skipped. Each type checker runs with `disallow_untyped_defs` or equivalent strictness, so missing annotations on public functions, methods, and classes are reported as findings.
 
-Deliberately broad types (`Any`) are a judgment call: acceptable when a specific type adds noise without value, provided the resulting diagnostic is suppressed with `# type: ignore[<code>]` plus a reason — see the [type-ignore discipline](../../../reference/code/python/python-code-style.md) (§3.5). `suppression_reason_scanner.py` flags suppressions missing the code or the reason.
+Deliberately broad types (`Any`) are a judgment call: acceptable when a specific type adds noise without value, provided the resulting diagnostic is suppressed with `# type: ignore[<code>]` plus a reason — see the [type-ignore discipline](../../../reference/code/python/python-code-style.md) (§3.5). `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/suppression_reason_scanner.py` flags suppressions missing the code or the reason.
 
 ### Dead code detection (vulture)
 
-If `python.tools.vulture.available` is `true`, the skill runs `vulture src/ --min-confidence <threshold>` to detect unused code. The confidence threshold comes from `python.code_style.vulture_min_confidence` (default: `80`) — findings below that confidence are not reported. Vulture has known false positives, especially for dynamically-accessed methods, so each finding above the threshold is reviewed with judgment before being flagged. If `python.tools.vulture.available` is `false`, dead-code detection is skipped entirely. In addition to vulture, the skill runs a supplementary `src/zolletta_metaskill/code_style/python/unused_all_exports_scanner.py` scanner that cross-references every `__all__` entry against actual imports across the source tree — vulture treats `__all__` entries as "used" and never flags unused exports, so this scanner closes that gap.
+If `python.tools.vulture.available` is `true`, the skill runs `vulture src/ --min-confidence <threshold>` to detect unused code. The confidence threshold comes from `python.code_style.vulture_min_confidence` (default: `80`) — findings below that confidence are not reported. Vulture has known false positives, especially for dynamically-accessed methods, so each finding above the threshold is reviewed with judgment before being flagged. If `python.tools.vulture.available` is `false`, dead-code detection is skipped entirely. In addition to vulture, the skill runs a supplementary `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/python/unused_all_exports_scanner.py` scanner that cross-references every `__all__` entry against actual imports across the source tree — vulture treats `__all__` entries as "used" and never flags unused exports, so this scanner closes that gap.
 
 ### Naming conventions
 
@@ -46,19 +46,19 @@ Imports must be absolute (no relative imports) when `check_no_relative_imports` 
 
 ### File length
 
-When `check_file_length` is `true`, the skill runs `src/zolletta_metaskill/code_style/general/file_length_scanner.py` to flag files longer than `max_file_length` lines (default: `800`). Files that legitimately exceed the limit (generated code, large enums) can be exempted by raising `max_file_length`.
+When `check_file_length` is `true`, the skill runs `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/file_length_scanner.py` to flag files longer than `max_file_length` lines (default: `800`). Files that legitimately exceed the limit (generated code, large enums) can be exempted by raising `max_file_length`.
 
 ### Max arguments
 
-When `check_max_arguments` is `true`, the skill runs `src/zolletta_metaskill/code_style/general/max_arguments_scanner.py` to flag functions and methods declaring more than `max_arguments` parameters (default: `5`, matching ruff `PLR0913` / `max-args`; setup seeds the threshold from `python.tools.ruff.max_args` when configured). Counting includes positional-only, positional-or-keyword, and keyword-only parameters; `self`, `cls`, `*args`, and `**kwargs` are excluded. Long parameter lists usually signal a missing abstraction — extract a parameter object or a small collaborator.
+When `check_max_arguments` is `true`, the skill runs `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/max_arguments_scanner.py` to flag functions and methods declaring more than `max_arguments` parameters (default: `5`, matching pylint `PLR0913`, which ruff implements as `pylint.max-args` — both default to 5; setup seeds the threshold from `python.tools.ruff.max_args` when configured). Counting includes positional-only, positional-or-keyword, and keyword-only parameters; `self`, `cls`, `*args`, and `**kwargs` are excluded. Long parameter lists usually signal a missing abstraction — extract a parameter object or a small collaborator.
 
 ### Function length
 
-When `check_function_length` is `true`, the skill runs `src/zolletta_metaskill/code_style/general/function_length_scanner.py` to flag functions and methods spanning more than `max_function_length` lines (default: `100`). The metric is a line span — signature through end of body, decorators excluded — not a statement count, so it is intentionally lenient. A long function serving one purpose is not necessarily a finding; the usual fix is extracting a collaborator. If the project's ruff config enables `PLR0915`, `ruff check` reports statement-count violations as well — `python.tools.ruff.max_statements` surfaces that threshold.
+When `check_function_length` is `true`, the skill runs `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/function_length_scanner.py` to flag functions and methods spanning more than `max_function_length` lines (default: `125`). The metric is a line span — signature through end of body, decorators excluded — not a statement count, so it is intentionally lenient. A long function serving one purpose is not necessarily a finding; the usual fix is extracting a collaborator. If the project's ruff config enables `PLR0915`, `ruff check` reports statement-count violations as well — `python.tools.ruff.max_statements` surfaces that threshold.
 
 ### Cyclomatic complexity
 
-When `check_cyclomatic_complexity` is `true`, the skill runs `src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py` to flag functions and methods with more than `max_cyclomatic_complexity` decision points (default: `10`, matching ruff `C901` / `[tool.ruff.lint.mccabe] max-complexity`; setup seeds the threshold from `python.tools.ruff.max_complexity` when configured). Each `if`/`elif`, `for`/`async for`, `while`, `except` handler, non-catch-all `match` case, `try` `else` clause, and nested `def` adds one; boolean operators, ternaries, and comprehensions add none. Nested functions are reported independently and fold into the enclosing count, exactly like `C901`. A complex function is a strong "extract collaborator" signal — parsers, state machines, and generated code can be exempted by raising the threshold.
+When `check_cyclomatic_complexity` is `true`, the skill runs `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py` to flag functions and methods with more than `max_cyclomatic_complexity` decision points (default: `12` — this skill's own default, ruff's built-in C901 default is 10; setup seeds the threshold from `python.tools.ruff.max_complexity` when configured). Each `if`/`elif`, `for`/`async for`, `while`, `except` handler, non-catch-all `match` case, `try` `else` clause, and nested `def` adds one; boolean operators, ternaries, and comprehensions add none. Nested functions are reported independently and fold into the enclosing count, exactly like `C901`. A complex function is a strong "extract collaborator" signal — parsers, state machines, and generated code can be exempted by raising the threshold.
 
 ## Always-on vs configurable rules
 
@@ -89,9 +89,9 @@ Configure rule toggles by editing the `python.code_style` object in `.zolletta-m
     "check_max_arguments": true,
     "max_arguments": 5,
     "check_function_length": true,
-    "max_function_length": 100,
+    "max_function_length": 125,
     "check_cyclomatic_complexity": true,
-    "max_cyclomatic_complexity": 10,
+    "max_cyclomatic_complexity": 12,
     "vulture_min_confidence": 80
   }
 }

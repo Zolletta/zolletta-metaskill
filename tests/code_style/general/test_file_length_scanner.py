@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -56,7 +57,7 @@ class TestFileLengthScanner:
         f.write_text("x = 1")
         assert FileLengthScanner.count_lines(f) == 1
 
-    def test_multiple_lines(self, tmp_path: Path) -> None:
+    def test_count_lines_multiple_lines_returns_count(self, tmp_path: Path) -> None:
         f = tmp_path / "multi.py"
         _write_lines(f, 10)
         assert FileLengthScanner.count_lines(f) == 10
@@ -71,7 +72,7 @@ class TestFileLengthScanner:
         f.write_text("a\nb\nc")
         assert FileLengthScanner.count_lines(f) == 3
 
-    def test_only_newlines(self, tmp_path: Path) -> None:
+    def test_count_lines_only_newlines_counts_each(self, tmp_path: Path) -> None:
         f = tmp_path / "blank.py"
         f.write_text("\n\n\n")
         assert FileLengthScanner.count_lines(f) == 3
@@ -162,6 +163,16 @@ class TestFileLengthScanner:
     def test_section_without_code_style_falls_back(self, tmp_path: Path) -> None:
         settings = _write_settings(tmp_path, python={"tools": {}})
         assert FileLengthScanner.resolve_max_lines(settings) == 800
+
+    def test_disabled_language_limit_is_ignored(self, tmp_path: Path) -> None:
+        """A language with check_file_length=false contributes no limit."""
+        settings = _write_settings(
+            tmp_path,
+            language="python",
+            python={"code_style": {"check_file_length": False, "max_file_length": 5}},
+            php={"code_style": {"max_file_length": 500}},
+        )
+        assert FileLengthScanner.resolve_max_lines(settings) == 500
 
     # --- Tests for FileLengthScanner.scan_file(). ---
 
@@ -351,7 +362,13 @@ class TestFileLengthScanner:
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
-        assert "SKIPPED" in out
+        banner = "=" * 70
+        assert out == (
+            f"{banner}\n"
+            "FILE LENGTH — VALIDATION REPORT\n"
+            f"{banner}\n"
+            "\nResult: SKIPPED (check_file_length disabled in settings.json)\n\n"
+        )
 
     def test_main_check_disabled_json(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -364,19 +381,25 @@ class TestFileLengthScanner:
         rc = FileLengthScanner.main()
         report = json.loads(capsys.readouterr().out)
         assert rc == 0
-        assert report["skipped"] is True
+        assert report == {
+            "skipped": True,
+            "reason": "check_file_length disabled in settings.json",
+        }
 
     def test_main_missing_dir(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """No configured source directory on disk → usage error."""
         monkeypatch.chdir(tmp_path)
-        _write_settings(tmp_path)
+        _write_settings(
+            tmp_path,
+            python={"paths": {"source": ["lib", "other"]}, "code_style": {}},
+        )
         monkeypatch.setattr(sys, "argv", ["prog"])
         rc = FileLengthScanner.main()
         err = capsys.readouterr().err
         assert rc == 1
-        assert "no configured source directories" in err
+        assert err == "Error: no configured source directories exist on disk (lib, other)\n"
 
     def test_main_all_clear(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -390,7 +413,8 @@ class TestFileLengthScanner:
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
-        assert "all clear" in out
+        assert "## Files exceeding the limit: none" in out.splitlines()
+        assert out.endswith("Result: all clear\n")
 
     def test_main_violation_report_only(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -493,6 +517,25 @@ class TestFileLengthScanner:
         assert rc == 0
         assert "all clear" in out
 
+    def test_main_scanned_line_joins_multiple_roots(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The 'Scanned N files under ...' line lists every configured root."""
+        monkeypatch.chdir(tmp_path)
+        _write_settings(
+            tmp_path,
+            python={"paths": {"source": ["lib", "other"]}, "code_style": {}},
+        )
+        for name in ("lib", "other"):
+            root = tmp_path / name
+            root.mkdir()
+            _write_lines(root / "short.py", 5)
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        rc = FileLengthScanner.main()
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "under lib, other" in out
+
     def test_main_json_output(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -510,6 +553,7 @@ class TestFileLengthScanner:
         rc = FileLengthScanner.main()
         out = capsys.readouterr().out
         assert rc == 0
+        assert '\n  "scanned"' in out
         report = json.loads(out)
         assert report["scanned"] == 2
         assert report["max_lines"] == 10
@@ -615,3 +659,26 @@ class TestFileLengthScanner:
         assert rc == 0
         assert captured.err.count("Warning: could not read") == 2
         assert "all clear" in captured.out
+
+    def test_main_matches_committed_contract(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The text report is a byte-for-byte contract that must not be loosened.
+
+        The captured output is the whole report — the banner, the ``Scanned N
+        files`` line, the violation block with its ``Fix:`` paragraph and the
+        result line. A legitimate change is ``pytest --update-fixtures``
+        followed by a reviewed diff.
+        """
+        monkeypatch.chdir(tmp_path)
+        _write_settings(tmp_path, python={"code_style": {"max_file_length": 10}})
+        root = tmp_path / "src"
+        root.mkdir()
+        _write_lines(root / "long.py", 20)
+        monkeypatch.setattr(sys, "argv", ["prog"])
+        FileLengthScanner.main()
+        text_contract("code_style/general/file_length_scanner.txt", capsys.readouterr().out)

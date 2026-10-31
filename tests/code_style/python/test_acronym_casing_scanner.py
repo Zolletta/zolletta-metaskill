@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
 
@@ -36,9 +37,22 @@ class TestAcronymCasingScanner:
         nonexistent = Path("/nonexistent/acronyms.json")
         monkeypatch.setattr(mod.AcronymCasingScanner, "_ACRONYMS_JSON", nonexistent)
         acronyms = AcronymCasingScanner._load_default_acronyms()
-        assert "API" in acronyms
-        assert "CI" in acronyms
-        assert "HTTP" in acronyms
+        assert acronyms == [
+            "API",
+            "AST",
+            "CD",
+            "CI",
+            "CLI",
+            "DI",
+            "HTTP",
+            "HTTPS",
+            "JSON",
+            "MR",
+            "SQL",
+            "URL",
+            "XML",
+            "YAML",
+        ]
 
     def test_fallback_on_invalid_json(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -107,6 +121,19 @@ class TestAcronymCasingScanner:
             ("HTTP2", ["HTTP", "2"]),
             ("V2Client", ["V", "2", "Client"]),
             ("MyClass2", ["My", "Class", "2"]),
+        ],
+        ids=[
+            "acronym_prefix_returns_acronym_then_words",
+            "two_acronyms_returns_both",
+            "mixed_case_returns_mixed",
+            "mid_acronym_returns_parts",
+            "mr_acronym_returns_parts",
+            "two_words_returns_both",
+            "single_word_returns_single",
+            "acronym_only_returns_single",
+            "acronym_digit_returns_split",
+            "leading_digit_splits_digit",
+            "trailing_digit_splits_digit",
         ],
     )
     def test_split_pascal_case_known_splits(self, name: str, expected: list[str]) -> None:
@@ -229,7 +256,7 @@ class TestAcronymCasingScanner:
         rc = self._run(tmp_path, monkeypatch, ["scan"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert "SKIPPED" in out
+        assert out == "Result: SKIPPED (check_acronym_casing disabled in settings.json)\n"
 
     def test_check_disabled_json(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -239,7 +266,10 @@ class TestAcronymCasingScanner:
         rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
         report = json.loads(capsys.readouterr().out)
         assert rc == 0
-        assert report["skipped"] is True
+        assert report == {
+            "skipped": True,
+            "reason": "check_acronym_casing disabled in settings.json",
+        }
 
     def test_no_python_language_reports_skipped(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -264,9 +294,38 @@ class TestAcronymCasingScanner:
         rc = self._run(tmp_path, monkeypatch, ["scan"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "no configured source directories" in err
+        assert err == "Error: no configured source directories exist on disk (src)\n"
 
-    def test_no_violations(
+    def test_missing_source_dir_error_lists_configured_roots(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The stderr message names every configured root, joined by ", "."""
+        self._write_settings(
+            tmp_path,
+            python={"code_style": {}, "paths": {"source": ["lib", "other"], "tests": ["tests"]}},
+        )
+        rc = self._run(tmp_path, monkeypatch, ["scan"])
+        err = capsys.readouterr().err
+        assert rc == 1
+        assert err == "Error: no configured source directories exist on disk (lib, other)\n"
+
+    def test_configured_source_dir_is_scanned(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A non-default ``python.paths.source`` root is the one that gets scanned."""
+        self._write_settings(
+            tmp_path,
+            python={"code_style": {}, "paths": {"source": ["lib"], "tests": ["tests"]}},
+        )
+        lib = tmp_path / "lib"
+        lib.mkdir()
+        (lib / "mod.py").write_text("class ApiGateway:\n    pass\n", encoding="utf-8")
+        rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
+        data = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert data["violation_count"] == 1
+
+    def test_scan_clean_class_reports_zero_violations(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         self._write_settings(tmp_path)
@@ -276,9 +335,12 @@ class TestAcronymCasingScanner:
         rc = self._run(tmp_path, monkeypatch, ["scan"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert "Violations: 0" in out
+        lines = out.splitlines()
+        assert "Total classes scanned: 1" in lines
+        assert "Violations: 0" in lines
+        assert "All class names use acronyms in the correct uppercase form." in lines
 
-    def test_detects_violation(
+    def test_scan_acronym_class_reports_violation(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         self._write_settings(tmp_path)
@@ -291,7 +353,7 @@ class TestAcronymCasingScanner:
         assert "ApiGateway" in out
         assert "API" in out
 
-    def test_json_output(
+    def test_scan_json_flag_outputs_violation_json(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         self._write_settings(tmp_path)
@@ -301,10 +363,44 @@ class TestAcronymCasingScanner:
         rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
         data = json.loads(capsys.readouterr().out)
         assert rc == 0
+        assert data["total_classes"] == 1
         assert data["violation_count"] == 1
+        assert data["violations"][0]["file"] == "mod.py"
         assert data["violations"][0]["class"] == "ApiGateway"
         assert data["violations"][0]["expected"] == "API"
         assert "API" in data["acronyms_checked"]
+
+    def test_scan_json_reports_exact_total_classes(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """``total_classes`` counts every class, clean or violating."""
+        self._write_settings(tmp_path)
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "mod.py").write_text(
+            "class Foo:\n    pass\n\nclass ApiGateway:\n    pass\n", encoding="utf-8"
+        )
+        rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
+        data = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert data["total_classes"] == 2
+        assert data["violation_count"] == 1
+
+    def test_scan_continues_past_init_files(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """An ``__init__.py`` is skipped, not a stop: later files still scan."""
+        self._write_settings(tmp_path)
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "__init__.py").write_text("class ApiGateway:\n    pass\n", encoding="utf-8")
+        (src / "mod.py").write_text("class ApiGateway:\n    pass\n", encoding="utf-8")
+        rc = self._run(tmp_path, monkeypatch, ["scan", "--json"])
+        data = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert data["total_classes"] == 1
+        assert data["violation_count"] == 1
+        assert data["violations"][0]["file"] == "mod.py"
 
     def test_json_output_no_violations(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -395,3 +491,61 @@ class TestAcronymCasingScanner:
         data = json.loads(capsys.readouterr().out)
         assert rc == 0
         assert data["violation_count"] == 0
+
+    # --- AcronymCasingScanner._emit_text ---
+
+    def test_emit_text_matches_committed_contract(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The text report is a byte-for-byte contract that must not be loosened.
+
+        The captured output is the whole report — the banner, the counters, the
+        aligned violation table and the closing guidance. A legitimate change is
+        ``pytest --update-fixtures`` followed by a reviewed diff.
+        """
+        AcronymCasingScanner._emit_text(
+            1,
+            [
+                {
+                    "file": "mod.py",
+                    "line": 1,
+                    "class": "ApiGateway",
+                    "word": "Api",
+                    "expected": "API",
+                }
+            ],
+            ["API", "CLI"],
+            [Path("src")],
+        )
+        text_contract("code_style/python/acronym_casing_scanner.txt", capsys.readouterr().out)
+
+    def test_emit_text_multiple_roots_joined_with_comma(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Source directories are rendered joined by ", "."""
+        AcronymCasingScanner._emit_text(0, [], ["API"], [Path("src"), Path("lib")])
+        lines = capsys.readouterr().out.splitlines()
+        assert "Source directories: src, lib" in lines
+
+    # --- AcronymCasingScanner._emit_json ---
+
+    def test_emit_json_matches_exact_output(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """The JSON report is a byte-for-byte contract: keys, values and indent."""
+        violation = {
+            "file": "mod.py",
+            "line": 1,
+            "class": "ApiGateway",
+            "word": "Api",
+            "expected": "API",
+        }
+        AcronymCasingScanner._emit_json(1, [violation], ["API"], [Path("src")])
+        expected = {
+            "total_classes": 1,
+            "violation_count": 1,
+            "acronyms_checked": ["API"],
+            "directories": ["src"],
+            "violations": [violation],
+        }
+        assert capsys.readouterr().out == json.dumps(expected, indent=2) + "\n"

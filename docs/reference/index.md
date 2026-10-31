@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: [setup, review, patterns, documentor, python-*]
+skills: [setup, review, patterns, documentor, grice, python-*]
 ---
 
 # Reference
@@ -25,36 +25,37 @@ Scanners, review conventions, and language-specific style rules.
 
 Drift detection, staleness scoring, and operational conventions.
 
-| Document                                                        | Description                                                   |
-|-----------------------------------------------------------------|---------------------------------------------------------------|
-| [Drift detection tools](documentation/drift-detection-tools.md) | drift_analyzer, staleness scorer, API validator, link checker |
-| [Workflows & tools](documentation/workflows-and-tools.md)       | Quick start, 5 core workflows, CI recipes                     |
-| [Scoring & categories](documentation/scoring-and-categories.md) | Staleness scoring model, drift categories, troubleshooting    |
-| [Operational rules](documentation/operational-rules.md)         | Tool invocation conventions and drift report format           |
+| Document                                                        | Description                                                    |
+|-----------------------------------------------------------------|----------------------------------------------------------------|
+| [Drift detection tools](documentation/drift-detection-tools.md) | documentor_client, quality review, API validator, link checker |
+| [Workflows & tools](documentation/workflows-and-tools.md)       | Quick start, 5 core workflows, CI recipes                      |
+| [Scoring & categories](documentation/scoring-and-categories.md) | Staleness scoring model, drift categories, troubleshooting     |
+| [Operational rules](documentation/operational-rules.md)         | Tool invocation conventions and drift report format            |
+| [Grice maxims](documentation/grice/index.md)                    | Corpus-relative Quantity, Quality, Relation and Manner scores  |
 
 ## Project configuration
 
 Settings, subcommands, CI/CD, frontmatter, reports, and tool messages.
 
-| Document                              | Description                                           |
-|---------------------------------------|-------------------------------------------------------|
-| [Settings schema](settings-schema.md) | Full field-by-field reference for `settings.json`     |
-| [Subcommands](subcommands.md)         | All Zolletta-metaskill subcommands                    |
-| [CI/CD workflows](ci-cd-workflows.md) | GitHub Actions workflows: scope and triggers          |
-| [Frontmatter](frontmatter.md)         | SKILL.md frontmatter fields                           |
-| [Reports](reports.md)                 | Report file format and templates                      |
-| [Tool messages](tool-messages.md)     | "Not installed" messages for the tool-failure handler |
+| Document                                                  | Description                                                    |
+|-----------------------------------------------------------|----------------------------------------------------------------|
+| [Settings schema](settings-schema.md)                     | Full field-by-field reference for `settings.json`              |
+| [Subcommands](subcommands.md)                             | All Zolletta-metaskill subcommands                             |
+| [CI/CD workflows](ci-cd-workflows.md)                     | GitHub Actions workflows: scope and triggers                   |
+| [Frontmatter](frontmatter.md)                             | SKILL.md frontmatter fields                                    |
+| [Reports](reports.md)                                     | Report file format and templates                               |
+| [Tool messages](tool-messages.md)                         | "Not installed" messages for the tool-failure handler          |
+| [Augmented coding patterns](augmented-coding-patterns.md) | Distilled pattern/anti-pattern definitions cited by the skills |
 
 ## Example review report
 
 A real review output from dogfooding — see what the reports look like.
 
-| Document                                                                 | Description                                               |
-|--------------------------------------------------------------------------|-----------------------------------------------------------|
-| [Overview](example-review-report/index.md)                               | Real review output from dogfooding — overview and files   |
-| [SUMMARY.md](example-review-report/SUMMARY.md)                           | Executive summary with overall grade and trend            |
-| [TODO.md](example-review-report/TODO.md)                                 | Prioritized action items (critical, high, medium, low)    |
-| [patterns.md](example-review-report/patterns.md)                         | Design pattern review — God classes, SOLID, coupling      |
-| [documentor.md](example-review-report/documentor.md)                     | Documentation review — Diátaxis compliance, drift         |
-| [python-code-style.md](example-review-report/python-code-style.md)       | Python source code style — ruff, mypy, naming, docstrings |
-| [python-testing-style.md](example-review-report/python-testing-style.md) | Python test code review — isolation, naming, coverage     |
+| Document                                                                       | Description                                                        |
+|--------------------------------------------------------------------------------|--------------------------------------------------------------------|
+| [Overview](example-review-report/index.md)                                     | Real review output from dogfooding — overview and files            |
+| [SUMMARY.md](example-review-report/SUMMARY.md)                                 | Executive summary with overall grade, trend, and prioritized items |
+| [patterns.md](example-review-report/patterns.md)                               | Design pattern review — God classes, SOLID, coupling               |
+| [documentor.md](example-review-report/documentor.md)                           | Documentation review — Diátaxis compliance, drift                  |
+| [python-code-style.md](example-review-report/python-code-style.md)             | Python source code style — ruff, mypy, naming, docstrings          |
+| [python-testing-patterns.md](example-review-report/python-testing-patterns.md) | Python test code review — isolation, naming, coverage, mutation    |

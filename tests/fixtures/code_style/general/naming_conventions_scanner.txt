@@ -1,0 +1,20 @@
+======================================================================
+NAMING CONVENTIONS — VALIDATION REPORT
+======================================================================
+
+Source packages: src/mypkg
+Test packages:   tests/mypkg
+
+## Source file name != class name (1 files)
+
+  WrongName
+    -> cache.py
+    Expected: Cache (or rename file to match class)
+
+## Test files not matching naming convention (1 files)
+
+  test_orphan.py
+    Reason: no source file or class matching 'orphan' in .
+    Expected: test_<source_stem><eventual_suffix>.py
+
+Result: violations found (report-only mode)

@@ -1,0 +1,14 @@
+======================================================================
+MAX ARGUMENTS — VALIDATION REPORT
+======================================================================
+
+Scanned 5 files under src (max 5 parameters)
+
+## Functions exceeding the limit (2)
+
+       9 params  src/dto.py:8  build  (over by 4)
+       7 params  src/service.py:15  Service.handle  (over by 2)
+
+  Fix: introduce a parameter object or split the function, or raise max_arguments in settings.json if the arity is justified (DTOs, value objects, DI-heavy constructors).
+
+Result: violations found (report-only mode)

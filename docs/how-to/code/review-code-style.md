@@ -39,7 +39,7 @@ Private functions and test functions are exempt from the documentation requireme
 
 All public APIs must have type annotations. The review uses the project's configured type checker to verify this. Missing annotations on public functions, methods, and classes are reported as findings.
 
-A deliberately broad type (`Any` in Python, `mixed` in PHP) is an acceptable judgment call when a specific type would add noise without value — but the checker diagnostic it produces must be suppressed with the specific error code/identifier **and** a reason explaining why the type is broad. `suppression_reason_scanner.py` flags suppressions missing the code or the reason as findings.
+A deliberately broad type (`Any` in Python, `mixed` in PHP) is an acceptable judgment call when a specific type would add noise without value — but the checker diagnostic it produces must be suppressed with the specific error code/identifier **and** a reason explaining why the type is broad. `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/suppression_reason_scanner.py` flags suppressions missing the code or the reason as findings.
 
 ### Formatting
 
@@ -47,19 +47,19 @@ The review runs the project's configured linter and formatter in check-only mode
 
 ### File length
 
-The review flags source files that exceed the project's configured maximum line count (`max_file_length`, default 800). The check is enforced by the language-agnostic `file_length_scanner.py` — it counts lines in the files of the project's configured language(s) and skips anything git ignores. Files that legitimately exceed the limit (generated code, large enums) can be exempted by raising the threshold in `settings.json`.
+The review flags source files that exceed the project's configured maximum line count (`max_file_length`, default 800). The check is enforced by the language-agnostic `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/file_length_scanner.py` — it counts lines in the files of the project's configured language(s) and skips anything git ignores. Files that legitimately exceed the limit (generated code, large enums) can be exempted by raising the threshold in `settings.json`.
 
 ### Max arguments
 
-The review flags functions and methods that declare more parameters than the configured `max_arguments` (default 5). The check is enforced by the language-agnostic `max_arguments_scanner.py`, which counts declared parameters the way ruff `PLR0913` does — positional and keyword parameters count, while `self`/`cls`, `*args`/`**kwargs`, and PHP variadics do not. Long parameter lists usually signal a missing abstraction — the fix is typically a parameter object or a small collaborator.
+The review flags functions and methods that declare more parameters than the configured `max_arguments` (default 5). The check is enforced by the language-agnostic `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/max_arguments_scanner.py`, which counts declared parameters the way pylint `PLR0913` (implemented by ruff as `pylint.max-args`; both default to 5) does — positional and keyword parameters count, while `self`/`cls`, `*args`/`**kwargs`, and PHP variadics do not. Long parameter lists usually signal a missing abstraction — the fix is typically a parameter object or a small collaborator.
 
 ### Function length
 
-The review flags functions and methods whose line span exceeds the configured `max_function_length` (default 100). The check is enforced by the language-agnostic `function_length_scanner.py` — it measures the span from the definition line to the end of the body via the language engines, so it is a line count, not a statement count. A long function serving one purpose is not necessarily a finding — the sensor flags it for review; the usual fix is extracting a collaborator.
+The review flags functions and methods whose line span exceeds the configured `max_function_length` (default 125). The check is enforced by the language-agnostic `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/function_length_scanner.py` — it measures the span from the definition line to the end of the body via the language engines, so it is a line count, not a statement count. A long function serving one purpose is not necessarily a finding — the sensor flags it for review; the usual fix is extracting a collaborator.
 
 ### Cyclomatic complexity
 
-The review flags functions and methods whose cyclomatic complexity exceeds the configured `max_cyclomatic_complexity` (default 10, matching ruff `C901`). The check is enforced by the language-agnostic `cyclomatic_complexity_scanner.py` — decision points are counted per function with ruff `C901` semantics for Python and the equivalent tree-sitter walk for PHP (PHPStan and Psalm have no built-in McCabe rule). Nested functions and closures are reported independently. A complex function is a strong "extract collaborator" signal; parsers, state machines, and generated code can be exempted by raising the threshold in `settings.json`.
+The review flags functions and methods whose cyclomatic complexity exceeds the configured `max_cyclomatic_complexity` (default 12 — this skill's own default; ruff's built-in C901 default is 10). The check is enforced by the language-agnostic `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py` — decision points are counted per function with ruff `C901` semantics for Python and the equivalent tree-sitter walk for PHP (PHPStan and Psalm have no built-in McCabe rule). Nested functions and closures are reported independently. A complex function is a strong "extract collaborator" signal; parsers, state machines, and generated code can be exempted by raising the threshold in `settings.json`.
 
 ### Dead code
 

@@ -72,6 +72,16 @@ class TestLanguageDetector:
         (tmp_path / "Makefile").write_text("all:\n", encoding="utf-8")
         assert LanguageDetector.detect_language(tmp_path) is None
 
+    def test_c_cpp_uppercase_extension_glob_is_not_detected(self, tmp_path: Path) -> None:
+        (tmp_path / "Makefile").write_text("all:\n", encoding="utf-8")
+        (tmp_path / "main.CPP").write_text("int main() {}\n", encoding="utf-8")
+        assert LanguageDetector.detect_language(tmp_path) is None
+
+    def test_c_cpp_makefile_with_cpp_only_detected(self, tmp_path: Path) -> None:
+        (tmp_path / "Makefile").write_text("all:\n", encoding="utf-8")
+        (tmp_path / "main.cpp").write_text("int main() {}\n", encoding="utf-8")
+        assert LanguageDetector.detect_language(tmp_path) == "c-cpp"
+
     def test_detect_language_no_markers_returns_none(self, tmp_path: Path) -> None:
         assert LanguageDetector.detect_language(tmp_path) is None
 

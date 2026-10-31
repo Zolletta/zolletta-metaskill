@@ -1,0 +1,76 @@
+---
+audience: human, ai
+status: stable
+skills: [documentor]
+---
+
+# Documentation Standards
+
+Expert knowledge for writing, maintaining, and evaluating technical documentation across all common formats.
+
+> This file narrows down any eventual general rule about documentation, i.e. `documentation-rules.md`. If you maintain rules as part of your agent configuration, those are the single source of truth for their domain.
+
+## Documentation-as-Code Principles
+
+### Core Principles
+
+1. **Docs live with code** — Same repository, same branch, same PR
+2. **Docs are reviewed** — Documentation changes go through code review
+3. **Docs are tested** — Link checking, spell checking, build verification
+4. **Docs are versioned** — Tagged with releases, branches for versions
+5. **Docs are automated** — Generated where possible, validated in CI
+
+### File Organization
+
+```text
+project/
+├── README.md              # Entry point
+├── CONTRIBUTING.md        # How to contribute
+├── CHANGELOG.md           # Version history
+├── LICENSE                # License text
+├── docs/
+│   ├── getting-started.md # Expanded setup guide
+│   ├── architecture.md    # System design
+│   ├── api/               # API reference
+│   ├── guides/            # How-to guides
+│   ├── tutorials/         # Step-by-step tutorials
+│   └── adr/               # Architecture decisions
+└── src/                   # Source with inline docs
+```
+
+### The Four Types of Documentation
+
+Following the [Diátaxis framework](https://diataxis.fr/) — tutorials, how-to guides, reference, and explanation. See [docs/index.md](../../index.md) for the full quadrant table.
+
+## Markdown formatting
+
+### Tables
+
+When writing GitHub-flavored markdown tables, use compact separator rows with no inner spaces and no alignment colons, and align columns so pipes line up vertically:
+
+```markdown
+| Header A | Header B | Header C |
+|----------|----------|----------|
+| cell     | cell     | cell     |
+| longer   | longer   | longer   |
+```
+
+Never use spaced or colon-padded separators like `| --- |`, `|:---|`, or `| ---: |`. Column content must be padded with spaces so that every pipe character in the same column is on the same character position.
+
+### No artificial line breaks
+
+Each paragraph must be written on a single line. Never hard-wrap prose at a fixed column width — markdown renders single newlines as spaces, so wrapped lines are artificial breaks that make the source harder to edit and diff. A paragraph is any run of consecutive non-blank lines that are not headings, list items, blockquotes, code fences, tables, or HTML. Join all lines in such a run into one line.
+
+The same rule applies inside blockquotes: a blockquote paragraph is a run of consecutive non-blank `>` lines. Join them into a single `>` line.
+
+To separate distinct ideas, use a blank line (creating a new paragraph) or a list — never a mid-paragraph line break.
+
+### Mermaid diagrams
+
+Mermaid diagrams are declared in ` ```mermaid ` fenced blocks. Style rules:
+
+- **No `fill` styles** — never add `style <node> fill:...`, `classDef ... fill:...`, or `linkStyle ... fill:...` overrides.
+- **No background** — do not set a background color or image on the diagram.
+- Default theme only — no `%%{init: {'theme': ...}}%%` directives, no `classDef`, no `style` statements at all.
+
+Reason: mkdocs-material renders Mermaid theme-aware — diagrams pick up the reader's light/dark palette automatically. Hardcoded fills and backgrounds fight that theming and make diagrams inconsistent with the rest of the page. If a diagram needs visual grouping, express it in the structure (subgraphs, node naming), not in color.

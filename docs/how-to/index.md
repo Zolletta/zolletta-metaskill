@@ -1,7 +1,7 @@
 ---
 audience: human, ai
 status: stable
-skills: []
+skills: [setup, review, patterns, documentor, python-*]
 ---
 
 # How-to Guides
@@ -12,11 +12,11 @@ Practical steps to achieve a specific goal. Aimed at practitioners.
 
 Installation, project setup, and running the full review pipeline.
 
-| Document                                | Description                                                         |
-|-----------------------------------------|---------------------------------------------------------------------|
-| [Install](install.md)                   | Install Zolletta-metaskill via `install.sh` or manual clone/symlink |
-| [Set up a project](setup-project.md)    | Configure Zolletta-metaskill for a new project                      |
-| [Run a full review](run-full-review.md) | Execute the complete review pipeline                                |
+| Document                                | Description                                                             |
+|-----------------------------------------|-------------------------------------------------------------------------|
+| [Install](install.md)                   | Install Zolletta-metaskill via `npx skills add` or manual clone/symlink |
+| [Set up a project](setup-project.md)    | Configure Zolletta-metaskill for a new project                          |
+| [Run a full review](run-full-review.md) | Execute the complete review pipeline                                    |
 
 ## Code review
 
@@ -42,6 +42,6 @@ Python-focused style and test reviews with ruff, mypy, and pytest.
 
 Audit documentation for drift, staleness, and Diátaxis structure compliance.
 
-| Document                                                              | Description                                    |
-|-----------------------------------------------------------------------|------------------------------------------------|
-| [Review documentation](code/../documentation/review-documentation.md) | Audit docs for drift, staleness, and structure |
+| Document                                                      | Description                                    |
+|---------------------------------------------------------------|------------------------------------------------|
+| [Review documentation](documentation/review-documentation.md) | Audit docs for drift, staleness, and structure |

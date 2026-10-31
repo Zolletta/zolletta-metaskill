@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -67,7 +68,7 @@ class TestSuppressionReasonScanner:
         f = _write_source(
             tmp_path,
             "mod.py",
-            'x = get()  # type: ignore[no-any-return]  # plugin payload is dynamic\n',
+            "x = get()  # type: ignore[no-any-return]  # plugin payload is dynamic\n",
         )
         assert SuppressionReasonScanner._scan_python(f) == []
 
@@ -75,8 +76,7 @@ class TestSuppressionReasonScanner:
         f = _write_source(
             tmp_path,
             "mod.py",
-            "# plugin payload is genuinely dynamic\n"
-            "x = get()  # type: ignore[no-any-return]\n",
+            "# plugin payload is genuinely dynamic\nx = get()  # type: ignore[no-any-return]\n",
         )
         assert SuppressionReasonScanner._scan_python(f) == []
 
@@ -102,9 +102,7 @@ class TestSuppressionReasonScanner:
         assert len(violations) == 1
         assert violations[0]["missing"] == ["error code"]
 
-    def test_python_blanket_ignore_without_reason_is_flagged_for_both(
-        self, tmp_path: Path
-    ) -> None:
+    def test_python_blanket_ignore_without_reason_is_flagged_for_both(self, tmp_path: Path) -> None:
         f = _write_source(
             tmp_path,
             "mod.py",
@@ -154,11 +152,52 @@ class TestSuppressionReasonScanner:
         assert SuppressionReasonScanner._scan_python(missing) == []
         assert "Warning" in capsys.readouterr().err
 
+    def test_python_trailing_hash_only_is_not_a_reason(self, tmp_path: Path) -> None:
+        f = _write_source(
+            tmp_path,
+            "mod.py",
+            "x = get()  # type: ignore[codes] #\n",
+        )
+        violations = SuppressionReasonScanner._scan_python(f)
+        assert violations[0]["missing"] == ["reason"]
+
+    def test_python_hash_prefixed_reason_is_clean(self, tmp_path: Path) -> None:
+        f = _write_source(
+            tmp_path,
+            "mod.py",
+            "x = get()  # type: ignore[a] #X\n",
+        )
+        assert SuppressionReasonScanner._scan_python(f) == []
+
+    def test_python_indented_comment_above_counts_as_reason(self, tmp_path: Path) -> None:
+        f = _write_source(
+            tmp_path,
+            "mod.py",
+            "if True:\n    # plugin payload is dynamic\n    x = get()  # type: ignore[a]\n",
+        )
+        assert SuppressionReasonScanner._scan_python(f) == []
+
+    def test_python_non_ignore_comment_does_not_stop_scan(self, tmp_path: Path) -> None:
+        f = _write_source(
+            tmp_path,
+            "mod.py",
+            "# a normal comment\nx = get()  # type: ignore\n",
+        )
+        violations = SuppressionReasonScanner._scan_python(f)
+        assert len(violations) == 1
+
+    def test_python_violation_reports_its_own_line_text(self, tmp_path: Path) -> None:
+        f = _write_source(
+            tmp_path,
+            "mod.py",
+            "y = 1\nx = get()  # type: ignore\n",
+        )
+        violations = SuppressionReasonScanner._scan_python(f)
+        assert violations[0]["line_text"] == "x = get()  # type: ignore"
+
     # --- PHP: identifier slots and reasons. ---
 
-    def test_php_phpstan_ignore_with_identifier_and_reason_is_clean(
-        self, tmp_path: Path
-    ) -> None:
+    def test_php_phpstan_ignore_with_identifier_and_reason_is_clean(self, tmp_path: Path) -> None:
         f = _write_source(
             tmp_path,
             "src/User.php",
@@ -177,9 +216,7 @@ class TestSuppressionReasonScanner:
         assert violations[0]["suppression"] == "@phpstan-ignore"
         assert violations[0]["missing"] == ["identifier", "reason"]
 
-    def test_php_phpstan_ignore_next_line_with_reason_is_clean(
-        self, tmp_path: Path
-    ) -> None:
+    def test_php_phpstan_ignore_next_line_with_reason_is_clean(self, tmp_path: Path) -> None:
         f = _write_source(
             tmp_path,
             "src/User.php",
@@ -187,9 +224,7 @@ class TestSuppressionReasonScanner:
         )
         assert SuppressionReasonScanner._scan_php(f) == []
 
-    def test_php_phpstan_ignore_next_line_without_reason_is_flagged(
-        self, tmp_path: Path
-    ) -> None:
+    def test_php_phpstan_ignore_next_line_without_reason_is_flagged(self, tmp_path: Path) -> None:
         f = _write_source(
             tmp_path,
             "src/User.php",
@@ -198,9 +233,7 @@ class TestSuppressionReasonScanner:
         violations = SuppressionReasonScanner._scan_php(f)
         assert violations[0]["missing"] == ["reason"]
 
-    def test_php_psalm_suppress_with_type_and_reason_is_clean(
-        self, tmp_path: Path
-    ) -> None:
+    def test_php_psalm_suppress_with_type_and_reason_is_clean(self, tmp_path: Path) -> None:
         f = _write_source(
             tmp_path,
             "src/User.php",
@@ -218,9 +251,7 @@ class TestSuppressionReasonScanner:
         assert violations[0]["suppression"] == "@psalm-suppress"
         assert violations[0]["missing"] == ["identifier", "reason"]
 
-    def test_php_psalm_suppress_type_only_is_flagged_for_reason(
-        self, tmp_path: Path
-    ) -> None:
+    def test_php_psalm_suppress_type_only_is_flagged_for_reason(self, tmp_path: Path) -> None:
         f = _write_source(
             tmp_path,
             "src/User.php",
@@ -256,6 +287,32 @@ class TestSuppressionReasonScanner:
         violations = SuppressionReasonScanner._scan_php(f)
         assert violations[0]["missing"] == ["reason"]
 
+    def test_php_docblock_attached_star_text_counts_as_reason(self, tmp_path: Path) -> None:
+        f = _write_source(
+            tmp_path,
+            "src/User.php",
+            "<?php\n/**\n * @psalm-suppress MixedReturnStatement\n *X\n */\n",
+        )
+        assert SuppressionReasonScanner._scan_php(f) == []
+
+    def test_php_docblock_stray_star_line_after_close_is_not_a_reason(self, tmp_path: Path) -> None:
+        f = _write_source(
+            tmp_path,
+            "src/User.php",
+            "<?php\n/**\n * @psalm-suppress MixedReturnStatement\n */\n * stray\n",
+        )
+        violations = SuppressionReasonScanner._scan_php(f)
+        assert violations[0]["missing"] == ["reason"]
+
+    def test_php_violation_reports_line_text_key(self, tmp_path: Path) -> None:
+        f = _write_source(
+            tmp_path,
+            "src/User.php",
+            "<?php\n// @phpstan-ignore-next-line\n",
+        )
+        violations = SuppressionReasonScanner._scan_php(f)
+        assert violations[0]["line_text"] == "// @phpstan-ignore-next-line"
+
     def test_php_unreadable_file_warns_and_skips(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -266,14 +323,20 @@ class TestSuppressionReasonScanner:
     def test_scan_file_dispatches_by_extension(self, tmp_path: Path) -> None:
         py = _write_source(tmp_path, "a.py", "x = f()  # type: ignore\n")
         php = _write_source(tmp_path, "a.php", "<?php // @psalm-suppress\n")
-        assert SuppressionReasonScanner.scan_file(py)[0]["suppression"] == (
-            "# type: ignore"
-        )
-        assert SuppressionReasonScanner.scan_file(php)[0]["suppression"] == (
-            "@psalm-suppress"
-        )
+        assert SuppressionReasonScanner.scan_file(py)[0]["suppression"] == ("# type: ignore")
+        assert SuppressionReasonScanner.scan_file(php)[0]["suppression"] == ("@psalm-suppress")
 
     # --- ``main``: SKIPPED, error, text and JSON runs. ---
+
+    def test_main_text_report_joins_multiple_roots(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path, python={"paths": {"source": ["src", "lib"]}})
+        _write_source(tmp_path, "src/a.py", "x = f()  # type: ignore[a]  # why\n")
+        _write_source(tmp_path, "lib/b.py", "y = g()  # type: ignore[a]  # why\n")
+        rc = _run_scan(tmp_path, monkeypatch, [])
+        assert rc == 0
+        assert "under src, lib" in capsys.readouterr().out
 
     def test_main_no_supported_language_reports_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -281,7 +344,10 @@ class TestSuppressionReasonScanner:
         _write_settings(tmp_path, language="go", python=None)
         rc = _run_scan(tmp_path, monkeypatch, [])
         assert rc == 0
-        assert "SKIPPED" in capsys.readouterr().out
+        assert (
+            "Result: SKIPPED (no python/php language configured in settings.json)"
+            in capsys.readouterr().out.splitlines()
+        )
 
     def test_main_no_supported_language_json_reports_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -289,7 +355,9 @@ class TestSuppressionReasonScanner:
         _write_settings(tmp_path, language="go", python=None)
         rc = _run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
-        assert json.loads(capsys.readouterr().out)["skipped"] is True
+        report = json.loads(capsys.readouterr().out)
+        assert report["skipped"] is True
+        assert report["reason"] == "no python/php language configured in settings.json"
 
     def test_main_no_settings_falls_back_to_all_engines(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -303,10 +371,13 @@ class TestSuppressionReasonScanner:
     def test_main_missing_source_dir_returns_one(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        _write_settings(tmp_path)
+        _write_settings(tmp_path, python={"paths": {"source": ["src", "lib"]}})
         rc = _run_scan(tmp_path, monkeypatch, [])
         assert rc == 1
-        assert "no configured source directories" in capsys.readouterr().err
+        assert (
+            "Error: no configured source directories exist on disk (src, lib)"
+            in capsys.readouterr().err.splitlines()
+        )
 
     def test_main_clean_tree_text_report(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -317,8 +388,8 @@ class TestSuppressionReasonScanner:
         assert rc == 0
         out = capsys.readouterr().out
         assert "SUPPRESSION REASON" in out
-        assert "missing code/reason: none" in out
-        assert "Result: all clear" in out
+        assert "## Suppressions missing code/reason: none" in out.splitlines()
+        assert "Result: all clear" in out.splitlines()
 
     def test_main_violations_text_report(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -338,7 +409,9 @@ class TestSuppressionReasonScanner:
         _write_source(tmp_path, "src/mod.py", "x = f()  # type: ignore\n")
         rc = _run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
-        data = json.loads(capsys.readouterr().out)
+        raw = capsys.readouterr().out
+        assert '\n  "directories":' in raw
+        data = json.loads(raw)
         assert data["directories"] == ["src"]
         assert data["scanned"] == 1
         assert data["violation_count"] == 1
@@ -377,3 +450,22 @@ class TestSuppressionReasonScanner:
         rc = _run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
         assert json.loads(capsys.readouterr().out)["violation_count"] == 0
+
+    def test_main_matches_committed_contract(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The text report is a byte-for-byte contract that must not be loosened.
+
+        The captured output is the whole report — the banner, the ``Scanned N
+        files`` line, the violation block with its ``Fix:`` paragraph and the
+        result line. A legitimate change is ``pytest --update-fixtures``
+        followed by a reviewed diff.
+        """
+        _write_settings(tmp_path)
+        _write_source(tmp_path, "src/mod.py", "x = f()  # type: ignore\n")
+        _run_scan(tmp_path, monkeypatch, [])
+        text_contract("code_style/general/suppression_reason_scanner.txt", capsys.readouterr().out)

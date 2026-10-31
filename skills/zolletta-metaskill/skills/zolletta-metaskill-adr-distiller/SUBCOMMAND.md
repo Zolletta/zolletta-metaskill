@@ -1,0 +1,109 @@
+---
+name: zolletta-metaskill-adr-distiller
+description: >
+  Extracts Accepted-ADR Decision lines from docs/explanation/adr/architecture/ and writes adr-distilled.md directives for review agents. Use when ADRs change or before running a review. Do not use to author or edit ADRs.
+license: MIT + Commons Clause
+---
+
+# Zolletta-metaskill ADR Distiller
+
+Distills **Accepted** ADRs into a single `adr-distilled.md` file containing one-line architectural directives, each linking back to its source ADR.
+
+The distiller uses an mtime cache so only **new**, **stale** (modified), and **removed** ADRs are re-processed on subsequent runs. Directives for up-to-date ADRs (including agent-refined text) are preserved.
+
+> ADR distillation inspired by [Architectural Governance at AI Speed](https://www.infoq.com/articles/architectural-governance-ai-speed/) (InfoQ, 2026).
+
+## When to run
+
+- **During review** — the `review` orchestrator calls this subcommand at Step 3.5 to refresh `adr-distilled.md` before launching review subagents.
+- **Standalone** — run `/zolletta-metaskill adr-distiller` to refresh directives without a full review (e.g. after adding a new ADR).
+
+## Prerequisites
+
+1. `.zolletta-metaskill/settings.json` must exist (run `setup` first).
+2. Read `documentation.adrs` and `documentation.dir` from `settings.json`.
+3. If `documentation.adrs` is `null`, exit immediately — no ADRs configured.
+
+## Procedure
+
+### Step 1 — Run the distiller
+
+```bash
+python3 ../../src/zolletta_metaskill/adr/adr_orchestrator.py --json
+```
+
+`documentation.dir`, `documentation.adrs`, and `runs_dir` are read from `settings.json` — no path flags.
+
+The orchestrator:
+
+1. Discovers ADR files in `<docs_dir>/<adrs_path>/` — files with `# ADR-NNNN: Title` headings only.
+2. Compares mtimes against the cache at `.zolletta-metaskill/adr-cache.json`.
+3. Re-distills **new** and **stale** ADRs (Accepted status only).
+4. Removes directives for **removed** ADRs and drops directives whose ADR no longer exists or is no longer Accepted.
+5. Preserves up-to-date directives for currently Accepted ADRs (including any agent refinements).
+6. Writes the updated `adr-distilled.md` and cache.
+
+### Step 2 — Parse the JSON report
+
+The `--json` flag outputs a report like:
+
+```json
+{
+  "has_adrs": true,
+  "new": ["ADR-0007"],
+  "stale": ["ADR-0003"],
+  "removed": ["ADR-0002"],
+  "dropped": []
+}
+```
+
+`removed` lists ADR files deleted from the corpus; `dropped` lists directives pruned because their ADR is no longer discovered or no longer Accepted (e.g. after supersession).
+
+If `has_adrs` is `false`, no Accepted ADRs were found — print a message and exit.
+
+### Step 3 — Refine new and stale directives
+
+For each ADR in `new` and `stale`:
+
+1. Read the source ADR file.
+2. Read the mechanically-extracted directive in `adr-distilled.md`.
+3. Refine it into a concise one-liner that captures the architectural decision. Preserve category headings if present.
+4. Write the refined directive back to `adr-distilled.md`.
+
+The mechanical extraction pulls the first sentence from the Decision section — it is a starting point, not the final form. A human-readable one-liner is more useful for review subagents.
+
+### Step 4 — Report
+
+Print a summary:
+
+```text
+ADR Directives Refreshed
+========================
+New:      2  (0007-async-event-bus, 0009-cqrs-read-models)
+Stale:    1  (0003-use-postgresql)
+Removed:  0
+Total:    8 directives in adr-distilled.md
+```
+
+### Step 5 — Verify
+
+Re-run the orchestrator and verify the JSON report returns empty `new`/`stale` lists — if it does not, fix the cause (unrefined directive, unexpected mtime change) and repeat until the report is clean.
+
+## Safety
+
+- `adr_orchestrator.py` is read-only on ADR sources — it never modifies, deletes, or renames ADR files.
+- It writes only `<docs_dir>/<adrs_path>/adr-distilled.md` and the mtime cache at `.zolletta-metaskill/adr-cache.json` — both regenerable artifacts.
+- Do not edit `adr-distilled.md` by hand as a substitute for fixing a source ADR — mechanically extracted lines are refreshed on re-run and hand edits to them are lost; curated refinements on up-to-date directives are preserved.
+- Do not distill `Proposed` or `Superseded` ADRs — only `Accepted` records produce directives.
+
+## Files
+
+| File         | Location                                               | Purpose                                                         |
+|--------------|--------------------------------------------------------|-----------------------------------------------------------------|
+| Orchestrator | `../../src/zolletta_metaskill/adr/adr_orchestrator.py` | Coordinates discovery + distillation + cache                    |
+| CLI          | `../../src/zolletta_metaskill/adr/adr_client.py`       | CLI entry point — argument parsing, report formatting, `main()` |
+| Discovery    | `../../src/zolletta_metaskill/adr/adr_discovery.py`    | Finds ADR files, parses status                                  |
+| Distiller    | `../../src/zolletta_metaskill/adr/adr_distiller.py`    | Extracts directive from a single ADR                            |
+| Cache        | `../../src/zolletta_metaskill/adr/adr_cache.py`        | mtime cache (`.zolletta-metaskill/adr-cache.json`)              |
+| Structs      | `../../src/zolletta_metaskill/adr/structs/`            | `ADRRecord`, `DistillReport` data models                        |
+| Output       | `<docs_dir>/<adrs_path>/adr-distilled.md`              | Distilled directives file                                       |

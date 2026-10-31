@@ -6,6 +6,7 @@ import ast
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -115,6 +116,14 @@ class TestDependencyInversionScanner:
         node = _parse_class("class Foo:\n    def __init__(self):\n        pass\n")
         assert DependencyInversionScanner._is_data_class(node) is False
 
+    def test_attribute_base_not_data_class(self) -> None:
+        node = _parse_class("class Foo(mod.Base):\n    pass\n")
+        assert DependencyInversionScanner._is_data_class(node) is False
+
+    def test_regular_name_base_not_data_class(self) -> None:
+        node = _parse_class("class Foo(SomeBase):\n    pass\n")
+        assert DependencyInversionScanner._is_data_class(node) is False
+
     def test_parse_class_regular_decorator_returns_false(self) -> None:
         node = _parse_class("@property\nclass Foo:\n    pass\n")
         assert DependencyInversionScanner._is_data_class(node) is False
@@ -156,6 +165,14 @@ class TestDependencyInversionScanner:
     def test_is_entry_point_empty_patterns_returns_false(self) -> None:
         assert DependencyInversionScanner._is_entry_point("main.py", set()) is False
 
+    def test_is_entry_point_pattern_spanning_suffix_returns_false(self) -> None:
+        """A ``.py``-suffixed pattern never matches (the suffix is stripped first)."""
+        assert DependencyInversionScanner._is_entry_point("main.py", {"main.py"}) is False
+
+    def test_is_entry_point_suffix_replaced_with_text_returns_false(self) -> None:
+        """Stripping ``.py`` must not leave replacement text a pattern could match."""
+        assert DependencyInversionScanner._is_entry_point("main.py", {"XXXX"}) is False
+
     # --- IsCompositionRoot ---
 
     def test_make_container_call(self) -> None:
@@ -190,6 +207,53 @@ class TestDependencyInversionScanner:
         assert deps[0]["created"] == "GitLabClient"
         assert deps[0]["attribute"] == "client"
         assert deps[0]["method"] == "__init__"
+
+    def test_extract_created_dependencies_self_only_seam_not_flagged(self) -> None:
+        """A local bound to a ``self.<attr>`` expression alone is an injection seam."""
+        source = (
+            "class Engine:\n"
+            "    def _get_parser(self):\n"
+            "        factory = self._parser_factory\n"
+            "        self._parser = factory()\n"
+        )
+        node = _parse_class(source)
+        deps = DependencyInversionScanner._extract_created_dependencies(node)
+        assert deps == []
+
+    def test_extract_created_dependencies_multi_target_assign_flags_self(self) -> None:
+        """A non-self target in a multi-target assign must not hide the self target."""
+        source = (
+            "class Service:\n"
+            "    def __init__(self):\n"
+            "        other = self.client = GitLabClient()\n"
+        )
+        node = _parse_class(source)
+        deps = DependencyInversionScanner._extract_created_dependencies(node)
+        assert len(deps) == 1
+        assert deps[0]["attribute"] == "client"
+
+    def test_extract_created_dependencies_seam_local_not_flagged(self) -> None:
+        source = (
+            "class Engine:\n"
+            "    def _get_parser(self):\n"
+            "        factory = self._parser_factory or Engine._default_factory\n"
+            "        self._parser = factory()\n"
+        )
+        node = _parse_class(source)
+        deps = DependencyInversionScanner._extract_created_dependencies(node)
+        assert len(deps) == 0
+
+    def test_extract_created_dependencies_plain_local_still_flagged(self) -> None:
+        source = (
+            "class Service:\n"
+            "    def run(self):\n"
+            "        factory = make_factory()\n"
+            "        self.client = factory()\n"
+        )
+        node = _parse_class(source)
+        deps = DependencyInversionScanner._extract_created_dependencies(node)
+        assert len(deps) == 1
+        assert deps[0]["created"] == "factory"
 
     def test_parse_class_multiple_deps_returns_2(self) -> None:
         source = (
@@ -335,6 +399,26 @@ class TestDependencyInversionScanner:
         params = DependencyInversionScanner._get_constructor_params(node)
         assert params == set()
 
+    # --- ScanClass ---
+
+    def test_scan_class_partial_init_match_keeps_later_violations(self) -> None:
+        """An injected param must skip only its own violation, not the rest."""
+        source = (
+            "class Service:\n"
+            "    def __init__(self, GitLabClient):\n"
+            "        self.client = GitLabClient()\n"
+            "        self.repo = Repository()\n"
+        )
+        node = _parse_class(source)
+        violations = DependencyInversionScanner._scan_class(node, "pkg/service.py")
+        assert [v["created"] for v in violations] == ["Repository"]
+
+    def test_scan_class_attaches_rel_path_as_file(self) -> None:
+        source = "class Service:\n    def __init__(self):\n        self.client = GitLabClient()\n"
+        node = _parse_class(source)
+        violations = DependencyInversionScanner._scan_class(node, "pkg/service.py")
+        assert violations[0]["file"] == "pkg/service.py"
+
     # --- Main ---
 
     def test_main_no_violations(
@@ -371,6 +455,7 @@ class TestDependencyInversionScanner:
         assert rc == 0
         assert "GitLabClient" in out
         assert "report-only" in out
+        assert "Files scanned: 1  |  Skipped (entry points): 0" in out.splitlines()
 
     def test_main_json_output(
         self,
@@ -388,9 +473,23 @@ class TestDependencyInversionScanner:
         out = capsys.readouterr().out
         assert rc == 0
         payload = json.loads(out)
-        assert payload["violation_count"] == 1
-        assert payload["violations"][0]["created"] == "GitLabClient"
-        assert payload["scanned_files"] == 1
+        assert payload == {
+            "directories": ["src"],
+            "scanned_files": 1,
+            "skipped_files": 0,
+            "violation_count": 1,
+            "violations": [
+                {
+                    "class": "Service",
+                    "created": "GitLabClient",
+                    "attribute": "client",
+                    "method": "__init__",
+                    "line": 3,
+                    "file": "mod.py",
+                }
+            ],
+        }
+        assert out == json.dumps(payload, indent=2) + "\n"
 
     def test_main_skipped_when_disabled(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -399,7 +498,7 @@ class TestDependencyInversionScanner:
         rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert "SKIPPED" in out
+        assert out == "Result: SKIPPED (check_dip disabled in settings.json)\n"
 
     def test_main_skipped_json_when_disabled(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -417,7 +516,7 @@ class TestDependencyInversionScanner:
         rc = _run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "source" in err
+        assert err == "Error: no configured source directories exist on disk\n"
 
     def test_main_skips_entry_points(
         self,
@@ -563,3 +662,125 @@ class TestDependencyInversionScanner:
         payload = json.loads(capsys.readouterr().out)
         assert rc == 0
         assert payload["violation_count"] == 1
+
+    def test_main_custom_source_root(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path, python={"paths": {"source": ["lib"]}})
+        lib = tmp_path / "lib"
+        lib.mkdir()
+        (lib / "mod.py").write_text(
+            "class Service:\n    def __init__(self):\n        self.client = GitLabClient()\n"
+        )
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        payload = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert payload["violation_count"] == 1
+        assert payload["violations"][0]["file"] == "mod.py"
+
+    def test_main_skips_multiple_entry_points(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _write_settings(tmp_path)
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "cli.py").write_text("class CliApp:\n    pass\n")
+        (src / "main.py").write_text("class MainApp:\n    pass\n")
+        (src / "mod.py").write_text(
+            "class Service:\n    def __init__(self):\n        self.client = GitLabClient()\n"
+        )
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        payload = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert payload["skipped_files"] == 2
+        assert payload["violation_count"] == 1
+
+    def test_main_counts_multiple_scanned_files(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "a.py").write_text("class A:\n    pass\n")
+        (src / "b.py").write_text("class B:\n    pass\n")
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        payload = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert payload["scanned_files"] == 2
+
+    def test_main_scans_files_after_init(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "__init__.py").write_text("class Init:\n    pass\n")
+        (src / "mod.py").write_text(
+            "class Service:\n    def __init__(self):\n        self.client = GitLabClient()\n"
+        )
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        payload = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert payload["violation_count"] == 1
+
+    def test_main_scans_files_after_syntax_error(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_settings(tmp_path)
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "bad.py").write_text("class Foo:\n    def (:\n")
+        (src / "mod.py").write_text(
+            "class Service:\n    def __init__(self):\n        self.client = GitLabClient()\n"
+        )
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        payload = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert payload["violation_count"] == 1
+
+    # --- Text Output Contract ---
+
+    def test_emit_text_matches_committed_contract(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        text_contract: Callable[[str, str], None],
+    ) -> None:
+        """The captured text report is a byte-for-byte contract.
+
+        The comparison is exact on purpose and must not be loosened to a
+        substring or regex check: a legitimate change to the rendered report is
+        ``pytest --update-fixtures`` followed by a reviewed diff.
+
+        """
+        violations = [
+            {
+                "class": "Service",
+                "created": "GitLabClient",
+                "attribute": "client",
+                "method": "__init__",
+                "line": 4,
+                "file": "pkg/service.py",
+            }
+        ]
+        DependencyInversionScanner._emit_text(violations, 3, 1)
+        text_contract(
+            "patterns/python/dependency_inversion_scanner.txt",
+            capsys.readouterr().out,
+        )
+
+    def test_emit_text_no_violations_exact_lines(self, capsys: pytest.CaptureFixture[str]) -> None:
+        DependencyInversionScanner._emit_text([], 2, 1)
+        assert capsys.readouterr().out.splitlines() == [
+            "=" * 70,
+            "DEPENDENCY INVERSION — VALIDATION REPORT",
+            "=" * 70,
+            "",
+            "Files scanned: 2  |  Skipped (entry points): 1",
+            "",
+            "## Dependencies created internally instead of injected: none",
+            "",
+            "Result: all clear",
+        ]

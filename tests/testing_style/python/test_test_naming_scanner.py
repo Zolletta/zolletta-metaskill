@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -126,6 +127,24 @@ class TestTestNamingScanner:
             ("test", 0),
             ("", 0),
         ],
+        ids=[
+            "long_name_returns_six",
+            "longer_name_returns_eight",
+            "medium_name_returns_six",
+            "minimum_compliant_returns_five",
+            "three_segments_returns_three",
+            "four_segments_returns_four",
+            "one_segment_returns_one",
+            "one_segment_add_returns_one",
+            "bare_prefix_returns_zero",
+            "double_underscore_returns_one",
+            "triple_underscores_returns_two",
+            "no_prefix_returns_zero",
+            "plain_name_returns_zero",
+            "capitalized_returns_zero",
+            "no_underscore_returns_zero",
+            "empty_returns_zero",
+        ],
     )
     def test_count_segments_segment_counts_returns_expected(self, name: str, expected: int) -> None:
         """Parametrized check of segment counts across naming patterns."""
@@ -228,6 +247,21 @@ class TestTestNamingScanner:
         result = TestNamingScanner._find_test_functions(f)
         assert result == []
 
+    def test_non_test_class_does_not_stop_later_test_class(self, tmp_path: Path) -> None:
+        """A non-Test* class is skipped without stopping later Test* classes."""
+        f = tmp_path / "test_mixed_classes.py"
+        f.write_text(
+            "class _StubEngine:\n"
+            "    def test_file_glob(self):\n"
+            "        pass\n"
+            "\n"
+            "class TestFoo:\n"
+            "    def test_init_with_valid_stores(self):\n"
+            "        assert True\n",
+        )
+        result = TestNamingScanner._find_test_functions(f)
+        assert [name for name, _ in result] == ["test_init_with_valid_stores"]
+
     def test_empty_file_returns_empty_list(self, tmp_path: Path) -> None:
         """A completely empty file yields no test functions."""
         f = tmp_path / "test_empty.py"
@@ -270,32 +304,40 @@ class TestTestNamingScanner:
         (tmp_path / "tests").mkdir()
         rc = run_scan(tmp_path, monkeypatch, [])
         assert rc == 0
-        assert "SKIPPED" in capsys.readouterr().out
+        assert (
+            capsys.readouterr().out
+            == "Result: SKIPPED (check_test_naming disabled in settings.json)\n"
+        )
 
-    def test_disabled_json(
+    def test_scan_disabled_json_reports_skipped(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _write_settings(tmp_path, python={"testing": {"check_test_naming": False}})
         (tmp_path / "tests").mkdir()
         rc = run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
-        assert json.loads(capsys.readouterr().out)["skipped"] is True
+        assert json.loads(capsys.readouterr().out) == {
+            "skipped": True,
+            "reason": "check_test_naming disabled in settings.json",
+        }
 
     # --- Missing configured test directories produce an error and exit 1. ---
 
     def test_missing_test_dir_returns_one(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        _write_settings(tmp_path)
+        _write_settings(
+            tmp_path,
+            python={"paths": {"tests": ["tests", "spec"]}},
+        )
         rc = run_scan(tmp_path, monkeypatch, [])
         assert rc == 1
         err = capsys.readouterr().err
-        assert "no configured test directories" in err
-        assert "tests" in err
+        assert err == "Error: no configured test directories exist on disk (tests, spec)\n"
 
     # --- An empty or test-file-free directory reports zero functions. ---
 
-    def test_empty_directory(
+    def test_scan_empty_dir_reports_zero_functions(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _write_settings(tmp_path)
@@ -305,7 +347,10 @@ class TestTestNamingScanner:
         out = capsys.readouterr().out
         assert "Total test functions scanned: 0" in out
         assert "Violations: 0" in out
-        assert "All test functions meet the naming convention." in out
+        assert "Minimum segments after test_: 3" in out
+        assert any(
+            line == "All test functions meet the naming convention." for line in out.splitlines()
+        )
 
     def test_directory_with_only_non_test_files(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -334,7 +379,7 @@ class TestTestNamingScanner:
         assert "test_init" in out
         assert "test_bad.py" in out
 
-    def test_no_violations(
+    def test_scan_compliant_names_reports_zero_violations(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _write_settings(tmp_path)
@@ -347,6 +392,7 @@ class TestTestNamingScanner:
         assert rc == 0
         out = capsys.readouterr().out
         assert "Violations: 0" in out
+        assert "Violation rate: 0.0%" in out
         assert "All test functions meet the naming convention." in out
 
     def test_violation_rate_displayed_when_functions_present(
@@ -395,7 +441,9 @@ class TestTestNamingScanner:
         write_test_module(tmp_path, "test_bad.py", "def test_init():\n    assert True\n")
         rc = run_scan(tmp_path, monkeypatch, ["--json"])
         assert rc == 0
-        data = json.loads(capsys.readouterr().out)
+        out = capsys.readouterr().out
+        assert '\n  "total_test_functions"' in out
+        data = json.loads(out)
         assert data["total_test_functions"] == 1
         assert data["violation_count"] == 1
         assert data["min_segments"] == 3
@@ -536,6 +584,34 @@ class TestTestNamingScanner:
         assert data["violation_count"] == 2
         assert data["directories"] == ["tests", "spec"]
 
+    def test_multiple_test_dirs_listed_in_text_report(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Every configured test root appears on the 'Test directories' line."""
+        _write_settings(
+            tmp_path,
+            python={"paths": {"tests": ["tests", "spec"]}},
+        )
+        (tmp_path / "tests").mkdir()
+        (tmp_path / "spec").mkdir()
+        rc = run_scan(tmp_path, monkeypatch, [])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "Test directories: tests, spec" in out
+
+    def test_non_test_file_does_not_stop_scan(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A non-test file sorted before test files does not end the scan."""
+        _write_settings(tmp_path)
+        write_test_module(tmp_path, "a_helper.py", "def helper():\n    pass\n")
+        write_test_module(tmp_path, "test_bad.py", "def test_init():\n    assert True\n")
+        rc = run_scan(tmp_path, monkeypatch, ["--json"])
+        assert rc == 0
+        data = json.loads(capsys.readouterr().out)
+        assert data["total_test_functions"] == 1
+        assert data["violation_count"] == 1
+
     # --- Combined real-world scenarios across multiple files. ---
 
     def test_multiple_files_some_good_some_bad(
@@ -600,8 +676,11 @@ class TestTestNamingScanner:
         findings = TestNamingScanner.scan_file(f)
         assert len(findings) == 1
         assert isinstance(findings[0], Finding)
+        assert findings[0].file == str(f)
+        assert findings[0].line == 1
         assert findings[0].category == "test_naming"
         assert findings[0].severity == "medium"
+        assert findings[0].fix_type == "manual"
         assert "test_init" in findings[0].description
 
     def test_no_violation_for_compliant_name(self, tmp_path: Path) -> None:
@@ -635,6 +714,37 @@ class TestTestNamingScanner:
         findings = TestNamingScanner.scan_file(f)
         assert len(findings) == 1
         assert "test_init" in findings[0].description
+        assert findings[0].file == str(f)
+        assert findings[0].line == 2
+        assert findings[0].category == "test_naming"
+        assert findings[0].severity == "medium"
+        assert findings[0].fix_type == "manual"
+
+    def test_non_test_class_does_not_stop_later_findings(self, tmp_path: Path) -> None:
+        """A non-Test* class does not stop scan_module's class loop."""
+        f = tmp_path / "test_mixed_classes.py"
+        write_test_file(
+            f,
+            "class _StubEngine:\n"
+            "    def test_file_glob(self):\n"
+            "        pass\n"
+            "\n"
+            "class TestFoo:\n"
+            "    def test_init(self):\n"
+            "        assert True\n",
+        )
+        findings = TestNamingScanner.scan_file(f)
+        assert len(findings) == 1
+        assert "test_init" in findings[0].description
+
+    def test_three_segment_method_name_is_compliant(self, tmp_path: Path) -> None:
+        """A method name with exactly min_segments segments is not flagged."""
+        f = tmp_path / "test_class_edge.py"
+        write_test_file(
+            f,
+            "class TestFoo:\n    def test_a_b_c(self):\n        assert True\n",
+        )
+        assert TestNamingScanner.scan_file(f) == []
 
     def test_non_test_function_skipped(self, tmp_path: Path) -> None:
         """Non-test top-level functions are skipped by scan_module."""
@@ -662,6 +772,26 @@ class TestTestNamingScanner:
         assert len(findings) == 1
         assert "test_init" in findings[0].description
 
+    def test_scan_module_default_min_segments_is_three(self, tmp_path: Path) -> None:
+        """Called directly, scan_module defaults to the 3-segment convention."""
+        from zolletta_metaskill.core.structs import MethodInfo, ModuleInfo
+
+        f = tmp_path / "test_mod.py"
+        module = ModuleInfo(
+            path=f,
+            language="python",
+            functions=[MethodInfo(name="test_a_b_c", lineno=1, end_lineno=2)],
+        )
+        assert TestNamingScanner.scan_module(module) == []
+
+    def test_compliant_test_method_in_class_not_flagged(self, tmp_path: Path) -> None:
+        f = tmp_path / "test_class_ok.py"
+        write_test_file(
+            f,
+            "class TestFoo:\n    def test_init_with_valid_stores(self):\n        assert True\n",
+        )
+        assert TestNamingScanner.scan_file(f) == []
+
     def test_test_method_in_non_test_class_skipped(self, tmp_path: Path) -> None:
         """Methods named test_* on non-Test* classes are not flagged by scan_module."""
         f = tmp_path / "test_protocol.py"
@@ -671,3 +801,32 @@ class TestTestNamingScanner:
         )
         findings = TestNamingScanner.scan_file(f)
         assert findings == []
+
+    # --- text-output contract (tests.4) ---
+
+    def test_emit_text_matches_committed_contract(
+        self, capsys: pytest.CaptureFixture[str], text_contract: Callable[[str, str], None]
+    ) -> None:
+        """The text report is a byte-for-byte contract that must not be loosened.
+
+        The committed fixture is the full captured stdout; a legitimate change is
+        ``pytest --update-fixtures`` plus a reviewed diff.
+        """
+        violations = [
+            {
+                "file": "test_bad.py",
+                "line": 1,
+                "function": "test_init",
+                "segments": 1,
+                "min_required": 3,
+            },
+            {
+                "file": "subdir/test_other.py",
+                "line": 7,
+                "function": "test_to_dict",
+                "segments": 2,
+                "min_required": 3,
+            },
+        ]
+        TestNamingScanner._emit_text(["tests"], 5, 3, violations)
+        text_contract("testing_style/python/test_naming_scanner.txt", capsys.readouterr().out)

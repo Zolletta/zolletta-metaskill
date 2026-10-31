@@ -13,8 +13,11 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
+from typing import cast
 
 import pytest
+from tree_sitter import Node
 
 from zolletta_metaskill.core.engine.php_engine import PHPEngine
 from zolletta_metaskill.core.structs import Finding
@@ -110,13 +113,13 @@ class TestDependencyInversionScanner:
     def test_is_real_dependency_real_class_returns_true(self) -> None:
         assert DependencyInversionScanner._is_real_dependency("HttpClient") is True
 
-    def test_built_in_stdClass(self) -> None:
+    def test_is_real_dependency_built_in_std_class_returns_false(self) -> None:
         assert DependencyInversionScanner._is_real_dependency("stdClass") is False
 
-    def test_built_in_DateTime(self) -> None:
+    def test_is_real_dependency_built_in_date_time_returns_false(self) -> None:
         assert DependencyInversionScanner._is_real_dependency("DateTime") is False
 
-    def test_built_in_Exception(self) -> None:
+    def test_is_real_dependency_built_in_exception_returns_false(self) -> None:
         assert DependencyInversionScanner._is_real_dependency("Exception") is False
 
     def test_is_real_dependency_scalar_array_returns_false(self) -> None:
@@ -142,9 +145,12 @@ class TestDependencyInversionScanner:
         assert isinstance(findings[0], Finding)
         assert findings[0].category == "dip"
         assert findings[0].severity == "medium"
-        assert "HttpClient" in findings[0].description
-        assert "Service" in findings[0].description
-        assert "__construct" in findings[0].description
+        assert findings[0].line == 4
+        assert findings[0].fix_type == "manual"
+        assert findings[0].description == (
+            "Service::__construct() instantiates 'HttpClient' directly — "
+            "depend on an abstraction instead (inject via constructor)"
+        )
 
     @_skip_no_ts
     def test_new_in_regular_method(self, tmp_path: Path) -> None:
@@ -325,7 +331,52 @@ class TestDependencyInversionScanner:
         )
         findings = DependencyInversionScanner.scan_file(f)
         assert len(findings) == 1
-        assert "Service" in findings[0].description
+        assert "'App\\Service'" in findings[0].description
+
+    @_skip_no_ts
+    def test_scan_tree_factory_first_scans_later_classes(self, tmp_path: Path) -> None:
+        """A factory class first in the file does not stop the scan."""
+        f = tmp_path / "mixed.php"
+        _write_php(
+            f,
+            "<?php\n"
+            "class UserFactory {\n"
+            "    public function create() {\n"
+            "        return new User();\n"
+            "    }\n"
+            "}\n"
+            "class Service {\n"
+            "    public function __construct() {\n"
+            "        $this->dep = new Dep();\n"
+            "    }\n"
+            "}\n",
+        )
+        findings = DependencyInversionScanner.scan_file(f)
+        assert len(findings) == 1
+        assert findings[0].description == (
+            "Service::__construct() instantiates 'Dep' directly — "
+            "depend on an abstraction instead (inject via constructor)"
+        )
+        assert findings[0].line == 9
+
+    # --- Decoding a ``name`` node replaces malformed UTF-8 bytes. ---
+
+    def test_find_class_name_invalid_utf8_replacement_char(self) -> None:
+        """``errors="replace"`` turns malformed bytes into U+FFFD."""
+        node = cast(
+            "Node",
+            SimpleNamespace(children=[SimpleNamespace(type="name", start_byte=0, end_byte=1)]),
+        )
+        assert DependencyInversionScanner._find_class_name(node, b"\xff") == "�"
+
+    def test_extract_class_name_from_new_invalid_utf8_replacement_char(self) -> None:
+        """Qualified-name parts decode with ``errors="replace"`` too."""
+        name = SimpleNamespace(type="name", start_byte=0, end_byte=1, children=[])
+        node = cast(
+            "Node",
+            SimpleNamespace(children=[SimpleNamespace(type="qualified_name", children=[name])]),
+        )
+        assert DependencyInversionScanner._extract_class_name_from_new(node, b"\xff") == "�"
 
     @_skip_no_ts
     def test_non_php_file_returns_empty(self, tmp_path: Path) -> None:
@@ -352,7 +403,7 @@ class TestDependencyInversionScanner:
         )
         from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
 
-        DependencyInversionScanner._ensure_php_engine()
+        EngineRegistry.ensure_php()
         engine = EngineRegistry.get_for_file(f)
         assert engine is not None
         module = engine.parse_module(f)
@@ -367,7 +418,7 @@ class TestDependencyInversionScanner:
         _write_php(f, "<?php\nclass {\n")
         from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
 
-        DependencyInversionScanner._ensure_php_engine()
+        EngineRegistry.ensure_php()
         engine = EngineRegistry.get_for_file(f)
         assert engine is not None
         module = engine.parse_module(f)
@@ -398,7 +449,7 @@ class TestDependencyInversionScanner:
         rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert "SKIPPED" in out
+        assert out == "Result: SKIPPED (check_dip disabled in settings.json)\n"
 
     def test_check_disabled_json(
         self,
@@ -410,7 +461,10 @@ class TestDependencyInversionScanner:
         rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert json.loads(out)["skipped"] is True
+        assert json.loads(out) == {
+            "skipped": True,
+            "reason": "check_dip disabled in settings.json",
+        }
 
     def test_main_missing_dir(
         self,
@@ -422,7 +476,7 @@ class TestDependencyInversionScanner:
         rc = _run(tmp_path, monkeypatch, ["prog"])
         err = capsys.readouterr().err
         assert rc == 1
-        assert "source" in err
+        assert err == "Error: no configured source directories exist on disk\n"
 
     @_skip_no_ts
     def test_main_all_clear(
@@ -442,7 +496,15 @@ class TestDependencyInversionScanner:
         rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert "all clear" in out
+        assert out.splitlines() == [
+            "=" * 70,
+            "PHP DEPENDENCY INVERSION (DIP) — VALIDATION REPORT",
+            "=" * 70,
+            "",
+            "## DIP violations: none",
+            "",
+            "Result: all clear",
+        ]
 
     @_skip_no_ts
     def test_main_violation_report_only(
@@ -456,9 +518,20 @@ class TestDependencyInversionScanner:
         rc = _run(tmp_path, monkeypatch, ["prog"])
         out = capsys.readouterr().out
         assert rc == 0
-        assert "DIP violations" in out
-        assert "Dep" in out
-        assert "report-only" in out
+        assert out.splitlines() == [
+            "=" * 70,
+            "PHP DEPENDENCY INVERSION (DIP) — VALIDATION REPORT",
+            "=" * 70,
+            "",
+            "## DIP violations (1 found)",
+            "",
+            "  Bad::__construct() instantiates 'Dep' directly — depend on an "
+            "abstraction instead (inject via constructor)",
+            f"    -> {Path('src') / 'Bad.php'}:4",
+            "    Fix: inject the dependency via constructor instead of 'new'",
+            "",
+            "Result: DIP violations found (report-only mode)",
+        ]
 
     @_skip_no_ts
     def test_main_json_output(
@@ -469,10 +542,42 @@ class TestDependencyInversionScanner:
     ) -> None:
         _write_settings(tmp_path)
         _write_php(tmp_path / "src" / "Bad.php", _DIP_VIOLATION)
+        _write_php(
+            tmp_path / "src" / "Good.php",
+            "<?php\nclass Good {\n    public function __construct(Dep $dep) {\n    }\n}\n",
+        )
         rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
         out = capsys.readouterr().out
         assert rc == 0
         payload = json.loads(out)
+        assert payload == {
+            "directories": ["src"],
+            "scanned_files": 2,
+            "violation_count": 1,
+            "violations": [
+                {
+                    "file": str(Path("src") / "Bad.php"),
+                    "line": 4,
+                    "severity": "medium",
+                    "description": "Bad::__construct() instantiates 'Dep' directly — "
+                    "depend on an abstraction instead (inject via constructor)",
+                }
+            ],
+        }
+        assert out == json.dumps(payload, indent=2) + "\n"
+
+    @_skip_no_ts
+    def test_main_uses_configured_psr4_root(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _write_settings(tmp_path, php={"autoload": {"psr-4": {"App\\": "lib/"}}})
+        _write_php(tmp_path / "lib" / "Bad.php", _DIP_VIOLATION)
+        rc = _run(tmp_path, monkeypatch, ["prog", "--json"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        payload = json.loads(out)
+        assert payload["directories"] == ["lib"]
         assert payload["violation_count"] == 1
-        assert payload["scanned_files"] == 1
-        assert payload["violations"][0]["severity"] == "medium"

@@ -12,6 +12,8 @@ from zolletta_metaskill.core.structs import ClassInfo, MethodInfo
 class TestClassInfo:
     """Tests for the ClassInfo dataclass."""
 
+    # --- construction ---
+
     def test_classinfo_minimal_construction_returns_false(self) -> None:
         """ClassInfo can be constructed with only required fields."""
         c = ClassInfo(name="Foo", lineno=1, end_lineno=10)
@@ -43,11 +45,15 @@ class TestClassInfo:
         assert c.is_abstract is True
         assert c.is_test_class is True
 
+    # --- immutability ---
+
     def test_classinfo_frozen_raises_frozeninstanceerror(self) -> None:
         """ClassInfo is immutable."""
         c = ClassInfo(name="Foo", lineno=1, end_lineno=10)
         with pytest.raises(FrozenInstanceError):
             setattr(c, "name", "Bar")
+
+    # --- default fields ---
 
     def test_default_lists_are_independent(self) -> None:
         """Each instance gets its own default list."""

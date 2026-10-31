@@ -36,7 +36,7 @@ Documentation freshness is scored on a **0-100 scale** where **100 = perfectly c
 {
   "documentation": {
     "staleness_weights": {
-      "updated": 0.25, "alignment": 0.25, "links": 0.15,
+      "last_updated": 0.25, "code_doc_alignment": 0.25, "link_health": 0.15,
       "completeness": 0.20, "accuracy": 0.15
     },
     "staleness_threshold": 60
@@ -123,16 +123,16 @@ The drift report marks each issue with `[AUTO]`, `[MANUAL]`, or `[SEMI]` tags.
 - Factual drift is critical; temporal drift is cosmetic — prioritize by category.
 - Use `[AUTO]` fixes for version strings and links; reserve human effort for semantic drift.
 - Use `fetch-depth: 0` in CI — shallow clone breaks git history comparison.
-- Run `link_checker.py` on every markdown change — cross-document anchors break silently.
+- Run `skills/zolletta-metaskill/src/zolletta_metaskill/documentor/links/link_checker.py` on every markdown change — cross-document anchors break silently.
 
 ## Troubleshooting
 
-| Problem                                     | Cause                                                                                                        | Solution                                                                                                                    |
-|---------------------------------------------|--------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
-| `drift_analyzer.py` reports zero docs found | Repository has non-standard doc extensions or docs are in ignored directories (e.g., `node_modules`, `dist`) | Set `documentation.doc_patterns` (e.g. `"*.md,*.rst,*.txt"`) to specify extensions.                                         |
-| Staleness scores are unexpectedly low       | Docs reference files that were reorganized or moved to new directories                                       | Run `link_checker.py` first to fix broken references, then re-score.                                                        |
-| API validator finds no source signatures    | `python.paths.source` points to a non-Python directory or all functions are `_`-prefixed private             | Verify the source roots have `.py` files; set `documentation.include_private` if needed.                                    |
-| Link checker flags valid anchors as broken  | Heading text contains special characters, inline code, or emoji that alter the slug                          | Compare the expected slug (lowercase, special chars stripped, spaces to hyphens) against the actual heading text.           |
-| Git history comparison shows no changes     | Shallow clone lacks full commit history (common in CI)                                                       | Clone with `fetch-depth: 0` or narrow `python.paths.source` to limit the analysis window.                                   |
-| External URL checks hang or time out        | Target servers are slow or block automated HEAD requests                                                     | Keep `documentation.check_external` off for local-only validation, or run external checks in a separate non-blocking job.   |
-| Drift report marks everything as `[MANUAL]` | Most detected drift is semantic or architectural, not auto-fixable                                           | This is expected for large refactors; focus on `[AUTO]` and `[SEMI]` items first, then triage `[MANUAL]` items by severity. |
+| Problem                                                                                                         | Cause                                                                                                   | Solution                                                                                                                               |
+|-----------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
+| `skills/zolletta-metaskill/src/zolletta_metaskill/documentor/quality/quality_review.py` reports zero docs found | Docs are outside `documentation.dir` and are not root documents, or they are git-ignored (e.g., `dist`) | Move them under `documentation.dir`, or un-ignore them; the cache records `skipped_reason`                                             |
+| Staleness scores are unexpectedly low                                                                           | Docs reference files that were reorganized or moved to new directories                                  | Run `skills/zolletta-metaskill/src/zolletta_metaskill/documentor/links/link_checker.py` first to fix broken references, then re-score. |
+| API validator finds no source signatures                                                                        | `python.paths.source` points to a non-Python directory or all functions are `_`-prefixed private        | Verify the source roots have `.py` files; set `documentation.api_doc_include_private` if needed.                                       |
+| Link checker flags valid anchors as broken                                                                      | Heading text contains special characters, inline code, or emoji that alter the slug                     | Compare the expected slug (lowercase, special chars stripped, spaces to hyphens) against the actual heading text.                      |
+| Git history comparison shows no changes                                                                         | Shallow clone lacks full commit history (common in CI)                                                  | Clone with `fetch-depth: 0` or narrow `python.paths.source` to limit the analysis window.                                              |
+| External URL checks hang or time out                                                                            | Target servers are slow or block automated HEAD requests                                                | Keep `documentation.check_external` off for local-only validation, or run external checks in a separate non-blocking job.              |
+| Drift report marks everything as `[MANUAL]`                                                                     | Most detected drift is semantic or architectural, not auto-fixable                                      | This is expected for large refactors; focus on `[AUTO]` and `[SEMI]` items first, then triage `[MANUAL]` items by severity.            |

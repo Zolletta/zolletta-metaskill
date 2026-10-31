@@ -44,7 +44,7 @@ class TestProjectConfig:
         finally:
             ProjectConfig.ensure_engines()
 
-    def test_idempotent(self) -> None:
+    def test_ensure_engines_twice_registers_engines(self) -> None:
         ProjectConfig.ensure_engines()
         ProjectConfig.ensure_engines()
         assert "python" in EngineRegistry.available_languages()
@@ -64,14 +64,14 @@ class TestProjectConfig:
         arr.write_text('["a", "b"]')
         assert ProjectConfig.load_settings(arr) == {}
 
-    def test_valid_settings(self, tmp_path: Path) -> None:
+    def test_load_settings_valid_json_returns_settings(self, tmp_path: Path) -> None:
         path = _write_settings(tmp_path)
         data = ProjectConfig.load_settings(path)
         assert data["language"] == "python"
 
     # --- Setting ---
 
-    def test_returns_value(self) -> None:
+    def test_setting_existing_key_returns_value(self) -> None:
         settings = {"python": {"code_style": {"max_file_length": 500}}}
         assert ProjectConfig.setting(settings, "python.code_style.max_file_length", 800) == 500
 
@@ -106,17 +106,17 @@ class TestProjectConfig:
         settings = {"a": {"b": "42"}}
         assert ProjectConfig.setting(settings, "a.b", 0) == 0
 
-    def test_str_default(self) -> None:
+    def test_setting_str_default_returns_str_or_default(self) -> None:
         settings = {"a": {"b": "docs"}}
         assert ProjectConfig.setting(settings, "a.b", "x") == "docs"
         assert ProjectConfig.setting({"a": {"b": 5}}, "a.b", "x") == "x"
 
-    def test_list_default(self) -> None:
+    def test_setting_list_default_returns_list_or_default(self) -> None:
         settings = {"a": {"b": ["src"]}}
         assert ProjectConfig.setting(settings, "a.b", ["x"]) == ["src"]
         assert ProjectConfig.setting({"a": {"b": "src"}}, "a.b", ["x"]) == ["x"]
 
-    def test_dict_default(self) -> None:
+    def test_setting_dict_default_returns_dict_or_default(self) -> None:
         settings = {"a": {"b": {"k": 1}}}
         assert ProjectConfig.setting(settings, "a.b", {}) == {"k": 1}
         assert ProjectConfig.setting({"a": {"b": 5}}, "a.b", {"d": 1}) == {"d": 1}
@@ -134,10 +134,10 @@ class TestProjectConfig:
 
     # --- ConfiguredLanguages ---
 
-    def test_language_field(self) -> None:
+    def test_configured_languages_language_field_returns_set(self) -> None:
         assert ProjectConfig.configured_languages({"language": "python"}) == {"python"}
 
-    def test_populated_sections(self) -> None:
+    def test_configured_languages_populated_sections_returns_both(self) -> None:
         settings = {"language": "", "python": {"tools": {}}, "php": {"tools": {}}}
         assert ProjectConfig.configured_languages(settings) == {"python", "php"}
 
@@ -148,7 +148,7 @@ class TestProjectConfig:
     def test_non_string_language_ignored(self) -> None:
         assert ProjectConfig.configured_languages({"language": 5}) == set()
 
-    def test_empty_settings(self) -> None:
+    def test_configured_languages_empty_settings_returns_empty(self) -> None:
         assert ProjectConfig.configured_languages({}) == set()
 
     def test_unregistered_language_via_language_field(self) -> None:
@@ -208,7 +208,7 @@ class TestProjectConfig:
     def test_sectionless_language_uses_default(self) -> None:
         assert ProjectConfig.any_enabled({}, {"go"}, "code_style.check_x") is True
 
-    def test_empty_languages(self) -> None:
+    def test_any_enabled_empty_languages_returns_false(self) -> None:
         assert ProjectConfig.any_enabled({}, set(), "code_style.check_x") is False
 
     # --- ScanLanguages ---
@@ -226,7 +226,7 @@ class TestProjectConfig:
 
     # --- ExtensionsFor ---
 
-    def test_maps_languages(self) -> None:
+    def test_extensions_for_known_languages_returns_extensions(self) -> None:
         assert ProjectConfig.extensions_for({"python", "php"}) == {".py", ".php"}
 
     def test_unregistered_language_warns(self, capsys: pytest.CaptureFixture[str]) -> None:
@@ -251,7 +251,7 @@ class TestProjectConfig:
     def test_source_dirs_python_fallback(self) -> None:
         assert ProjectConfig.source_dirs({"python": {}}, "python") == ["src"]
 
-    def test_php_autoload(self) -> None:
+    def test_source_dirs_php_psr4_returns_autoload_dirs(self) -> None:
         settings = {"php": {"autoload": {"psr-4": {"App\\": "app/", "Lib\\": "lib/"}}}}
         assert ProjectConfig.source_dirs(settings, "php") == ["app/", "lib/"]
 
@@ -269,6 +269,10 @@ class TestProjectConfig:
     def test_php_autoload_non_string_items_skipped(self) -> None:
         settings = {"php": {"autoload": {"psr-4": {"App\\": ["app/", 5]}}}}
         assert ProjectConfig.source_dirs(settings, "php") == ["app/"]
+
+    def test_source_dirs_php_non_string_value_skipped(self) -> None:
+        settings = {"php": {"autoload": {"psr-4": {"App\\": 5, "Lib\\": "lib/"}}}}
+        assert ProjectConfig.source_dirs(settings, "php") == ["lib/"]
 
     def test_source_dirs_unknown_language_fallback(self) -> None:
         assert ProjectConfig.source_dirs({}, "go") == ["src"]
@@ -294,7 +298,7 @@ class TestProjectConfig:
 
     # --- PackageName ---
 
-    def test_python_package(self) -> None:
+    def test_package_name_python_package_returns_name(self) -> None:
         settings = {"python": {"paths": {"package": "myproject"}}}
         assert ProjectConfig.package_name(settings, "python") == "myproject"
 
@@ -316,7 +320,7 @@ class TestProjectConfig:
     def test_php_package_missing(self) -> None:
         assert ProjectConfig.package_name({"php": {}}, "php") is None
 
-    def test_unknown_language(self) -> None:
+    def test_package_name_unknown_language_returns_none(self) -> None:
         assert ProjectConfig.package_name({}, "go") is None
 
     # --- Roots ---
@@ -365,6 +369,10 @@ class TestProjectConfig:
     def test_adrs_dir_non_string(self) -> None:
         assert ProjectConfig.adrs_dir({"documentation": {"adrs": 5}}) is None
 
+    def test_adrs_dir_empty_uses_configured_docs_dir(self) -> None:
+        settings = {"documentation": {"dir": "documentation", "adrs": ""}}
+        assert ProjectConfig.adrs_dir(settings) == Path("documentation")
+
     def test_runs_dir_default(self) -> None:
         assert ProjectConfig.runs_dir({}) == Path(".zolletta-metaskill")
 
@@ -373,7 +381,7 @@ class TestProjectConfig:
 
     # --- IterFiles ---
 
-    def test_extension_filter(self, tmp_path: Path) -> None:
+    def test_iter_files_extension_filter_returns_matching(self, tmp_path: Path) -> None:
         root = tmp_path / "src"
         root.mkdir()
         (root / "a.py").write_text("x")
@@ -455,13 +463,74 @@ class TestProjectConfig:
         (root / "real.py").write_text("x")
         assert ProjectConfig.iter_files(root, {".py"}) == [root / "real.py"]
 
+    def test_git_files_invocation_args_and_timeout(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """``git ls-files`` must be invoked with the expected argv and timeout."""
+        calls: list[tuple[list[str], dict[str, object]]] = []
+
+        def _fake_git(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+            calls.append((args, kwargs))
+            return subprocess.CompletedProcess(args=args, returncode=0, stdout=b"")
+
+        monkeypatch.setattr(subprocess, "run", _fake_git)
+        root = tmp_path / "src"
+        root.mkdir()
+        ProjectConfig._git_files(root)
+        assert len(calls) == 1
+        args, kwargs = calls[0]
+        assert args == [
+            "git",
+            "-C",
+            str(root),
+            "ls-files",
+            "-c",
+            "-o",
+            "--exclude-standard",
+            "-z",
+        ]
+        assert kwargs["timeout"] == 30
+
+    def test_git_files_invalid_utf8_entry_dropped(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Bytes outside UTF-8 decode via surrogateescape, not a crash."""
+
+        def _fake_git(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[bytes]:
+            return subprocess.CompletedProcess(
+                args=[], returncode=0, stdout=b"\xffbad.py\0real.py\0"
+            )
+
+        monkeypatch.setattr(subprocess, "run", _fake_git)
+        root = tmp_path / "src"
+        root.mkdir()
+        (root / "real.py").write_text("x")
+        assert ProjectConfig.iter_files(root, {".py"}) == [root / "real.py"]
+
+    def test_git_files_existing_path_outside_root_dropped(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A ``../`` entry is dropped even when it resolves to a real file."""
+
+        def _fake_git(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[bytes]:
+            return subprocess.CompletedProcess(
+                args=[], returncode=0, stdout=b"../outside.py\0inside.py\0"
+            )
+
+        monkeypatch.setattr(subprocess, "run", _fake_git)
+        root = tmp_path / "src"
+        root.mkdir()
+        (root / "inside.py").write_text("x")
+        (tmp_path / "outside.py").write_text("x")
+        assert ProjectConfig.iter_files(root, {".py"}) == [root / "inside.py"]
+
     # --- EmitSkipped ---
 
-    def test_json(self, capsys: pytest.CaptureFixture[str]) -> None:
+    def test_emit_skipped_json_mode_prints_json(self, capsys: pytest.CaptureFixture[str]) -> None:
         ProjectConfig.emit_skipped(True, "check_x disabled")
         report = json.loads(capsys.readouterr().out)
         assert report == {"skipped": True, "reason": "check_x disabled"}
 
-    def test_text(self, capsys: pytest.CaptureFixture[str]) -> None:
+    def test_emit_skipped_text_prints_skipped(self, capsys: pytest.CaptureFixture[str]) -> None:
         ProjectConfig.emit_skipped(False, "check_x disabled")
         assert "SKIPPED (check_x disabled)" in capsys.readouterr().out

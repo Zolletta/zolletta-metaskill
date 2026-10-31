@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -45,9 +46,7 @@ class TestPHPToolsDetector:
 
     def test_infection_via_composer(self, tmp_path: Path) -> None:
         composer = tmp_path / "composer.json"
-        composer.write_text(
-            '{"require-dev": {"infection/infection": "^0.29"}}', encoding="utf-8"
-        )
+        composer.write_text('{"require-dev": {"infection/infection": "^0.29"}}', encoding="utf-8")
         result = PHPToolsDetector.detect_php_tools_from_composer(composer)
         assert result["infection"] is True
 
@@ -118,6 +117,15 @@ class TestPHPToolsDetector:
         result = PHPToolsDetector.detect_php_tools(tmp_path)
         assert all(not v["available"] for v in result.values())
 
+    def test_detect_php_tools_reads_composer_json(self, tmp_path: Path) -> None:
+        """The composer probe must read ``composer.json`` — case and name matter."""
+        with patch(
+            "zolletta_metaskill.setup.php_tools_detector.PHPToolsDetector.detect_php_tools_from_composer",
+            return_value={},
+        ) as mock_composer:
+            PHPToolsDetector.detect_php_tools(tmp_path)
+        mock_composer.assert_called_once_with(tmp_path / "composer.json")
+
     # --- Tests for PHPToolsDetector.main(). ---
 
     def test_main_prints_json(
@@ -149,3 +157,25 @@ class TestPHPToolsDetector:
         assert rc == 0
         data = json.loads(out)
         assert all(not v["available"] for v in data.values())
+
+    def test_main_output_is_indented_json(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(sys, "argv", ["prog", str(tmp_path)])
+        PHPToolsDetector.main()
+        out = capsys.readouterr().out
+        assert '\n  "' in out
+
+    def test_main_help_prints_description(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(sys, "argv", ["prog", "-h"])
+        with pytest.raises(SystemExit):
+            PHPToolsDetector.main()
+        out = capsys.readouterr().out
+        assert "\nDetect PHP tool availability from composer.json and config files." in out

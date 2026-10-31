@@ -1,18 +1,20 @@
 ---
 audience: human, ai
 status: stable
-skills: [setup, review, patterns, documentor, python-*]
+skills: [setup, review, patterns, documentor, grice, python-*, php-*]
 ---
+
+# zolletta-metaskill
 
 ![zolletta-metaskill](assets/zolletta-meta-skill-192.png)
 
 A family of generic code review skills with specializations for Python and PHP (other languages in progress).
 
-_Zolletta_ is Italian for sugar cubes — each skill is a compact, self-contained piece that sweetens the review process. Together they dissolve into a complete picture.
+*Zolletta* is Italian for sugar cubes — each skill is a compact, self-contained piece that sweetens the review process. Together they dissolve into a complete picture.
 
 Zolletta-metaskill is a **meta-skill**: it dispatches to subcommands that each perform a specific review task. It leverages [tokensave](https://github.com/aovestdipaperino/tokensave) when available for semantic code-graph queries, and falls back to grep + targeted reads otherwise.
 
-If you maintain rules as part of your agent configuration, those are the single source of truth for their domain and apply to every subcommand. Sub-skills link back to them and only narrow behavior for their specific review context. Zolletta-metaskill **complements** your rules — it does not override them.
+If you maintain rules as part of your agent configuration, those are the single source of truth for their domain and apply to every subcommand. Subcommands link back to them and only narrow behavior for their specific review context. Zolletta-metaskill **complements** your rules — it does not override them.
 
 ## What it does
 
@@ -22,19 +24,17 @@ It runs as an AI agent skill inside tools like Claude Code, Cursor, Devin, and W
 - **Code style** — naming, typing, docstrings, linting (ruff, mypy, ty, PHPStan, Psalm)
 - **Testing style** — test isolation, naming, coverage gaps, mocking patterns
 - **Documentation** — Diátaxis compliance, drift detection, API validation
-- **Architecture** — ADR distillation, external-LLM review of modified files
+- **Architecture** — ADR distillation into review-ready directives
 
 ## Installation
 
 ```bash
-git clone https://github.com/Zolletta/zolletta-metaskill.git
-cd zolletta-metaskill
-./install.sh
+npx skills add zolletta/zolletta-metaskill
 ```
 
-The `install.sh` script copies the skill to `~/.agents/skills/zolletta-metaskill` and symlinks it into every detected AI agent tool's skills directory (Claude Code, Cursor, Gemini CLI, Devin, Windsurf, and others). See the [install guide](https://metaskill.zolletta.org/how-to/install/) for details and manual alternatives.
+The `skills` CLI copies the skill bundle to `~/.agents/skills/zolletta-metaskill` and links it into every detected AI agent tool's skills directory (Claude Code, Cursor, Gemini CLI, Devin, Windsurf, and others). See the [install guide](https://metaskill.zolletta.org/how-to/install/) for details and manual alternatives.
 
-## Try it out
+## Usage
 
 After installation, navigate to a project and run a full review:
 
@@ -45,7 +45,7 @@ cd /path/to/your/project
 
 The first time you run any subcommand in a project, the **setup guard** automatically runs `/zolletta-metaskill setup` if `.zolletta-metaskill/settings.json` does not exist.
 
-The orchestrator detects the language, runs all applicable skills in parallel, and writes reports to `.zolletta-metaskill/<timestamp>/reports/`. Start with `SUMMARY.md` for the overall grade and `TODO.md` for prioritized action items.
+The orchestrator detects the language, runs all applicable skills in parallel, and writes reports to `.zolletta-metaskill/<timestamp>/reports/`. Start with `SUMMARY.md` for the overall grade and the prioritized action items.
 
 For a focused review, run a single subcommand:
 
@@ -63,7 +63,7 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for development setup, testing, and th
 
 ## License
 
-MIT + Commons Clause. See [LICENSE](../LICENSE) and the `license` field in each subcommand's `SKILL.md` frontmatter.
+MIT + Commons Clause. See [LICENSE](../LICENSE) and the `license` field in each subcommand's `SUBCOMMAND.md` frontmatter.
 
 ## Attributions
 
