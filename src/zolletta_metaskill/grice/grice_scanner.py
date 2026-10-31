@@ -58,7 +58,7 @@ from zolletta_metaskill.grice.structs import DocumentFeatures, GriceReport, Maxi
 class GriceScanner:
     """Orchestrate the four maxim scorers over the documentation corpus."""
 
-    DEFAULT_ENABLED = False
+    DEFAULT_ENABLED = True
     DEFAULT_SETTINGS_PATH = ProjectConfig.DEFAULT_SETTINGS_PATH
 
     #: Below this many documents a corpus percentile is describing individual

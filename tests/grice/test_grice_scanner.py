@@ -50,8 +50,8 @@ def _argv(monkeypatch: pytest.MonkeyPatch) -> None:
 class TestGriceScanner:
     # --- is_enabled ---
 
-    def test_is_enabled_absent_toggle_returns_false(self) -> None:
-        assert GriceScanner.is_enabled({}) is False
+    def test_is_enabled_absent_toggle_returns_true(self) -> None:
+        assert GriceScanner.is_enabled({}) is True
 
     def test_is_enabled_true_toggle_returns_true(self) -> None:
         assert GriceScanner.is_enabled({"documentation": {"check_grice": True}}) is True
@@ -59,8 +59,8 @@ class TestGriceScanner:
     def test_is_enabled_false_toggle_returns_false(self) -> None:
         assert GriceScanner.is_enabled({"documentation": {"check_grice": False}}) is False
 
-    def test_is_enabled_non_boolean_toggle_returns_false(self) -> None:
-        assert GriceScanner.is_enabled({"documentation": {"check_grice": "yes"}}) is False
+    def test_is_enabled_non_boolean_toggle_returns_true(self) -> None:
+        assert GriceScanner.is_enabled({"documentation": {"check_grice": "yes"}}) is True
 
     # --- build: corpus ---
 
