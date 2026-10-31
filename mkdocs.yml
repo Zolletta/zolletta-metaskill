@@ -62,11 +62,11 @@ validation:
     not_found: info
     unrecognized_links: info
 
-exclude:
-  - explanation/adr/activity/
-
 plugins:
   - search
+  - exclude:
+      glob:
+        - explanation/adr/activity/*
   - git-revision-date-localized:
       type: date
       enable_creation_date: false
