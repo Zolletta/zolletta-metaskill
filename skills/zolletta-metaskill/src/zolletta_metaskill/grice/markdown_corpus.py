@@ -35,7 +35,8 @@ class MarkdownCorpus:
     SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+")
     BADGE_LINE = re.compile(r"^\s*(?:\[!\[[^\]]*\]\([^)]*\)\]\([^)]*\)|!\[[^\]]*\]\([^)]*\))\s*$")
     RULE = re.compile(r"^\s*(?:-{3,}|\*{3,}|_{3,})\s*$")
-    COMMENT_LINE = re.compile(r"^\s*<!--.*?(?:-->)?\s*$")
+    COMMENT_OPEN = "<!--"
+    COMMENT_CLOSE = "-->"
     FRONTMATTER = "---"
 
     @staticmethod
@@ -114,6 +115,7 @@ class MarkdownCorpus:
         numbers: list[int] = []
         sections: list[str] = []
         current: list[str] = []
+        lines = MarkdownCorpus._strip_comments(lines)
         in_fence = False  # pragma: no mutate — None is falsy like False, equivalent initial state
         for index, line in enumerate(lines):
             if FencedContent.is_fence(line):
@@ -176,11 +178,63 @@ class MarkdownCorpus:
             not counted here either.
 
         """
-        patterns = (
-            MarkdownCorpus.BADGE_LINE,
-            MarkdownCorpus.RULE,
-            MarkdownCorpus.COMMENT_LINE,
-        )
-        return sum(
-            len(line.split()) for line in lines if any(pattern.match(line) for pattern in patterns)
-        )
+        words = 0
+        in_comment = False
+        for line in lines:
+            if MarkdownCorpus.BADGE_LINE.match(line) or MarkdownCorpus.RULE.match(line):
+                words += len(line.split())
+                continue
+            rest = line
+            while rest:
+                if in_comment:
+                    end = rest.find(MarkdownCorpus.COMMENT_CLOSE)
+                    if end == -1:
+                        words += len(rest.split())
+                        rest = ""
+                    else:
+                        words += len(rest[:end].split()) + 1
+                        in_comment = False
+                        rest = rest[end + len(MarkdownCorpus.COMMENT_CLOSE) :]
+                else:
+                    start = rest.find(MarkdownCorpus.COMMENT_OPEN)
+                    if start == -1:
+                        break
+                    in_comment = True
+                    words += 1
+                    rest = rest[start + len(MarkdownCorpus.COMMENT_OPEN) :]
+        return words
+
+    @staticmethod
+    def _strip_comments(lines: list[str]) -> list[str]:
+        """Remove HTML comment regions while keeping line positions.
+
+        Comments may span several lines, so a single-line regex cannot catch
+        them; the walk tracks comment state instead, the same way it tracks
+        fences. The returned list has one entry per input line — comment
+        interiors are removed, everything else kept verbatim — so heading
+        line numbers stay true to the file.
+        """
+        stripped: list[str] = []
+        in_comment = False
+        for line in lines:
+            out = ""
+            rest = line
+            while rest:
+                if in_comment:
+                    end = rest.find(MarkdownCorpus.COMMENT_CLOSE)
+                    if end == -1:
+                        rest = ""
+                    else:
+                        in_comment = False
+                        rest = rest[end + len(MarkdownCorpus.COMMENT_CLOSE) :]
+                else:
+                    start = rest.find(MarkdownCorpus.COMMENT_OPEN)
+                    if start == -1:
+                        out += rest
+                        rest = ""
+                    else:
+                        out += rest[:start]
+                        in_comment = True
+                        rest = rest[start + len(MarkdownCorpus.COMMENT_OPEN) :]
+            stripped.append(out)
+        return stripped

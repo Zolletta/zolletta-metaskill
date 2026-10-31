@@ -20,6 +20,6 @@ This is a real output from `/zolletta-metaskill review` run on `playground/` —
 
 ## Report structure
 
-Every review produces a timestamped run folder under `.zolletta-metaskill/<YYYY-MM-DD-HH-MM>/` containing `reports/` (LLM judgment) and `cache/` (deterministic script outputs). The orchestrator launches subagents for each review area in parallel, each writing its own report to `reports/`. The orchestrator then aggregates grades into `reports/SUMMARY.md` and collects actionable items into `reports/TODO.md`.
+Every review produces a timestamped run folder under `.zolletta-metaskill/<YYYY-MM-DD-HH-MM>/` containing `reports/` (LLM judgment) and `cache/` (deterministic script outputs). The orchestrator launches subagents for each review area in parallel, each writing its own report to `reports/`. The orchestrator then aggregates grades and collects actionable items into `reports/SUMMARY.md`.
 
 See [Reports](../reports.md) for the file format specification and templates.

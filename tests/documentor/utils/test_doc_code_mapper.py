@@ -154,7 +154,7 @@ class TestDocCodeMapper:
         assert "authenticate" in refs["functions"]
         assert "client.py" in refs["files"]
         assert "api.md" in refs["files"]
-        assert "https://example.com" in refs["links"]
+        assert refs["links"] == {"https://example.com", "api.md"}
 
     def test_extract_references_external_and_anchor_links_not_files(self, tmp_path: Path) -> None:
         """http/https/mailto/anchor targets are links, never file references."""

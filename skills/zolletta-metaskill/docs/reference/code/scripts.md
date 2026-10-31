@@ -60,11 +60,11 @@ Test roots are scanned too: a test file must hold exactly one test class named a
 python3 src/zolletta_metaskill/code_style/general/one_class_per_file_scanner.py [--json]
 ```
 
-| Setting                                           | Default | Description                                         |
-|---------------------------------------------------|---------|-----------------------------------------------------|
-| `<lang>.code_style.check_one_class_per_file`      | true    | Per-language toggle                                 |
-| `<lang>.code_style.check_one_class_per_test_file` | true    | Also scan test roots (one test class per test file) |
-| `python.code_style.check_zero_class_files`        | false   | Hide 0-class (utility module) findings              |
+| Setting                                           | Default | Description                                                  |
+|---------------------------------------------------|---------|--------------------------------------------------------------|
+| `<lang>.code_style.check_one_class_per_file`      | true    | Per-language toggle                                          |
+| `<lang>.code_style.check_one_class_per_test_file` | true    | Also scan test roots (one test class per test file)          |
+| `<lang>.code_style.check_zero_class_files`        | true    | Report 0-class (utility module) findings; `false` hides them |
 
 **Exceptions**: `__init__.py` and `conftest.py` are always skipped. Files with 0 classes are reported as low severity.
 

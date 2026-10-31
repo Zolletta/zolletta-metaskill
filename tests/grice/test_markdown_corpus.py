@@ -170,6 +170,31 @@ class TestMarkdownCorpus:
         features = MarkdownCorpus.parse("docs/index.md", f"# Title\n\n{line}\n\nBody.\n")
         assert features.boilerplate_words == word_count
 
+    def test_parse_multiline_comment_is_excluded_from_prose(self) -> None:
+        """A comment spanning several lines contributes no prose words."""
+        features = MarkdownCorpus.parse(
+            "docs/index.md", "# Title\n\nReal prose.\n<!-- hidden\nstill hidden\n-->\nMore prose.\n"
+        )
+        assert "hidden" not in features.prose
+        assert "Real prose" in features.prose
+        assert "More prose" in features.prose
+
+    def test_parse_multiline_comment_counts_boilerplate_words(self) -> None:
+        """Every word inside a multi-line comment region is boilerplate."""
+        features = MarkdownCorpus.parse(
+            "docs/index.md", "# Title\n\nBody.\n<!-- one two\nthree -->\nTail.\n"
+        )
+        # `<!--`, `one`, `two`, `three`, `-->` — the whole comment region.
+        assert features.boilerplate_words == 5
+
+    def test_parse_unterminated_comment_drops_remainder(self) -> None:
+        """An unclosed comment swallows the rest of the file."""
+        features = MarkdownCorpus.parse(
+            "docs/index.md", "# Title\n\nReal prose.\n<!-- never closed\nstill hidden\n"
+        )
+        assert "hidden" not in features.prose
+        assert "Real prose" in features.prose
+
     def test_parse_prose_only_document_has_no_boilerplate(self) -> None:
         features = MarkdownCorpus.parse("docs/index.md", "# Title\n\nBody prose here.\n")
         assert features.boilerplate_words == 0

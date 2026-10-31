@@ -22,7 +22,7 @@ cd zolletta-metaskill
 uv sync --all-extras
 ```
 
-This installs all optional dependency groups: `dev` (pytest, ruff, mypy, ty, vulture) and `php` (tree-sitter, tree-sitter-php). Both are needed to run the full test suite and quality gate locally.
+This installs all optional dependency groups: `dev` (pytest, ruff, mypy, ty, vulture) and `php` (tree-sitter-php — `tree-sitter` itself is a hard dependency). Both are needed to run the full test suite and quality gate locally.
 
 Point git at the tracked hooks so the bundle's generated copies stay in sync on every commit (`dev-install.sh` does this too):
 
