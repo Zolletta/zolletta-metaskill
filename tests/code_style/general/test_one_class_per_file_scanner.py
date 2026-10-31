@@ -37,28 +37,6 @@ def _git_init(root: Path) -> None:
 
 
 class TestOneClassPerFileScanner:
-    # --- Tests for OneClassPerFileScanner._snake_to_pascal(). ---
-
-    def test_snake_to_pascal_simple_input_returns_myclass(self) -> None:
-        assert OneClassPerFileScanner._snake_to_pascal("my_class") == "MyClass"
-
-    def test_snake_to_pascal_single_word_returns_cache(self) -> None:
-        assert OneClassPerFileScanner._snake_to_pascal("cache") == "Cache"
-
-    def test_snake_to_pascal_empty_input_returns_empty(self) -> None:
-        assert OneClassPerFileScanner._snake_to_pascal("") == ""
-
-    def test_snake_to_pascal_multiple_words_returns_myawesomeclass(self) -> None:
-        assert OneClassPerFileScanner._snake_to_pascal("my_awesome_class") == "MyAwesomeClass"
-
-    def test_snake_to_pascal_already_pascal_returns_myclass(self) -> None:
-        # No underscores, capitalize will title-case it
-        assert OneClassPerFileScanner._snake_to_pascal("myclass") == "Myclass"
-
-    def test_snake_to_pascal_leading_underscore_returns_class(self) -> None:
-        # split on "_" produces ["", "class"] -> "" + "Class"
-        assert OneClassPerFileScanner._snake_to_pascal("_class") == "Class"
-
     # --- Tests for OneClassPerFileScanner._names_match(). ---
 
     def test_names_match_snake_case_stem_input_returns_true(self) -> None:

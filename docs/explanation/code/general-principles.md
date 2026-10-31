@@ -439,16 +439,16 @@ def process_order(order: Order) -> Result:
 
 **Why this matters**: focused functions are easier to test, name, and reuse. See [Clean Code — Function Size](https://wiki.c2.com/?FunctionSize).
 
-Deterministic enforcement: `function_length_scanner.py` flags functions spanning more than the configured `max_function_length` (default `100` lines — deliberately lenient because lines are not statements). A long function serving one purpose is not necessarily a finding — the sensor flags it for review.
+Deterministic enforcement: `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/function_length_scanner.py` flags functions spanning more than the configured `max_function_length` (default `125` lines — deliberately lenient because lines are not statements). A long function serving one purpose is not necessarily a finding — the sensor flags it for review.
 
 ```bash
-python3 src/zolletta_metaskill/code_style/general/function_length_scanner.py
+python3 skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/function_length_scanner.py
 ```
 
-`cyclomatic_complexity_scanner.py` complements it by counting decision points instead of lines: functions exceeding `max_cyclomatic_complexity` (default `12` — this skill's own default; ruff's built-in C901 default is 10) are flagged — a strong "extract collaborator" signal.
+`skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py` complements it by counting decision points instead of lines: functions exceeding `max_cyclomatic_complexity` (default `12` — this skill's own default; ruff's built-in C901 default is 10) are flagged — a strong "extract collaborator" signal.
 
 ```bash
-python3 src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py
+python3 skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py
 ```
 
 ## Dependency Injection
@@ -497,10 +497,10 @@ A **God class** is not defined by size (lines, methods, attributes). It is defin
 3. If the list has items from **different domains**, the class is a God class — split it.
 4. If all changes stem from the **same domain**, the class may be appropriately sized even if it is long.
 
-**File length** is enforced deterministically by `file_length_scanner.py` (language-agnostic — it counts lines; it scans the extensions of the project's configured language(s), reads the limit from `max_file_length` in `settings.json`, and skips anything git ignores):
+**File length** is enforced deterministically by `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/file_length_scanner.py` (language-agnostic — it counts lines; it scans the extensions of the project's configured language(s), reads the limit from `max_file_length` in `settings.json`, and skips anything git ignores):
 
 ```bash
-python3 src/zolletta_metaskill/code_style/general/file_length_scanner.py
+python3 skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/file_length_scanner.py
 ```
 
 **Manual triage** (when AST scripts are unavailable — e.g. PHP, Java):
@@ -527,7 +527,7 @@ grep -c "public function\|private function\|protected function" src/MyClass.php
 ### Symptoms (not proofs)
 
 - **7+ constructor parameters** — suggests too many responsibilities, not a DI problem.
-- **Long parameter lists on any function or method** — a signature with more declared parameters than the configured `max_arguments` (default `5`, pylint's `PLR0913`, which ruff implements as `pylint.max-args` — both default to 5) usually signals a missing parameter object or collaborator; `max_arguments_scanner.py` flags them deterministically.
+- **Long parameter lists on any function or method** — a signature with more declared parameters than the configured `max_arguments` (default `5`, pylint's `PLR0913`, which ruff implements as `pylint.max-args` — both default to 5) usually signals a missing parameter object or collaborator; `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/max_arguments_scanner.py` flags them deterministically.
 - **Methods from different layers** — API parsing + business logic + DB access + formatting.
 - **I/O mixed with business logic** — SQL/HTTP calls embedded in domain rules.
 - **High attribute count** — many `self.*` / `$this->` attributes suggest state for multiple concerns.

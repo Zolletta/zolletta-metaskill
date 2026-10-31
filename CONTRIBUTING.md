@@ -24,6 +24,12 @@ uv sync --all-extras
 
 This installs all optional dependency groups: `dev` (pytest, ruff, mypy, ty, vulture) and `php` (tree-sitter, tree-sitter-php). Both are needed to run the full test suite and quality gate locally.
 
+Point git at the tracked hooks so the bundle's generated copies stay in sync on every commit (`dev-install.sh` does this too):
+
+```bash
+git config core.hooksPath .githooks
+```
+
 ## Development workflow
 
 1. **Branch from `main`**: `git checkout -b feat/your-feature` (or `fix/`, `docs/`, `chore/`).
@@ -74,7 +80,7 @@ Findings from a self-review don't need to be resolved if they're informational, 
 
 ## Tests
 
-- Test files live in `tests/`, mirroring the `src/zolletta_metaskill/` structure.
+- Test files live in `tests/`, mirroring the `skills/zolletta-metaskill/src/zolletta_metaskill/` structure.
 - Run the full suite: `uv run pytest`
 - Run a single module: `uv run pytest tests/setup/`
 - Coverage target: 100% project-wide (both project and patch), enforced by [`codecov.yml`](codecov.yml).
@@ -99,14 +105,19 @@ Then open <http://127.0.0.1:8000>.
 ## Project structure
 
 ```text
-src/zolletta_metaskill/   # Python package (scanning scripts, engines, setup)
-skills/                   # SUBSKILL.md files for each subcommand (zolletta-metaskill-<name>/)
-docs/                     # Diátaxis-structured documentation
-tests/                    # Test suite (mirrors src/ structure)
-assets/                   # Logos and images
-install.sh                # One-command installer (clones latest git tag)
-dev-install.sh            # Dev installer (copies the working tree - You might want to use this when developing, it installs your working copy)
-install-manifest.txt      # Copy list shared by both installers
+skills/zolletta-metaskill/        # the installable bundle (what npx skills / gh skill ship)
+  SKILL.md                        # skill entry point
+  src/zolletta_metaskill/         # Python package (scanning scripts, engines, setup)
+  skills/zolletta-metaskill-*/    # SUBSKILL.md files for each subcommand
+  docs/                           # GENERATED — copies of the referenced docs (sync-bundle.sh)
+  pyproject.toml                  # version marker (bumped by semantic-release)
+docs/                           # Diátaxis-structured documentation (single source of truth)
+docs/assets/                    # Logos and images
+tests/                          # Test suite (mirrors src/ structure)
+dev-install.sh                  # Dev installer (copies the working tree — use when developing)
+sync-bundle.sh                  # Regenerates the bundle's copied files from bundle-files.txt
+bundle-files.txt                # Copy list for the bundle's generated files
+.githooks/                      # Tracked hooks — pre-commit runs sync-bundle.sh
 ```
 
 ## License

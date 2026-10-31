@@ -1,0 +1,225 @@
+---
+name: zolletta-metaskill-python-testing-style
+license: MIT
+description: >
+  Implements and reviews pytest suites — fixtures, mocking, TDD, and testing best practices. Use when writing Python tests or setting up suites. Do not use for application code style review.
+---
+
+# Python Testing Style
+
+Review skill for Python test code: test isolation, naming, coverage gaps, mocking patterns, fixture design, and AAA structure.
+
+> **Configuration source**: all project-level configuration (tool availability, effective pytest/coverage config) is read from `settings.json` — specifically the `python.tools.*` objects. Rule toggles are in `python.testing`. See the parent `SKILL.md` for the setup guard and the shared "Running tools" convention.
+>
+> **Review mode**: when this skill is invoked as part of a read-only review (e.g. `/zolletta-metaskill review`), follow the rules in [`../../docs/reference/code/review-mode.md`](../../docs/reference/code/review-mode.md) — do not apply fixes, classify diagnostics into auto-fixable (informational) vs. not auto-fixable (findings).
+>
+> **Execution protocol**: when running a review, follow `../../docs/reference/code/scripts-first-protocol.md` — batch-run the scripts listed in the per-subcommand table (`pytest --cov --cov-report=term-missing`, `test_naming_scanner.py --json`, plus `mutmut run` and `mutmut_survived_reporter.py` when `python.tools.mutmut.available` and `python.testing.check_mutation_testing`), persist their output to `cache/`, assemble deterministic report sections (coverage gaps from `cache/pytest_cov.txt`, naming violations from `cache/test_naming.json`, mutation results from `cache/mutmut_survived.txt`) from cached output, then run only the judgment pass items (indirect-coverage tracing for modules below the gap threshold, survived-mutant → suggested-test-name recommendations). Write your report to `reports/python-testing-patterns.md`. Do not re-read source files the scripts already parsed.
+
+## When to Use This Skill
+
+- Writing unit tests for Python code
+- Setting up test suites and test infrastructure
+- Implementing test-driven development (TDD)
+- Creating integration tests for APIs and services
+- Mocking external dependencies and services
+- Testing async code and concurrent operations
+- Testing database operations
+- Debugging failing tests
+
+## Coverage gap detection
+
+> **Scope boundary**: the `/zolletta-metaskill patterns` subcommand runs `test_structure_scanner.py` which produces a "Missing tests" table — a **structural** check (no `test_<module>.py` file exists). That is a structural finding owned by `patterns`. This skill owns **coverage gap analysis** using `pytest --cov` — checking whether code is actually exercised by tests, regardless of file naming. Do not duplicate the structural check. If `test_structure_scanner.py` already flagged a file as structurally missing a test, reference that finding but focus on whether the code is actually covered.
+
+When reviewing test coverage, **never rely on grep alone** to determine if a class is tested. A class with zero direct references in test files may still be well-covered through indirect calls. Follow this procedure:
+
+### Step 1 — Run coverage (mandatory)
+
+You **must** run coverage before flagging any coverage gap. Do not skip this step. Follow the shared "Running tools" convention from the parent `SKILL.md` (container/uv detection) to run `pytest --cov`.
+
+The project's `pyproject.toml` may already configure coverage options under `[tool.coverage.run]` and `[tool.pytest.ini_options]`. If so, a plain `pytest --cov` will use those settings — no need to add extra flags.
+
+Read the coverage output. If a module shows coverage **above `coverage_well_covered_threshold`** (from `python.testing` in `settings.json`, default `80`), it is well-covered — do not flag it as a coverage gap even if there are no direct test references. The code is exercised through integration tests or indirect calls.
+
+### Step 2 — Check for indirect coverage
+
+If a class has no direct test file but coverage is non-zero, trace the call chain:
+
+1. Use `tokensave tool callers` (if tokensave is available — or the `tokensave_callers` MCP tool on binaries older than 7.14) to find who calls the class
+2. For each caller, check if it is instantiated **for real** (not mocked) in any test
+3. If a caller is real (not `MagicMock()` or `patch()`), the class is indirectly covered
+
+**Key distinction**: `ci_linter=MagicMock()` means the class is NOT covered. `ci_linter=CILinter(mock_gitlab_manager)` means the class IS covered (real instance with mocked dependencies).
+
+### Step 3 — Only flag as a gap if coverage is genuinely low
+
+Only report a coverage gap when:
+
+- Coverage is **below `coverage_gap_threshold`** (from `python.testing`, default `50`) AND
+- There are no direct test references AND
+- All callers are mocked in tests (no real instances)
+
+If any of these conditions is false, the class has adequate coverage — do not flag it.
+
+### Step 4 — For genuine gaps, check callers' test style
+
+If you find a genuine gap, check whether the caller's tests mock the class or use a real instance. This determines the fix:
+
+- If callers mock the class → recommend a direct unit test file for the class itself
+- If callers use real instances but don't exercise all branches → recommend adding edge-case tests
+
+## Mutation testing
+
+> **Conditional sensor**: run it only when `python.tools.mutmut.available` is `true` AND `python.testing.check_mutation_testing` is not `false` AND the `pytest --cov` step ran successfully — mutmut executes the test suite per mutant, so a red suite makes results meaningless. If the tool is unavailable or the toggle is off, skip with a note (same pattern as vulture).
+
+Coverage tells you what was *executed*; mutation testing tells you what was *verified*. mutmut mutates the source at AST level (swap operators, constants, etc.) and runs the existing test suite against each mutant — a survived mutant is a test gap the suite did not catch.
+
+### Run
+
+Follow the shared "Running tools" convention (container/uv detection) from the parent `SKILL.md`.
+
+- `mutation_target: "all"` — plain `mutmut run`.
+- `mutation_target: "changed"` (default) — compute the changed-file list (uncommitted changes plus committed changes vs the merge-base with the default branch), filter it to `python.paths.source` `.py` files, and pass matching mutant-name patterns to `mutmut run`:
+
+```bash
+BASE=$(git merge-base HEAD "$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)")
+{ git status --porcelain | awk '{print $2}'; git diff --name-only "$BASE"...HEAD; } | sort -u
+```
+
+Map each changed file to a mutant-name pattern: strip the `.py` suffix, replace `/` with `.`, drop a leading `src.` segment (mutmut strips it from mutant names), append `.*` — e.g. `src/foo/bar.py` → `foo.bar.*`, `app/baz.py` → `app.baz.*`. Then `mutmut run foo.bar.* app.baz.*`.
+
+If `changed` can't be resolved (not a git repo, no merge-base) or the changed set is empty, **skip with a note** — never silently fall back to an `all` run.
+
+### Report
+
+Persist `mutmut run` output to `cache/mutmut.txt`, then run the deterministic reporter and persist its output to `cache/mutmut_survived.txt`:
+
+```bash
+python3 ../../src/zolletta_metaskill/testing_style/python/mutmut_survived_reporter.py
+```
+
+The reporter wraps `mutmut results` + `mutmut show` and prints the status counts, a `Mutation score: X% (threshold: Y%) — PASS/FAIL` line (`python.testing.mutation_score_threshold`), and up to `mutation_max_mutants` survived mutants with `file:line`, the mutated-line diff, and the mutant name.
+
+`mutmut run` writes a `mutants/` result-cache directory in the project root — it is disposable; ensure it is git-ignored, do not commit it.
+
+Severity mapping: mutation score below `mutation_score_threshold` → high finding; each survived mutant → medium finding with a suggested test name; timeout mutants → low/informational (counts only).
+
+## Review rules
+
+### Always-on rules (cannot be disabled)
+
+| # | Area      | Name                                                                                                               |
+|---|-----------|--------------------------------------------------------------------------------------------------------------------|
+| 1 | Structure | AAA pattern (Arrange, Act, Assert)                                                                                 |
+| 2 | Isolation | Tests must be independent — no shared state, each test cleans up after itself                                      |
+| 3 | Coverage  | Coverage gap detection is mandatory (run `pytest --cov` before flagging any gap)                                   |
+| 4 | Scope     | Do not duplicate the structural "missing test file" check from `patterns` — this skill owns coverage analysis only |
+
+### Configurable settings (stored in `settings.json` under `python.testing`)
+
+| #  | Area     | Name                                                         | Key                               | Default   |
+|----|----------|--------------------------------------------------------------|-----------------------------------|-----------|
+| 5  | Coverage | Coverage gap threshold (below X% = gap)                      | `coverage_gap_threshold`          | `50`      |
+| 6  | Coverage | Well-covered threshold (above X% = don't flag)               | `coverage_well_covered_threshold` | `80`      |
+| 7  | Naming   | Test naming convention (`test_<unit>_<scenario>_<expected>`) | `check_test_naming`               | `true`    |
+| 8  | Mutation | Mutation testing run (requires `python.tools.mutmut`)        | `check_mutation_testing`          | `true`    |
+| 9  | Mutation | Mutation score threshold (below X% = finding)                | `mutation_score_threshold`        | `80`      |
+| 10 | Mutation | Mutation target (`changed` files / `all`)                    | `mutation_target`                 | `changed` |
+| 11 | Mutation | Max survived mutants detailed in the report                  | `mutation_max_mutants`            | `50`      |
+
+## Detailed rule explanations
+
+### #1 — AAA pattern (always-on)
+
+Each test follows the Arrange-Act-Assert structure:
+
+- **Arrange**: set up test data and preconditions
+- **Act**: execute the code under test
+- **Assert**: verify the results
+
+### #2 — Test isolation (always-on)
+
+Tests must be independent. No shared mutable state between tests. Each test should clean up after itself. Use fixtures with appropriate scopes (`function`, `module`, `session`) to manage shared resources without coupling tests.
+
+### #3 — Coverage gap detection (always-on)
+
+Run `pytest --cov` before flagging any coverage gap. Never rely on grep alone — a class with zero direct test references may be well-covered through indirect calls. Follow the 4-step procedure above.
+
+### #4 — Scope boundary (always-on)
+
+Do not duplicate the structural "missing test file" check from `test_structure_scanner.py` (owned by `patterns`). This skill owns coverage analysis: whether code is actually exercised by tests, not whether a `test_<module>.py` file exists.
+
+### #5 — Coverage gap threshold (configurable: `coverage_gap_threshold`)
+
+Only report a coverage gap when module coverage is below this percentage. The default is `50` — below this, the code is genuinely under-tested. Above it, the code may be indirectly covered through integration tests.
+
+- **Type**: integer (0–100)
+- **Default**: `50`
+
+### #6 — Well-covered threshold (configurable: `coverage_well_covered_threshold`)
+
+If a module shows coverage above this percentage, do not flag it as a coverage gap even if there are no direct test references. The code is exercised through integration tests or indirect calls. The default is `80`.
+
+- **Type**: integer (0–100)
+- **Default**: `80`
+
+### #7 — Test naming convention (configurable: `check_test_naming`)
+
+Test functions should follow the pattern `test_<unit>_<scenario>_<expected_outcome>`. The name should be descriptive enough to understand what is being tested without reading the body.
+
+- **Default**: `true`
+- **Enforcement**: `test_naming_scanner.py` from `../../src/zolletta_metaskill/testing_style/python/` (deterministic). The scanner counts underscore-separated segments after the `test_` prefix and flags functions with fewer than `testing.test_naming_min_segments` (default: 3). This replaces manual review, which was non-deterministic and produced different violation counts on each run.
+
+```bash
+python3 ../../src/zolletta_metaskill/testing_style/python/test_naming_scanner.py
+```
+
+**Good names**: `test_create_user_with_valid_data_returns_user`, `test_login_fails_with_invalid_password` **Bad names**: `test_1`, `test_user`, `test_function`, `test_init`, `test_to_dict`
+
+> The scanner is the single source of truth for this rule. Do not manually flag test names that the scanner doesn't flag — the segment count is the objective criterion. If the team disagrees with the threshold, change `testing.test_naming_min_segments` in `settings.json`, not the scanner output.
+
+### #8 — Mutation testing (configurable: `check_mutation_testing`)
+
+When `python.tools.mutmut.available` is `true`, the review runs `mutmut` on the `mutation_target` scope and reports survived mutants as test gaps. Because mutation runs multiply the test suite's runtime by the mutant count, the toggle lets a project opt out without uninstalling the tool.
+
+- **Default**: `true` (still skipped unless `python.tools.mutmut.available`)
+- **Enforcement**: `mutmut run` + `mutmut_survived_reporter.py` from `../../src/zolletta_metaskill/testing_style/python/` (deterministic). The reporter parses `mutmut results`/`mutmut show` output — survived mutants, per-file diffs, and the threshold PASS/FAIL line come from its cached output, not manual interpretation.
+
+### #9 — Mutation score threshold (configurable: `mutation_score_threshold`)
+
+The mutation score (killed / evaluated mutants) below this percentage is flagged as a high-severity finding. The default is `80`.
+
+- **Type**: integer (0–100)
+- **Default**: `80`
+
+### #10 — Mutation target (configurable: `mutation_target`)
+
+`changed` (default) mutates only files changed vs the merge-base with the default branch plus uncommitted changes — the incremental mode Martin Fowler's sensor guidance calls for during coding sessions. `all` mutates the whole codebase — slow, intended for scheduled/CI reviews.
+
+- **Type**: string (`changed` | `all`)
+- **Default**: `changed`
+
+### #11 — Max detailed survivors (configurable: `mutation_max_mutants`)
+
+Caps how many survived mutants `mutmut_survived_reporter.py` details with file/line/diff. Keeps reports bounded on large runs.
+
+- **Type**: integer (≥1)
+- **Default**: `50`
+
+## Output
+
+When this skill runs a review, it writes its findings to a markdown file using the [report template](assets/report_template.md):
+
+- **Path**: `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/python-testing-patterns.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`; `runs_dir` from `settings.json`, default `.zolletta-metaskill`)
+- **Compound skills** (e.g. `zolletta-metaskill-review`) may override the directory and filename — follow their instructions instead
+- **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the setup guard (`../../SKILL.md#setup-guard`) — no manual setup needed
+- **Format**: follow the [report template](assets/report_template.md) — grade at the top, coverage summary, coverage gaps table, findings grouped by severity with file/test-symbol/rule/issue/fix columns
+
+## Safety
+
+- `pytest --cov` executes the project's test suite — follow the container/uv detection convention; never run suites that mutate external state unattended.
+- `mutmut run` is expensive and writes a disposable `mutants/` result cache in the project root — always scope it via `mutation_target` (default `changed`); never run an unscoped `all` run as part of a review, and ensure `mutants/` stays git-ignored.
+- Scanner invocations (`python3 ../../src/zolletta_metaskill/testing_style/…`) are read-only on source; review artifacts go under `<runs_dir>/<timestamp>/` only.
+
+## Attribution
+
+This skill is adapted from [python-testing-patterns](https://github.com/wshobson/agents/tree/main/plugins/python-development/skills/python-testing-patterns) by Seth Hobson ([wshobson/agents](https://github.com/wshobson/agents)), licensed under the MIT License. Copyright (c) 2024 Seth Hobson.

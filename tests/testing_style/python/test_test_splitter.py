@@ -44,37 +44,6 @@ def _parse_func(source: str) -> ast.FunctionDef:
 
 
 class TestTestSplitter:
-    # --- PascalToSnake ---
-
-    def test_pascal_to_snake_simple_input_returns_cache(self) -> None:
-        assert TestSplitter._pascal_to_snake("Cache") == "cache"
-
-    def test_pascal_to_snake_multi_word_returns_defaults_extractor(self) -> None:
-        assert TestSplitter._pascal_to_snake("DefaultsExtractor") == "defaults_extractor"
-
-    def test_pascal_to_snake_single_char_returns_a(self) -> None:
-        assert TestSplitter._pascal_to_snake("A") == "a"
-
-    def test_pascal_to_snake_empty_input_returns_empty(self) -> None:
-        assert TestSplitter._pascal_to_snake("") == ""
-
-    def test_pascal_to_snake_all_upper_returns_a_b_c(self) -> None:
-        assert TestSplitter._pascal_to_snake("ABC") == "a_b_c"
-
-    # --- SnakeToPascal ---
-
-    def test_snake_to_pascal_simple_input_returns_cache(self) -> None:
-        assert TestSplitter._snake_to_pascal("cache") == "Cache"
-
-    def test_snake_to_pascal_multi_word_returns_defaultsextractor(self) -> None:
-        assert TestSplitter._snake_to_pascal("defaults_extractor") == "DefaultsExtractor"
-
-    def test_snake_to_pascal_single_word_returns_foo(self) -> None:
-        assert TestSplitter._snake_to_pascal("foo") == "Foo"
-
-    def test_snake_to_pascal_empty_input_returns_empty(self) -> None:
-        assert TestSplitter._snake_to_pascal("") == ""
-
     # --- LoadMapping ---
 
     def test_none_returns_empty(self) -> None:

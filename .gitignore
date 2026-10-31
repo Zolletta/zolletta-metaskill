@@ -4,9 +4,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
+.cache/
 mutants/
 .tokensave/
 # Everything under .zolletta-metaskill/ is machine-local — caches, run folders,

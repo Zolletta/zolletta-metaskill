@@ -33,7 +33,7 @@ Ordered from weakest to strongest:
 | **Functional** | Business-logic semantics — *how* the other side works     | `call`/`new` — behavior is invoked, not just referenced                 |
 | **Intrusive**  | Implementation details — privates, internals              | Reaching into internals; `extends` of a concrete class; monkey-patching |
 
-Strength is a judgment call informed by the `integration_graph_scanner.py` usage hints, not derived from them — read the flagged edge's code when the hint alone is ambiguous (e.g. `call` on a stable public factory is contract-ish; `call` on a method exposing internals is functional or intrusive).
+Strength is a judgment call informed by the `skills/zolletta-metaskill/src/zolletta_metaskill/patterns/general/integration_graph_scanner.py` usage hints, not derived from them — read the flagged edge's code when the hint alone is ambiguous (e.g. `call` on a stable public factory is contract-ish; `call` on a method exposing internals is functional or intrusive).
 
 ## Distance
 
@@ -89,10 +89,10 @@ This review runs without asking the user questions:
 
 ## Enforcement
 
-`integration_graph_scanner.py` emits the internal edges and usage hints that seed the assessment — it is a triage artifact, not a verdict. The judgment pass (see the patterns skill's mandatory coupling-assessment step) classifies strength, distance, and volatility per cross-module edge and applies the balance rule.
+`skills/zolletta-metaskill/src/zolletta_metaskill/patterns/general/integration_graph_scanner.py` emits the internal edges and usage hints that seed the assessment — it is a triage artifact, not a verdict. The judgment pass (see the patterns skill's mandatory coupling-assessment step) classifies strength, distance, and volatility per cross-module edge and applies the balance rule.
 
 ```bash
-python3 src/zolletta_metaskill/patterns/general/integration_graph_scanner.py --json
+python3 skills/zolletta-metaskill/src/zolletta_metaskill/patterns/general/integration_graph_scanner.py --json
 ```
 
 ## Attribution

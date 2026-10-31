@@ -1,0 +1,398 @@
+#!/usr/bin/env python3
+"""PHP Dependency Inversion Principle (DIP) validator.
+
+Detects ``new ClassName()`` inside class methods — a DIP violation.  When a
+class instantiates a dependency directly in its constructor (or any method)
+using ``new``, it is tightly coupled to that concrete class instead of
+receiving it via dependency injection.
+
+Since :class:`~zolletta_metaskill.core.structs.ModuleInfo` does not capture
+``new`` expressions, this scanner uses
+:meth:`PHPEngine.parse_raw` to access the tree-sitter AST directly.
+
+Scan roots come from ``php.autoload.psr-4`` in ``settings.json``. The check
+runs when ``php.patterns.check_dip`` is not ``false``. File enumeration is
+git-ignore aware.
+
+Usage:
+    python3 dependency_inversion_scanner.py [--json]
+
+Options:
+    --json          Output as JSON instead of markdown.
+
+Exit code: 0 always (report-only).
+
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+from tree_sitter import Node
+
+from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
+from zolletta_metaskill.core.engine.raw_ast_engine import RawASTEngine
+from zolletta_metaskill.core.project_config import ProjectConfig
+from zolletta_metaskill.core.structs import Finding, ModuleInfo
+
+
+class DependencyInversionScanner:
+    """PHP Dependency Inversion Principle (DIP) validator.
+
+    Detects ``new ClassName()`` inside class methods — a DIP violation.
+    All functions are exposed as ``@staticmethod`` methods on this class.
+    """
+
+    # PHP built-in / scalar types that are not "real" dependencies.
+    _PHP_BUILTIN_TYPES = frozenset(
+        {
+            "array",
+            "string",
+            "int",
+            "float",
+            "bool",
+            "null",
+            "void",
+            "mixed",
+            "object",
+            "callable",
+            "iterable",
+            "self",
+            "static",
+            "parent",
+            "stdClass",
+            "ArrayObject",
+            "SplStack",
+            "SplQueue",
+            "SplDoublyLinkedList",
+            "DateTime",
+            "DateTimeImmutable",
+            "DateInterval",
+            "DatePeriod",
+            "Exception",
+            "RuntimeException",
+            "InvalidArgumentException",
+            "TypeError",
+            "ValueError",
+            "Error",
+            "LogicException",
+            "RangeException",
+            "OverflowException",
+            "UnderflowException",
+            "OutOfBoundsException",
+            "DomainException",
+            "LengthException",
+            "UnexpectedValueException",
+            "BadFunctionCallException",
+            "BadMethodCallException",
+            "UninitializedPropertyError",
+        }
+    )
+
+    # Minimum number of methods a class needs before we skip "factory" detection.
+    # A class whose name contains "Factory" or "Builder" is considered a composition
+    # root where object creation is expected.
+
+    @staticmethod
+    def _is_factory(class_name: str) -> bool:
+        """Return ``True`` if *class_name* suggests a factory or builder."""
+        return "Factory" in class_name or "Builder" in class_name
+
+    @staticmethod
+    def _is_real_dependency(class_name: str) -> bool:
+        """Return ``True`` if *class_name* is a real dependency (not a built-in)."""
+        return class_name not in DependencyInversionScanner._PHP_BUILTIN_TYPES
+
+    @staticmethod
+    def _iter_descendants(node: Node) -> list[Node]:
+        """Yield all descendants of *node* in document order (pre-order)."""
+        result: list[Node] = []
+        stack: list[Node] = list(reversed(node.children))
+        while stack:
+            current = stack.pop()
+            result.append(current)
+            for child in reversed(current.children):
+                stack.append(child)
+        return result
+
+    @staticmethod
+    def _extract_class_name_from_new(node: Node, source: bytes) -> str | None:
+        """Extract the class name from an ``object_creation_expression`` node.
+
+        The node looks like::
+
+            object_creation_expression
+              new
+              name              <- simple class name
+              arguments
+
+        Or with a qualified name::
+
+            object_creation_expression
+              new
+              qualified_name
+                name
+                name
+              arguments
+
+        """
+        for child in node.children:
+            if child.type == "name":
+                # pragma: no mutate start — "utf-8" is decode's default, name case-insensitive
+                return source[child.start_byte : child.end_byte].decode("utf-8", errors="replace")
+                # pragma: no mutate end
+            if child.type == "qualified_name":
+                # Collect all ``name`` descendants in order and join with ``\``.
+                parts: list[str] = []
+                for desc in DependencyInversionScanner._iter_descendants(child):
+                    if desc.type == "name":
+                        # pragma: no mutate start — "utf-8" is decode's default anyway
+                        parts.append(
+                            source[desc.start_byte : desc.end_byte].decode(
+                                "utf-8", errors="replace"
+                            )
+                        )
+                        # pragma: no mutate end
+                if parts:  # pragma: no branch — qualified_name always has names
+                    return "\\".join(parts)
+        return None  # pragma: no cover
+
+    @staticmethod
+    def _find_new_in_method(method_node: Node, source: bytes) -> list[tuple[str, int]]:
+        """Find all ``new ClassName()`` calls within a method body.
+
+        Args:
+            method_node: A ``method_declaration`` tree-sitter node.
+            source: The raw source bytes.
+
+        Returns:
+            A list of ``(class_name, line_number)`` tuples.
+
+        """
+        violations: list[tuple[str, int]] = []
+        for desc in DependencyInversionScanner._iter_descendants(method_node):
+            if desc.type == "object_creation_expression":
+                class_name = DependencyInversionScanner._extract_class_name_from_new(desc, source)
+                if class_name and DependencyInversionScanner._is_real_dependency(class_name):
+                    line = desc.start_point[0] + 1
+                    violations.append((class_name, line))
+        return violations
+
+    @staticmethod
+    def _find_class_name(class_node: Node, source: bytes) -> str:
+        """Extract the class name from a ``class_declaration`` node."""
+        for child in class_node.children:
+            if child.type == "name":
+                # pragma: no mutate start — "utf-8" is decode's default, name case-insensitive
+                return source[child.start_byte : child.end_byte].decode("utf-8", errors="replace")
+                # pragma: no mutate end
+        return ""  # pragma: no cover, no mutate — a class_declaration always has a name child
+
+    @staticmethod
+    def _find_method_name(method_node: Node, source: bytes) -> str:
+        """Extract the method name from a ``method_declaration`` node."""
+        for child in method_node.children:
+            if child.type == "name":
+                # pragma: no mutate start — "utf-8" is decode's default, name case-insensitive
+                return source[child.start_byte : child.end_byte].decode("utf-8", errors="replace")
+                # pragma: no mutate end
+        return ""  # pragma: no cover, no mutate — a method_declaration always has a name child
+
+    @staticmethod
+    def _scan_class_methods(
+        child: Any, class_name: str, source: bytes, file_path: str, findings: list[Finding]
+    ) -> None:
+        """Scan methods inside a class declaration for direct instantiations."""
+        body = None  # pragma: no mutate — every class_declaration has a declaration_list
+        for c in child.children:
+            if c.type == "declaration_list":
+                body = c
+                break
+        if body is None:  # pragma: no cover
+            return  # pragma: no cover
+
+        for member in body.children:
+            if member.type != "method_declaration":
+                continue
+            method_name = DependencyInversionScanner._find_method_name(member, source)
+            new_calls = DependencyInversionScanner._find_new_in_method(member, source)
+            for created_class, line in new_calls:
+                findings.append(
+                    Finding(
+                        file=file_path,
+                        line=line,
+                        category="dip",
+                        severity="medium",
+                        description=(
+                            f"{class_name}::{method_name}() instantiates "
+                            f"'{created_class}' directly — depend on an "
+                            f"abstraction instead (inject via constructor)"
+                        ),
+                        fix_type="manual",
+                    )
+                )
+
+    @staticmethod
+    def _scan_tree(path: Path) -> list[Finding]:
+        """Parse *path* with PHPEngine and walk the raw AST for DIP violations.
+
+        This is the core detection logic that uses tree-sitter directly.
+        """
+        EngineRegistry.ensure_php()
+        engine = EngineRegistry.get_for_file(path)
+        # pragma: no mutate start — only RawASTEngine engines reach _scan_tree
+        if engine is None or not isinstance(engine, RawASTEngine):  # pragma: no cover
+            return []  # pragma: no cover
+        # pragma: no mutate end
+
+        try:
+            tree, source = engine.parse_raw(path)
+        except (OSError, ImportError):  # pragma: no cover
+            return []  # pragma: no cover
+
+        root = tree.root_node
+        if root.has_error:  # pragma: no cover
+            return []  # pragma: no cover
+
+        findings: list[Finding] = []
+        file_path = str(path)
+
+        for child in root.children:
+            if child.type != "class_declaration":
+                continue
+            class_name = DependencyInversionScanner._find_class_name(child, source)
+            if not class_name or DependencyInversionScanner._is_factory(class_name):
+                continue
+            DependencyInversionScanner._scan_class_methods(
+                child, class_name, source, file_path, findings
+            )
+
+        return findings
+
+    @staticmethod
+    def scan_module(module: ModuleInfo) -> list[Finding]:
+        """Scan a parsed PHP module and return DIP findings.
+
+        Since :class:`ModuleInfo` does not capture ``new`` expressions, this
+        method re-parses the file using :meth:`PHPEngine.parse_raw` to access
+        the tree-sitter AST.
+
+        Args:
+            module: The :class:`ModuleInfo` produced by :meth:`PHPEngine.parse_module`.
+
+        Returns:
+            A list of :class:`Finding` objects with category ``"dip"``.
+
+        """
+        if module.has_syntax_error:
+            return []
+        if module.language != "php":
+            return []
+        return DependencyInversionScanner._scan_tree(module.path)
+
+    @staticmethod
+    def scan_file(path: Path) -> list[Finding]:
+        """Scan a single PHP file for DIP violations.
+
+        Args:
+            path: Path to a ``.php`` source file.
+
+        Returns:
+            A list of :class:`Finding` objects (empty if no engine matches,
+            the file has a syntax error, or tree-sitter-php is not installed).
+
+        """
+        EngineRegistry.ensure_php()
+        engine = EngineRegistry.get_for_file(path)
+        if engine is None:  # pragma: no cover
+            return []
+        module = engine.parse_module(path)
+        return DependencyInversionScanner.scan_module(module)
+
+    @staticmethod
+    def main() -> int:
+        """Entry point for the PHP Dependency Inversion validator CLI."""
+        # pragma: no mutate start — help text is not a tested contract
+        parser = argparse.ArgumentParser(
+            description=(
+                "PHP Dependency Inversion validator — detect 'new Dep()' "
+                "in constructors and methods."
+            )
+        )
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        # pragma: no mutate end
+        args = parser.parse_args()
+
+        EngineRegistry.ensure_php()
+
+        settings = ProjectConfig.load_settings()
+        languages = ProjectConfig.scan_languages(settings, "patterns.check_dip")
+        php_langs = ProjectConfig.languages_for_extensions(languages, {".php"})
+        if not php_langs:
+            ProjectConfig.emit_skipped(args.json, "check_dip disabled in settings.json")
+            return 0
+
+        roots = ProjectConfig.existing_roots(ProjectConfig.source_roots(settings, php_langs))
+        if not roots:
+            print(
+                "Error: no configured source directories exist on disk",
+                file=sys.stderr,
+            )
+            return 1
+
+        all_findings: list[Finding] = []
+        scanned_files = 0
+        for root in roots:
+            for php_file in ProjectConfig.iter_files(root, {".php"}):
+                scanned_files += 1
+                all_findings.extend(DependencyInversionScanner.scan_file(php_file))
+
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "directories": [str(r) for r in roots],
+                        "scanned_files": scanned_files,
+                        "violation_count": len(all_findings),
+                        "violations": [
+                            {
+                                "file": f.file,
+                                "line": f.line,
+                                "severity": f.severity,
+                                "description": f.description,
+                            }
+                            for f in all_findings
+                        ],
+                    },
+                    indent=2,
+                )
+            )
+            return 0
+
+        print("=" * 70)
+        print("PHP DEPENDENCY INVERSION (DIP) — VALIDATION REPORT")
+        print("=" * 70)
+
+        if all_findings:
+            print(f"\n## DIP violations ({len(all_findings)} found)\n")
+            for f in all_findings:
+                print(f"  {f.description}")
+                print(f"    -> {f.file}:{f.line}")
+                print("    Fix: inject the dependency via constructor instead of 'new'")
+        else:
+            print("\n## DIP violations: none")
+
+        print()
+        if all_findings:
+            print("Result: DIP violations found (report-only mode)")
+        else:
+            print("Result: all clear")
+        return 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    sys.exit(DependencyInversionScanner.main())  # pragma: no cover

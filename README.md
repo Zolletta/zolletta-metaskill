@@ -6,7 +6,7 @@ skills: [setup, review, patterns, documentor, grice, python-*, php-*]
 
 # Zolletta-metaskill
 
-![zolletta-metaskill](assets/zolletta-meta-skill-192.png)
+![zolletta-metaskill](docs/assets/zolletta-meta-skill-192.png)
 
 [![Tests](https://github.com/Zolletta/zolletta-metaskill/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Zolletta/zolletta-metaskill/actions/workflows/tests.yml)
 [![Coverage](https://codecov.io/gh/Zolletta/zolletta-metaskill/branch/main/graph/badge.svg)](https://codecov.io/gh/Zolletta/zolletta-metaskill/branch/main)
@@ -29,10 +29,10 @@ If you maintain rules as part of your agent configuration, those are the single 
 ## Installation
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Zolletta/zolletta-metaskill/main/install.sh | bash
+npx skills add zolletta/zolletta-metaskill
 ```
 
-The `install.sh` script clones the latest git tag, copies the files listed in `install-manifest.txt` to `~/.agents/skills/zolletta-metaskill`, and symlinks it into every detected AI agent tool's skills directory (Claude Code, Cursor, Gemini CLI, Devin, OpenCode, Windsurf, and others). See the [install guide](https://metaskill.zolletta.org/how-to/install/) for details and manual alternatives.
+The `skills` CLI copies the bundle from `skills/zolletta-metaskill/` to `~/.agents/skills/zolletta-metaskill` and links it into every detected AI agent tool's skills directory (Claude Code, Cursor, Gemini CLI, Devin, OpenCode, Windsurf, and others). Pin a release with `npx skills add zolletta/zolletta-metaskill#v3.7.0`, update with `npx skills update zolletta-metaskill`, remove with `npx skills remove zolletta-metaskill`. See the [install guide](https://metaskill.zolletta.org/how-to/install/) for details and manual alternatives.
 
 ## Usage
 
@@ -62,7 +62,7 @@ New to Zolletta-metaskill? Read the [getting started tutorial](https://metaskill
 
 Zolletta-metaskill exposes no library API — it is a set of agent skills driven from the command line. The interface is the `/zolletta-metaskill <subcommand>` invocation, where `<subcommand>` selects exactly one skill: `setup`, `review`, `patterns`, `documentor`, `grice`, `python-code-style`, `python-testing-style`, `php-code-style`, `php-testing-style`, `adr-distiller`, or `help`.
 
-Each subcommand is self-contained: it reads its thresholds and scan roots from `.zolletta-metaskill/settings.json`, runs the scanners under `src/zolletta_metaskill/`, and writes a report into the run folder. The scanners are plain scripts with a `[--json]` flag and no positional arguments, so they can also be run directly from the repository root in CI or for dogfooding. See the [subcommands reference](https://metaskill.zolletta.org/reference/subcommands/) for the dispatch contract and the [scripts reference](https://metaskill.zolletta.org/reference/code/scripts/) for the command-line contract.
+Each subcommand is self-contained: it reads its thresholds and scan roots from `.zolletta-metaskill/settings.json`, runs the scanners under `skills/zolletta-metaskill/src/zolletta_metaskill/`, and writes a report into the run folder. The scanners are plain scripts with a `[--json]` flag and no positional arguments, so they can also be run directly from the repository root in CI or for dogfooding. See the [subcommands reference](https://metaskill.zolletta.org/reference/subcommands/) for the dispatch contract and the [scripts reference](https://metaskill.zolletta.org/reference/code/scripts/) for the command-line contract.
 
 ## Contributing
 

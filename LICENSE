@@ -6,4 +6,4 @@ This project is licensed under **MIT + Commons Clause**.
 - Commons Clause v1.0: https://commonsclause.com/
 
 Per-skill license details are declared in the `license` field of each
-`SKILL.md` frontmatter.
+`SKILL.md/COMMAND.md` frontmatter.

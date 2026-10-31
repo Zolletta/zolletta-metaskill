@@ -403,7 +403,7 @@ class TestDependencyInversionScanner:
         )
         from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
 
-        DependencyInversionScanner._ensure_php_engine()
+        EngineRegistry.ensure_php()
         engine = EngineRegistry.get_for_file(f)
         assert engine is not None
         module = engine.parse_module(f)
@@ -418,7 +418,7 @@ class TestDependencyInversionScanner:
         _write_php(f, "<?php\nclass {\n")
         from zolletta_metaskill.core.engine.engine_registry import EngineRegistry
 
-        DependencyInversionScanner._ensure_php_engine()
+        EngineRegistry.ensure_php()
         engine = EngineRegistry.get_for_file(f)
         assert engine is not None
         module = engine.parse_module(f)

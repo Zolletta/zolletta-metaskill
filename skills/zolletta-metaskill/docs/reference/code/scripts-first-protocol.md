@@ -1,0 +1,183 @@
+---
+audience: human, ai
+status: stable
+skills: [review, patterns, documentor, python-*, php-*]
+---
+
+# Scripts-first execution protocol
+
+Shared rules for every subcommand that runs deterministic scanning scripts (scanners, ruff, mypy, ty, vulture, drift tools). This file is referenced by `python-code-style`, `python-testing-style`, `patterns`, `documentor`, `grice`, and the `review` orchestrator. It applies identically to **standalone subcommand invocations** (i.e. `/zolletta-metaskill documentor`) and to subcommand subagents launched by `/zolletta-metaskill review`.
+
+> **Companion to [review-mode.md](review-mode.md)**: review-mode defines *what* to do with diagnostics (two-bucket classification, no fixes). This protocol defines *how* to run the scripts that produce those diagnostics — batch-run them, cache their output, then apply judgment only to the items scripts defer.
+
+## Principle
+
+Scripts produce deterministic findings. The LLM consumes their cached output and only applies judgment where the scripts explicitly defer to judgment (marked **JUDGMENT** below). Everything else is mechanical report assembly from cached output — no source file reads, no re-derivation.
+
+## Run directory structure
+
+Every review run (standalone or orchestrated) creates a timestamped run folder:
+
+```text
+<runs_dir>/<YYYY-MM-DD-HH-MM>/
+├── reports/          ← LLM judgment (subcommand reports, SUMMARY.md, TODO.md)
+└── cache/            ← deterministic artifacts (script outputs + shared context)
+```
+
+`runs_dir` is read from `settings.json` (default `.zolletta-metaskill`). The timestamp is the run start time, obtained via `date +%Y-%m-%d-%H-%M`.
+
+- **`reports/`** — what a human reads: findings, severity, grades, TODOs. Written by the LLM.
+- **`cache/`** — what the LLM reads instead of re-running scripts and re-reading source files. Written by Phase A. Also useful for audit/debugging.
+
+## Three-phase execution
+
+### Phase A — Batch script run + cache
+
+1. **Create the run folder**: `<runs_dir>/<ts>/reports/` and `<runs_dir>/<ts>/cache/`.
+2. **Enumerate applicable scripts** from the per-subcommand table below.
+3. **Run all scripts in a single tool-call block of parallel `exec` calls.** Do not run them sequentially. Prefer `--json` output where available.
+4. **Persist every script's output to `cache/<script_name>.{json,txt,md}`** — one file per script. Use the cache filenames listed in the per-subcommand table.
+5. If a script is unavailable (tool not installed, `*.available: false` in `settings.json`), skip it and note "SKIPPED" in the cache file.
+
+### Phase B — Mechanical report assembly (from cache)
+
+1. **Read the cached script outputs from `cache/`** — do not re-run scripts, do not read source files.
+2. **Populate the report's deterministic sections directly**:
+   - Scanner tables copied verbatim from cache into the report.
+   - Tool diagnostics classified into auto-fixable (informational) vs findings using the tool's own fix indicator (ruff `[F]`/`[*]`, ty fixable flag) — see [review-mode.md](review-mode.md) for the two-bucket rules.
+   - Coverage gaps from `cache/pytest_cov.txt`.
+3. **Write the report to `reports/<subcommand>.md`** following the report template.
+4. **No source file reads in this phase.** Everything comes from cache.
+
+### Phase C — Judgment pass (minimal)
+
+Only for items the scripts explicitly defer to judgment. Read source files **only** for these specific items, not broadly. The judgment items per subcommand:
+
+| Subcommand             | Judgment items (Phase C)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+|------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `patterns`             | "Reason to change" test on top-N `class_metrics` candidates **[JUDGMENT]**; DIP composition-root suppression for flagged classes that wire DI containers **[JUDGMENT]**; "Missing tests" coverage cross-check (compare `cache/test_structure.md` "Missing tests" table against `cache/pytest_cov.txt` — downgrade to informational if coverage >50%) **[JUDGMENT]**; coupling assessment per `balanced-coupling.md` — classify integration strength/distance/volatility for the cross-module edges in `cache/integration_graph.json`, apply the balance rule, flag unbalanced+volatile only, note inferred classifications as assumptions **[JUDGMENT]** |
+| `documentor`           | False-positive filtering for known FP patterns (code-fence anchors in `cache/link_checker.json`, phantom class methods in `cache/api_doc_validator.json`, parameter name collisions) — only open source files for FP candidates **[JUDGMENT]**                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `python-testing-style` | Indirect-coverage tracing for modules below the gap threshold in `cache/pytest_cov.txt` (use `tokensave tool callers`/grep to check callers are real vs mocked) **[JUDGMENT]**; survived-mutant → suggested-test-name recommendations from `cache/mutmut_survived.txt` **[JUDGMENT]**                                                                                                                                                                                                                                                                                                                                                                    |
+| `grice`                | None — the report is assembled entirely from `cache/grice.json`; the indices are deterministic and the findings already carry their lines **[JUDGMENT]** only for severity and grade                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `python-code-style`    | Vulture false-positive review for dynamically-accessed methods in `cache/vulture.txt` **[JUDGMENT]**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `php-code-style`       | PHPStan/Psalm false-positive review for dynamically-accessed methods **[JUDGMENT]**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `php-testing-style`    | PHPUnit coverage gap indirect-coverage tracing **[JUDGMENT]**; escaped-mutant → suggested-test-name recommendations from `cache/infection.txt` **[JUDGMENT]**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+
+**All subcommands**: severity assignment and grade calculation **[JUDGMENT]**.
+
+## Anti-patterns (forbidden)
+
+- **Re-reading a source file the scanner already parsed**, unless the scanner flagged it AND judgment is required for that specific item.
+- **Re-deriving a finding the scanner already emits** (e.g. manually listing one-class-per-file violations when `src/zolletta_metaskill/code_style/general/one_class_per_file_scanner.py` already listed them in cache).
+- **Running scripts sequentially** when they could run in parallel — always batch in one tool-call block.
+- **Re-running a script whose output is already in `cache/`** for this run — read from cache instead.
+- **Reading mandatory reference docs in full at review time** — for orchestrator runs, the judgment-rules digest is inlined in `cache/_context.md`. For standalone runs, read only the specific judgment section you need, not the whole doc.
+
+## Per-subcommand script table
+
+The canonical script reference is [`scripts.md`](scripts.md) — refer to it for usage, options, and examples. The table below lists which scripts each subcommand must batch in Phase A and their cache filenames.
+
+### `python-code-style`
+
+| Script                                                                                                     | Cache file                        | Condition                                       |
+|------------------------------------------------------------------------------------------------------------|-----------------------------------|-------------------------------------------------|
+| `ruff check`                                                                                               | `cache/ruff.txt`                  | `python.tools.ruff.available`                   |
+| `ruff format --check`                                                                                      | `cache/ruff_format.txt`           | `python.tools.ruff.available`                   |
+| `ty check`                                                                                                 | `cache/ty.txt`                    | `python.tools.ty.available`                     |
+| `mypy`                                                                                                     | `cache/mypy.txt`                  | `python.tools.mypy.available`                   |
+| `vulture src/ --min-confidence N`                                                                          | `cache/vulture.txt`               | `python.tools.vulture.available`                |
+| `src/zolletta_metaskill/code_style/python/acronym_casing_scanner.py --json`      | `cache/acronym_casing.json`       | `python.code_style.check_acronym_casing`        |
+| `src/zolletta_metaskill/code_style/python/unused_all_exports_scanner.py --json`  | `cache/unused_all_exports.json`   | always                                          |
+| `src/zolletta_metaskill/code_style/general/one_class_per_file_scanner.py`        | `cache/one_class_per_file.txt`    | `python.code_style.check_one_class_per_file`    |
+| `src/zolletta_metaskill/code_style/general/file_length_scanner.py`               | `cache/file_length.txt`           | `python.code_style.check_file_length`           |
+| `src/zolletta_metaskill/code_style/general/function_length_scanner.py`           | `cache/function_length.txt`       | `python.code_style.check_function_length`       |
+| `src/zolletta_metaskill/code_style/general/max_arguments_scanner.py`             | `cache/max_arguments.txt`         | `python.code_style.check_max_arguments`         |
+| `src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py`     | `cache/cyclomatic_complexity.txt` | `python.code_style.check_cyclomatic_complexity` |
+| `src/zolletta_metaskill/code_style/general/suppression_reason_scanner.py --json` | `cache/suppression_reason.json`   | always                                          |
+
+### `python-testing-style`
+
+| Script                                                                                                | Cache file                  | Condition                                                                                                |
+|-------------------------------------------------------------------------------------------------------|-----------------------------|----------------------------------------------------------------------------------------------------------|
+| `pytest --cov --cov-report=term-missing -q`                                                           | `cache/pytest_cov.txt`      | `python.tools.pytest.available`                                                                          |
+| `src/zolletta_metaskill/testing_style/python/test_naming_scanner.py --json` | `cache/test_naming.json`    | `python.testing.check_test_naming`                                                                       |
+| `mutmut run`                                                                                          | `cache/mutmut.txt`          | `python.tools.mutmut.available` AND `python.testing.check_mutation_testing` AND `pytest --cov` succeeded |
+| `src/zolletta_metaskill/testing_style/python/mutmut_survived_reporter.py`   | `cache/mutmut_survived.txt` | `python.tools.mutmut.available` AND `python.testing.check_mutation_testing`                              |
+
+### `patterns`
+
+| Script                                                                                                  | Cache file                        | Condition       |
+|---------------------------------------------------------------------------------------------------------|-----------------------------------|-----------------|
+| `src/zolletta_metaskill/patterns/general/class_metrics_scanner.py`            | `cache/class_metrics.txt`         | always (Python) |
+| `src/zolletta_metaskill/patterns/general/test_god_classes_scanner.py`         | `cache/test_god_classes.txt`      | always (Python) |
+| `src/zolletta_metaskill/code_style/general/one_class_per_file_scanner.py`     | `cache/one_class_per_file.txt`    | always (Python) |
+| `src/zolletta_metaskill/testing_style/general/test_structure_scanner.py`      | `cache/test_structure.md`         | always (Python) |
+| `src/zolletta_metaskill/patterns/python/dependency_inversion_scanner.py`      | `cache/dependency_inversion.txt`  | always (Python) |
+| `src/zolletta_metaskill/patterns/python/interface_segregation_scanner.py`     | `cache/interface_segregation.txt` | always (Python) |
+| `src/zolletta_metaskill/patterns/python/open_closed_scanner.py`               | `cache/open_closed.txt`           | always (Python) |
+| `src/zolletta_metaskill/patterns/general/liskov_substitution_scanner.py`      | `cache/liskov_substitution.txt`   | always (Python) |
+| `src/zolletta_metaskill/patterns/general/integration_graph_scanner.py --json` | `cache/integration_graph.json`    | always          |
+
+For PHP projects, run the PHP equivalents from `src/zolletta_metaskill/patterns/php/` where they exist (`src/zolletta_metaskill/patterns/general/integration_graph_scanner.py` is language-agnostic and covers `.php` files itself).
+
+### `documentor`
+
+`src/zolletta_metaskill/documentor/documentor_client.py` runs all three tools and prints the aggregated report; each tool writes its own cache file:
+
+| Script                                                                                     | Cache file                     | Condition |
+|--------------------------------------------------------------------------------------------|--------------------------------|-----------|
+| `src/zolletta_metaskill/documentor/documentor_client.py --json`  | (aggregates all caches)        | always    |
+| `src/zolletta_metaskill/documentor/quality/quality_review.py`    | `cache/quality.json`           | always    |
+| `src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py` | `cache/api_doc_validator.json` | always    |
+| `src/zolletta_metaskill/documentor/links/link_checker.py`        | `cache/link_checker.json`      | always    |
+
+See [`documentation/operational-rules.md`](../documentation/operational-rules.md) for tool invocation conventions (run from the project root, `documentation.include_referential` suppression, etc.).
+
+### `grice`
+
+| Script                                                                           | Cache file         | Condition                   |
+|----------------------------------------------------------------------------------|--------------------|-----------------------------|
+| `src/zolletta_metaskill/grice/grice_scanner.py --json` | `cache/grice.json` | `documentation.check_grice` |
+
+The scanner writes `cache/grice.json` itself, into the run folder it resolves from `settings.json`, so the redirect is only a safeguard. When the toggle is off it prints `SKIPPED` and exits 0 — record that in the report instead of grading it.
+
+### `php-code-style`
+
+| Script                                                                                                     | Cache file                        | Condition                                    |
+|------------------------------------------------------------------------------------------------------------|-----------------------------------|----------------------------------------------|
+| `vendor/bin/phpstan analyse`                                                                               | `cache/phpstan.txt`               | `php.tools.phpstan.available`                |
+| `vendor/bin/psalm`                                                                                         | `cache/psalm.txt`                 | `php.tools.psalm.available`                  |
+| `vendor/bin/php-cs-fixer fix --dry-run`                                                                    | `cache/php_cs_fixer.txt`          | `php.tools.php_cs_fixer.available`           |
+| `vendor/bin/phpcs`                                                                                         | `cache/phpcs.txt`                 | `php.tools.phpcs.available`                  |
+| `src/zolletta_metaskill/code_style/general/file_length_scanner.py`               | `cache/file_length.txt`           | `php.code_style.check_file_length`           |
+| `src/zolletta_metaskill/code_style/general/function_length_scanner.py`           | `cache/function_length.txt`       | `php.code_style.check_function_length`       |
+| `src/zolletta_metaskill/code_style/general/max_arguments_scanner.py`             | `cache/max_arguments.txt`         | `php.code_style.check_max_arguments`         |
+| `src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py`     | `cache/cyclomatic_complexity.txt` | `php.code_style.check_cyclomatic_complexity` |
+| `src/zolletta_metaskill/code_style/general/suppression_reason_scanner.py --json` | `cache/suppression_reason.json`   | always                                       |
+
+### `php-testing-style`
+
+| Script                               | Cache file              | Condition                                                                                               |
+|--------------------------------------|-------------------------|---------------------------------------------------------------------------------------------------------|
+| `vendor/bin/phpunit --coverage-text` | `cache/phpunit_cov.txt` | `php.tools.phpunit.available`                                                                           |
+| `vendor/bin/infection`               | `cache/infection.txt`   | `php.tools.infection.available` AND `php.testing.check_mutation_testing` AND the coverage run succeeded |
+
+## Shared scripts (orchestrator only)
+
+When running as part of `/zolletta-metaskill review`, the orchestrator runs these shared scripts once and writes them to `cache/` before launching subagents. Subagents read from cache instead of re-running them:
+
+| Script                                                                                              | Cache file                     | Used by                         |
+|-----------------------------------------------------------------------------------------------------|--------------------------------|---------------------------------|
+| `src/zolletta_metaskill/code_style/general/one_class_per_file_scanner.py` | `cache/one_class_per_file.txt` | `patterns`, `python-code-style` |
+| `src/zolletta_metaskill/testing_style/general/test_structure_scanner.py`  | `cache/test_structure.md`      | `patterns`                      |
+
+## Standalone vs orchestrator
+
+The protocol applies identically in both contexts:
+
+- **Standalone** (`/zolletta-metaskill documentor`): the subcommand creates the run folder, runs Phase A (all its scripts), assembles Phase B from cache, runs Phase C judgment. No `_context.md` is written (not needed — there's only one LLM instance).
+- **Orchestrator** (`/zolletta-metaskill review`): the orchestrator creates the run folder, writes `cache/_context.md` (settings + ADR directives + judgment-rules digest), runs shared scripts to cache, then launches subagents. Each subagent reads `cache/_context.md` + its subcommand-specific cache files, runs any remaining Phase A scripts not already cached, assembles Phase B, runs Phase C.
+
+## Relationship to code exploration tools
+
+When tokensave is available, use it **only in Phase C** for the judgment items that require understanding context (e.g. `tokensave tool callers` for indirect-coverage tracing, `tokensave tool context` for the "reason to change" test — or the `tokensave_*` MCP tools on pre-7.14 binaries). Do not use tokensave in Phase A or B — the scripts are faster and produce deterministic output. See [`code-exploration.md`](code-exploration.md) for the tokensave decision tree, and note that this protocol takes precedence for review runs: scripts first, tokensave only for Phase C judgment candidates.

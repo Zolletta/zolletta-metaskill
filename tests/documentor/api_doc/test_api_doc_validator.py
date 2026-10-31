@@ -460,7 +460,7 @@ class TestAPIDocValidator:
     def test_main_recursive_setting(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        self._write_settings(tmp_path, documentation={"api_docs_recursive": True})
+        self._write_settings(tmp_path, documentation={"api_doc_recursive": True})
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("def foo(): pass\n")
@@ -476,7 +476,7 @@ class TestAPIDocValidator:
     def test_main_include_private_setting(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        self._write_settings(tmp_path, documentation={"include_private": True})
+        self._write_settings(tmp_path, documentation={"api_doc_include_private": True})
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("def _private(): pass\ndef foo(): pass\n")
@@ -491,7 +491,7 @@ class TestAPIDocValidator:
     def test_main_suggest_coverage_setting(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        self._write_settings(tmp_path, documentation={"suggest_coverage": True})
+        self._write_settings(tmp_path, documentation={"api_doc_suggest_coverage": True})
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.py").write_text("def foo(): pass\n")
@@ -950,7 +950,7 @@ class TestAPIDocValidator:
         monkeypatch.chdir(tmp_path)
         cache_dir = self._make_tree(tmp_path, source="def _p(): pass\ndef foo(): pass\n")
         _, success = APIDocValidator.run(
-            self._settings(include_private="yes"), cache_dir, as_json=True
+            self._settings(api_doc_include_private="yes"), cache_dir, as_json=True
         )
         assert success is True
         assert self._cache(tmp_path)["summary"]["source_signatures"] == 1
@@ -976,7 +976,7 @@ class TestAPIDocValidator:
         sub.mkdir()
         (sub / "api.md").write_text("### `foo()`\n")
         _, success = APIDocValidator.run(
-            self._settings(api_docs_recursive="yes"), cache_dir, as_json=True
+            self._settings(api_doc_recursive="yes"), cache_dir, as_json=True
         )
         assert success is True
         assert self._cache(tmp_path)["summary"]["documented_items"] == 0
@@ -1011,7 +1011,9 @@ class TestAPIDocValidator:
     ) -> None:
         monkeypatch.chdir(tmp_path)
         cache_dir = self._make_tree(tmp_path, doc="Nothing.\n")
-        report, success = APIDocValidator.run(self._settings(suggest_coverage="yes"), cache_dir)
+        report, success = APIDocValidator.run(
+            self._settings(api_doc_suggest_coverage="yes"), cache_dir
+        )
         assert success is True
         assert "DOCUMENTATION SUGGESTIONS" not in report
 

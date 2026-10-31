@@ -22,7 +22,7 @@ docker exec <container_name> bash -c "cd /workspace && rm -rf .venv && uv sync"
 
 1.3. **Always run tools through `uv run`.** Do not run bare `ruff`, `mypy`, or `ty` binaries. If `uv` is not present in the container, run Python tools directly (e.g. `pytest`, `ruff check`).
 
-1.4. **Persist the presence/absence of `uv`** with `tokensave_record_decision` (tag: `environment`) so it is recalled in future sessions. Decisions are stored in the per-project DB, so the tag is scoped to the current project automatically.
+1.4. **Persist the presence/absence of `uv`** with `tokensave tool record_decision` (tag: `environment`; use the `tokensave_record_decision` MCP tool on binaries older than 7.14) so it is recalled in future sessions. Decisions are stored in the per-project DB, so the tag is scoped to the current project automatically.
 
 ## 2. Lint and format
 
@@ -78,7 +78,7 @@ uv run mypy .
   return payload  # type: ignore[no-any-return] — plugin payload is genuinely dynamic; typed at the consumer boundary
   ```
 
-  The reason must explain *why* the type is deliberately broad, not just that it is. Never a blanket `# type: ignore` — the missing `[<code>]` and the missing reason are flagged deterministically by `suppression_reason_scanner.py` (and ruff `PGH003`), and are findings under rule #19.
+  The reason must explain *why* the type is deliberately broad, not just that it is. Never a blanket `# type: ignore` — the missing `[<code>]` and the missing reason are flagged deterministically by `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/suppression_reason_scanner.py` (and ruff `PGH003`), and are findings under rule #19.
 
   3.6. **ty inherits all mypy rules.** Any rule above applies identically when using `ty` as the type checker.
 

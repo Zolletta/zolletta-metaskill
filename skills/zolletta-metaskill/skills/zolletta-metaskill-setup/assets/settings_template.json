@@ -1,0 +1,56 @@
+{
+  "setup_version": "3.3.0",
+  "setup_timestamp": "",
+  "language": "",
+  "container_name": null,
+  "tokensave_available": false,
+  "acronyms": [],
+  "python": null,
+  "php": null,
+  "subcommands": {
+    "patterns": {
+      "model": null
+    },
+    "documentor": {
+      "model": null
+    },
+    "grice": {
+      "model": null
+    },
+    "python-code-style": {
+      "model": null
+    },
+    "python-testing-style": {
+      "model": null
+    },
+    "php-code-style": {
+      "model": null
+    },
+    "php-testing-style": {
+      "model": null
+    }
+  },
+  "runs_dir": ".zolletta-metaskill",
+  "documentation": {
+    "language": "en",
+    "dir": "docs",
+    "adrs": null,
+    "min_severity": "high",
+    "staleness_threshold": null,
+    "readme_focus": false,
+    "readme_sections": [
+      "installation",
+      "usage",
+      "api",
+      "contributing",
+      "license"
+    ],
+    "diataxis_translations": null,
+    "staleness_weights": null,
+    "check_external": false,
+    "include_referential": false,
+    "api_doc_recursive": true,
+    "api_doc_include_private": false,
+    "api_doc_suggest_coverage": false
+  }
+}

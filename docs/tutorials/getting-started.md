@@ -18,15 +18,15 @@ Welcome to Zolletta-MetaSkill — a family of generic code review skills with sp
 ## Prerequisites
 
 - An AI agent that supports skills (Devin, Claude, Cursor, or similar)
-- Git
+- Node.js (for the `npx` installer)
 - A project with source code to review
 
 ## Step 1 — Install
 
-Clone the repository into the agent's skills directory:
+Install the skill family with the skills CLI:
 
 ```bash
-git clone https://github.com/Zolletta/zolletta-metaskill.git ~/.agents/skills/zolletta-metaskill
+npx skills add zolletta/zolletta-metaskill
 ```
 
 Verify the installation by invoking the skill with no arguments:
@@ -35,7 +35,7 @@ Verify the installation by invoking the skill with no arguments:
 /zolletta-metaskill
 ```
 
-Verify the list of available subcommands: `setup`, `documentor`, `patterns`, `review`, `python-code-style`, `python-testing-style`.
+Verify the list of available subcommands: `help`, `version`, `setup`, `documentor`, `grice`, `patterns`, `review`, `adr-distiller`, `python-code-style`, `python-testing-style`, `php-code-style`, `php-testing-style`.
 
 ## Step 2 — Set up the project
 

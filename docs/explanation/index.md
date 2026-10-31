@@ -18,6 +18,7 @@ SOLID, structural conventions, error handling, performance, and security.
 | [Structural conventions](code/structural-conventions.md)       | One class per file, test mirroring, naming, test splitting               |
 | [False positive prevention](code/false-positive-prevention.md) | Suppression rules to avoid noisy reports                                 |
 | [Balanced coupling](code/balanced-coupling.md)                 | Integration strength, distance, volatility, and the balance rule         |
+| [Determinism boundary](code/determinism.md)                    | What is deterministic (scanners, cache, assembly) vs judgment            |
 | [Error handling](code/error-handling.md)                       | Custom exceptions, hierarchy, specific catches, finally cleanup          |
 | [Performance](code/performance.md)                             | Lazy loading, generators for large datasets                              |
 | [Security](code/security.md)                                   | Parameterized queries, output escaping, input validation, secrets in env |

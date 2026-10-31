@@ -5,7 +5,7 @@ skills: [review, setup]
 description: "Entry-point modules that wrap an orchestrator's CLI are named *_client.py — 'cli' as a filename suffix is an abbreviation that violates the class-name-mandates-filename convention."
 ---
 
-# ADR-0013: CLI entry modules are named *_client, not *_cli
+# ADR-0013: CLI entry modules are named `*_client`, not `*_cli`
 
 ## Status
 

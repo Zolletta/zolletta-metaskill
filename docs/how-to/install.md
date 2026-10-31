@@ -11,62 +11,48 @@ Install the Zolletta-metaskill skill family so it is available to the AI agent.
 ## Prerequisites
 
 - An AI agent that supports skills (Devin, Claude, Cursor, or similar)
-- Git
+- Node.js (for the `npx` installer) or Git (for manual installation)
 
 ## Installation
 
-### Option 1 — One-command installer (recommended)
+### Option 1 — `npx skills add` (recommended)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Zolletta/zolletta-metaskill/main/install.sh | bash
+npx skills add zolletta/zolletta-metaskill
 ```
 
-The `install.sh` script:
+The [skills CLI](https://github.com/vercel-labs/skills) clones the repository, copies the bundle discovered under `skills/zolletta-metaskill/` to `~/.agents/skills/zolletta-metaskill`, and links it into every detected AI agent tool's skills directory (Claude Code, Cursor, Gemini CLI, Devin, OpenCode, Windsurf, and others — it detects what is installed and asks which to link).
 
-1. Clones the **latest git tag** into a temp directory
-2. Copies only the files listed in `install-manifest.txt`
-3. Symlinks it into every detected AI agent tool's skills directory
-
-Supported tools (auto-detected — only installed tools are linked):
-
-| Tool        | Symlink path                                    |
-|-------------|-------------------------------------------------|
-| Claude Code | `~/.claude/skills/zolletta-metaskill`           |
-| Cursor      | `~/.cursor/skills/zolletta-metaskill`           |
-| Gemini CLI  | `~/.gemini/skills/zolletta-metaskill`           |
-| Devin       | `~/.config/devin/skills/zolletta-metaskill`     |
-| OpenCode    | `~/.config/opencode/skills/zolletta-metaskill`  |
-| Windsurf    | `~/.codeium/windsurf/skills/zolletta-metaskill` |
-| Cline       | `~/.cline/skills/zolletta-metaskill`            |
-| Roo Code    | `~/.roo/skills/zolletta-metaskill`              |
-| Continue    | `~/.continue/skills/zolletta-metaskill`         |
-| Kiro        | `~/.kiro/skills/zolletta-metaskill`             |
-| Goose       | `~/.config/goose/skills/zolletta-metaskill`     |
-| Junie       | `~/.junie/skills/zolletta-metaskill`            |
-| Augment     | `~/.augment/skills/zolletta-metaskill`          |
-| Trae        | `~/.trae/skills/zolletta-metaskill`             |
-
-Native `~/.agents/skills/` readers (Codex, Pi, Kilo Code) need no symlink — they read the canonical copy directly.
-
-To replace an existing real directory with a symlink:
+Useful flags and lifecycle commands:
 
 ```bash
-./install.sh --force
+npx skills add zolletta/zolletta-metaskill -g -y   # global scope, no prompts
+npx skills add zolletta/zolletta-metaskill#v3.7.0  # pin a specific tag
+npx skills update zolletta-metaskill               # update to the latest commit
+npx skills remove zolletta-metaskill               # uninstall
+npx skills list                                   # show installed skills
 ```
 
-### Option 2 — Clone into the skills directory
+The CLI does not track semantic versions — to see which release is installed, run `/zolletta-metaskill version`.
+
+### Option 2 — `gh skill install` (GitHub CLI)
 
 ```bash
-git clone https://github.com/Zolletta/zolletta-metaskill.git ~/.agents/skills/zolletta-metaskill
+gh skill install zolletta/zolletta-metaskill
 ```
 
-### Option 3 — Symlink from a different location
+The `gh skill` extension discovers the bundle through the `skills/*/SKILL.md` convention and resolves the latest tag by default.
 
-If the repository is already cloned elsewhere:
+### Option 3 — Clone and symlink manually
+
+The installable bundle lives in the `skills/zolletta-metaskill/` subdirectory, not at the repository root — clone anywhere, then link that subdirectory:
 
 ```bash
-ln -s /path/to/zolletta-metaskill ~/.agents/skills/zolletta-metaskill
+git clone https://github.com/Zolletta/zolletta-metaskill.git ~/src/zolletta-metaskill
+ln -s ~/src/zolletta-metaskill/skills/zolletta-metaskill ~/.agents/skills/zolletta-metaskill
 ```
+
+Symlinking (rather than copying) keeps the installation in sync with the working tree — the same layout `dev-install.sh` uses for development checkouts.
 
 ### Verify installation
 
@@ -86,4 +72,4 @@ After installing, run `/zolletta-metaskill setup` in each project to use the rev
 
 - [Set up a project](setup-project.md) — initialize a project for reviews
 - [Getting started](../tutorials/getting-started.md) — end-to-end walkthrough
-- [Repository scripts](../reference/code/scripts.md) — `.bump` and `install.sh` reference
+- [Repository scripts](../reference/code/scripts.md) — `dev-install.sh` and `sync-bundle.sh` reference

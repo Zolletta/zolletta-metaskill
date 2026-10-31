@@ -10,7 +10,7 @@ The patterns skill includes three mechanisms to prevent verdict oscillation betw
 
 ## 1. Mandatory judgment step for God class detection
 
-`class_metrics_scanner.py` reports class size as a triage signal, never a verdict. Before reporting any class as a God class, the reviewer must apply the "reason to change" test:
+`skills/zolletta-metaskill/src/zolletta_metaskill/patterns/general/class_metrics_scanner.py` reports class size as a triage signal, never a verdict. Before reporting any class as a God class, the reviewer must apply the "reason to change" test:
 
 1. List every change that could require editing the class.
 2. Group the changes by domain (HTTP/API, business logic, data access, configuration, presentation, I/O).
@@ -30,7 +30,7 @@ The patterns skill includes three mechanisms to prevent verdict oscillation betw
 
 ## 2. Coverage cross-check for missing tests
 
-`test_structure_scanner.py` reports structurally missing test files. Before reporting any as a finding, the reviewer must run `pytest --cov` and check the file's coverage:
+`skills/zolletta-metaskill/src/zolletta_metaskill/testing_style/general/test_structure_scanner.py` reports structurally missing test files. Before reporting any as a finding, the reviewer must run `pytest --cov` and check the file's coverage:
 
 1. Run `pytest --cov` (or `pytest --cov --cov-report=term-missing` if available).
 2. Check the coverage percentage for each file in the "Missing tests" table.
@@ -43,7 +43,7 @@ This prevents the whack-a-mole cycle where every review re-reports the same stru
 
 ## 3. Semantic composition-root detection
 
-The `dependency_inversion_scanner.py` scanner excludes entry points by filename pattern and detects DI container creation (`make_container()`, `Container()`, etc.) semantically. If the scanner still flags a class that is clearly a composition root (it wires the DI container, creates the container, or is the top-level entry point), suppress it and note "composition root — not a DIP violation" in the report.
+The `skills/zolletta-metaskill/src/zolletta_metaskill/patterns/python/dependency_inversion_scanner.py` scanner excludes entry points by filename pattern and detects DI container creation (`make_container()`, `Container()`, etc.) semantically. If the scanner still flags a class that is clearly a composition root (it wires the DI container, creates the container, or is the top-level entry point), suppress it and note "composition root — not a DIP violation" in the report.
 
 Someone has to create the container — that is not a violation. The composition root (main, CLI entry point) is the only place where object creation belongs.
 

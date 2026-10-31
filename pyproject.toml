@@ -66,11 +66,12 @@ dev = [
 Homepage = "https://github.com/Zolletta/zolletta-metaskill"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/zolletta_metaskill"]
+packages = ["skills/zolletta-metaskill/src/zolletta_metaskill"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+cache-dir = ".cache/ruff"
 # playground/ is intentionally defective scanner dogfooding input — like
 # mypy, vulture and ty, ruff must not lint it.
 exclude = ["playground/", "mutants/"]
@@ -136,9 +137,10 @@ known-first-party = ["zolletta_metaskill"]
 [tool.mypy]
 strict = true
 python_version = "3.12"
+cache_dir = ".cache/mypy"
 python_executable = ".venv/bin/python"
-mypy_path = "src"
-exclude = ["zolletta-metaskill/", "playground/", "mutants/"]
+mypy_path = "skills/zolletta-metaskill/src"
+exclude = ["playground/", "mutants/"]
 
 [[tool.mypy.overrides]]
 # Scoped to the optional grammar only (ADR-0004). `tree_sitter` itself is a hard
@@ -160,10 +162,11 @@ module = "tests.*"
 strict = false
 
 [tool.pytest.ini_options]
+cache_dir = ".cache/pytest"
 addopts = ["-ra", "--tb=short"]
 testpaths = ["tests"]
 minversion = "8.0"
-pythonpath = ["src"]
+pythonpath = ["skills/zolletta-metaskill/src"]
 # An unclosed file or socket is a leak the suite should not tolerate silently.
 filterwarnings = ["error::ResourceWarning"]
 
@@ -171,15 +174,18 @@ filterwarnings = ["error::ResourceWarning"]
 # Branch coverage is the measurement the testing-style review reads; statement
 # coverage hides an untaken branch behind a fully executed line.
 branch = true
+data_file = ".cache/coverage/.coverage"
 
 [tool.vulture]
 min_confidence = 80
-paths = ["src"]
+paths = ["skills/zolletta-metaskill/src"]
 exclude = [".venv/", "playground/", "mutants/"]
 
 [tool.mutmut]
-# skills/ ships runtime assets (e.g. acronym lists) that tests assert on; the
-# mutants/ sandbox must contain them or the baseline run fails.
+# skills/zolletta-metaskill/skills/ ships runtime assets (e.g. acronym lists)
+# that tests assert on; the mutants/ sandbox must contain them or the
+# baseline run fails.
+paths_to_mutate = "skills/zolletta-metaskill/src/"
 also_copy = ["skills/"]
 # The unwrapped-prose repo guard uses `git ls-files` on the real repository;
 # inside mutants/ (a git-ignored, non-repo copy) it can only see 0 files, so it
@@ -194,7 +200,7 @@ pytest_add_cli_args = [
 ]
 
 [tool.semantic_release]
-version_toml = ["pyproject.toml:project.version"]
+version_toml = ["pyproject.toml:project.version", "skills/zolletta-metaskill/pyproject.toml:project.version"]
 build_command = "uv build"
 commit_parser = "conventional"
 commit_parser_options = { allowed_types = ["feat", "fix", "perf", "refactor"] }

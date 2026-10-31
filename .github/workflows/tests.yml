@@ -51,6 +51,17 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache-suffix: "quality"
 
+      - name: bundle copies in sync
+        # The committed generated files must match what sync-bundle.sh
+        # produces — a drift means someone edited a source without committing
+        # the regenerated copy (pre-commit hook missed or bypassed).
+        run: |
+          ./sync-bundle.sh
+          if git status --porcelain -- skills/zolletta-metaskill .sync-manifest | grep .; then
+              echo "::error::bundle copies out of sync — run ./sync-bundle.sh and commit"
+              exit 1
+          fi
+
       - name: ruff check
         run: uv run ruff check
 

@@ -20,7 +20,7 @@ All three metrics are on a 0-100 scale, oriented so that higher is better.
 
 ## `link_resolution`
 
-Every internal link in the document is extracted with the documentor's own `LinkChecker`, so the definition of "a link" and the fence-stripping rules are shared with `link_checker.py` rather than re-derived. External links are excluded: validating them needs the network, and a network answer is not deterministic — the same repository would score differently on two machines, or on one machine twice.
+Every internal link in the document is extracted with the documentor's own `LinkChecker`, so the definition of "a link" and the fence-stripping rules are shared with `skills/zolletta-metaskill/src/zolletta_metaskill/documentor/links/link_checker.py` rather than re-derived. External links are excluded: validating them needs the network, and a network answer is not deterministic — the same repository would score differently on two machines, or on one machine twice.
 
 The metric is the share of internal links that resolve, counting both file targets and cross-document anchors. A document with no internal links scores 100: nothing in it is broken, which is a weak signal but the honest one.
 

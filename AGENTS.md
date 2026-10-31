@@ -10,7 +10,7 @@ These are the conventions of this repository — one declaration per rule, so th
 
 ## Context
 
-Zolletta-metaskill is a review skill-set providing deterministic tools: the same project produces the same findings on every run, under any reviewer, with judgement reserved for what a machine cannot decide. The scanners under `src/zolletta_metaskill/` are the product — and that gives this file one hard boundary:
+Zolletta-metaskill is a review skill-set providing deterministic tools: the same project produces the same findings on every run, under any reviewer, with judgement reserved for what a machine cannot decide. The scanners under `skills/zolletta-metaskill/src/zolletta_metaskill/` are the product — and that gives this file one hard boundary:
 
 - You **may** run the scanners in `src/` on your own work, as a reviewer would — that is dogfooding, and the tool already exists because the product needs it.
 - You **may not** write a tool whose only purpose is enforcing a rule in this file — that belongs in your judgement, not in `src/`. The tell is a scanner no skill ever invokes. If you do end up writing such a check anyway, ask the human whether it is worth promoting into the skill's toolset as a reviewer tool before keeping it.
@@ -24,34 +24,34 @@ Two groups, in this order. **Sensors** report findings and never fail — a find
 ### Dogfooding
 
 ```bash
-uv run python src/zolletta_metaskill/code_style/general/one_class_per_file_scanner.py    # classes.3, tests.2
-uv run python src/zolletta_metaskill/code_style/general/naming_conventions_scanner.py   # classes.1
-uv run python src/zolletta_metaskill/code_style/general/file_length_scanner.py          # classes.6
-uv run python src/zolletta_metaskill/code_style/general/function_length_scanner.py      # functions.2
-uv run python src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py # functions.3
-uv run python src/zolletta_metaskill/code_style/general/max_arguments_scanner.py        # functions.1
-uv run python src/zolletta_metaskill/code_style/general/suppression_reason_scanner.py   # suppressions.1
-uv run python src/zolletta_metaskill/code_style/python/acronym_casing_scanner.py        # classes.2
-uv run python src/zolletta_metaskill/code_style/python/unused_all_exports_scanner.py    # imports.3
-uv run python src/zolletta_metaskill/testing_style/general/test_structure_scanner.py    # tests.1
-uv run python src/zolletta_metaskill/testing_style/python/test_naming_scanner.py        # tests.3
-uv run python src/zolletta_metaskill/documentor/links/link_checker.py                   # documentation.4
-uv run python src/zolletta_metaskill/documentor/quality/unwrapped_prose_scanner.py      # documentation.1
+uv run python skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/one_class_per_file_scanner.py    # classes.3, tests.2
+uv run python skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/naming_conventions_scanner.py   # classes.1
+uv run python skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/file_length_scanner.py          # classes.6
+uv run python skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/function_length_scanner.py      # functions.2
+uv run python skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py # functions.3
+uv run python skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/max_arguments_scanner.py        # functions.1
+uv run python skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/suppression_reason_scanner.py   # suppressions.1
+uv run python skills/zolletta-metaskill/src/zolletta_metaskill/code_style/python/acronym_casing_scanner.py        # classes.2
+uv run python skills/zolletta-metaskill/src/zolletta_metaskill/code_style/python/unused_all_exports_scanner.py    # imports.3
+uv run python skills/zolletta-metaskill/src/zolletta_metaskill/testing_style/general/test_structure_scanner.py    # tests.1
+uv run python skills/zolletta-metaskill/src/zolletta_metaskill/testing_style/python/test_naming_scanner.py        # tests.3
+uv run python skills/zolletta-metaskill/src/zolletta_metaskill/documentor/links/link_checker.py                   # documentation.4
+uv run python skills/zolletta-metaskill/src/zolletta_metaskill/documentor/quality/unwrapped_prose_scanner.py      # documentation.1
 ```
 
 ### OS tools
 
 ```bash
 # classes.4 — no module-level functions; expect no output
-grep -rnE "^(async )?def " src/ --include='*.py'
+grep -rnE "^(async )?def " skills/zolletta-metaskill/src/ --include='*.py'
 # classes.5 — no module-level constants; expect no output
-grep -rnE "^[A-Z_][A-Z0-9_]* *(:[^=]+)?= " src/ --include='*.py'
+grep -rnE "^[A-Z_][A-Z0-9_]* *(:[^=]+)?= " skills/zolletta-metaskill/src/ --include='*.py'
 # imports.1 — no TYPE_CHECKING blocks; expect no output
-grep -rn "TYPE_CHECKING" src/ --include='*.py'
+grep -rn "TYPE_CHECKING" skills/zolletta-metaskill/src/ --include='*.py'
 # general.1 — every tracked text file ends with a newline
 git ls-files | while read -r f; do
   [ -s "$f" ] || continue                      # an empty file has no last byte
-  grep -qI . "$f" 2>/dev/null || continue       # skip binaries — load-bearing, or every PNG in assets/ is reported
+  grep -qI . "$f" 2>/dev/null || continue       # skip binaries — load-bearing, or every PNG in docs/assets/ is reported
   [ "$(tail -c1 "$f" | wc -l)" -eq 0 ] && echo "no trailing newline: $f"
 done
 ```
@@ -61,8 +61,8 @@ done
 Run these last — they verify that your sensor fixes were correct. A careless fix (a renamed test that now asserts nothing, a split class with a broken mirror) looks green to a sensor and red to `pytest`; that is the entire reason for the order.
 
 ```bash
-uv run ruff check src tests           # docstrings.1, imports.2, suppressions.1
-uv run ruff format --check src tests  # general.1 (.py)
+uv run ruff check skills/zolletta-metaskill/src tests           # docstrings.1, imports.2, suppressions.1
+uv run ruff format --check skills/zolletta-metaskill/src tests  # general.1 (.py)
 uv run ty check .                     # functions.4
 uv run mypy .                         # functions.4
 uv run vulture . --min-confidence 80
@@ -90,7 +90,7 @@ The ❌ rules — `documentation.3`, `documentation.5`, `documentation.6`, `test
 - `documentation.4` — **Links in `docs/` and `skills/` are repo-root-relative**, never a hardcoded `https://github.com/Zolletta/zolletta-metaskill/...` URL, because a relative link resolves both on GitHub and from a local checkout.
 - `documentation.5` — **Architecture ADRs live in `docs/explanation/adr/architecture/`**, and activity records never enter the corpus.
 - `documentation.6` — **An Accepted ADR is immutable and is replaced only by supersession.** Immutability governs content and status rather than layout: unwrapping the prose of an accepted ADR changes no decision, so it is done by editing in place.
-- `documentation.7` — **When an ADR changes, the distiller cache is refreshed** — `PYTHONPATH=src uv run python src/zolletta_metaskill/adr/adr_client.py` — and reports no drift.
+- `documentation.7` — **When an ADR changes, the distiller cache is refreshed** — `PYTHONPATH=skills/zolletta-metaskill/src uv run python skills/zolletta-metaskill/src/zolletta_metaskill/adr/adr_client.py` — and reports no drift.
 
 ### Commits
 
@@ -141,7 +141,7 @@ The ❌ rules — `documentation.3`, `documentation.5`, `documentation.6`, `test
 
 ### Tests
 
-- `tests.1` — **Every source file has exactly one test file at the mirrored path** — `src/zolletta_metaskill/<path>/<name>.py` pairs with `tests/<path>/test_<name>.py`, path for path.
+- `tests.1` — **Every source file has exactly one test file at the mirrored path** — `skills/zolletta-metaskill/src/zolletta_metaskill/<path>/<name>.py` pairs with `tests/<path>/test_<name>.py`, path for path.
 - `tests.2` — **A test file holds one `Test*` class, named after the class it tests.** A second aspect gets its own file, named `test_<name>_<aspect>.py`.
 - `tests.3` — **A test function is named `test_<unit>_<scenario>_<expected_outcome>`** and carries at least three segments after the prefix. A `parametrize` needs explicit `ids=` of the same shape, or the generated names become `test_naming` findings.
 - `tests.4` — **A non-test file under `tests/` goes in `tests/fixtures/<subpath>/`, mirroring the source subpath, and is committed** — so that a change in output appears as a readable diff instead of a silent regeneration. The scanners ignore that directory: both enumerate through `ProjectConfig.iter_files(root, {".py"})`.

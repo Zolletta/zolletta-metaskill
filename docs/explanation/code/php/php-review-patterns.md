@@ -203,7 +203,7 @@ class OrderProcessor {
 }
 ```
 
-**Scanner**: [`dependency_inversion_scanner`](../../../reference/code/scripts.md#dependency_inversion_scannerpy-dip-php) — detects `new ConcreteClass()` inside class methods. Excludes factories, builders, and PHP built-in types.
+**Scanner**: [`dependency_inversion_scanner`](../../../reference/code/scripts.md#skillszolletta-metaskillsrczolletta_metaskillpatternsphpdependency_inversion_scannerpy-dip-php) — detects `new ConcreteClass()` inside class methods. Excludes factories, builders, and PHP built-in types.
 
 **Why this matters**: injected dependencies are substitutable and testable; `new` in a constructor is a hard coupling. See [DIP — Clean Code](https://wiki.c2.com/?DependencyInversionPrinciple).
 
@@ -275,7 +275,7 @@ class HumanWorker implements Workable, Reportable, Employable {
 }
 ```
 
-**Scanner**: [`interface_segregation_scanner`](../../../reference/code/scripts.md#interface_segregation_scannerpy-isp-php) — flags interfaces with more than `php.patterns.isp_min_methods` (default: 7) methods.
+**Scanner**: [`interface_segregation_scanner`](../../../reference/code/scripts.md#skillszolletta-metaskillsrczolletta_metaskillpatternsphpinterface_segregation_scannerpy-isp-php) — flags interfaces with more than `php.patterns.isp_min_methods` (default: 7) methods.
 
 **Why this matters**: fat interfaces force implementers to stub methods they don't use. See [ISP — Clean Code](https://wiki.c2.com/?InterfaceSegregationPrinciple).
 
@@ -339,7 +339,7 @@ class PaymentProcessor {
 }
 ```
 
-**Scanner**: [`open_closed_scanner`](../../../reference/code/scripts.md#open_closed_scannerpy-ocp-php) — detects `if/elseif` chains with 3+ `instanceof` branches.
+**Scanner**: [`open_closed_scanner`](../../../reference/code/scripts.md#skillszolletta-metaskillsrczolletta_metaskillpatternsphpopen_closed_scannerpy-ocp-php) — detects `if/elseif` chains with 3+ `instanceof` branches.
 
 **Why this matters**: polymorphism via interface keeps the processor closed for modification. See [OCP — Clean Code](https://wiki.c2.com/?OpenClosedPrinciple).
 
@@ -450,6 +450,6 @@ public function getPayload(): mixed { ... }
 public function getPayload(): mixed { ... }
 ```
 
-PHPStan also supports the inline form with a dotted error identifier (`// @phpstan-ignore argument.type <reason>`); `@phpstan-ignore-next-line` and `@phpstan-ignore-line` have no identifier slot — the reason alone suffices. The reason must explain *why* the type is deliberately broad, not just that it is. Suppressions missing the identifier or the reason are findings under rule #7 — `suppression_reason_scanner.py` flags them deterministically.
+PHPStan also supports the inline form with a dotted error identifier (`// @phpstan-ignore argument.type <reason>`); `@phpstan-ignore-next-line` and `@phpstan-ignore-line` have no identifier slot — the reason alone suffices. The reason must explain *why* the type is deliberately broad, not just that it is. Suppressions missing the identifier or the reason are findings under rule #7 — `skills/zolletta-metaskill/src/zolletta_metaskill/code_style/general/suppression_reason_scanner.py` flags them deterministically.
 
 **Why this matters**: Fowler's [Maintainability sensors for coding agents](https://martinfowler.com/articles/sensors-for-coding-agents.html) ("Guidance for self-correction") — the sensor fires, the agent makes the judgment call, and when it suppresses it must document why. A reasonless suppression hides intent; a reasoned one records it for the next agent.

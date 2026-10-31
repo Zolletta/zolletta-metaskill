@@ -119,76 +119,6 @@ class TestTestStructureScannerMatching:
             ProjectConfig.load_settings(), {"python"}
         ) == (None, None)
 
-    # --- Tests for TestStructureScanner._pascal_to_snake(). ---
-
-    def test_pascal_to_snake_simple_input_returns_my_class(self) -> None:
-        assert TestStructureScanner._pascal_to_snake("MyClass") == "my_class"
-
-    def test_pascal_to_snake_single_word_returns_cache(self) -> None:
-        assert TestStructureScanner._pascal_to_snake("Cache") == "cache"
-
-    def test_pascal_to_snake_empty_input_returns_empty(self) -> None:
-        assert TestStructureScanner._pascal_to_snake("") == ""
-
-    def test_pascal_to_snake_multiple_words_returns_my_awesome_class(self) -> None:
-        assert TestStructureScanner._pascal_to_snake("MyAwesomeClass") == "my_awesome_class"
-
-    def test_pascal_to_snake_all_lower_returns_myclass(self) -> None:
-        assert TestStructureScanner._pascal_to_snake("myclass") == "myclass"
-
-    def test_pascal_to_snake_all_upper_returns_a_b_c(self) -> None:
-        assert TestStructureScanner._pascal_to_snake("ABC") == "a_b_c"
-
-    # --- Tests for TestStructureScanner._get_class_names(). ---
-
-    def test_get_class_names_single_class_returns_single_item(self, tmp_path: Path) -> None:
-        f = tmp_path / "user.py"
-        f.write_text("class User:\n    pass\n")
-        assert TestStructureScanner._get_class_names(f) == ["User"]
-
-    def test_get_class_names_multiple_classes_returns_multiple_items(self, tmp_path: Path) -> None:
-        f = tmp_path / "multi.py"
-        f.write_text("class Foo:\n    pass\nclass Bar:\n    pass\n")
-        assert TestStructureScanner._get_class_names(f) == ["Foo", "Bar"]
-
-    def test_get_class_names_no_classes_returns_empty_list(self, tmp_path: Path) -> None:
-        f = tmp_path / "utils.py"
-        f.write_text("def helper():\n    return 1\n")
-        assert TestStructureScanner._get_class_names(f) == []
-
-    def test_get_class_names_syntax_error_returns_empty_list(self, tmp_path: Path) -> None:
-        f = tmp_path / "bad.py"
-        f.write_text("def broken(:\n")
-        assert TestStructureScanner._get_class_names(f) == []
-
-    def test_get_class_names_nested_class_excludes_value(self, tmp_path: Path) -> None:
-        """Only top-level classes are returned (engine does not walk into nested)."""
-        f = tmp_path / "nested.py"
-        f.write_text("class Outer:\n    class Inner:\n        pass\n")
-        names = TestStructureScanner._get_class_names(f)
-        assert "Outer" in names
-        assert "Inner" not in names
-
-    # --- Tests for TestStructureScanner._auto_detect_package(). ---
-
-    def test_auto_detect_package_with_init_returns_mypkg(self, tmp_path: Path) -> None:
-        src = tmp_path / "src"
-        pkg = src / "mypkg"
-        pkg.mkdir(parents=True)
-        (pkg / "__init__.py").write_text("")
-        assert TestStructureScanner._auto_detect_package(src) == "mypkg"
-
-    def test_auto_detect_package_no_dirs_returns_none(self, tmp_path: Path) -> None:
-        src = tmp_path / "src"
-        src.mkdir()
-        assert TestStructureScanner._auto_detect_package(src) is None
-
-    def test_auto_detect_package_files_only_returns_none(self, tmp_path: Path) -> None:
-        src = tmp_path / "src"
-        src.mkdir()
-        (src / "file.py").write_text("")
-        assert TestStructureScanner._auto_detect_package(src) is None
-
     # --- Tests for TestStructureScanner._build_source_index(). ---
 
     def test_build_source_index_basic_input_contains_test_cache(self, tmp_path: Path) -> None:
@@ -330,39 +260,6 @@ class TestTestStructureScannerMatching:
         }
         result = TestStructureScanner._match_test_to_source("test_cache.py", index, test_dir="a")
         assert result == "a1/cache.py"
-
-    # --- Tests for TestStructureScanner._auto_detect_package() init preference. ---
-
-    def test_auto_detect_package_prefers_init_dir_over_first_dir(self, tmp_path: Path) -> None:
-        """A dir with ``__init__.py`` wins over an alphabetically earlier plain dir."""
-        src = tmp_path / "src"
-        (src / "aaa").mkdir(parents=True)
-        pkg = src / "mypkg"
-        pkg.mkdir()
-        (pkg / "__init__.py").write_text("")
-        assert TestStructureScanner._auto_detect_package(src) == "mypkg"
-
-    def test_auto_detect_package_init_filename_is_exact(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """The probe asks for ``__init__.py`` by that exact name.
-
-        On a case-insensitive filesystem ``(pkg / "__INIT__.PY").exists()``
-        returns ``True`` anyway, so the filename casing is pinned by
-        monkeypatching ``Path.exists`` to be case-strict.
-        """
-        src = tmp_path / "src"
-        (src / "aaa").mkdir(parents=True)
-        pkg = src / "mypkg"
-        pkg.mkdir()
-        (pkg / "__init__.py").write_text("")
-        real_exists = Path.exists
-
-        def strict_exists(self: Path) -> bool:
-            return self.name == "__init__.py" and real_exists(self)
-
-        monkeypatch.setattr(Path, "exists", strict_exists)
-        assert TestStructureScanner._auto_detect_package(src) == "mypkg"
 
     # --- Tests for TestStructureScanner._build_source_index() edge cases. ---
 

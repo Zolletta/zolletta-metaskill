@@ -249,7 +249,7 @@ class TestLiskovSubstitutionScanner:
     # --- CollectAllClasses ---
 
     def test_collect_all_classes_syntax_error_file_skipped(self, tmp_path: Path) -> None:
-        LiskovSubstitutionScanner._ensure_python_engine()
+        EngineRegistry.ensure_python()
         (tmp_path / "a_bad.py").write_text("class Foo:\n    def bar(:\n")
         (tmp_path / "b_good.py").write_text("class Good:\n    def ok(self):\n        return 1\n")
         all_classes = LiskovSubstitutionScanner._collect_all_classes([tmp_path])
@@ -259,7 +259,7 @@ class TestLiskovSubstitutionScanner:
     def test_collect_all_classes_none_engine_continues(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        LiskovSubstitutionScanner._ensure_python_engine()
+        EngineRegistry.ensure_python()
         (tmp_path / "a_first.py").write_text("class First:\n    pass\n")
         (tmp_path / "b_second.py").write_text("class Second:\n    pass\n")
         original = EngineRegistry.get_for_file

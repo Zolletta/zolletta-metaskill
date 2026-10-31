@@ -1,0 +1,5 @@
+#!/bin/sh
+# Keep the installable bundle's generated copies in sync with their sources.
+# Installed via `git config core.hooksPath .githooks` — dev-install.sh sets it.
+ROOT="$(git rev-parse --show-toplevel)"
+exec sh -c '"$0/sync-bundle.sh" && git -C "$0" add -A -- skills/zolletta-metaskill' "$ROOT"

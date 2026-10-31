@@ -6,7 +6,7 @@ skills: [grice]
 
 # Grice Maxims — Overview
 
-Grice's cooperative principle describes what a reader expects from an utterance: enough information and no more (**Quantity**), only what is true and supported (**Quality**), only what is relevant (**Relation**), and presented clearly and in order (**Manner**). This reference documents how `grice/grice_scanner.py` turns those four expectations into numbers, and — more importantly — what those numbers do and do not mean.
+Grice's cooperative principle describes what a reader expects from an utterance: enough information and no more (**Quantity**), only what is true and supported (**Quality**), only what is relevant (**Relation**), and presented clearly and in order (**Manner**). This reference documents how `skills/zolletta-metaskill/src/zolletta_metaskill/grice/grice_scanner.py` turns those four expectations into numbers, and — more importantly — what those numbers do and do not mean.
 
 Read this page first. The four metric pages describe the individual measurements; this one describes the frame they sit in, and the frame is the part that is easy to misread.
 

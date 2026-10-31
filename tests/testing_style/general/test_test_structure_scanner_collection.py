@@ -52,14 +52,6 @@ class TestTestStructureScannerCollection:
         path.write_text(json.dumps(settings))
         return path
 
-    # --- Tests for TestStructureScanner._auto_detect_package(). ---
-
-    def test_without_init_fallback(self, tmp_path: Path) -> None:
-        src = tmp_path / "src"
-        pkg = src / "mypkg"
-        pkg.mkdir(parents=True)
-        assert TestStructureScanner._auto_detect_package(src) == "mypkg"
-
     # --- Tests for TestStructureScanner._build_source_index(). ---
 
     def test_no_classes_skipped(self, tmp_path: Path) -> None:

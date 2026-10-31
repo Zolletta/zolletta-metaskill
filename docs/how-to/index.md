@@ -12,11 +12,11 @@ Practical steps to achieve a specific goal. Aimed at practitioners.
 
 Installation, project setup, and running the full review pipeline.
 
-| Document                                | Description                                                         |
-|-----------------------------------------|---------------------------------------------------------------------|
-| [Install](install.md)                   | Install Zolletta-metaskill via `install.sh` or manual clone/symlink |
-| [Set up a project](setup-project.md)    | Configure Zolletta-metaskill for a new project                      |
-| [Run a full review](run-full-review.md) | Execute the complete review pipeline                                |
+| Document                                | Description                                                             |
+|-----------------------------------------|-------------------------------------------------------------------------|
+| [Install](install.md)                   | Install Zolletta-metaskill via `npx skills add` or manual clone/symlink |
+| [Set up a project](setup-project.md)    | Configure Zolletta-metaskill for a new project                          |
+| [Run a full review](run-full-review.md) | Execute the complete review pipeline                                    |
 
 ## Code review
 

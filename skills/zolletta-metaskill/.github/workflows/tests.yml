@@ -1,0 +1,96 @@
+---
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  PYTHON_VERSION: "3.12"
+  UV_LOCK_TIMEOUT: 300
+
+jobs:
+  pytest:
+    name: pytest + coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up environment
+        uses: ./.github/actions/setup-env
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache-suffix: "tests"
+
+      - name: Run tests with coverage
+        run: uv run pytest --cov=zolletta_metaskill --cov-report=xml --cov-report=term -q
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          files: ./coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+
+  quality:
+    name: ruff + ty + mypy + vulture
+    needs: pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up environment
+        uses: ./.github/actions/setup-env
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache-suffix: "quality"
+
+      - name: bundle copies in sync
+        # The committed generated files must match what sync-bundle.sh
+        # produces — a drift means someone edited a source without committing
+        # the regenerated copy (pre-commit hook missed or bypassed).
+        run: |
+          ./sync-bundle.sh
+          if git status --porcelain -- skills/zolletta-metaskill .sync-manifest | grep .; then
+              echo "::error::bundle copies out of sync — run ./sync-bundle.sh and commit"
+              exit 1
+          fi
+
+      - name: ruff check
+        run: uv run ruff check
+
+      - name: ty check
+        run: uv run ty check .
+
+      - name: mypy
+        run: uv run mypy .
+
+      - name: vulture
+        run: uv run vulture .
+
+  markdownlint:
+    name: markdownlint
+    needs: quality
+    runs-on: ubuntu-latest
+    # Temporary, deliberately. The repo is green on this gate as of
+    # 2026-10-18 (94 files, 0 issues), but the flag stays until the gate has
+    # run on a few releases without a surprise. Remove it once that is proven;
+    # until then a red run here is information, not a block.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up environment
+        uses: ./.github/actions/setup-env
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache-suffix: "markdownlint"
+
+      - name: markdownlint
+        run: npx --yes markdownlint-cli2@0.23.3
