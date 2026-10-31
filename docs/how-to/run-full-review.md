@@ -32,7 +32,7 @@ Each skill runs as a subagent and writes its findings to a markdown report in th
 
 ### Step 3 — Aggregated report
 
-The orchestrator collects all sub-skill reports and creates:
+The orchestrator collects all subcommand reports and creates:
 
 - `SUMMARY.md` — overall grade, grades by area, top strengths and weaknesses, priority items
 - `TODO.md` — aggregated action items from all skills, sorted by priority

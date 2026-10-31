@@ -20,12 +20,12 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 **Evidence we already do this:**
 
-| Where                                                                                                                                                           | What                                                                                                          | How it follows the pattern                                    |
-|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------|
-| `docs/reference/code/review-mode.md` line 49                                                                                                                    | "If you're not sure whether it's real, the rule definition is not precise enough — that's a skill bug to fix" | Pushes back on the instruction instead of silently complying  |
-| `docs/reference/code/review-mode.md` line 37-49                                                                                                                 | "No borderline category — emit or suppress, never hedge"                                                      | Forces a position instead of compliance with ambiguity        |
-| `skills/zolletta-metaskill-setup/SUBSKILL.md` Step 3, `skills/zolletta-metaskill-review/SUBSKILL.md` Step 1 | `ask_user_question` when language is undetermined                                                             | Asks instead of guessing                                      |
-| `skills/zolletta-metaskill-patterns/SUBSKILL.md` "Classes that must be suppressed"                                                    | Explicit suppression with stated reasoning                                                                    | Flags contradictions rather than parroting the scanner signal |
+| Where                                                                                                                                                               | What                                                                                                            | How it follows the pattern                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `docs/reference/code/review-mode.md` line 49                                                                                                                        | "If you're not sure whether it's real, the rule definition is not precise enough — that's a skill bug to fix"   | Pushes back on the instruction instead of silently complying    |
+| `docs/reference/code/review-mode.md` line 37-49                                                                                                                     | "No borderline category — emit or suppress, never hedge"                                                        | Forces a position instead of compliance with ambiguity          |
+| `skills/zolletta-metaskill-setup/SUBCOMMAND.md` Step 3, `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 1 | `ask_user_question` when language is undetermined                                                               | Asks instead of guessing                                        |
+| `skills/zolletta-metaskill-patterns/SUBCOMMAND.md` "Classes that must be suppressed"                                                      | Explicit suppression with stated reasoning                                                                      | Flags contradictions rather than parroting the scanner signal   |
 
 ## 2. Background Agent
 
@@ -35,11 +35,11 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 **Evidence we already do this:**
 
-| Where                                                                           | What                                                                                      | How it follows the pattern                                           |
-|---------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|----------------------------------------------------------------------|
-| `skills/zolletta-metaskill-review/SUBSKILL.md` Step 4 | One subagent per command, all in parallel as background subagents (`is_background: true`) | Each review area is a standalone, well-sized task with a clear scope |
-| `skills/zolletta-metaskill-review/SUBSKILL.md` Step 5 | Orchestrator only confirms completion and collects the grade                              | The main thread stays clean; agents work asynchronously              |
-| Subagent contract                                                               | Each subagent writes its own report file and returns a one-line confirmation              | Hands back only the result, not the working context                  |
+| Where                                                                             | What                                                                                        | How it follows the pattern                                             |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 4 | One subagent per command, all in parallel as background subagents (`is_background: true`)   | Each review area is a standalone, well-sized task with a clear scope   |
+| `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 5 | Orchestrator only confirms completion and collects the grade                                | The main thread stays clean; agents work asynchronously                |
+| Subagent contract                                                                 | Each subagent writes its own report file and returns a one-line confirmation                | Hands back only the result, not the working context                    |
 
 ## 3. Chain of Small Steps
 
@@ -49,11 +49,11 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 **Evidence we already do this:**
 
-| Where                                                                                 | What                                                                         | How it follows the pattern                                                        |
-|---------------------------------------------------------------------------------------|------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
-| `docs/reference/code/scripts-first-protocol.md`                                       | Phase A (batch scripts) → Phase B (mechanical assembly) → Phase C (judgment) | Each phase is small and verifiable; B builds on A's cache, C builds on B's report |
-| `docs/reference/code/scripts-first-protocol.md` Phase B                               | "No source file reads in this phase"                                         | Phase B is verifiable precisely because it is mechanical                          |
-| Setup guard (`skills/zolletta-metaskill-setup/SUBSKILL.md`) | Runs before any subcommand if `settings.json` is missing                     | Configuration is a completed step before review begins                            |
+| Where                                                                                   | What                                                                           | How it follows the pattern                                                          |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| `docs/reference/code/scripts-first-protocol.md`                                         | Phase A (batch scripts) → Phase B (mechanical assembly) → Phase C (judgment)   | Each phase is small and verifiable; B builds on A's cache, C builds on B's report   |
+| `docs/reference/code/scripts-first-protocol.md` Phase B                                 | "No source file reads in this phase"                                           | Phase B is verifiable precisely because it is mechanical                            |
+| Setup guard (`skills/zolletta-metaskill-setup/SUBCOMMAND.md`) | Runs before any subcommand if `settings.json` is missing                       | Configuration is a completed step before review begins                              |
 
 ## 4. Constrained Tests
 
@@ -63,11 +63,11 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 **Evidence we already do this:**
 
-| Where                                                                                                   | What                                                                | How it follows the pattern                                             |
-|---------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------|------------------------------------------------------------------------|
-| `docs/explanation/code/false-positive-prevention.md` §2                                                 | Coverage cross-check: `pytest --cov`, downgrade if coverage >50%    | Coverage is trusted only as a measured signal, with a stated threshold |
-| `docs/reference/code/review-mode.md` line 27-28                                                         | Auto-fixable diagnostics classified by the tool's own fix indicator | The metric comes from the tool, not from judgment                      |
-| `skills/zolletta-metaskill-patterns/SUBSKILL.md` (test_structure scanner use) | Five structural tables distinguish naming/mirroring from coverage   | Structural checks separated from behavioral checks                     |
+| Where                                                                                                     | What                                                                  | How it follows the pattern                                               |
+| --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `docs/explanation/code/false-positive-prevention.md` §2                                                   | Coverage cross-check: `pytest --cov`, downgrade if coverage >50%      | Coverage is trusted only as a measured signal, with a stated threshold   |
+| `docs/reference/code/review-mode.md` line 27-28                                                           | Auto-fixable diagnostics classified by the tool's own fix indicator   | The metric comes from the tool, not from judgment                        |
+| `skills/zolletta-metaskill-patterns/SUBCOMMAND.md` (test_structure scanner use) | Five structural tables distinguish naming/mirroring from coverage     | Structural checks separated from behavioral checks                       |
 
 ## 5. Context Management
 
@@ -77,12 +77,12 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 **Evidence we already do this:**
 
-| Where                                                                              | What                                                    | How it follows the pattern                                |
-|------------------------------------------------------------------------------------|---------------------------------------------------------|-----------------------------------------------------------|
-| `skills/zolletta-metaskill-review/SUBSKILL.md` Step 3.6  | `cache/_context.md` deduplicates shared context         | Copied once so subagents don't each re-read settings.json |
-| `docs/reference/code/scripts-first-protocol.md` line 73                            | Judgment-rules digest "~30 lines — only the criteria"   | Full docs never loaded into review context                |
-| `skills/zolletta-metaskill-patterns/SUBSKILL.md` line 57 | "MUST consult the relevant sections" — not read in full | Context is appended deliberately, section by section      |
-| `skills/zolletta-metaskill-review/SUBSKILL.md` Step 2    | Fresh timestamped run folder per review                 | Reset: every review starts with a clean context           |
+| Where                                                                                | What                                                      | How it follows the pattern                                  |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------- | ----------------------------------------------------------- |
+| `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 3.6  | `cache/_context.md` deduplicates shared context           | Copied once so subagents don't each re-read settings.json   |
+| `docs/reference/code/scripts-first-protocol.md` line 73                              | Judgment-rules digest "~30 lines — only the criteria"     | Full docs never loaded into review context                  |
+| `skills/zolletta-metaskill-patterns/SUBCOMMAND.md` line 57 | "MUST consult the relevant sections" — not read in full   | Context is appended deliberately, section by section        |
+| `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 2    | Fresh timestamped run folder per review                   | Reset: every review starts with a clean context             |
 
 ## 6. External Context
 
@@ -92,11 +92,11 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 **Evidence we already do this:**
 
-| Where                                                                           | What                                                              | How it follows the pattern                                   |
-|---------------------------------------------------------------------------------|-------------------------------------------------------------------|--------------------------------------------------------------|
-| `skills/zolletta-metaskill-review/SUBSKILL.md` Step 4 | Each subagent runs in its own context, writes its own report      | The sub-task's noise never enters the orchestrator's context |
-| `skills/zolletta-metaskill-review/SUBSKILL.md` Step 5 | Orchestrator collects grades from one-line confirmations          | Like a teammate reporting a summary, not their whole day     |
-| Run folder `cache/`                                                             | Script outputs persisted to files instead of held in conversation | Intermediate state lives outside the context window          |
+| Where                                                                             | What                                                                | How it follows the pattern                                     |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 4 | Each subagent runs in its own context, writes its own report        | The sub-task's noise never enters the orchestrator's context   |
+| `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 5 | Orchestrator collects grades from one-line confirmations            | Like a teammate reporting a summary, not their whole day       |
+| Run folder `cache/`                                                               | Script outputs persisted to files instead of held in conversation   | Intermediate state lives outside the context window            |
 
 ## 7. Feedback Loop
 
@@ -106,11 +106,11 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 **Evidence we already do this:**
 
-| Where                                                                                    | What                                                                             | How it follows the pattern                                      |
-|------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------|-----------------------------------------------------------------|
-| `skills/zolletta-metaskill-review/SUBSKILL.md` Step 6          | Previous review comparison: &#x2705; Done / &#x26A0; Partial / &#x274C; Not done | A clear success signal for each carried-forward finding         |
-| `skills/zolletta-metaskill-review/SUBSKILL.md` Step 7          | "Trend vs previous review" subsection in SUMMARY.md                              | The signal is measured across runs                              |
-| `skills/zolletta-metaskill-review/SUBSKILL.md` Step 5 line 240 | "If a subagent fails or times out, note it and continue"                         | Iteration is bounded — failure is recorded, not retried blindly |
+| Where                                                                                      | What                                                                               | How it follows the pattern                                        |
+| ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 6          | Previous review comparison: &#x2705; Done / &#x26A0; Partial / &#x274C; Not done   | A clear success signal for each carried-forward finding           |
+| `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 7          | "Trend vs previous review" subsection in SUMMARY.md                                | The signal is measured across runs                                |
+| `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 5 line 240 | "If a subagent fails or times out, note it and continue"                           | Iteration is bounded — failure is recorded, not retried blindly   |
 
 ## 8. Focused Agent
 
@@ -120,12 +120,12 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 **Evidence we already do this — this is the core architecture:**
 
-| Where                                                                                 | What                                     | How it follows the pattern                                                    |
-|---------------------------------------------------------------------------------------|------------------------------------------|-------------------------------------------------------------------------------|
-| `SKILL.md` Dispatch section                                                           | Meta-skill routes to focused subcommands | The meta-skill never does the review itself                                   |
-| `skills/zolletta-metaskill-review/SUBSKILL.md` Step 4       | One subagent per review area             | A subagent reviewing code style doesn't also think about docs                 |
-| `docs/reference/code/scripts-first-protocol.md`                                       | Per-subcommand script table              | Each subagent runs only the scripts listed for its subcommand                 |
-| `skills/zolletta-metaskill-patterns/SUBSKILL.md` line 68-75 | "Classes that must be suppressed"        | The agent is told what NOT to report — the scope is narrow in both directions |
+| Where                                                                                   | What                                       | How it follows the pattern                                                      |
+| --------------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------- |
+| `SKILL.md` Dispatch section                                                             | Meta-skill routes to focused subcommands   | The meta-skill never does the review itself                                     |
+| `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 4       | One subagent per review area               | A subagent reviewing code style doesn't also think about docs                   |
+| `docs/reference/code/scripts-first-protocol.md`                                         | Per-subcommand script table                | Each subagent runs only the scripts listed for its subcommand                   |
+| `skills/zolletta-metaskill-patterns/SUBCOMMAND.md` line 68-75 | "Classes that must be suppressed"          | The agent is told what NOT to report — the scope is narrow in both directions   |
 
 ## 9. Ground Rules
 
@@ -135,11 +135,11 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 **Evidence we already do this:**
 
-| Where                                                                           | What                                                                                                | How it follows the pattern                                      |
-|---------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------|
-| `SKILL.md` line 40                                                              | "Sub-skills link back to rules and only narrow behavior — they never override or restate the rules" | Rules are stated once and always in context when the skill runs |
-| `skills/zolletta-metaskill-review/SUBSKILL.md` Step 2 | Reads `_context.md` which inlines settings and ADR directives                                       | Ground rules are loaded into context, not paraphrased           |
-| `settings.json`                                                                 | Project-level configuration auto-read by every subcommand                                           | Project ground truth lives in one place                         |
+| Where                                                                             | What                                                                                                  | How it follows the pattern                                        |
+| --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `SKILL.md` line 40                                                                | "Subcommands link back to rules and only narrow behavior — they never override or restate the rules"  | Rules are stated once and always in context when the skill runs   |
+| `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 2 | Reads `_context.md` which inlines settings and ADR directives                                         | Ground rules are loaded into context, not paraphrased             |
+| `settings.json`                                                                   | Project-level configuration auto-read by every subcommand                                             | Project ground truth lives in one place                           |
 
 ## 10. Happy to Delete
 
@@ -149,11 +149,11 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 **Evidence we already do this:**
 
-| Where                                                                                    | What                                      | How it follows the pattern                                    |
-|------------------------------------------------------------------------------------------|-------------------------------------------|---------------------------------------------------------------|
-| `skills/zolletta-metaskill-review/SUBSKILL.md` Step 2          | Each run creates a new timestamped folder | Every review is disposable — no pressure to salvage a bad run |
-| Setup Step 2                                                                             | Reports in the global `~/.gitignore`      | Run artifacts are temporary by design                         |
-| `skills/zolletta-metaskill-review/SUBSKILL.md` Step 5 line 240 | Failed subagent: note it and continue     | Nothing accumulates that needs to be preserved at all costs   |
+| Where                                                                                      | What                                        | How it follows the pattern                                      |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------- | --------------------------------------------------------------- |
+| `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 2          | Each run creates a new timestamped folder   | Every review is disposable — no pressure to salvage a bad run   |
+| Setup Step 2                                                                               | Reports in the global `~/.gitignore`        | Run artifacts are temporary by design                           |
+| `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 5 line 240 | Failed subagent: note it and continue       | Nothing accumulates that needs to be preserved at all costs     |
 
 ## 11. Learning Loop
 
@@ -163,11 +163,11 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 **Evidence we already do this — in the smallest useful form:**
 
-| Where                                                         | What                                                                               | How it follows the pattern                                               |
-|---------------------------------------------------------------|------------------------------------------------------------------------------------|--------------------------------------------------------------------------|
-| `docs/reference/code/review-mode.md` line 49                  | Skill-bug rule: an imprecise rule is recorded in the report, not silently absorbed | The learning is captured at the moment it is discovered                  |
-| Issue link in the report                                      | `https://github.com/Zolletta/zolletta-metaskill/issues/new`                        | The learning routes to a durable store the next run's maintainers act on |
-| "The review surfaces the bug; filing it is the reader's call" | The agent proposes, the human decides                                              | Matches the pattern's "you approve the routing"                          |
+| Where                                                           | What                                                                                 | How it follows the pattern                                                 |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| `docs/reference/code/review-mode.md` line 49                    | Skill-bug rule: an imprecise rule is recorded in the report, not silently absorbed   | The learning is captured at the moment it is discovered                    |
+| Issue link in the report                                        | `https://github.com/Zolletta/zolletta-metaskill/issues/new`                          | The learning routes to a durable store the next run's maintainers act on   |
+| "The review surfaces the bug; filing it is the reader's call"   | The agent proposes, the human decides                                                | Matches the pattern's "you approve the routing"                            |
 
 ## 12. Noise Cancellation
 
@@ -177,12 +177,12 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 **Evidence we already do this:**
 
-| Where                                                      | What                                       | How it follows the pattern                                  |
-|------------------------------------------------------------|--------------------------------------------|-------------------------------------------------------------|
-| `docs/explanation/code/general-principles.md` line 270-279 | "Do Not Overcomplicate Responses"          | "Report each finding once, with the minimum context needed" |
-| `docs/explanation/code/false-positive-prevention.md` §5    | Drift grouped by sub-tree                  | 47 identical findings become 1 actionable one               |
-| `docs/reference/code/review-mode.md` line 27-28            | Auto-fixable issues are informational only | Trivial noise never inflates the report or the grade        |
-| `docs/reference/code/review-mode.md` line 39-49            | "Never hedge"                              | Filler words are structurally excluded                      |
+| Where                                                        | What                                         | How it follows the pattern                                    |
+| ------------------------------------------------------------ | -------------------------------------------- | ------------------------------------------------------------- |
+| `docs/explanation/code/general-principles.md` line 270-279   | "Do Not Overcomplicate Responses"            | "Report each finding once, with the minimum context needed"   |
+| `docs/explanation/code/false-positive-prevention.md` §5      | Drift grouped by sub-tree                    | 47 identical findings become 1 actionable one                 |
+| `docs/reference/code/review-mode.md` line 27-28              | Auto-fixable issues are informational only   | Trivial noise never inflates the report or the grade          |
+| `docs/reference/code/review-mode.md` line 39-49              | "Never hedge"                                | Filler words are structurally excluded                        |
 
 ## 13. Offload Deterministic
 
@@ -192,12 +192,12 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 **Evidence we already do this — this is the scripts-first protocol:**
 
-| Where                                                     | What                                                                           | How it follows the pattern                                     |
-|-----------------------------------------------------------|--------------------------------------------------------------------------------|----------------------------------------------------------------|
-| `docs/reference/code/scripts-first-protocol.md` Principle | "Scripts produce deterministic findings. The LLM consumes their cached output" | The LLM is never asked to count, parse, or repeat              |
-| Phase B                                                   | Scanner tables copied verbatim from cache into the report                      | Deterministic output is relayed, not regenerated               |
-| Anti-patterns section                                     | "Re-deriving a finding the scanner already emits" is forbidden                 | The code does the deterministic work; the LLM never re-does it |
-| Two-bucket classification                                 | Auto-fixable vs finding from the tool's own fix indicator                      | Even the classification is mechanical                          |
+| Where                                                       | What                                                                             | How it follows the pattern                                       |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `docs/reference/code/scripts-first-protocol.md` Principle   | "Scripts produce deterministic findings. The LLM consumes their cached output"   | The LLM is never asked to count, parse, or repeat                |
+| Phase B                                                     | Scanner tables copied verbatim from cache into the report                        | Deterministic output is relayed, not regenerated                 |
+| Anti-patterns section                                       | "Re-deriving a finding the scanner already emits" is forbidden                   | The code does the deterministic work; the LLM never re-does it   |
+| Two-bucket classification                                   | Auto-fixable vs finding from the tool's own fix indicator                        | Even the classification is mechanical                            |
 
 ## 14. Reference Docs
 
@@ -207,11 +207,11 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 **Evidence we already do this:**
 
-| Where                                                                                      | What                                                             | How it follows the pattern                                 |
-|--------------------------------------------------------------------------------------------|------------------------------------------------------------------|------------------------------------------------------------|
-| `skills/zolletta-metaskill-patterns/SUBSKILL.md` Reference Files | ★ mandatory files consulted section-by-section; others on demand | Knowledge is pulled in when relevant, never front-loaded   |
-| `docs/reference/augmented-coding-patterns.md`                                              | Distilled pattern definitions as a local cache                   | Skills cite by name; the doc is loaded only when needed    |
-| `docs/reference/code/scripts.md`                                                           | Full script reference consulted per subcommand                   | Same shape: one reference per need, not one for everything |
+| Where                                                                                        | What                                                               | How it follows the pattern                                   |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------ |
+| `skills/zolletta-metaskill-patterns/SUBCOMMAND.md` Reference Files | ★ mandatory files consulted section-by-section; others on demand   | Knowledge is pulled in when relevant, never front-loaded     |
+| `docs/reference/augmented-coding-patterns.md`                                                | Distilled pattern definitions as a local cache                     | Skills cite by name; the doc is loaded only when needed      |
+| `docs/reference/code/scripts.md`                                                             | Full script reference consulted per subcommand                     | Same shape: one reference per need, not one for everything   |
 
 ## 15. Reverse Direction
 
@@ -221,11 +221,11 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 **Evidence we already do this:**
 
-| Where                                                                                 | What                                                             | How it follows the pattern                                           |
-|---------------------------------------------------------------------------------------|------------------------------------------------------------------|----------------------------------------------------------------------|
-| `skills/zolletta-metaskill-help/SUBSKILL.md`                | Fixed subcommand scopes describe what to check, not what to find | "Review all source code in src/…" — the problem, not a preconception |
-| `docs/reference/code/scripts-first-protocol.md`                                       | Scanners scan everything                                         | The user can't inject "check only UserService"                       |
-| `skills/zolletta-metaskill-patterns/SUBSKILL.md` line 60-66 | Reason-to-change lists ALL reasons, not just the scanner's       | The test is open-ended, not confirmatory                             |
+| Where                                                                                   | What                                                               | How it follows the pattern                                             |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| `skills/zolletta-metaskill-help/SUBCOMMAND.md`                | Fixed subcommand scopes describe what to check, not what to find   | "Review all source code in src/…" — the problem, not a preconception   |
+| `docs/reference/code/scripts-first-protocol.md`                                         | Scanners scan everything                                           | The user can't inject "check only UserService"                         |
+| `skills/zolletta-metaskill-patterns/SUBCOMMAND.md` line 60-66 | Reason-to-change lists ALL reasons, not just the scanner's         | The test is open-ended, not confirmatory                               |
 
 ## 16. Shared Canvas
 
@@ -235,11 +235,11 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 **Evidence we already do this:**
 
-| Where                                                                             | What                                                 | How it follows the pattern                                       |
-|-----------------------------------------------------------------------------------|------------------------------------------------------|------------------------------------------------------------------|
-| `skills/zolletta-metaskill-review/SUBSKILL.md` Step 7-8 | SUMMARY.md + TODO.md designed for team consumption   | An executive overview and an action list both humans and AI read |
-| Report structure                                                                  | Each finding links to the detailed specialist report | Linkable, shareable artifacts — point at a specific finding      |
-| Report format                                                                     | Standard markdown, readable in any tool              | No platform lock-in; the canvas is the file system               |
+| Where                                                                               | What                                                   | How it follows the pattern                                         |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------ |
+| `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 7-8 | SUMMARY.md + TODO.md designed for team consumption     | An executive overview and an action list both humans and AI read   |
+| Report structure                                                                    | Each finding links to the detailed specialist report   | Linkable, shareable artifacts — point at a specific finding        |
+| Report format                                                                       | Standard markdown, readable in any tool                | No platform lock-in; the canvas is the file system                 |
 
 ## 17. Slice for Review
 
@@ -249,11 +249,11 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 **Evidence we already do this:**
 
-| Where                                                                           | What                                                     | How it follows the pattern                           |
-|---------------------------------------------------------------------------------|----------------------------------------------------------|------------------------------------------------------|
-| `skills/zolletta-metaskill-review/SUBSKILL.md` Step 4 | One report per subcommand                                | Each review area is an independently reviewable unit |
-| Step 7-8                                                                        | SUMMARY (overview) + TODO (actions) + specialist reports | The large work is split by how it will be consumed   |
-| `skills/zolletta-metaskill-review/SUBSKILL.md` Step 8 | TODO items link to the relevant specialist report        | Drill-down from the slice to the detail              |
+| Where                                                                             | What                                                       | How it follows the pattern                             |
+| --------------------------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------ |
+| `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 4 | One report per subcommand                                  | Each review area is an independently reviewable unit   |
+| Step 7-8                                                                          | SUMMARY (overview) + TODO (actions) + specialist reports   | The large work is split by how it will be consumed     |
+| `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 8 | TODO items link to the relevant specialist report          | Drill-down from the slice to the detail                |
 
 ## 18. Text Native
 
@@ -263,11 +263,11 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 **Evidence we already do this:**
 
-| Where            | What                                           | How it follows the pattern                          |
-|------------------|------------------------------------------------|-----------------------------------------------------|
-| Run folder       | Reports, cache, and settings are all text      | Everything is grep-able, diff-able, and editable    |
-| `settings.json`  | Single configuration source as structured text | Project ground truth in a version-controllable file |
-| Report templates | Markdown templates with fixed structure        | The output contract is itself text                  |
+| Where              | What                                             | How it follows the pattern                            |
+| ------------------ | ------------------------------------------------ | ----------------------------------------------------- |
+| Run folder         | Reports, cache, and settings are all text        | Everything is grep-able, diff-able, and editable      |
+| `settings.json`    | Single configuration source as structured text   | Project ground truth in a version-controllable file   |
+| Report templates   | Markdown templates with fixed structure          | The output contract is itself text                    |
 
 ## 19. Smart Plan, Cheap Execution
 
@@ -277,11 +277,11 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 
 **Evidence we already do this:**
 
-| Where                                                                           | What                                                                                             | How it follows the pattern                                                                                                                       |
-|---------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
-| `settings.json`                                                                 | `subcommands` object with one entry per subcommand, each containing a `model` field              | The user names a harness-specific model per subcommand; the skill never hardcodes one — the config channel is the way to "tell the orchestrator" |
-| `skills/zolletta-metaskill-review/SUBSKILL.md` Step 4 | Orchestrator reads `subcommands.<name>.model` and passes it to each `run_subagent` when non-null | Each review subagent inherits its configured model; the orchestrator itself stays on the harness default                                         |
-| Opt-in by design                                                                | `null` means behavior is unchanged                                                               | The pattern is available to users who want it, invisible to those who don't                                                                      |
+| Where                                                                             | What                                                                                               | How it follows the pattern                                                                                                                         |
+| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `settings.json`                                                                   | `subcommands` object with one entry per subcommand, each containing a `model` field                | The user names a harness-specific model per subcommand; the skill never hardcodes one — the config channel is the way to "tell the orchestrator"   |
+| `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 4 | Orchestrator reads `subcommands.<name>.model` and passes it to each `run_subagent` when non-null   | Each review subagent inherits its configured model; the orchestrator itself stays on the harness default                                           |
+| Opt-in by design                                                                  | `null` means behavior is unchanged                                                                 | The pattern is available to users who want it, invisible to those who don't                                                                        |
 
 All six `subcommands` entries are consumed by the review orchestrator — no standalone subagent has an independent model path.
 

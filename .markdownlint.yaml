@@ -39,7 +39,7 @@ MD009: true            # no trailing spaces
 MD012: true            # no multiple consecutive blank lines
 MD024:
   siblings_only: true  # duplicate headings only flagged among siblings
-MD025: true            # exactly one H1 per file — SUBSKILL.md format requires it
+MD025: true            # exactly one H1 per file — SUBCOMMAND.md format requires it
 MD029:
   style: ordered       # ordered lists use sequential numbering 1. 2. 3.
 MD046:

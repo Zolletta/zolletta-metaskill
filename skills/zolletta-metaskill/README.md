@@ -22,7 +22,7 @@ A family of generic code review skills with specializations for Python and PHP (
 
 Zolletta-metaskill is a **meta-skill**: it dispatches to subcommands that each perform a specific review task. It leverages [tokensave](https://github.com/aovestdipaperino/tokensave) when available for semantic code-graph queries, and falls back to grep + targeted reads otherwise.
 
-If you maintain rules as part of your agent configuration, those are the single source of truth for their domain and apply to every subcommand. Sub-skills link back to them and only narrow behavior for their specific review context. Zolletta-metaskill **complements** your rules — it does not override them.
+If you maintain rules as part of your agent configuration, those are the single source of truth for their domain and apply to every subcommand. Subcommands link back to them and only narrow behavior for their specific review context. Zolletta-metaskill **complements** your rules — it does not override them.
 
 📖 **Full documentation**: <https://metaskill.zolletta.org/>
 

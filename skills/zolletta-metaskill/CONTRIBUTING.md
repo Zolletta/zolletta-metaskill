@@ -108,7 +108,7 @@ Then open <http://127.0.0.1:8000>.
         # the installable bundle (what npx skills / gh skill ship)
   SKILL.md                        # skill entry point
   src/zolletta_metaskill/         # Python package (scanning scripts, engines, setup)
-  skills/zolletta-metaskill-*/    # SUBSKILL.md files for each subcommand
+  skills/zolletta-metaskill-*/    # SUBCOMMAND.md files for each subcommand
   docs/                           # GENERATED — copies of the referenced docs (sync-bundle.sh)
   pyproject.toml                  # version marker (bumped by semantic-release)
 docs/                           # Diátaxis-structured documentation (single source of truth)

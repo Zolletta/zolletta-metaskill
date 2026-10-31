@@ -275,7 +275,7 @@ The six subcommand keys:
 | `php-code-style`       | `php-code-style`                 | `null`          | Mechanical — PSR-12, naming, types (PHP only)            |
 | `php-testing-style`    | `php-testing-style`              | `null`          | Mechanical — PHPUnit, coverage gaps (PHP only)           |
 
-> **v1.x migration**: the `external_review_model` scalar (for the removed `external-review` subcommand) and the `subagent_profile` scalar (applied to all review subagents) are replaced by `subcommands` — a per-subcommand map. `external_review_model` is simply removed (the subcommand no longer exists); `subagent_profile` migrates to the 6 review subcommand entries. Setup migrates automatically — see `skills/zolletta-metaskill-setup/SUBSKILL.md` → "Step 0 — Migration and missing-keys backfill".
+> **v1.x migration**: the `external_review_model` scalar (for the removed `external-review` subcommand) and the `subagent_profile` scalar (applied to all review subagents) are replaced by `subcommands` — a per-subcommand map. `external_review_model` is simply removed (the subcommand no longer exists); `subagent_profile` migrates to the 6 review subcommand entries. Setup migrates automatically — see `skills/zolletta-metaskill-setup/SUBCOMMAND.md` → "Step 0 — Migration and missing-keys backfill".
 >
 > **v3.0.0 backfill**: `python.paths`, `python.patterns`, `php.patterns`, and the new `code_style`/`testing`/`documentation` keys are added to existing settings.json files on the next setup run — additive only, user-customized values are preserved.
 
@@ -362,7 +362,7 @@ These control which checks the `python-code-style` skill enforces. All default t
 | `max_cyclomatic_complexity`      | integer | `12`    | Structure  | Maximum allowed cyclomatic complexity per function/method (enforced by `src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py`). Seeded from `python.tools.ruff.max_complexity` when configured              |
 | `vulture_min_confidence`         | integer | `80`    | Dead code  | Minimum confidence for vulture findings (0–100)                                                                                                                                                                                                             |
 
-> Rules not listed here (naming conventions, import order, private/test function docstring exemptions, type hints for public APIs) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-python-code-style/SUBSKILL.md` → Table 1 for the full list.
+> Rules not listed here (naming conventions, import order, private/test function docstring exemptions, type hints for public APIs) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-python-code-style/SUBCOMMAND.md` → Table 1 for the full list.
 
 ### `python.testing` — configurable rule toggles
 
@@ -379,7 +379,7 @@ These control which checks the `python-testing-style` skill enforces and the cov
 | `mutation_target`                 | string  | `changed` | Mutation | `changed` = mutate only files changed vs the default branch plus working tree; `all` = full run (slow, for scheduled reviews)                                         |
 | `mutation_max_mutants`            | integer | `50`      | Mutation | Cap on survived mutants detailed in the report                                                                                                                        |
 
-> Rules not listed here (AAA structure, test isolation, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-python-testing-style/SUBSKILL.md` → "Always-on rules" for the full list.
+> Rules not listed here (AAA structure, test isolation, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-python-testing-style/SUBCOMMAND.md` → "Always-on rules" for the full list.
 
 ### `python.patterns` — SOLID/pattern scanner configuration
 
@@ -450,7 +450,7 @@ These control which checks the `php-code-style` skill enforces. All default to `
 | `check_cyclomatic_complexity` | boolean | `true`  | Structure   | Functions/methods must not exceed `max_cyclomatic_complexity` decision points (`src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py`) | all     |
 | `max_cyclomatic_complexity`   | integer | `12`    | Structure   | Maximum allowed cyclomatic complexity per function/method (enforced by `src/zolletta_metaskill/code_style/general/cyclomatic_complexity_scanner.py`)         | all     |
 
-> Rules not listed here (`declare(strict_types=1)`, return/parameter/property type declarations, nullable types, `void`/`never`, avoid `mixed`, constructor promotion, match expression, nullsafe operator, named arguments, attributes, enums, readonly properties, arrow functions, PSR-4 autoloading, PSR-12 coding style, camelCase methods, namespace usage, no `@` suppression, file upload validation) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-php-code-style/SUBSKILL.md` → "Always-on rules" for the full list.
+> Rules not listed here (`declare(strict_types=1)`, return/parameter/property type declarations, nullable types, `void`/`never`, avoid `mixed`, constructor promotion, match expression, nullsafe operator, named arguments, attributes, enums, readonly properties, arrow functions, PSR-4 autoloading, PSR-12 coding style, camelCase methods, namespace usage, no `@` suppression, file upload validation) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-php-code-style/SUBCOMMAND.md` → "Always-on rules" for the full list.
 
 ### `php.testing` — configurable rule toggles
 
@@ -466,7 +466,7 @@ These control which checks the `php-testing-style` skill enforces and the covera
 | `mutation_target`                 | string  | `changed` | Mutation | `changed` = Infection's `--git-diff-filter` covers working tree + committed changes vs the default branch; `all` = full run (slow, for scheduled reviews) |
 | `mutation_max_mutants`            | integer | `50`      | Mutation | Cap on escaped mutants detailed in the report                                                                                                             |
 
-> Rules not listed here (one test class per SUT, test directory mirroring per PSR-4, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-php-testing-style/SUBSKILL.md` → "Always-on rules" for the full list.
+> Rules not listed here (one test class per SUT, test directory mirroring per PSR-4, mandatory coverage gap detection, scope boundary with `patterns`) are **always-on** and cannot be disabled. See `skills/zolletta-metaskill-php-testing-style/SUBCOMMAND.md` → "Always-on rules" for the full list.
 
 ### `php.patterns` — SOLID scanner configuration
 

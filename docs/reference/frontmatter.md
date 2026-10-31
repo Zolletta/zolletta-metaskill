@@ -6,7 +6,7 @@ skills: [setup, review, patterns, documentor, python-*]
 
 # Frontmatter Reference
 
-Every markdown file in the repository opens with a YAML frontmatter block. A documentation file — anything under `docs/` plus the root documents — declares its audience, stability status and associated skills; a skill manifest (`SKILL.md`, `SUBSKILL.md`) declares the skill's routing metadata instead. This metadata enables automated tooling (staleness scoring, drift detection, cross-referencing) and helps reviewers understand the purpose of each file at a glance.
+Every markdown file in the repository opens with a YAML frontmatter block. A documentation file — anything under `docs/` plus the root documents — declares its audience, stability status and associated skills; a skill manifest (`SKILL.md`, `SUBCOMMAND.md`) declares the skill's routing metadata instead. This metadata enables automated tooling (staleness scoring, drift detection, cross-referencing) and helps reviewers understand the purpose of each file at a glance.
 
 ## Fields
 

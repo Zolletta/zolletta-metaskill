@@ -60,7 +60,7 @@ else
     echo "Installing to $CANONICAL_DEST ..."
     mkdir -p "$CANONICAL_DEST"
     # Wipe the destination first so renamed/removed files don't linger stale
-    # (e.g. SKILL.md -> SUBSKILL.md inside a subskill folder).
+    # (e.g. SKILL.md -> SUBCOMMAND.md inside a subcommand folder).
     # Using find -delete — never rm -rf.
     find "$CANONICAL_DEST" -mindepth 1 -delete 2>/dev/null || true
 

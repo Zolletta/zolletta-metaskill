@@ -500,11 +500,11 @@ Regenerates the bundle's copied files: everything in `bundle-files.txt` is copie
 ```bash
 ./sync-bundle.sh               # sync copies from bundle-files.txt
 ./sync-bundle.sh --regenerate  # rewrite bundle-files.txt from the SKILL.md/
-                               # SUBSKILL reference closure, then sync
+                               # SUBCOMMAND reference closure, then sync
 ```
 
 ### `bundle-files.txt`
 
-The copy list read by `sync-bundle.sh` — one repo-relative path per line, `#` comments allowed. Hand-curated but regenerable with `--regenerate`, which recomputes the reference closure of the skill entry points. A `docs/` file referenced by a SUBSKILL that never lands in this list produces a dangling `../../docs/...` reference in the installed bundle — `link_checker` reports it.
+The copy list read by `sync-bundle.sh` — one repo-relative path per line, `#` comments allowed. Hand-curated but regenerable with `--regenerate`, which recomputes the reference closure of the skill entry points. A `docs/` file referenced by a SUBCOMMAND that never lands in this list produces a dangling `../../docs/...` reference in the installed bundle — `link_checker` reports it.
 
 See [Install Zolletta-MetaSkill](../../how-to/install.md) for details.
