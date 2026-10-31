@@ -114,7 +114,7 @@ Then open <http://127.0.0.1:8000>.
 docs/                           # Diátaxis-structured documentation (single source of truth)
 docs/assets/                    # Logos and images
 tests/                          # Test suite (mirrors src/ structure)
-dev-install.sh                  # Dev installer (copies the working tree — use when developing)
+dev-install.sh                  # Dev installer (npx skills add on the local bundle — use when developing)
 sync-bundle.sh                  # Regenerates the bundle's copied files from bundle-files.txt
 bundle-files.txt                # Copy list for the bundle's generated files
 .githooks/                      # Tracked hooks — pre-commit runs sync-bundle.sh

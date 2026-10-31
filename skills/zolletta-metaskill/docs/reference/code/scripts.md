@@ -486,11 +486,10 @@ These are project-management scripts at the repository root, separate from the s
 
 ### `dev-install.sh`
 
-Development-only installer: refreshes the bundle's generated copies via `sync-bundle.sh`, copies `` into `~/.agents/skills/zolletta-metaskill`, symlinks it into every detected AI agent tool's skills directory, and points `core.hooksPath` at `.githooks/` so the pre-commit bundle sync is active for the clone. For released versions use `npx skills add zolletta/zolletta-metaskill` instead.
+Development-only installer: refreshes the bundle's generated copies via `sync-bundle.sh`, then installs the bundle from the local path with the same CLI end users run — `npx skills add ./skills/zolletta-metaskill -g --all` copies it to `~/.agents/skills/zolletta-metaskill` and links it into every detected AI agent tool's skills directory. Also points `core.hooksPath` at `.githooks/` so the pre-commit bundle sync is active for the clone. Requires Node.js (npx). For released versions use `npx skills add zolletta/zolletta-metaskill` instead.
 
 ```bash
 ./dev-install.sh           # install the working tree
-./dev-install.sh --force   # + replace real dirs with symlinks
 ```
 
 ### `sync-bundle.sh`
