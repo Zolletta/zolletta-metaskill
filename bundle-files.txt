@@ -6,8 +6,10 @@
 # closure of the skill entry points). link_checker reports dangling
 # ../../docs/... references in the entry points if a file is missing.
 .github/workflows/tests.yml
-codecov.yml
 CONTRIBUTING.md
+LICENSE
+README.md
+codecov.yml
 docs/assets/zolletta-meta-skill-192.png
 docs/explanation/anti-patterns.md
 docs/explanation/code/balanced-coupling.md
@@ -48,5 +50,3 @@ docs/reference/settings-schema.md
 docs/reference/subcommands.md
 docs/reference/tool-messages.md
 docs/tutorials/getting-started.md
-LICENSE
-README.md

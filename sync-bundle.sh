@@ -29,6 +29,11 @@
 
 set -euo pipefail
 
+# Byte-order collation: sort in read_list/regenerate must produce the same
+# order on macOS (en_US.UTF-8, case-insensitive-ish) and CI (C.UTF-8), or the
+# committed .sync-manifest / bundle-files.txt differ from a Linux run's.
+export LC_ALL=C
+
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 BUNDLE="skills/zolletta-metaskill"
