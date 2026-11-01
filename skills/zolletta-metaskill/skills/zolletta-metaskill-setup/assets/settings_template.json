@@ -1,5 +1,5 @@
 {
-  "setup_version": "3.3.0",
+  "setup_version": "3.4.0",
   "setup_timestamp": "",
   "language": "",
   "container_name": null,
@@ -9,25 +9,32 @@
   "php": null,
   "subcommands": {
     "patterns": {
-      "model": null
+      "model": null,
+      "included_in_review": true
     },
     "documentor": {
-      "model": null
+      "model": null,
+      "included_in_review": true
     },
     "grice": {
-      "model": null
+      "model": null,
+      "included_in_review": true
     },
     "python-code-style": {
-      "model": null
+      "model": null,
+      "included_in_review": true
     },
     "python-testing-style": {
-      "model": null
+      "model": null,
+      "included_in_review": true
     },
     "php-code-style": {
-      "model": null
+      "model": null,
+      "included_in_review": true
     },
     "php-testing-style": {
-      "model": null
+      "model": null,
+      "included_in_review": true
     }
   },
   "runs_dir": ".zolletta-metaskill",

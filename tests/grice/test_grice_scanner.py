@@ -32,9 +32,7 @@ def _write_settings(repo: Path, settings: dict[str, object]) -> Path:
 
 
 def _enable(repo: Path, **documentation: object) -> Path:
-    return _write_settings(
-        repo, {"documentation": {"dir": "docs", "check_grice": True, **documentation}}
-    )
+    return _write_settings(repo, {"documentation": {"dir": "docs", **documentation}})
 
 
 @pytest.fixture
@@ -48,20 +46,6 @@ def _argv(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 class TestGriceScanner:
-    # --- is_enabled ---
-
-    def test_is_enabled_absent_toggle_returns_true(self) -> None:
-        assert GriceScanner.is_enabled({}) is True
-
-    def test_is_enabled_true_toggle_returns_true(self) -> None:
-        assert GriceScanner.is_enabled({"documentation": {"check_grice": True}}) is True
-
-    def test_is_enabled_false_toggle_returns_false(self) -> None:
-        assert GriceScanner.is_enabled({"documentation": {"check_grice": False}}) is False
-
-    def test_is_enabled_non_boolean_toggle_returns_true(self) -> None:
-        assert GriceScanner.is_enabled({"documentation": {"check_grice": "yes"}}) is True
-
     # --- build: corpus ---
 
     def test_build_fixture_corpus_returns_one_row_per_document(self, repo: Path) -> None:
@@ -401,19 +385,7 @@ class TestGriceScanner:
 
     # --- main ---
 
-    def test_main_disabled_toggle_prints_skipped(
-        self, repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        path = _enable(repo, check_grice=False)
-        monkeypatch.chdir(repo)
-        monkeypatch.setattr(GriceScanner, "DEFAULT_SETTINGS_PATH", path)
-        assert GriceScanner.main() == 0
-        assert (
-            capsys.readouterr().out.strip()
-            == "Result: SKIPPED (check_grice disabled in settings.json)"
-        )
-
-    def test_main_enabled_toggle_prints_markdown_report(
+    def test_main_with_settings_prints_markdown_report(
         self, repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         path = _enable(repo)
@@ -449,34 +421,17 @@ class TestGriceScanner:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         path = tmp_path / "settings.json"
-        path.write_text(
-            json.dumps({"documentation": {"dir": "docs", "check_grice": True}}), encoding="utf-8"
-        )
+        path.write_text(json.dumps({"documentation": {"dir": "docs"}}), encoding="utf-8")
         monkeypatch.chdir(tmp_path)
         monkeypatch.setattr(GriceScanner, "DEFAULT_SETTINGS_PATH", path)
         assert GriceScanner.main() == 0
         assert capsys.readouterr().out.strip() == "Result: SKIPPED (no documentation files found)"
 
-    def test_main_disabled_toggle_json_flag_prints_json_skipped(
-        self, repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        path = _enable(repo, check_grice=False)
-        monkeypatch.chdir(repo)
-        monkeypatch.setattr(GriceScanner, "DEFAULT_SETTINGS_PATH", path)
-        monkeypatch.setattr("sys.argv", ["grice_scanner.py", "--json"])
-        assert GriceScanner.main() == 0
-        assert json.loads(capsys.readouterr().out) == {
-            "skipped": True,
-            "reason": "check_grice disabled in settings.json",
-        }
-
     def test_main_empty_corpus_json_flag_prints_json_skipped(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         path = tmp_path / "settings.json"
-        path.write_text(
-            json.dumps({"documentation": {"dir": "docs", "check_grice": True}}), encoding="utf-8"
-        )
+        path.write_text(json.dumps({"documentation": {"dir": "docs"}}), encoding="utf-8")
         monkeypatch.chdir(tmp_path)
         monkeypatch.setattr(GriceScanner, "DEFAULT_SETTINGS_PATH", path)
         monkeypatch.setattr("sys.argv", ["grice_scanner.py", "--json"])
@@ -505,7 +460,7 @@ class TestGriceScanner:
             repo,
             {
                 "runs_dir": "deep/runs",
-                "documentation": {"dir": "docs", "check_grice": True},
+                "documentation": {"dir": "docs"},
             },
         )
         monkeypatch.chdir(repo)
@@ -520,7 +475,7 @@ class TestGriceScanner:
             repo,
             {
                 "runs_dir": "runs",
-                "documentation": {"dir": "docs", "check_grice": True},
+                "documentation": {"dir": "docs"},
             },
         )
         (repo / "runs" / "cache").mkdir(parents=True)

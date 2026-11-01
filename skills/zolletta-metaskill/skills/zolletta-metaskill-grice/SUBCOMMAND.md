@@ -38,8 +38,7 @@ The corpus is the documentor's, by construction: `DocumentationFilesFinder.find(
 ## Procedure
 
 1. Read `AGENTS.md` and any documentation rules in your agent configuration.
-2. Confirm the toggle. Read `documentation.check_grice` from `.zolletta-metaskill/settings.json`; when it is `false`, write the report as `SKIPPED (check_grice disabled in settings.json)` and stop — the toggle is on by default, so an absent key means the scan runs. The scanner does the same and exits 0; it is toggleable rather than always-on because a relative index is a judgement about prose.
-3. Run the scanner and persist its JSON, from the project root:
+2. Run the scanner and persist its JSON, from the project root:
 
    ```bash
    uv run python ../../src/zolletta_metaskill/grice/grice_scanner.py --json > <runs_dir>/<YYYY-MM-DD-HH-MM>/cache/grice.json
@@ -47,7 +46,7 @@ The corpus is the documentor's, by construction: `DocumentationFilesFinder.find(
 
    The scanner also writes the same payload to `cache/grice.json` under the run directory resolved by `DocumentorSettings.resolve_cache_dir`, so the cache is present even when the redirect is forgotten. It prints `Result: SKIPPED (no documentation files found)` and exits 0 when the corpus is empty — that is a "nothing to review" result, not an error.
 
-4. Assemble the report from the JSON. Do **not** re-read the documents: every number in the report comes from the cached payload, and the findings are already sorted by file and line.
+3. Assemble the report from the JSON. Do **not** re-read the documents: every number in the report comes from the cached payload, and the findings are already sorted by file and line.
 
 ## What each maxim measures
 
