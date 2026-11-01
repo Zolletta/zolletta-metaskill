@@ -22,7 +22,7 @@ skills: [review]
 
 > Trend compares each grade with the previous review's grade for the same area (↑ improved, ↓ worsened, → unchanged, — no previous review). Only include rows for skills that were actually run.
 
-The grice row is advisory: its grade is a corpus-relative index (50 = the corpus mean, not a pass mark) and is **excluded** from the weighted overall grade. Write `SKIPPED` when `documentation.check_grice` is off.
+The grice row is advisory: its grade is a corpus-relative index (50 = the corpus mean, not a pass mark) and is **excluded** from the weighted overall grade. Write `SKIPPED` when `subcommands.grice.included_in_review` is false.
 
 ## Strengths
 

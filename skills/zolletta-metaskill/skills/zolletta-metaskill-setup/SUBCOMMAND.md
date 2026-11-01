@@ -28,8 +28,12 @@ Initialize the `.zolletta-metaskill/` directory and write `settings.json` so tha
 
 If `.zolletta-metaskill/settings.json` already exists, read it and check `setup_version`:
 
-- **`"3.3.0"` or later** — no migration needed; proceed to the requested subcommand (or re-run setup if invoked explicitly).
-- **`"3.2.0"`** — re-run Step 5's tokensave probe and patch `tokensave_available` (the flag was probed via MCP only; the probe is now CLI-first with MCP fallback). Set `setup_version` to `"3.3.0"`, write the file, and proceed.
+- **`"3.4.0"` or later** — no migration needed; proceed to the requested subcommand (or re-run setup if invoked explicitly).
+- **`"3.3.0"`** — migrate the grice dispatch toggle and the review roster:
+  1. If `documentation.check_grice` exists, copy its value to `subcommands.grice.included_in_review`, then remove the key.
+  2. Add `"included_in_review": true` to every `subcommands.*` entry that lacks it (all subcommands get the roster flag, not just grice).
+  3. Set `setup_version` to `"3.4.0"`, write the file, and proceed.
+- **`"3.2.0"`** — re-run Step 5's tokensave probe and patch `tokensave_available` (the flag was probed via MCP only; the probe is now CLI-first with MCP fallback). Set `setup_version` to `"3.3.0"`, write the file, then apply the `"3.3.0"` migration above.
 - **`"3.1.0"`** — additively backfill the keys introduced in v3.2.0, then apply the `"3.2.0"` migration above:
   1. `python.tools.mutmut` / `php.tools.infection` — re-run the tool-detection step for the project language (Step 6 / Step 11) so `available` reflects the real installation state; do not guess `false`.
   2. `python.testing` / `php.testing` mutation keys (`check_mutation_testing`, `mutation_score_threshold`, `mutation_target`, `mutation_max_mutants`) — copy the defaults from the schema doc.
@@ -47,7 +51,7 @@ If `.zolletta-metaskill/settings.json` already exists, read it and check `setup_
 - **`"1.x"` or absent** — migrate before writing the new file, then apply the `"3.2.0"` migration above:
   1. If the old `subagent_profile` field exists and is non-null, it applied to all review subagents — set `subcommands.patterns.model`, `subcommands.documentor.model`, `subcommands.grice.model`, `subcommands.python-code-style.model`, `subcommands.python-testing-style.model`, `subcommands.php-code-style.model`, and `subcommands.php-testing-style.model` to its value. If it is `null` or absent, leave all review subcommand models at `null`.
   2. Remove `external_review_model` and `subagent_profile` from the file. (`external_review_model` was for the removed `external-review` subcommand — it is not migrated.)
-  3. Add the full `subcommands` object with all seven keys, preserving migrated values and defaulting unmigrated ones to `null`.
+  3. Add the full `subcommands` object with all seven keys, preserving migrated `model` values, defaulting unmigrated ones to `null`, and setting `included_in_review` to `true` on every entry.
   4. Apply the v3.0.0 + v3.1.0 + v3.2.0 backfill described above (`paths`, `patterns`, new `code_style`/`testing`/`documentation` keys, mutation-testing keys).
   5. Write the migrated file.
 
@@ -58,6 +62,8 @@ If `.zolletta-metaskill/settings.json` already exists, read it and check `setup_
 > **What changed in v3.2.0**: conditional mutation-testing sensor (issue #47). New `python.tools.mutmut` / `php.tools.infection` availability keys, and four `testing` keys per language (`check_mutation_testing`, `mutation_score_threshold`, `mutation_target`, `mutation_max_mutants`). Backfill is additive: the tool-detection steps re-run so `available` reflects the real installation state, user-customized values are preserved, only absent keys are added.
 >
 > **What changed in v3.3.0**: the `tokensave_available` probe is CLI-first — `tokensave doctor` plus `tokensave tool` (the `tool` subcommand requires tokensave ≥ 7.14) — with the `tokensave_*` MCP tools as fallback for older binaries. No keys were added or removed; the migration re-runs only the Step 5 probe so a flag written by the MCP-only probe is corrected in place.
+>
+> **What changed in v3.4.0**: every `subcommands.*` entry gains `included_in_review` (default `true`) — the review-roster flag that replaces `documentation.check_grice` and extends the same on/off to every review subagent. The flag gates review dispatch only: a direct `/zolletta-metaskill <name>` invocation always runs. `documentation.check_grice` is removed; a `false` value migrates to `subcommands.grice.included_in_review`.
 >
 > **What changed in v2.0.0**: the `external_review_model` scalar (for the removed `external-review` subcommand) and the `subagent_profile` scalar (all review subagents) are replaced by `subcommands` — a per-subcommand map where each entry has a `model` field. The `external-review` subcommand is removed; `external_review_model` is not migrated. This lets the user configure a different model per subcommand (e.g. a strong model for `patterns`/`documentor`, a cheap one for `*-code-style`). See `../../docs/reference/settings-schema.md` for the full schema.
 

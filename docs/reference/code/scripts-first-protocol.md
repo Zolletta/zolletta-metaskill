@@ -135,11 +135,11 @@ See [`documentation/operational-rules.md`](../documentation/operational-rules.md
 
 ### `grice`
 
-| Script                                                                           | Cache file         | Condition                   |
-|----------------------------------------------------------------------------------|--------------------|-----------------------------|
-| `skills/zolletta-metaskill/src/zolletta_metaskill/grice/grice_scanner.py --json` | `cache/grice.json` | `documentation.check_grice` |
+| Script                                                                           | Cache file         | Condition                              |
+|----------------------------------------------------------------------------------|--------------------|----------------------------------------|
+| `skills/zolletta-metaskill/src/zolletta_metaskill/grice/grice_scanner.py --json` | `cache/grice.json` | `subcommands.grice.included_in_review` |
 
-The scanner writes `cache/grice.json` itself, into the run folder it resolves from `settings.json`, so the redirect is only a safeguard. When the toggle is off it prints `SKIPPED` and exits 0 — record that in the report instead of grading it.
+The scanner writes `cache/grice.json` itself, into the run folder it resolves from `settings.json`, so the redirect is only a safeguard. `included_in_review` gates the review roster, not the scanner — when the flag is `false` the orchestrator writes the SKIPPED report itself; run directly, the scanner always runs.
 
 ### `php-code-style`
 

@@ -16,7 +16,7 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
 
 ```json
 {
-  "setup_version": "3.3.0",
+  "setup_version": "3.4.0",
   "setup_timestamp": "2026-07-16T14:30:00",
   "language": "python",
   "container_name": "myproject",
@@ -105,13 +105,13 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
     "pyproject_mtime": 1784223225.47
   },
   "subcommands": {
-    "patterns": { "model": null },
-    "documentor": { "model": null },
-    "grice": { "model": null },
-    "python-code-style": { "model": null },
-    "python-testing-style": { "model": null },
-    "php-code-style": { "model": null },
-    "php-testing-style": { "model": null }
+    "patterns": { "model": null, "included_in_review": true },
+    "documentor": { "model": null, "included_in_review": true },
+    "grice": { "model": null, "included_in_review": true },
+    "python-code-style": { "model": null, "included_in_review": true },
+    "python-testing-style": { "model": null, "included_in_review": true },
+    "php-code-style": { "model": null, "included_in_review": true },
+    "php-testing-style": { "model": null, "included_in_review": true }
   },
   "documentation": {
     "language": "en",
@@ -138,7 +138,7 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
 
 ```json
 {
-  "setup_version": "3.3.0",
+  "setup_version": "3.4.0",
   "setup_timestamp": "2026-07-16T14:30:00",
   "language": "php",
   "container_name": "myproject",
@@ -211,13 +211,13 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
     "composer_mtime": 1718700000.0
   },
   "subcommands": {
-    "patterns": { "model": null },
-    "documentor": { "model": null },
-    "grice": { "model": null },
-    "python-code-style": { "model": null },
-    "python-testing-style": { "model": null },
-    "php-code-style": { "model": null },
-    "php-testing-style": { "model": null }
+    "patterns": { "model": null, "included_in_review": true },
+    "documentor": { "model": null, "included_in_review": true },
+    "grice": { "model": null, "included_in_review": true },
+    "python-code-style": { "model": null, "included_in_review": true },
+    "python-testing-style": { "model": null, "included_in_review": true },
+    "php-code-style": { "model": null, "included_in_review": true },
+    "php-testing-style": { "model": null, "included_in_review": true }
   },
   "documentation": {
     "language": "en",
@@ -256,15 +256,16 @@ skills: [setup, review, patterns, documentor, python-*, php-*]
 | `documentation`       | object            | Documentation configuration — see below                                                                                                                                                                                                                                           |
 | `runs_dir`            | string            | Directory where review run folders are created. Each run gets a timestamped subdirectory (`<runs_dir>/<YYYY-MM-DD-HH-MM>/`) containing `reports/` (LLM judgment) and `cache/` (deterministic script outputs)                                                                      |
 
-## `subcommands` — per-subcommand model configuration
+## `subcommands` — per-subcommand configuration
 
-Each key is a subcommand name; each value is an object with a `model` field. The review orchestrator reads each subcommand's `model` and passes it to `run_subagent` when launching that subcommand's subagent. When `model` is `null`, the harness default is used — behavior is unchanged from v1.x.
+Each key is a subcommand name; each value is an object with a `model` field and an `included_in_review` field. The review orchestrator reads each subcommand's `model` and passes it to `run_subagent` when launching that subcommand's subagent, and reads `included_in_review` to decide whether to launch it at all. When `model` is `null`, the harness default is used — behavior is unchanged from v1.x.
 
 Profile/model ids are harness-specific. The user supplies a value that exists in their harness; the skill never hardcodes one. This is the opt-in mechanism for [Smart Plan, Cheap Execution](../explanation/patterns.md#19-smart-plan-cheap-execution) — set a strong model for judgment-heavy subagents (`patterns`, `documentor`) and a cheaper one for mechanical ones (`grice`, `*-code-style`, `*-testing-style`), or leave all at `null`.
 
-| Field                      | Type           | Default | Description                                                                         |
-|----------------------------|----------------|---------|-------------------------------------------------------------------------------------|
-| `subcommands.<name>.model` | string \| null | `null`  | Harness-specific profile/model id for subcommand `<name>`. `null` = harness default |
+| Field                                   | Type           | Default | Description                                                                                                                                                                                                         |
+|-----------------------------------------|----------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `subcommands.<name>.model`              | string \| null | `null`  | Harness-specific profile/model id for subcommand `<name>`. `null` = harness default                                                                                                                                 |
+| `subcommands.<name>.included_in_review` | boolean        | `true`  | When `false`, the review orchestrator does not dispatch `<name>`'s subagent and writes `SKIPPED` in its report slot. Scope is the review roster only — a direct `/zolletta-metaskill <name>` invocation always runs |
 
 The seven subcommand keys:
 
@@ -278,31 +279,32 @@ The seven subcommand keys:
 | `php-code-style`       | `php-code-style`                 | `null`          | Mechanical — PSR-12, naming, types (PHP only)            |
 | `php-testing-style`    | `php-testing-style`              | `null`          | Mechanical — PHPUnit, coverage gaps (PHP only)           |
 
-> **v1.x migration**: the `external_review_model` scalar (for the removed `external-review` subcommand) and the `subagent_profile` scalar (applied to all review subagents) are replaced by `subcommands` — a per-subcommand map. `external_review_model` is simply removed (the subcommand no longer exists); `subagent_profile` migrates to the 6 review subcommand entries. Setup migrates automatically — see `skills/zolletta-metaskill-setup/SUBCOMMAND.md` → "Step 0 — Migration and missing-keys backfill".
+> **v1.x migration**: the `external_review_model` scalar (for the removed `external-review` subcommand) and the `subagent_profile` scalar (applied to all review subagents) are replaced by `subcommands` — a per-subcommand map. `external_review_model` is simply removed (the subcommand no longer exists); `subagent_profile` migrates to all review subcommand entries. Setup migrates automatically — see `skills/zolletta-metaskill-setup/SUBCOMMAND.md` → "Step 0 — Migration and missing-keys backfill".
+>
+> **`included_in_review` migration**: `documentation.check_grice` is replaced by `subcommands.grice.included_in_review` — same dispatch toggle, moved into the per-subcommand map and extended to every review subagent. A `false` value migrates to `subcommands.grice.included_in_review: false`; the scanner itself no longer reads a toggle, so a direct `/zolletta-metaskill grice` invocation always runs.
 >
 > **v3.0.0 backfill**: `python.paths`, `python.patterns`, `php.patterns`, and the new `code_style`/`testing`/`documentation` keys are added to existing settings.json files on the next setup run — additive only, user-customized values are preserved.
 
 ## `documentation` — documentation configuration
 
-| Field                                    | Type           | Default                                                       | Description                                                                                                                                                                                                                                                     |
-|------------------------------------------|----------------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `documentation.language`                 | string         | `"en"`                                                        | ISO 639-1 code for documentation language. When not `"en"`, the `documentor` skill translates Diátaxis signpost headings before running the staleness scorer                                                                                                    |
-| `documentation.dir`                      | string         | `"docs"`                                                      | Directory where project documentation lives, plus the root documents `README.md`, `CONTRIBUTING.md` and `AGENTS.md`. Documentation is markdown only                                                                                                             |
-| `documentation.adrs`                     | string \| null | `null`                                                        | Relative path within `documentation.dir` where architecture ADRs live (e.g. `"adr"` or `"adr/architecture"` when an `ACT` archive exists), `""` if scattered in docs root, or `null` if no ADRs found. Auto-detected during setup                               |
-| `documentation.min_severity`             | string         | `"high"`                                                      | Minimum severity reported by `src/zolletta_metaskill/documentor/quality/quality_review.py` (`critical`, `high`, `medium`, `low`, `info`)                                                                                                                        |
-| `documentation.staleness_threshold`      | number \| null | `null`                                                        | If set, `src/zolletta_metaskill/documentor/quality/quality_review.py` and `src/zolletta_metaskill/documentor/documentor_client.py` exit 1 when the freshness score falls below this value (0–100). `null` = report-only                                         |
-| `documentation.readme_focus`             | boolean        | `false`                                                       | When `true`, `src/zolletta_metaskill/documentor/quality/quality_review.py` only scores the README                                                                                                                                                               |
-| `documentation.readme_sections`          | array          | `["installation", "usage", "api", "contributing", "license"]` | Section names a README is expected to contain (completeness dimension of `src/zolletta_metaskill/documentor/quality/quality_review.py`)                                                                                                                         |
-| `documentation.diataxis_translations`    | string \| null | `null`                                                        | Path to a JSON file mapping Diátaxis signpost headings to translations. `null` = built-in translations                                                                                                                                                          |
-| `documentation.staleness_weights`        | object \| null | `null`                                                        | Custom dimension weights for `src/zolletta_metaskill/documentor/quality/quality_review.py` (`last_updated`, `code_doc_alignment`, `link_health`, `completeness`, `accuracy`; normalized to sum 1.0)                                                             |
-| `documentation.check_external`           | boolean        | `false`                                                       | When `true`, `src/zolletta_metaskill/documentor/links/link_checker.py` verifies external http(s) links too                                                                                                                                                      |
-| `documentation.check_unwrapped_prose`    | boolean        | `false`                                                       | When `true`, `src/zolletta_metaskill/documentor/quality/unwrapped_prose_scanner.py` reports markdown paragraphs broken mid-sentence. Opt-in: clear the backlog first, or formatting noise buries real drift findings                                            |
-| `documentation.check_grice`              | boolean        | `true`                                                        | When `true`, `src/zolletta_metaskill/grice/grice_scanner.py` scores documentation against Grice's Quantity, Quality, Relation and Manner maxims as indices relative to the corpus itself. On by default: an index is a judgement about prose, not a defect list |
-| `documentation.include_referential`      | boolean        | `false`                                                       | When `true`, `src/zolletta_metaskill/documentor/quality/quality_review.py` also reports referential drift, not just broken links                                                                                                                                |
-| `documentation.rename_window_days`       | integer        | `90`                                                          | How far back git rename drift is examined. Renames older than this are not reported as referential drift. Was a hardcoded `90 days ago` string at the git call site                                                                                             |
-| `documentation.api_doc_recursive`        | boolean        | `true`                                                        | When `true`, `src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py` scans source roots recursively                                                                                                                                                    |
-| `documentation.api_doc_include_private`  | boolean        | `false`                                                       | When `true`, `src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py` also checks private/underscore modules                                                                                                                                            |
-| `documentation.api_doc_suggest_coverage` | boolean        | `false`                                                       | When `true`, `src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py` suggests a documentation coverage target                                                                                                                                          |
+| Field                                    | Type           | Default                                                       | Description                                                                                                                                                                                                                       |
+|------------------------------------------|----------------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `documentation.language`                 | string         | `"en"`                                                        | ISO 639-1 code for documentation language. When not `"en"`, the `documentor` skill translates Diátaxis signpost headings before running the staleness scorer                                                                      |
+| `documentation.dir`                      | string         | `"docs"`                                                      | Directory where project documentation lives, plus the root documents `README.md`, `CONTRIBUTING.md` and `AGENTS.md`. Documentation is markdown only                                                                               |
+| `documentation.adrs`                     | string \| null | `null`                                                        | Relative path within `documentation.dir` where architecture ADRs live (e.g. `"adr"` or `"adr/architecture"` when an `ACT` archive exists), `""` if scattered in docs root, or `null` if no ADRs found. Auto-detected during setup |
+| `documentation.min_severity`             | string         | `"high"`                                                      | Minimum severity reported by `src/zolletta_metaskill/documentor/quality/quality_review.py` (`critical`, `high`, `medium`, `low`, `info`)                                                                                          |
+| `documentation.staleness_threshold`      | number \| null | `null`                                                        | If set, `src/zolletta_metaskill/documentor/quality/quality_review.py` and `src/zolletta_metaskill/documentor/documentor_client.py` exit 1 when the freshness score falls below this value (0–100). `null` = report-only           |
+| `documentation.readme_focus`             | boolean        | `false`                                                       | When `true`, `src/zolletta_metaskill/documentor/quality/quality_review.py` only scores the README                                                                                                                                 |
+| `documentation.readme_sections`          | array          | `["installation", "usage", "api", "contributing", "license"]` | Section names a README is expected to contain (completeness dimension of `src/zolletta_metaskill/documentor/quality/quality_review.py`)                                                                                           |
+| `documentation.diataxis_translations`    | string \| null | `null`                                                        | Path to a JSON file mapping Diátaxis signpost headings to translations. `null` = built-in translations                                                                                                                            |
+| `documentation.staleness_weights`        | object \| null | `null`                                                        | Custom dimension weights for `src/zolletta_metaskill/documentor/quality/quality_review.py` (`last_updated`, `code_doc_alignment`, `link_health`, `completeness`, `accuracy`; normalized to sum 1.0)                               |
+| `documentation.check_external`           | boolean        | `false`                                                       | When `true`, `src/zolletta_metaskill/documentor/links/link_checker.py` verifies external http(s) links too                                                                                                                        |
+| `documentation.check_unwrapped_prose`    | boolean        | `false`                                                       | When `true`, `src/zolletta_metaskill/documentor/quality/unwrapped_prose_scanner.py` reports markdown paragraphs broken mid-sentence. Opt-in: clear the backlog first, or formatting noise buries real drift findings              |
+| `documentation.include_referential`      | boolean        | `false`                                                       | When `true`, `src/zolletta_metaskill/documentor/quality/quality_review.py` also reports referential drift, not just broken links                                                                                                  |
+| `documentation.rename_window_days`       | integer        | `90`                                                          | How far back git rename drift is examined. Renames older than this are not reported as referential drift. Was a hardcoded `90 days ago` string at the git call site                                                               |
+| `documentation.api_doc_recursive`        | boolean        | `true`                                                        | When `true`, `src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py` scans source roots recursively                                                                                                                      |
+| `documentation.api_doc_include_private`  | boolean        | `false`                                                       | When `true`, `src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py` also checks private/underscore modules                                                                                                              |
+| `documentation.api_doc_suggest_coverage` | boolean        | `false`                                                       | When `true`, `src/zolletta_metaskill/documentor/api_doc/api_doc_validator.py` suggests a documentation coverage target                                                                                                            |
 
 ## `python` — tooling, rules, and configuration
 

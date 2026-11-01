@@ -215,11 +215,6 @@
           "description": "When true, quality/unwrapped_prose_scanner.py reports markdown paragraphs broken mid-sentence. Opt-in (default: false): an existing documentation tree can carry a long backlog, and the rule is a formatting convention, so clear the backlog before turning it on.",
           "default": false
         },
-        "check_grice": {
-          "type": "boolean",
-          "description": "When true, grice/grice_scanner.py scores documentation against Grice's Quantity, Quality, Relation and Manner maxims, as indices relative to the corpus itself. Opt-in (default: true): a relative index is a judgement about prose, not a defect list, so it is active by default.",
-          "default": true
-        },
         "include_referential": {
           "type": "boolean",
           "description": "When true, quality_review also reports referential drift (docs referencing symbols that moved), not just broken links.",
@@ -251,10 +246,11 @@
     "subcommands": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Per-subcommand configuration. Each key is a subcommand name; each value is an object with a `model` field (string|null, null = harness default). Profile/model ids are harness-specific; the skill never hardcodes one. The review orchestrator reads each subcommand's model and passes it to run_subagent.",
+      "description": "Per-subcommand configuration. Each key is a subcommand name; each value is an object with a `model` field (string|null, null = harness default) and `included_in_review` (boolean — when false, review skips the subagent and writes SKIPPED in its report slot; a direct /zolletta-metaskill <name> invocation always runs). Profile/model ids are harness-specific; the skill never hardcodes one. The review orchestrator reads each subcommand's model and passes it to run_subagent.",
       "required": [
         "patterns",
         "documentor",
+        "grice",
         "python-code-style",
         "python-testing-style",
         "php-code-style",
@@ -265,6 +261,9 @@
           "$ref": "#/$defs/subcommand_entry"
         },
         "documentor": {
+          "$ref": "#/$defs/subcommand_entry"
+        },
+        "grice": {
           "$ref": "#/$defs/subcommand_entry"
         },
         "python-code-style": {
@@ -285,7 +284,8 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "model"
+        "model",
+        "included_in_review"
       ],
       "properties": {
         "model": {
@@ -295,6 +295,11 @@
           ],
           "description": "Harness-specific profile/model id for this subcommand. null = harness default. The user supplies a value that exists in their harness; the skill never hardcodes one.",
           "default": null
+        },
+        "included_in_review": {
+          "type": "boolean",
+          "description": "When false, the review orchestrator does not dispatch this subcommand's subagent and writes SKIPPED in its report slot. Scope is the review roster only — a direct /zolletta-metaskill <name> invocation always runs.",
+          "default": true
         }
       }
     },

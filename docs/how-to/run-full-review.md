@@ -26,7 +26,7 @@ The orchestrator reads `language` from `settings.json` and determines which skil
 
 ### Step 2 — Parallel skill execution
 
-The orchestrator runs general skills (`patterns`, `documentor`, and `grice` when `documentation.check_grice` is on) always, and language-specific skills when the language matches. See [subcommands.md](../reference/subcommands.md) for the full skill table.
+The orchestrator runs general skills (`patterns`, `documentor`, `grice`) always, and language-specific skills when the language matches — except any whose `subcommands.<name>.included_in_review` flag is `false`, which get a `SKIPPED` report slot instead of a subagent. See [subcommands.md](../reference/subcommands.md) for the full skill table.
 
 Each skill runs as a subagent and writes its findings to a markdown report in the timestamped report folder.
 

@@ -58,7 +58,6 @@ from zolletta_metaskill.grice.structs import DocumentFeatures, GriceReport, Maxi
 class GriceScanner:
     """Orchestrate the four maxim scorers over the documentation corpus."""
 
-    DEFAULT_ENABLED = True
     DEFAULT_SETTINGS_PATH = ProjectConfig.DEFAULT_SETTINGS_PATH
 
     #: Below this many documents a corpus percentile is describing individual
@@ -71,25 +70,6 @@ class GriceScanner:
     MAX_SOURCE_FILES = 500
 
     MAXIMS = ("quantity", "quality", "relation", "manner")
-
-    @staticmethod
-    def is_enabled(settings: dict[str, Any]) -> bool:
-        """Return whether ``documentation.check_grice`` is on.
-
-        Args:
-            settings: Parsed ``settings.json`` contents.
-
-        Returns:
-            The toggle, defaulting to :attr:`DEFAULT_ENABLED` — the scan is
-            opt-in because it is a judgement about prose, and a project that has
-            not asked for that judgement should not receive one.
-
-        """
-        return bool(
-            ProjectConfig.setting(
-                settings, "documentation.check_grice", GriceScanner.DEFAULT_ENABLED
-            )
-        )
 
     @staticmethod
     def build(settings: dict[str, Any], repo_path: str) -> GriceReport | None:
@@ -342,7 +322,7 @@ class GriceScanner:
         # pragma: no mutate start — help text is not a tested contract
         parser = argparse.ArgumentParser(
             description="Score project documentation against Grice's four maxims. "
-            "Toggle and thresholds come from .zolletta-metaskill/settings.json."
+            "Paths and language come from .zolletta-metaskill/settings.json."
         )
         parser.add_argument(
             "--json", action="store_true", help="Output as JSON instead of markdown"
@@ -351,10 +331,6 @@ class GriceScanner:
         args = parser.parse_args()
 
         settings = ProjectConfig.load_settings(GriceScanner.DEFAULT_SETTINGS_PATH)
-        if not GriceScanner.is_enabled(settings):
-            ProjectConfig.emit_skipped(args.json, "check_grice disabled in settings.json")
-            return 0
-
         repo_path = os.path.abspath(".")
         report = GriceScanner.build(settings, repo_path)
         if report is None:
