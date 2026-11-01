@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v3.9.0 (2026-11-01)
+
+### Features
+
+- **settings**: Move grice dispatch toggle to subcommands.*.included_in_review
+  ([#86](https://github.com/Zolletta/zolletta-metaskill/pull/86),
+  [`1f54607`](https://github.com/Zolletta/zolletta-metaskill/commit/1f546073510db9e9e442ee85b2227101c5a6cf54))
+
+
 ## v3.8.0 (2026-11-01)
 
 ### Bug Fixes
