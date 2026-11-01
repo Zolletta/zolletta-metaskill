@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v3.8.0 (2026-11-01)
+
+### Bug Fixes
+
+- **ci**: Pin LC_ALL=C in sync-bundle.sh for cross-platform reproducibility
+  ([`19cad26`](https://github.com/Zolletta/zolletta-metaskill/commit/19cad265a8265cb52d039a5e2b8da7b00edc893e))
+
+- **ci**: Replace removed mkdocs exclude config with mkdocs-exclude plugin
+  ([`27a7c05`](https://github.com/Zolletta/zolletta-metaskill/commit/27a7c05fc2f0b7bf1bbb88de003f2306539224ce))
+
+### Features
+
+- Dogfood the review tooling on the repo itself and fix what it found
+  ([`dcfb1d3`](https://github.com/Zolletta/zolletta-metaskill/commit/dcfb1d3252850834362a6a7d0b938e169f9faa9d))
+
+
 ## v3.7.0 (2026-09-27)
 
 ### Features
