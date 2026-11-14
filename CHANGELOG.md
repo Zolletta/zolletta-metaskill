@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v3.10.0 (2026-11-14)
+
+### Features
+
+- **security**: Harden audit surface + rewrite SKILL.md pitch
+  ([#95](https://github.com/Zolletta/zolletta-metaskill/pull/95),
+  [`9235c06`](https://github.com/Zolletta/zolletta-metaskill/commit/9235c0601d933f569daf99ddd61e224ed0ef7edd))
+
+- **security**: Harden the audited skill surface
+  ([#95](https://github.com/Zolletta/zolletta-metaskill/pull/95),
+  [`9235c06`](https://github.com/Zolletta/zolletta-metaskill/commit/9235c0601d933f569daf99ddd61e224ed0ef7edd))
+
+
 ## v3.9.0 (2026-11-01)
 
 ### Features
