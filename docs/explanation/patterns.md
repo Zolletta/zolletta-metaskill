@@ -152,7 +152,7 @@ Companion to the [Anti-patterns audit](anti-patterns.md), which rules on all 13 
 | Where                                                                                      | What                                      | How it follows the pattern                                    |
 |--------------------------------------------------------------------------------------------|-------------------------------------------|---------------------------------------------------------------|
 | `skills/zolletta-metaskill/skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 2          | Each run creates a new timestamped folder | Every review is disposable — no pressure to salvage a bad run |
-| Setup Step 2                                                                               | Reports in the global `~/.gitignore`      | Run artifacts are temporary by design                         |
+| Setup Step 2                                                                               | Reports in `.git/info/exclude`            | Run artifacts are temporary by design                         |
 | `skills/zolletta-metaskill/skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 5 line 240 | Failed subagent: note it and continue     | Nothing accumulates that needs to be preserved at all costs   |
 
 ## 11. Learning Loop

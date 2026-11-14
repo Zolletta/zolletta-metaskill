@@ -45,7 +45,7 @@ See [settings-schema.md](../reference/settings-schema.md) for the corresponding 
 
 ### Step 3 — settings.json
 
-Setup writes `.zolletta-metaskill/settings.json` with all detected values. The file is added to the user's global `~/.gitignore` so it is not committed. The setup guard checks this file before every subcommand invocation and re-runs the pyproject extraction step if `pyproject.toml` has been modified since the last setup.
+Setup writes `.zolletta-metaskill/settings.json` with all detected values. The directory is added to the repo's `.git/info/exclude` so its artifacts are not committed — nothing is written outside the project. The setup guard checks this file before every subcommand invocation and re-runs the pyproject extraction step if `pyproject.toml` has been modified since the last setup.
 
 ### Step 4 — Verify
 

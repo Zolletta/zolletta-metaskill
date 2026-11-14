@@ -81,7 +81,7 @@ Write `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/grice.md` with:
 - **Path**: `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/grice.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`; `runs_dir` from `settings.json`, default `.zolletta-metaskill`)
 - **Compound skills** (e.g. `zolletta-metaskill-review`) may override the directory and filename — follow their instructions instead
 - **Cache**: `<runs_dir>/<YYYY-MM-DD-HH-MM>/cache/grice.json`
-- **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the setup guard (`../../SKILL.md#setup-guard`) — no manual setup needed
+- **Directory setup**: the `.zolletta-metaskill/` directory and `.git/info/exclude` entry are created by the setup guard (`../../SKILL.md#setup-guard`) — no manual setup needed
 
 ## Scope & Limitations
 

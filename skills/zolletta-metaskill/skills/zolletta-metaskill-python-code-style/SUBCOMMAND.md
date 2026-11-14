@@ -345,7 +345,7 @@ When this skill runs a review, it writes its findings to a markdown file using t
 
 - **Path**: `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/python-code-style.md` (timestamp = run start time, via `date +%Y-%m-%d-%H-%M`; `runs_dir` from `settings.json`, default `.zolletta-metaskill`)
 - **Compound skills** (e.g. `zolletta-metaskill-review`) may override the directory and filename — follow their instructions instead
-- **Directory setup**: the `.zolletta-metaskill/` directory and `.gitignore` entry are created by the setup guard (`../../SKILL.md#setup-guard`) — no manual setup needed
+- **Directory setup**: the `.zolletta-metaskill/` directory and `.git/info/exclude` entry are created by the setup guard (`../../SKILL.md#setup-guard`) — no manual setup needed
 - **Format**: follow the [report template](assets/report_template.md) — grade at the top, tool results (ruff, type checker, vulture), auto-fixable issues (informational, do not count toward grade), findings grouped by severity with file/symbol/rule ID/issue/fix columns
 
 ## Safety

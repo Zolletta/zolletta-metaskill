@@ -8,7 +8,7 @@ metadata:
   permissions:
     allow:
       - Write(.zolletta-metaskill/**)
-      - Write(~/.gitignore)
+      - Write(.git/info/exclude)
       - Bash(tokensave *)
       - mcp__tokensave__tokensave_status
 ---
@@ -73,13 +73,13 @@ If `.zolletta-metaskill/settings.json` already exists, read it and check `setup_
 mkdir -p .zolletta-metaskill
 ```
 
-### Step 2 — Add .zolletta-metaskill/ to the global ~/.gitignore
+### Step 2 — Add .zolletta-metaskill/ to the repo's .git/info/exclude
 
 ```bash
-python3 ../../src/zolletta_metaskill/setup/global_gitignore_ensurer.py
+python3 ../../src/zolletta_metaskill/setup/git_exclude_ensurer.py
 ```
 
-Idempotent. Do **not** touch the project's local `.gitignore`.
+Idempotent. `.git/info/exclude` is honoured by git but never committed, so nothing is written outside the project. Outside a git work tree the script prints a skip message and writes nothing. Do **not** touch the project's local `.gitignore`.
 
 ### Step 3 — Detect the project language
 
@@ -238,9 +238,9 @@ Zolletta-metaskill setup complete. You can view the configuration by looking at 
 
 ## Safety
 
-- This is the only skill that writes outside the project cache: it creates `.zolletta-metaskill/` and `settings.json` in the project root and appends `.zolletta-metaskill/` to the user's global `~/.gitignore`. It never touches the project's local `.gitignore`.
+- This is the only skill that writes outside the project cache: it creates `.zolletta-metaskill/` and `settings.json` in the project root and appends `.zolletta-metaskill/` to the repo's `.git/info/exclude` — an uncommitted, repo-local ignore file. It never touches the project's local `.gitignore` or the user's global environment.
 - Detector scripts (`language_detector.py`, `pyproject_sections_detector.py`, `python_paths_detector.py`, `doc_config_detector.py`, `adr_detector.py`, `php_tools_detector.py`, `companion_skill_detector.py`) are read-only — they print JSON.
-- `global_gitignore_ensurer.py` is the single exception: it edits `~/.gitignore` idempotently; do not run it against a local `.gitignore`.
+- `git_exclude_ensurer.py` is the single exception: it edits `.git/info/exclude` idempotently; outside a git work tree it skips without writing. Do not run it against a local `.gitignore`.
 - Re-running setup **overwrites** `settings.json` — user-customized values are preserved by the additive merge, but anything not covered by the schema is lost. Confirm before re-running on a project with hand-edited settings.
 - Never install detected-missing tools — setup only reports "not installed"/"unconfigured" messages.
 
