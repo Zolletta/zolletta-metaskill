@@ -9,16 +9,55 @@ from unittest.mock import MagicMock, patch
 from zolletta_metaskill.documentor.links.external_url_checker import ExternalURLChecker
 
 
+def _https_response(status: int = 200, final_url: str = "https://example.com") -> MagicMock:
+    """Return a context-manager mock response with *status* and *final_url*."""
+    mock_resp = MagicMock()
+    mock_resp.status = status
+    mock_resp.geturl.return_value = final_url
+    mock_resp.__enter__ = MagicMock(return_value=mock_resp)
+    mock_resp.__exit__ = MagicMock(return_value=False)
+    return mock_resp
+
+
 class TestExternalURLChecker:
-    """ExternalURLChecker validates external URLs over HTTP."""
+    """ExternalURLChecker validates external URLs over HTTPS."""
+
+    # --- scheme allowlist ---
+
+    def test_validate_http_scheme_rejected_without_io(self) -> None:
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            valid, error = ExternalURLChecker.validate("http://example.com")
+        assert valid is False
+        assert error is not None
+        assert "http" in error
+        mock_urlopen.assert_not_called()
+
+    def test_validate_file_scheme_rejected_without_io(self) -> None:
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            valid, error = ExternalURLChecker.validate("file:///etc/passwd")
+        assert valid is False
+        assert error is not None
+        assert "file" in error
+        mock_urlopen.assert_not_called()
+
+    def test_validate_missing_scheme_rejected_without_io(self) -> None:
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            valid, error = ExternalURLChecker.validate("example.com/page")
+        assert valid is False
+        assert error is not None
+        mock_urlopen.assert_not_called()
+
+    def test_validate_redirect_to_http_rejected(self) -> None:
+        mock_resp = _https_response(final_url="http://example.com")
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            valid, error = ExternalURLChecker.validate("https://example.com")
+        assert valid is False
+        assert error == "redirected to a non-https URL"
 
     # --- validate_external_url ---
 
     def test_magicmock_success_returns_none(self) -> None:
-        mock_resp = MagicMock()
-        mock_resp.status = 200
-        mock_resp.__enter__ = MagicMock(return_value=mock_resp)
-        mock_resp.__exit__ = MagicMock(return_value=False)
+        mock_resp = _https_response()
         with patch("urllib.request.urlopen", return_value=mock_resp):
             valid, error = ExternalURLChecker.validate("https://example.com")
         assert valid is True
@@ -28,10 +67,7 @@ class TestExternalURLChecker:
         import email.message
         import urllib.error
 
-        mock_resp = MagicMock()
-        mock_resp.status = 200
-        mock_resp.__enter__ = MagicMock(return_value=mock_resp)
-        mock_resp.__exit__ = MagicMock(return_value=False)
+        mock_resp = _https_response()
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_urlopen.side_effect = [
                 urllib.error.HTTPError(
@@ -94,10 +130,7 @@ class TestExternalURLChecker:
         assert valid is False
 
     def test_validate_issues_head_request_with_user_agent(self) -> None:
-        mock_resp = MagicMock()
-        mock_resp.status = 200
-        mock_resp.__enter__ = MagicMock(return_value=mock_resp)
-        mock_resp.__exit__ = MagicMock(return_value=False)
+        mock_resp = _https_response()
         with (
             patch("urllib.request.Request") as mock_request_cls,
             patch("urllib.request.urlopen", return_value=mock_resp) as mock_urlopen,
@@ -109,20 +142,14 @@ class TestExternalURLChecker:
         mock_urlopen.assert_called_once_with(req, timeout=10)
 
     def test_validate_status_400_returns_http_error(self) -> None:
-        mock_resp = MagicMock()
-        mock_resp.status = 400
-        mock_resp.__enter__ = MagicMock(return_value=mock_resp)
-        mock_resp.__exit__ = MagicMock(return_value=False)
+        mock_resp = _https_response(status=400)
         with patch("urllib.request.urlopen", return_value=mock_resp):
             valid, error = ExternalURLChecker.validate("https://example.com")
         assert valid is False
         assert error == "HTTP 400"
 
     def test_405_fallback_issues_get_request_with_user_agent(self) -> None:
-        mock_resp = MagicMock()
-        mock_resp.status = 200
-        mock_resp.__enter__ = MagicMock(return_value=mock_resp)
-        mock_resp.__exit__ = MagicMock(return_value=False)
+        mock_resp = _https_response()
         http_405 = urllib.error.HTTPError(
             "url", 405, "Method Not Allowed", email.message.Message(), None
         )
@@ -142,10 +169,7 @@ class TestExternalURLChecker:
         assert mock_urlopen.call_args_list[1].kwargs == {"timeout": 10}
 
     def test_405_fallback_status_400_returns_http_error(self) -> None:
-        mock_resp = MagicMock()
-        mock_resp.status = 400
-        mock_resp.__enter__ = MagicMock(return_value=mock_resp)
-        mock_resp.__exit__ = MagicMock(return_value=False)
+        mock_resp = _https_response(status=400)
         http_405 = urllib.error.HTTPError(
             "url", 405, "Method Not Allowed", email.message.Message(), None
         )

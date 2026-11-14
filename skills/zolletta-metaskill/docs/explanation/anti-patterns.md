@@ -27,7 +27,7 @@ This document audits Zolletta-metaskill against the 13 anti-patterns catalogued 
 
 **Not a gap:**
 
-- ~~Reports are in `.gitignore` — not shared via git.~~ This is by design — committing timestamped review artifacts would clutter the repository with disposable output that has no long-term value. Users who want to share a report will commit it manually, paste it, or ask their AI to do so. Making reports committable by default would force every team to add their own `.gitignore` rule to undo it.
+- ~~Reports are in `.git/info/exclude` — not shared via git.~~ This is by design — committing timestamped review artifacts would clutter the repository with disposable output that has no long-term value. Users who want to share a report will commit it manually, paste it, or ask their AI to do so. Making reports committable by default would force every team to add their own `.gitignore` rule to undo it.
 
 - ~~No "discuss" or "annotate" mechanism in reports.~~ Out of scope — Zolletta-metaskill is a review skill that produces reports, not a collaboration platform. Annotation and discussion belong to the team's existing tools (PR comments, issue trackers, chat).
 
@@ -289,7 +289,7 @@ The architecture is a direct implementation of the **Focused Agent** pattern, an
 | `docs/reference/code/review-mode.md`                             | Review is read-only — no fixes applied                                            | The review doesn't iterate on fixes. It reports once and stops — no sunk cost from patching over bad fixes                        |
 | `docs/reference/code/scripts-first-protocol.md` line 72          | "Re-running a script whose output is already in cache/ — read from cache instead" | Within a run, no re-derivation. Across runs, everything is fresh.                                                                 |
 | `skills/zolletta-metaskill-review/SUBCOMMAND.md` Step 5 line 240 | "If a subagent fails or times out, note it and continue"                          | The orchestrator doesn't retry a failed subagent — it notes the failure and moves on                                              |
-| Run folder structure                                             | Reports are disposable, timestamped, in `.gitignore`                              | Each run is a disposable artifact — no pressure to "make this run's report work"                                                  |
+| Run folder structure                                             | Reports are disposable, timestamped, in `.git/info/exclude`                       | Each run is a disposable artifact — no pressure to "make this run's report work"                                                  |
 
 **Not a gap:**
 
