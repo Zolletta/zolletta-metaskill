@@ -80,15 +80,15 @@ Two tables pick the documents worth opening first, both computed by the scanner 
 
 Each entry carries a `diagnosis` from a fixed rule table over the four maxim sub-scores and nothing else, first match wins:
 
-| Code                   | Rule                                                   | Reading                                    |
-|------------------------|--------------------------------------------------------|--------------------------------------------|
-| `uniform_deficit`      | ≥ 2 maxims measured, all below 40                      | Uniformly weak — rework the page           |
-| `dense_isolated`       | Relation < 20 and Quantity > 60                        | Dense text with low cohesion — cross-link  |
-| `isolated`             | Relation < 20                                          | Isolated page — link it from its flow      |
-| `verbose_unreferenced` | Quantity > 60 and Quality < 35                         | Verbose and poorly referenced — condense   |
-| `weak_<maxim>`         | otherwise, the lowest maxim                            | Problem on that maxim                      |
-| `balanced`             | benchmark: ≥ 2 maxims measured, all above 60           | Above the corpus on every maxim            |
-| `strong_<maxim>`       | benchmark: otherwise, the highest maxim                | Strength on that maxim                     |
+| Code                   | Rule                                         | Reading                                   |
+|------------------------|----------------------------------------------|-------------------------------------------|
+| `uniform_deficit`      | ≥ 2 maxims measured, all below 40            | Uniformly weak — rework the page          |
+| `dense_isolated`       | Relation < 20 and Quantity > 60              | Dense text with low cohesion — cross-link |
+| `isolated`             | Relation < 20                                | Isolated page — link it from its flow     |
+| `verbose_unreferenced` | Quantity > 60 and Quality < 35               | Verbose and poorly referenced — condense  |
+| `weak_<maxim>`         | otherwise, the lowest maxim                  | Problem on that maxim                     |
+| `balanced`             | benchmark: ≥ 2 maxims measured, all above 60 | Above the corpus on every maxim           |
+| `strong_<maxim>`       | benchmark: otherwise, the highest maxim      | Strength on that maxim                    |
 
 `summary` and `action` hold the English wording of the rule; translate it with the rest of the report.
 
@@ -111,10 +111,10 @@ Write `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/grice.md` with the sections below, 
 
 ## Executive Summary
 
-| Group     | Docs | Median `grice_index` | Outliers (`< <outlier_threshold>`) | Defects |
-|-----------|------|----------------------|------------------------------------|---------|
-| `<name>`  | …    | …                    | …                                  | …       |
-| **Corpus** | `<corpus_size>` | `<corpus_median>` | `<len(outliers)>` | `<len(defects)>` |
+| Group      | Docs            | Median `grice_index` | Outliers (`< <outlier_threshold>`) | Defects          |
+|------------|-----------------|----------------------|------------------------------------|------------------|
+| `<name>`   | …               | …                    | …                                  | …                |
+| **Corpus** | `<corpus_size>` | `<corpus_median>`    | `<len(outliers)>`                  | `<len(defects)>` |
 
 One row per entry of `groups`, `(root)` last; one sentence of interpretation below the table (which groups to look at first).
 

@@ -34,13 +34,13 @@ The timestamp format (`YYYY-MM-DD-HH-MM`) is lexicographically sortable, so find
 
 Each subcommand writes its own report file:
 
-| Subcommand             | Report file                  | Content                                                                                 |
-|------------------------|------------------------------|-----------------------------------------------------------------------------------------|
-| `patterns`             | `patterns.md`                | God class findings, SOLID violations, coupling analysis, structural convention results  |
-| `documentor`           | `documentor.md`              | Diátaxis compliance findings, drift detection results, staleness scores, link integrity |
+| Subcommand             | Report file                  | Content                                                                                                                  |
+|------------------------|------------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| `patterns`             | `patterns.md`                | God class findings, SOLID violations, coupling analysis, structural convention results                                   |
+| `documentor`           | `documentor.md`              | Diátaxis compliance findings, drift detection results, staleness scores, link integrity                                  |
 | `grice`                | `grice.md`                   | Executive Summary per group, structural defects, outliers with diagnosis, benchmarks (advisory, no grade; ADRs excluded) |
-| `python-code-style`    | `python-code-style.md`       | Linting findings, formatting issues, naming violations, docstring gaps, type errors     |
-| `python-testing-style` | `python-testing-patterns.md` | Coverage gaps, test isolation issues, naming violations, fixture design findings        |
+| `python-code-style`    | `python-code-style.md`       | Linting findings, formatting issues, naming violations, docstring gaps, type errors                                      |
+| `python-testing-style` | `python-testing-patterns.md` | Coverage gaps, test isolation issues, naming violations, fixture design findings                                         |
 
 ## Orchestrator output
 

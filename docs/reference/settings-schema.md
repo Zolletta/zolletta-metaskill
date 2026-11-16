@@ -266,20 +266,20 @@ Profile/model ids are harness-specific. The user supplies a value that exists in
 |-----------------------------------------|----------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `subcommands.<name>.model`              | string \| null | `null`  | Harness-specific profile/model id for subcommand `<name>`. `null` = harness default                                                                                                                                 |
 | `subcommands.<name>.included_in_review` | boolean        | `true`  | When `false`, the review orchestrator does not dispatch `<name>`'s subagent and writes `SKIPPED` in its report slot. Scope is the review roster only — a direct `/zolletta-metaskill <name>` invocation always runs |
-| `subcommands.grice.outlier_threshold` | number (0–100) | `40` | `grice` only. A document whose `grice_index` (rounded to one decimal) is below this value is listed as an outlier, with its rule-based diagnosis. Selects rows only — no index moves |
-| `subcommands.grice.benchmark_count` | integer (≥ 0) | `5` | `grice` only. How many top-ranked documents — never an outlier — the report lists as positive benchmarks |
+| `subcommands.grice.outlier_threshold`   | number (0–100) | `40`    | `grice` only. A document whose `grice_index` (rounded to one decimal) is below this value is listed as an outlier, with its rule-based diagnosis. Selects rows only — no index moves                                |
+| `subcommands.grice.benchmark_count`     | integer (≥ 0)  | `5`     | `grice` only. How many top-ranked documents — never an outlier — the report lists as positive benchmarks                                                                                                            |
 
 The seven subcommand keys:
 
-| Key                    | Subcommand                       | Default `model` | Notes                                                    |
-|------------------------|----------------------------------|-----------------|----------------------------------------------------------|
-| `patterns`             | `/zolletta-metaskill patterns`   | `null`          | Judgment-heavy — design pattern analysis                 |
-| `documentor`           | `/zolletta-metaskill documentor` | `null`          | Judgment-heavy — documentation review + drift detection  |
+| Key                    | Subcommand                       | Default `model` | Notes                                                                                                                  |
+|------------------------|----------------------------------|-----------------|------------------------------------------------------------------------------------------------------------------------|
+| `patterns`             | `/zolletta-metaskill patterns`   | `null`          | Judgment-heavy — design pattern analysis                                                                               |
+| `documentor`           | `/zolletta-metaskill documentor` | `null`          | Judgment-heavy — documentation review + drift detection                                                                |
 | `grice`                | `/zolletta-metaskill grice`      | `null`          | Mechanical — Grice maxims corpus-relative scoring, ADRs excluded; also takes `outlier_threshold` and `benchmark_count` |
-| `python-code-style`    | `python-code-style`              | `null`          | Mechanical — linting, formatting, naming (Python only)   |
-| `python-testing-style` | `python-testing-style`           | `null`          | Mechanical — test isolation, coverage gaps (Python only) |
-| `php-code-style`       | `php-code-style`                 | `null`          | Mechanical — PSR-12, naming, types (PHP only)            |
-| `php-testing-style`    | `php-testing-style`              | `null`          | Mechanical — PHPUnit, coverage gaps (PHP only)           |
+| `python-code-style`    | `python-code-style`              | `null`          | Mechanical — linting, formatting, naming (Python only)                                                                 |
+| `python-testing-style` | `python-testing-style`           | `null`          | Mechanical — test isolation, coverage gaps (Python only)                                                               |
+| `php-code-style`       | `php-code-style`                 | `null`          | Mechanical — PSR-12, naming, types (PHP only)                                                                          |
+| `php-testing-style`    | `php-testing-style`              | `null`          | Mechanical — PHPUnit, coverage gaps (PHP only)                                                                         |
 
 > **v1.x migration**: the `external_review_model` scalar (for the removed `external-review` subcommand) and the `subagent_profile` scalar (applied to all review subagents) are replaced by `subcommands` — a per-subcommand map. `external_review_model` is simply removed (the subcommand no longer exists); `subagent_profile` migrates to all review subcommand entries. Setup migrates automatically — see `skills/zolletta-metaskill/skills/zolletta-metaskill-setup/SUBCOMMAND.md` → "Step 0 — Migration and missing-keys backfill".
 >

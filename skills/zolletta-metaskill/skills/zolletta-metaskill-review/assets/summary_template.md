@@ -12,12 +12,12 @@ skills: [review]
 
 ## Grades by area
 
-| Area             | Skill            | Grade                    | Trend                |
-|------------------|------------------|--------------------------|----------------------|
-| Design patterns  | patterns         | {{patterns_grade}}/100   | {{patterns_trend}}   |
-| Documentation    | documentor       | {{documentor_grade}}/100 | {{documentor_trend}} |
-| {{lang_area_1}}  | {{lang_skill_1}} | {{lang_grade_1}}/100     | {{lang_trend_1}}     |
-| {{lang_area_2}}  | {{lang_skill_2}} | {{lang_grade_2}}/100     | {{lang_trend_2}}     |
+| Area             | Skill            | Grade                                               | Trend                |
+|------------------|------------------|-----------------------------------------------------|----------------------|
+| Design patterns  | patterns         | {{patterns_grade}}/100                              | {{patterns_trend}}   |
+| Documentation    | documentor       | {{documentor_grade}}/100                            | {{documentor_trend}} |
+| {{lang_area_1}}  | {{lang_skill_1}} | {{lang_grade_1}}/100                                | {{lang_trend_1}}     |
+| {{lang_area_2}}  | {{lang_skill_2}} | {{lang_grade_2}}/100                                | {{lang_trend_2}}     |
 | Grice (advisory) | grice            | median {{grice_median}} · {{grice_defects}} defects | {{grice_trend}}      |
 
 > Trend compares each grade with the previous review's grade for the same area (↑ improved, ↓ worsened, → unchanged, — no previous review). Only include rows for skills that were actually run.
