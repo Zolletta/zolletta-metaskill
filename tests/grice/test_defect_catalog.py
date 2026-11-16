@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from zolletta_metaskill.core.structs import Finding
@@ -42,7 +44,7 @@ class TestDefectCatalog:
             _link("docs/old/b.md", 9, "../current/x.md#tenants"),
             _link("docs/current/a.md", 4, "x.md#tenants"),
         ]
-        (defect,) = DefectCatalog.build(findings, [], _group)
+        (defect,) = DefectCatalog.build(findings, [], _group, "")
         assert defect.target == "docs/current/x.md#tenants"
         assert defect.locations == (
             DefectLocation("docs/current/a.md", 4, "current"),
@@ -52,7 +54,7 @@ class TestDefectCatalog:
 
     def test_build_every_heading_skip_returns_its_own_defect(self) -> None:
         skips = [_skip("docs/a/x.md", 3), _skip("docs/a/x.md", 9), _skip("README.md", 2)]
-        defects = DefectCatalog.build([], skips, _group)
+        defects = DefectCatalog.build([], skips, _group, "")
         assert [(d.kind, d.locations[0].file, d.locations[0].line) for d in defects] == [
             ("heading_skip", "README.md", 2),
             ("heading_skip", "docs/a/x.md", 3),
@@ -65,6 +67,7 @@ class TestDefectCatalog:
             [_link("docs/b/y.md", 5, "gone.md"), _link("docs/a/x.md", 1, "#missing")],
             [_skip("docs/a/a.md", 2)],
             _group,
+            "",
         )
         assert [(d.id, d.kind, d.target) for d in defects] == [
             ("G1", "broken_link", "docs/a/x.md#missing"),
@@ -74,18 +77,31 @@ class TestDefectCatalog:
 
     def test_build_unparseable_description_keeps_the_finding_apart(self) -> None:
         finding = Finding("docs/a/x.md", 3, "grice", "medium", "something else")
-        (defect,) = DefectCatalog.build([finding], [], _group)
+        (defect,) = DefectCatalog.build([finding], [], _group, "")
         assert defect.target == "docs/a/x.md:3"
 
     def test_build_unknown_severity_sorts_last(self) -> None:
         odd = Finding("docs/a/a.md", 1, "grice", "weird", "heading 'X' jumps from level 1 to 3")
-        defects = DefectCatalog.build([], [odd, _skip("docs/a/z.md", 1)], _group)
+        defects = DefectCatalog.build([], [odd, _skip("docs/a/z.md", 1)], _group, "")
         assert [d.severity for d in defects] == ["low", "weird"]
 
     def test_build_no_findings_returns_empty_tuple(self) -> None:
-        assert DefectCatalog.build([], [], _group) == ()
+        assert DefectCatalog.build([], [], _group, "") == ()
 
     # --- resolve_target ---
+
+    def test_resolve_target_root_relative_link_returns_root_path(self, tmp_path: Path) -> None:
+        (tmp_path / "docs").mkdir()
+        (tmp_path / "docs" / "x.md").write_text("# X\n")
+        resolved = DefectCatalog.resolve_target("docs/a/b.md", "docs/x.md#gone", str(tmp_path))
+        assert resolved == "docs/x.md#gone"
+
+    def test_resolve_target_existing_sibling_wins_over_root(self, tmp_path: Path) -> None:
+        (tmp_path / "docs" / "a" / "docs").mkdir(parents=True)
+        (tmp_path / "docs" / "a" / "docs" / "x.md").write_text("# X\n")
+        (tmp_path / "docs" / "x.md").write_text("# X\n")
+        resolved = DefectCatalog.resolve_target("docs/a/b.md", "docs/x.md#gone", str(tmp_path))
+        assert resolved == "docs/a/docs/x.md#gone"
 
     @pytest.mark.parametrize(
         ("source", "target", "expected"),
@@ -107,4 +123,4 @@ class TestDefectCatalog:
     def test_resolve_target_link_returns_repository_path(
         self, source: str, target: str, expected: str
     ) -> None:
-        assert DefectCatalog.resolve_target(source, target) == expected
+        assert DefectCatalog.resolve_target(source, target, "") == expected

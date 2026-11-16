@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import posixpath
 from collections.abc import Callable
 from dataclasses import replace
@@ -16,7 +17,8 @@ class DefectCatalog:
     """Turn the line-level findings into the report's ``G1``, ``G2``… defects.
 
     Every heading skip is its own defect. Broken links are grouped by the
-    target they resolve to — relative to the linking file, anchor included —
+    target they resolve to — like the link checker, relative to the linking
+    file with a repository-root fallback, anchor included —
     so the same missing page or anchor reached from many pages is listed
     once, with every occurrence kept. Defects are ordered by severity, then by
     their first occurrence, and only then numbered.
@@ -32,6 +34,7 @@ class DefectCatalog:
         link_findings: list[Finding],
         heading_findings: list[Finding],
         group_of: Callable[[str], str],
+        repo_path: str,
     ) -> tuple[StructuralDefect, ...]:
         """Return every defect, numbered.
 
@@ -39,12 +42,13 @@ class DefectCatalog:
             link_findings: Broken internal link/anchor findings.
             heading_findings: Heading-level skip findings.
             group_of: Maps a document path to its presentation group.
+            repo_path: Repository root, for the root-relative link fallback.
 
         Returns:
             The defects in report order with progressive ids.
 
         """
-        drafts = DefectCatalog._links(link_findings, group_of) + [
+        drafts = DefectCatalog._links(link_findings, group_of, repo_path) + [
             StructuralDefect(
                 id="",
                 kind=DefectCatalog.HEADING_SKIP,
@@ -62,12 +66,16 @@ class DefectCatalog:
         )
 
     @staticmethod
-    def resolve_target(source: str, target: str) -> str:
+    def resolve_target(source: str, target: str, repo_path: str) -> str:
         """Resolve a link *target* written in *source* to a repository path.
+
+        Mirrors ``LinkChecker``: a relative path that does not exist next to
+        *source* but does exist from the repository root resolves to the root.
 
         Args:
             source: Repository-relative path of the linking document.
             target: The link target as written, anchor included.
+            repo_path: Repository root on disk.
 
         Returns:
             The normalised repository-relative target, ``#anchor`` kept; an
@@ -81,15 +89,23 @@ class DefectCatalog:
             resolved = posixpath.normpath(path.lstrip("/"))
         else:
             resolved = posixpath.normpath(posixpath.join(posixpath.dirname(source), path))
+            from_root = posixpath.normpath(path)
+            if not os.path.exists(os.path.join(repo_path, resolved)) and os.path.exists(
+                os.path.join(repo_path, from_root)
+            ):
+                resolved = from_root
         return f"{resolved}#{anchor}" if anchor else resolved
 
     @staticmethod
-    def _links(findings: list[Finding], group_of: Callable[[str], str]) -> list[StructuralDefect]:
+    def _links(
+        findings: list[Finding], group_of: Callable[[str], str], repo_path: str
+    ) -> list[StructuralDefect]:
         """Group broken-link findings by resolved target.
 
         Args:
             findings: Broken internal link/anchor findings.
             group_of: Maps a document path to its presentation group.
+            repo_path: Repository root on disk.
 
         Returns:
             One draft defect per target, ids not yet assigned.
@@ -99,7 +115,7 @@ class DefectCatalog:
         for finding in sorted(findings, key=lambda item: (item.file, item.line)):
             raw = QualityMetrics.link_target(finding.description)
             key = (
-                DefectCatalog.resolve_target(finding.file, raw)
+                DefectCatalog.resolve_target(finding.file, raw, repo_path)
                 if raw is not None
                 else f"{finding.file}:{finding.line}"
             )

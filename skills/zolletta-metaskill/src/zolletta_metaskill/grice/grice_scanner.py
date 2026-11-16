@@ -114,7 +114,10 @@ class GriceScanner:
         thresholds = GriceSettings.from_settings(settings)
         outliers = TriageSelector.outliers(documents, thresholds.outlier_threshold)
         defects = DefectCatalog.build(
-            link_findings, heading_findings, lambda path: DocumentGrouper.group_of(path, docs_dir)
+            link_findings,
+            heading_findings,
+            lambda path: DocumentGrouper.group_of(path, docs_dir),
+            repo_path,
         )
         return GriceReport(
             documents=documents,
