@@ -2,6 +2,26 @@
 
 <!-- version list -->
 
+## v3.11.0 (2026-11-16)
+
+### Bug Fixes
+
+- **grice**: Resolve root-relative broken-link targets like the link checker
+  ([#96](https://github.com/Zolletta/zolletta-metaskill/pull/96),
+  [`178fa49`](https://github.com/Zolletta/zolletta-metaskill/commit/178fa493f00c9a3f97d332bd1695b052caaa2168))
+
+### Code Style
+
+- **docs**: Re-align markdown tables ([#96](https://github.com/Zolletta/zolletta-metaskill/pull/96),
+  [`178fa49`](https://github.com/Zolletta/zolletta-metaskill/commit/178fa493f00c9a3f97d332bd1695b052caaa2168))
+
+### Features
+
+- **grice**: Turn the report into a deterministic triage
+  ([#96](https://github.com/Zolletta/zolletta-metaskill/pull/96),
+  [`178fa49`](https://github.com/Zolletta/zolletta-metaskill/commit/178fa493f00c9a3f97d332bd1695b052caaa2168))
+
+
 ## v3.10.0 (2026-11-14)
 
 ### Features
