@@ -14,6 +14,7 @@ repository would score differently on two machines, or on one machine twice.
 from __future__ import annotations
 
 import os
+import re
 
 from zolletta_metaskill.core.structs import Finding
 from zolletta_metaskill.documentor.links.link_checker import LinkChecker
@@ -28,6 +29,23 @@ class QualityMetrics:
     FINDING_CATEGORY = "grice"
     LINK_SEVERITY = "medium"
     NON_FILE_PREFIXES = ("#", "/", "http://", "https://", "ftp://", "mailto:")
+    LINK_TARGET = re.compile(r"^internal link '(.*)' does not resolve")
+
+    @staticmethod
+    def link_target(description: str) -> str | None:
+        """Return the raw link target quoted in a broken-link finding.
+
+        Args:
+            description: The ``description`` of a finding built by
+                :meth:`evaluate`.
+
+        Returns:
+            The target as written in the document, or ``None`` when
+            *description* is not a broken-link finding.
+
+        """
+        match = QualityMetrics.LINK_TARGET.match(description)
+        return match.group(1) if match else None
 
     @staticmethod
     def evaluate(

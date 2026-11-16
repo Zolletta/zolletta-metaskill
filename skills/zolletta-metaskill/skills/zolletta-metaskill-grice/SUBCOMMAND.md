@@ -29,11 +29,15 @@ Do **not** use this skill for:
 - A corpus of uniformly excellent documents still produces a spread of indices — someone is always at the median.
 - A single document cannot be scored at all, because there is nothing to be relative to. The scanner reports `SKIPPED` for an empty corpus and adds a noise note below five documents.
 
-So the report is a ranking of documents against each other, and the only defect-like output is the findings — a broken internal link, a heading that skips a level — because those are wrong in the document, not merely below its peers.
+So the report is a ranking of documents against each other, and the only defect-like output is the structural defects — a broken internal link, a heading that skips a level — because those are wrong in the document, not merely below its peers. That is also why the report carries no headline grade: a 0-100 grade next to a 0-100 relative index invites reading 50 as a pass mark.
 
 ## Corpus
 
 The corpus is the documentor's, by construction: `DocumentationFilesFinder.find()` names it, so it is the markdown under `documentation.dir` plus `README.md`, `CONTRIBUTING.md` and `AGENTS.md`. `skills/`, `SKILL.md` and `CHANGELOG.md` are never scored — they are contracts and generated release output, so a percentile over them would measure something the author cannot change.
+
+**ADRs are excluded before normalisation**: every file under the configured `documentation.adrs` directory and under any directory named `adr` or `adrs` at any depth (e.g. `current/security/adr/`, `maintainers/adr/`, `old/v3.x/security/adr/`). A decision record's hypothetical wording and private vocabulary are what the genre demands, so ranking it against guides only produces expected false positives and shifts every other document's percentile. The payload lists the excluded paths in `excluded_adrs` and the report header states their count.
+
+The whole remaining corpus is analysed — there is no "active" versus "archive" split. **Groups** are presentation only: each document belongs to the first-level child of `documentation.dir` that holds it (`docs/current/php/x.md` → `current`), and the root documents plus the files directly in `documentation.dir` form `(root)`. Normalisation stays corpus-wide, so a group median says where that group sits in the corpus, never a ranking inside the group.
 
 ## Procedure
 
@@ -46,7 +50,7 @@ The corpus is the documentor's, by construction: `DocumentationFilesFinder.find(
 
    The scanner also writes the same payload to `cache/grice.json` under the run directory resolved by `DocumentorSettings.resolve_cache_dir`, so the cache is present even when the redirect is forgotten. It prints `Result: SKIPPED (no documentation files found)` and exits 0 when the corpus is empty — that is a "nothing to review" result, not an error.
 
-3. Assemble the report from the JSON. Do **not** re-read the documents: every number in the report comes from the cached payload, and the findings are already sorted by file and line.
+3. Assemble the report from the JSON. Do **not** re-read the documents and do not recompute anything: the groups, the outliers, the benchmarks, the diagnoses and the defect ids are all in the cached payload, already sorted.
 
 ## What each maxim measures
 
@@ -61,20 +65,95 @@ Each maxim is an aggregate of several raw metrics, normalised per metric across 
 
 The manner metrics in the first group are English-only and are dropped — and named in `disabled_metrics` — whenever `documentation.language` is not `"en"`. The structural manner metrics are language-neutral and always run.
 
-## Findings
+## Structural defects
 
-Only defects become findings, each carrying a file and a line: an internal link or anchor that does not resolve, and a heading that skips a level. Missing file references lower the `reference_resolution` metric but produce no finding, because the extractor cannot attribute them to a line.
+Only defects carry a file and a line: an internal link or anchor that does not resolve, and a heading that skips a level. The payload's `defects` lists **all** of them, numbered `G1`, `G2`, … in one progressive sequence (severity first, then first occurrence). Broken links are deduplicated per resolved target — the same missing anchor reached from twenty pages is one defect with a `count` of 20 and every location kept — because one fix resolves all of them. Every heading skip is its own defect. Missing file references lower the `reference_resolution` metric but produce no defect, because the extractor cannot attribute them to a line. `findings` keeps the raw, undeduplicated list.
 
 Everything else the report says is a measurement. A low `grice_index` is a prompt to read the document, not a defect to file.
 
+## Triage
+
+Two tables pick the documents worth opening first, both computed by the scanner from `subcommands.grice` in `settings.json`:
+
+- **Outliers** — every document whose `grice_index`, rounded to one decimal, is below `outlier_threshold` (default `40`), worst first.
+- **Positive benchmarks** — the `benchmark_count` (default `5`) top-ranked documents that are not outliers, best first: style models for refactoring the outliers.
+
+Each entry carries a `diagnosis` from a fixed rule table over the four maxim sub-scores and nothing else, first match wins:
+
+| Code                   | Rule                                         | Reading                                   |
+|------------------------|----------------------------------------------|-------------------------------------------|
+| `uniform_deficit`      | ≥ 2 maxims measured, all below 40            | Uniformly weak — rework the page          |
+| `dense_isolated`       | Relation < 20 and Quantity > 60              | Dense text with low cohesion — cross-link |
+| `isolated`             | Relation < 20                                | Isolated page — link it from its flow     |
+| `verbose_unreferenced` | Quantity > 60 and Quality < 35               | Verbose and poorly referenced — condense  |
+| `weak_<maxim>`         | otherwise, the lowest maxim                  | Problem on that maxim                     |
+| `balanced`             | benchmark: ≥ 2 maxims measured, all above 60 | Above the corpus on every maxim           |
+| `strong_<maxim>`       | benchmark: otherwise, the highest maxim      | Strength on that maxim                    |
+
+`summary` and `action` hold the English wording of the rule; translate it with the rest of the report.
+
 ## Report format
 
-Write `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/grice.md` with:
+**Language.** Write the report in the same language the user used to invoke you. The template below is in English: translate its headings and prose — including the diagnosis wording — into the invocation language. Do not translate paths, group names, metric names (`grice_index`, `Quantity`…), diagnosis codes or ids (`G1`…).
 
-1. **Grade** — the corpus index as a 0-100 score, following the shared grading rule: zero findings means 100, otherwise `100 − Σ weight(finding)` (`critical −40 · high −15 · medium −5 · low −2`), adjustable by at most ±5 with a named justification. A corpus index is **advisory and unweighted** — it never enters the overall review score, so do not present it as a quality verdict.
-2. **Corpus table** — one row per document: path, the four maxim indices, the aggregate, with `—` for a maxim that could not be measured. Add the grade band only when it helps a reader act.
-3. **Findings** — grouped by severity, `G1`, `G2`, … in one progressive sequence across severities, or `*None.*` when the scan was clean.
-4. **Notes** — the caveats from the payload verbatim: relativity, small corpus, disabled metrics. They are what keeps a reader from treating 50 as a pass mark.
+Write `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/grice.md` with the sections below, in order, every value taken from `cache/grice.json`. An empty section reads `*None.*`.
+
+```markdown
+# Grice Documentation Analysis — `<project>`
+
+> **Purpose:** assess the clarity, semantic cohesion and structural integrity of the documentation, for human readers and AI agents.
+> **Method:** Grice indices are **relative to the corpus** (50 = the middle of this repository, not a school grade). They point at stylistic or structural anomalies against the project's own standard, not at blocking errors.
+
+- **Repository / Branch:** `<repo>` (`<branch>`)
+- **Scope:** `<corpus_size>` documents in `<len(groups)>` groups — `<excluded_adrs.count>` ADR files excluded
+- **Scan date:** <YYYY-MM-DD>
+- **Generator:** `zolletta-metaskill grice` (`grice_scanner.py`)
+
+## Executive Summary
+
+| Group      | Docs            | Median `grice_index` | Outliers (`< <outlier_threshold>`) | Defects          |
+|------------|-----------------|----------------------|------------------------------------|------------------|
+| `<name>`   | …               | …                    | …                                  | …                |
+| **Corpus** | `<corpus_size>` | `<corpus_median>`    | `<len(outliers)>`                  | `<len(defects)>` |
+
+One row per entry of `groups`, `(root)` last; one sentence of interpretation below the table (which groups to look at first).
+
+## 1. Structural Defects
+
+### Heading level skips
+
+| ID | File | Line | Group | Problem | Recommended action |
+(every `heading_skip` defect)
+
+### Broken internal links and anchors
+
+| ID | Target | Occurrences | Locations |
+(every `broken_link` defect, one row per target, all `file:line` locations)
+
+## 2. Pragmatic Analysis — Outliers (`grice_index < <outlier_threshold>`)
+
+### Metric legend
+- **Quantity:** information density and length against the corpus (too short = stub; too long = wall of text).
+- **Quality:** reliability and verifiability (lowered by broken links, unresolved references, hedging, no anchors to the code).
+- **Relation:** semantic cohesion with the rest of the corpus (lowered by orphan pages and isolated vocabulary).
+- **Manner:** syntactic readability, paragraph balance and a clean heading hierarchy.
+
+### Triage table
+
+| Document | Group | Qty | Qual | Rel | Man | **Index** | Diagnosis & recommended action |
+(every entry of `outliers`; bold the sub-score named by `diagnosis.maxim`; last column = `**<summary>** (<maxim> <value>): <action>`)
+
+## 3. Positive Benchmarks
+
+| Document | Group | **Index** | Strength |
+(every entry of `benchmarks`; Strength = `diagnosis.summary`)
+
+## Notes
+
+(the payload `notes` verbatim, translated; plus `disabled_metrics` when not empty)
+```
+
+The Grice result is **advisory and unweighted**: it never enters the overall review score, and there is no headline grade. The full per-document export stays in `cache/grice.json` (`documents`) for programmatic analysis; do not paste it into the report.
 
 ## Output
 
@@ -88,12 +167,14 @@ Write `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/grice.md` with:
 **Covers:**
 
 - Corpus-relative indices for Grice's four maxims over the same documentation set `documentor` reviews
-- Deterministic findings for broken internal links, broken anchors and skipped heading levels
+- Deterministic structural defects for broken internal links, broken anchors (deduplicated per target) and skipped heading levels
+- Deterministic triage: per-group summary, outliers with a rule-based diagnosis, positive benchmarks
 - Automatic, declared degradation to language-neutral metrics for non-English documentation
 
 **Does NOT cover:**
 
 - Absolute quality judgements — no index means "good" or "bad" on its own, only "above or below this corpus"
+- ADRs — excluded before normalisation, wherever they live
 - Semantic correctness of claims against source code — that is the documentor's accuracy and API-doc pass
 - Corpora below five documents, where a percentile describes individual quirks rather than a distribution
 - Non-English readability, hedging and passive-voice metrics — `textstat` and the word lists are English

@@ -264,7 +264,7 @@
           "$ref": "#/$defs/subcommand_entry"
         },
         "grice": {
-          "$ref": "#/$defs/subcommand_entry"
+          "$ref": "#/$defs/grice_entry"
         },
         "python-code-style": {
           "$ref": "#/$defs/subcommand_entry"
@@ -300,6 +300,36 @@
           "type": "boolean",
           "description": "When false, the review orchestrator does not dispatch this subcommand's subagent and writes SKIPPED in its report slot. Scope is the review roster only — a direct /zolletta-metaskill <name> invocation always runs.",
           "default": true
+        }
+      }
+    },
+    "grice_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The grice subcommand entry: the shared model/included_in_review pair plus the two report thresholds. Both thresholds only select which already-scored documents the report lists; neither moves an index.",
+      "required": [
+        "model",
+        "included_in_review"
+      ],
+      "properties": {
+        "model": {
+          "$ref": "#/$defs/subcommand_entry/properties/model"
+        },
+        "included_in_review": {
+          "$ref": "#/$defs/subcommand_entry/properties/included_in_review"
+        },
+        "outlier_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "A document whose grice_index (rounded to one decimal) is below this value is listed as an outlier, with its rule-based diagnosis.",
+          "default": 40
+        },
+        "benchmark_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many top-ranked documents (never an outlier) the report lists as positive benchmarks.",
+          "default": 5
         }
       }
     },

@@ -12,6 +12,7 @@ import pytest
 
 from zolletta_metaskill.core.structs import Finding
 from zolletta_metaskill.grice.grice_scanner import GriceScanner
+from zolletta_metaskill.grice.grice_text_renderer import GriceTextRenderer
 from zolletta_metaskill.grice.manner_metrics import MannerMetrics
 from zolletta_metaskill.grice.structs import DocumentFeatures
 
@@ -194,11 +195,86 @@ class TestGriceScanner:
         assert report is not None
         assert any("'it'" in note for note in report.notes)
 
+    # --- build: scope, groups and triage ---
+
+    def test_build_adr_directories_are_excluded_before_scoring(
+        self, repo: Path, tmp_path: Path
+    ) -> None:
+        for relative in ("docs/guide/adr/0001-a.md", "docs/adrs/0002-b.md", "docs/decisions/3.md"):
+            (repo / relative).parent.mkdir(parents=True, exist_ok=True)
+            (repo / relative).write_text("# Decision\n\nWe might do it.\n", encoding="utf-8")
+        settings = {"documentation": {"dir": "docs", "adrs": "decisions"}}
+        report = GriceScanner.build(settings, str(repo))
+        baseline = GriceScanner.build(
+            {"documentation": {"dir": "docs"}}, str(_copy_corpus(tmp_path / "baseline"))
+        )
+        assert report is not None and baseline is not None
+        assert report.excluded_adrs == (
+            "docs/adrs/0002-b.md",
+            "docs/decisions/3.md",
+            "docs/guide/adr/0001-a.md",
+        )
+        assert report.documents == baseline.documents
+        assert any(note.startswith("3 ADR file(s) excluded") for note in report.notes)
+
+    def test_build_only_adrs_returns_none(self, tmp_path: Path) -> None:
+        (tmp_path / "docs" / "adr").mkdir(parents=True)
+        (tmp_path / "docs" / "adr" / "0001.md").write_text("# A\n", encoding="utf-8")
+        assert GriceScanner.build({"documentation": {"dir": "docs"}}, str(tmp_path)) is None
+
+    def test_build_fixture_corpus_groups_by_first_level_child(self, repo: Path) -> None:
+        report = GriceScanner.build({"documentation": {"dir": "docs"}}, str(repo))
+        assert report is not None
+        assert {row.path: row.group for row in report.documents} == {
+            "CONTRIBUTING.md": "(root)",
+            "README.md": "(root)",
+            "docs/guide/usage.md": "guide",
+            "docs/index.md": "(root)",
+            "docs/reference/api.md": "reference",
+        }
+        assert [group.name for group in report.groups] == ["guide", "reference", "(root)"]
+        assert sum(group.documents for group in report.groups) == report.corpus_size
+
+    def test_build_configured_thresholds_select_outliers_and_benchmarks(self, repo: Path) -> None:
+        settings = {
+            "documentation": {"dir": "docs"},
+            "subcommands": {"grice": {"outlier_threshold": 100, "benchmark_count": 2}},
+        }
+        report = GriceScanner.build(settings, str(repo))
+        assert report is not None
+        assert report.settings.outlier_threshold == 100.0
+        assert len(report.outliers) == report.corpus_size
+        assert report.benchmarks == ()
+
+    def test_build_default_thresholds_cap_benchmarks_at_five(self, repo: Path) -> None:
+        report = GriceScanner.build({"documentation": {"dir": "docs"}}, str(repo))
+        assert report is not None
+        assert report.settings.benchmark_count == 5
+        assert len(report.benchmarks) + len(report.outliers) <= report.corpus_size
+        indices = [e.scores.grice_index for e in report.benchmarks if e.scores.grice_index]
+        assert len(indices) == len(report.benchmarks)
+        assert indices == sorted(indices, reverse=True)
+
+    def test_build_shared_broken_target_returns_one_defect_many_locations(self, repo: Path) -> None:
+        (repo / "docs" / "guide" / "a.md").write_text(
+            "# A\n\nSee [x](../reference/api.md#nope).\n", encoding="utf-8"
+        )
+        (repo / "docs" / "b.md").write_text(
+            "# B\n\nSee [x](reference/api.md#nope).\n\n### Deep\n", encoding="utf-8"
+        )
+        report = GriceScanner.build({"documentation": {"dir": "docs"}}, str(repo))
+        assert report is not None
+        assert [(d.id, d.kind, d.target, len(d.locations)) for d in report.defects] == [
+            ("G1", "broken_link", "docs/reference/api.md#nope", 2),
+            ("G2", "heading_skip", None, 1),
+        ]
+        assert len(report.findings) == 3
+
     # --- _corpus ---
 
     def test_corpus_undecodable_document_skips_only_that_document(self, repo: Path) -> None:
         (repo / "docs" / "aaa_bad.md").write_bytes(b"\xff\xfe\x00\x01")
-        corpus = GriceScanner._corpus({"documentation": {"dir": "docs"}}, str(repo))
+        corpus, _ = GriceScanner._corpus({"documentation": {"dir": "docs"}}, str(repo))
         assert [features.path for features in corpus] == [
             "CONTRIBUTING.md",
             "README.md",
@@ -216,7 +292,7 @@ class TestGriceScanner:
             return real_read_text(self, *args, **kwargs)
 
         with patch.object(Path, "read_text", spy):
-            corpus = GriceScanner._corpus({"documentation": {"dir": "docs"}}, str(repo))
+            corpus, _ = GriceScanner._corpus({"documentation": {"dir": "docs"}}, str(repo))
         assert len(corpus) == 5
         assert calls == [{"encoding": "utf-8"}] * 5
 
@@ -281,31 +357,29 @@ class TestGriceScanner:
     # --- _notes ---
 
     def test_notes_english_corpus_returns_only_the_relativity_note(self) -> None:
-        assert GriceScanner._notes(5, "en") == (
+        assert GriceScanner._notes(5, "en", 0) == (
             "Indices are relative to this corpus: 50 is the corpus mean, not a quality threshold.",
         )
 
     def test_notes_small_corpus_appends_the_noise_note(self) -> None:
-        assert GriceScanner._notes(3, "en") == (
+        assert GriceScanner._notes(3, "en", 0) == (
             "Indices are relative to this corpus: 50 is the corpus mean, not a quality threshold.",
             f"Corpus has 3 document(s); percentiles over fewer than "
             f"{GriceScanner.MIN_CORPUS} documents are noisy.",
         )
 
     def test_notes_non_english_corpus_appends_the_disabled_metrics_note(self) -> None:
-        assert GriceScanner._notes(5, "it") == (
+        assert GriceScanner._notes(5, "it", 0) == (
             "Indices are relative to this corpus: 50 is the corpus mean, not a quality threshold.",
             "documentation.language is 'it': readability, grade level, "
             "SMOG, hedging and passive voice did not run.",
         )
 
-    # --- _cell ---
-
-    def test_cell_unmeasured_index_returns_em_dash(self) -> None:
-        assert GriceScanner._cell(None) == "—"
-
-    def test_cell_measured_index_returns_one_decimal(self) -> None:
-        assert GriceScanner._cell(50.04) == "50.0"
+    def test_notes_excluded_adrs_appends_the_exclusion_note(self) -> None:
+        assert GriceScanner._notes(5, "en", 3)[1] == (
+            "3 ADR file(s) excluded before normalisation: decision records "
+            "are not ranked against documentation."
+        )
 
     # --- _emit_json ---
 
@@ -319,69 +393,13 @@ class TestGriceScanner:
 
     # --- _emit_text ---
 
-    def test_emit_text_english_corpus_prints_the_full_report(
+    def test_emit_text_report_prints_the_rendered_markdown(
         self, repo: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         report = GriceScanner.build({"documentation": {"dir": "docs"}}, str(repo))
         assert report is not None
         GriceScanner._emit_text(report)
-        expected = [
-            "=" * 70,
-            "GRICE — DOCUMENTATION MAXIMS REPORT",
-            "=" * 70,
-            "",
-            "Corpus: 5 document(s)",
-            "",
-            "| Document | Quantity | Quality | Relation | Manner | Grice |",
-            "|---|---|---|---|---|---|",
-        ]
-        expected += [
-            f"| `{row.path}` | {GriceScanner._cell(row.quantity)} "
-            f"| {GriceScanner._cell(row.quality)} "
-            f"| {GriceScanner._cell(row.relation)} "
-            f"| {GriceScanner._cell(row.manner)} "
-            f"| {GriceScanner._cell(row.grice_index)} |"
-            for row in report.documents
-        ]
-        expected += [
-            "",
-            f"Corpus index: {GriceScanner._cell(report.corpus_index)}",
-            "",
-            "## Findings: none",
-            "",
-            "## Notes",
-            "",
-        ]
-        expected += [f"  - {note}" for note in report.notes]
-        expected.append("")
-        assert capsys.readouterr().out.splitlines() == expected
-
-    def test_emit_text_report_with_findings_lists_each_finding(
-        self, repo: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        (repo / "docs" / "zeta.md").write_text("# Zeta\n\n### Deep\n", encoding="utf-8")
-        report = GriceScanner.build({"documentation": {"dir": "docs"}}, str(repo))
-        assert report is not None
-        assert len(report.findings) == 1
-        GriceScanner._emit_text(report)
-        lines = capsys.readouterr().out.splitlines()
-        assert "## Findings (1)" in lines
-        finding = report.findings[0]
-        expected_line = (
-            f"  {finding.file}:{finding.line}  [{finding.severity}] {finding.description}"
-        )
-        assert expected_line in lines
-
-    def test_emit_text_non_english_report_lists_disabled_metrics(
-        self, repo: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        report = GriceScanner.build({"documentation": {"dir": "docs", "language": "it"}}, str(repo))
-        assert report is not None
-        GriceScanner._emit_text(report)
-        assert (
-            "Disabled metrics: readability, grade_level, smog, hedging, passive_voice"
-            in capsys.readouterr().out.splitlines()
-        )
+        assert capsys.readouterr().out == GriceTextRenderer.render(report)
 
     # --- main ---
 
@@ -393,9 +411,9 @@ class TestGriceScanner:
         monkeypatch.setattr(GriceScanner, "DEFAULT_SETTINGS_PATH", path)
         assert GriceScanner.main() == 0
         output = capsys.readouterr().out
-        assert "GRICE — DOCUMENTATION MAXIMS REPORT" in output
-        assert "Corpus: 5 document(s)" in output
-        assert "## Findings: none" in output
+        assert output.startswith("# Grice Documentation Analysis\n")
+        assert "- **Corpus:** 5 document(s)" in output.splitlines()
+        assert "Grade" not in output
 
     def test_main_enabled_toggle_writes_the_cache(
         self, repo: Path, monkeypatch: pytest.MonkeyPatch
@@ -450,7 +468,7 @@ class TestGriceScanner:
         monkeypatch.setattr(GriceScanner, "DEFAULT_SETTINGS_PATH", path)
         assert GriceScanner.main() == 0
         lines = capsys.readouterr().out.splitlines()
-        assert "Corpus: 5 document(s)" in lines
+        assert "- **Corpus:** 5 document(s)" in lines
         assert any(line.startswith("| `handbook/index.md` |") for line in lines)
 
     def test_main_nested_runs_dir_creates_the_cache_tree(

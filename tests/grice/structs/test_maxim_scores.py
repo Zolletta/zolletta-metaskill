@@ -42,6 +42,7 @@ class TestMaximScores:
         row = MaximScores(path="a.md", quantity=1.26, quality=2.0, relation=3.0, manner=None)
         assert row.to_dict() == {
             "path": "a.md",
+            "group": "(root)",
             "quantity": 1.3,
             "quality": 2.0,
             "relation": 3.0,

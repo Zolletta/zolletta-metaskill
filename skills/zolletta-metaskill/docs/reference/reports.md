@@ -34,13 +34,13 @@ The timestamp format (`YYYY-MM-DD-HH-MM`) is lexicographically sortable, so find
 
 Each subcommand writes its own report file:
 
-| Subcommand             | Report file                  | Content                                                                                 |
-|------------------------|------------------------------|-----------------------------------------------------------------------------------------|
-| `patterns`             | `patterns.md`                | God class findings, SOLID violations, coupling analysis, structural convention results  |
-| `documentor`           | `documentor.md`              | Diátaxis compliance findings, drift detection results, staleness scores, link integrity |
-| `grice`                | `grice.md`                   | Corpus-relative maxim indices, broken-link and heading-hierarchy findings               |
-| `python-code-style`    | `python-code-style.md`       | Linting findings, formatting issues, naming violations, docstring gaps, type errors     |
-| `python-testing-style` | `python-testing-patterns.md` | Coverage gaps, test isolation issues, naming violations, fixture design findings        |
+| Subcommand             | Report file                  | Content                                                                                                                  |
+|------------------------|------------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| `patterns`             | `patterns.md`                | God class findings, SOLID violations, coupling analysis, structural convention results                                   |
+| `documentor`           | `documentor.md`              | Diátaxis compliance findings, drift detection results, staleness scores, link integrity                                  |
+| `grice`                | `grice.md`                   | Executive Summary per group, structural defects, outliers with diagnosis, benchmarks (advisory, no grade; ADRs excluded) |
+| `python-code-style`    | `python-code-style.md`       | Linting findings, formatting issues, naming violations, docstring gaps, type errors                                      |
+| `python-testing-style` | `python-testing-patterns.md` | Coverage gaps, test isolation issues, naming violations, fixture design findings                                         |
 
 ## Orchestrator output
 
@@ -54,7 +54,7 @@ When running `/zolletta-metaskill review`, the orchestrator produces one additio
 
 Each specialist report follows its skill's report template (e.g. [patterns report template](../../skills/zolletta-metaskill-patterns/assets/report_template.md)); `SUMMARY.md` follows the [summary template](../../skills/zolletta-metaskill-review/assets/summary_template.md):
 
-1. **Grade** at the top (numeric 0–100, computed per the grading rule in [review-mode.md](code/review-mode.md))
+1. **Grade** at the top (numeric 0–100, computed per the grading rule in [review-mode.md](code/review-mode.md)) — except `grice.md`, which is advisory and opens with an Executive Summary instead (see the grice SUBCOMMAND.md "Report format")
 2. **Scanning script results** (tables of raw output)
 3. **Findings** grouped by severity (critical, high, medium, low)
 4. Each finding includes: file, line, issue, principle violated, suggested fix
