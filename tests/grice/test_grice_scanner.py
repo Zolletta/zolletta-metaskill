@@ -238,22 +238,23 @@ class TestGriceScanner:
     def test_build_configured_thresholds_select_outliers_and_benchmarks(self, repo: Path) -> None:
         settings = {
             "documentation": {"dir": "docs"},
-            "subcommands": {"grice": {"outlier_threshold": 100, "benchmark_count": 2}},
+            "subcommands": {"grice": {"outlier_threshold": 100}},
         }
         report = GriceScanner.build(settings, str(repo))
         assert report is not None
         assert report.settings.outlier_threshold == 100.0
         assert len(report.outliers) == report.corpus_size
-        assert report.benchmarks == ()
+        assert all(group.benchmarks == () for group in report.triage)
 
-    def test_build_default_thresholds_cap_benchmarks_at_five(self, repo: Path) -> None:
+    def test_build_default_threshold_triages_every_group(self, repo: Path) -> None:
         report = GriceScanner.build({"documentation": {"dir": "docs"}}, str(repo))
         assert report is not None
-        assert report.settings.benchmark_count == 5
-        assert len(report.benchmarks) + len(report.outliers) <= report.corpus_size
-        indices = [e.scores.grice_index for e in report.benchmarks if e.scores.grice_index]
-        assert len(indices) == len(report.benchmarks)
-        assert indices == sorted(indices, reverse=True)
+        assert [group.name for group in report.triage] == [group.name for group in report.groups]
+        assert sum(len(group.outliers) for group in report.triage) == len(report.outliers)
+        for group in report.triage:
+            assert 1 <= len(group.benchmarks) <= 5
+            assert all(entry.scores.group == group.name for entry in group.benchmarks)
+            assert sum(len(entry.strengths) for entry in group.benchmarks) <= 5
 
     def test_build_shared_broken_target_returns_one_defect_many_locations(self, repo: Path) -> None:
         (repo / "docs" / "guide" / "a.md").write_text(

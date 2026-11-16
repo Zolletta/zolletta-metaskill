@@ -23,8 +23,9 @@ numbered ``G1``, ``G2``… with broken links deduplicated per target.
 
 Everything the report shows is computed here, deterministically: the
 presentation groups (first-level children of ``documentation.dir``), the
-Executive Summary rows, the outliers and the positive benchmarks selected by
-``subcommands.grice.outlier_threshold`` and ``benchmark_count``, and the
+Executive Summary rows, and per group the outliers selected by
+``subcommands.grice.outlier_threshold`` and the positive benchmarks — the
+best ``balanced`` document and the top document on each maxim — with the
 rule-based diagnosis of each. Groups never enter the normalisation, which
 stays corpus-wide.
 
@@ -130,9 +131,7 @@ class GriceScanner:
             groups=GroupSummarizer.summarise(documents, outliers, defects),
             defects=defects,
             outliers=outliers,
-            benchmarks=TriageSelector.benchmarks(
-                documents, thresholds.benchmark_count, thresholds.outlier_threshold
-            ),
+            triage=TriageSelector.by_group(documents, outliers, thresholds.outlier_threshold),
             settings=thresholds,
         )
 

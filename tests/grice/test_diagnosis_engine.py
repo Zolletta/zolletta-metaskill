@@ -75,6 +75,27 @@ class TestDiagnosisEngine:
     def test_strength_tied_strongest_maxims_picks_the_first_in_maxim_order(self) -> None:
         assert DiagnosisEngine.strength(_row(70.0, 50.0, 70.0, 40.0)).maxim == "quantity"
 
+    def test_strength_dominant_maxim_matches_strong_reading(self) -> None:
+        assert DiagnosisEngine.strength(_row(50.0, 90.0, 48.0, 50.0)) == DiagnosisEngine.strong(
+            "quality"
+        )
+
     def test_strength_nothing_measured_returns_unmeasured(self) -> None:
         diagnosis = DiagnosisEngine.strength(_row(None, None, None, None))
         assert (diagnosis.code, diagnosis.maxim, diagnosis.action) == ("unmeasured", None, "")
+
+    # --- strong ---
+
+    def test_strong_maxim_returns_its_benchmark_reading(self) -> None:
+        diagnosis = DiagnosisEngine.strong("relation")
+        assert (diagnosis.code, diagnosis.maxim) == ("strong_relation", "relation")
+        assert diagnosis.summary == DiagnosisEngine.STRENGTHS["strong_relation"]
+        assert diagnosis.action == DiagnosisEngine.BENCHMARK_ACTION
+
+    # --- measured ---
+
+    def test_measured_partial_scores_returns_only_measured_maxims(self) -> None:
+        assert DiagnosisEngine.measured(_row(10.0, None, 30.0, None)) == {
+            "quantity": 10.0,
+            "relation": 30.0,
+        }

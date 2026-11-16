@@ -306,7 +306,7 @@
     "grice_entry": {
       "type": "object",
       "additionalProperties": false,
-      "description": "The grice subcommand entry: the shared model/included_in_review pair plus the two report thresholds. Both thresholds only select which already-scored documents the report lists; neither moves an index.",
+      "description": "The grice subcommand entry: the shared model/included_in_review pair plus the outlier threshold, which only selects which already-scored documents the report lists and never moves an index.",
       "required": [
         "model",
         "included_in_review"
@@ -328,8 +328,8 @@
         "benchmark_count": {
           "type": "integer",
           "minimum": 0,
-          "description": "How many top-ranked documents (never an outlier) the report lists as positive benchmarks.",
-          "default": 5
+          "deprecated": true,
+          "description": "Deprecated and ignored: every group lists the same five positive-benchmark slots (balanced plus the top document on each maxim). Still accepted so existing settings files validate."
         }
       }
     },

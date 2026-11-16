@@ -9,6 +9,7 @@ from typing import Any
 from zolletta_metaskill.core.structs import Finding
 from zolletta_metaskill.grice.structs.grice_settings import GriceSettings
 from zolletta_metaskill.grice.structs.group_summary import GroupSummary
+from zolletta_metaskill.grice.structs.group_triage import GroupTriage
 from zolletta_metaskill.grice.structs.maxim_scores import MaximScores
 from zolletta_metaskill.grice.structs.structural_defect import StructuralDefect
 from zolletta_metaskill.grice.structs.triage_entry import TriageEntry
@@ -37,10 +38,10 @@ class GriceReport:
         defects: :attr:`findings` numbered ``G1``, ``G2``… with broken links
             deduplicated per target.
         outliers: Documents below the outlier threshold, worst first, each
-            with its rule-based diagnosis.
-        benchmarks: The top-ranked documents, best first, each with its
-            strongest maxim.
-        settings: The thresholds that selected the outliers and benchmarks.
+            with its rule-based diagnosis — corpus-wide, for the counts.
+        triage: One entry per presentation group, in Executive Summary
+            order: its outliers and its positive benchmarks.
+        settings: The threshold that selected the outliers.
 
     """
 
@@ -52,7 +53,7 @@ class GriceReport:
     groups: tuple[GroupSummary, ...] = ()
     defects: tuple[StructuralDefect, ...] = ()
     outliers: tuple[TriageEntry, ...] = ()
-    benchmarks: tuple[TriageEntry, ...] = ()
+    triage: tuple[GroupTriage, ...] = ()
     settings: GriceSettings = field(default_factory=GriceSettings)
 
     @property
@@ -102,8 +103,9 @@ class GriceReport:
 
         Returns:
             A mapping with the corpus size, the median and mean indices, the
-            excluded ADRs, the thresholds, the Executive Summary groups, the
-            numbered defects, the outliers and benchmarks, one row per
+            excluded ADRs, the threshold, the Executive Summary groups, the
+            numbered defects, the outlier count, the per-group triage (outliers
+            and benchmarks), one row per
             document, the raw findings, and the caveats. Aggregates are
             rounded to one decimal place like every other index.
 
@@ -116,8 +118,8 @@ class GriceReport:
             "settings": self.settings.to_dict(),
             "groups": [group.to_dict() for group in self.groups],
             "defects": [defect.to_dict() for defect in self.defects],
-            "outliers": [entry.to_dict() for entry in self.outliers],
-            "benchmarks": [entry.to_dict() for entry in self.benchmarks],
+            "outlier_count": len(self.outliers),
+            "triage": [group.to_dict() for group in self.triage],
             "documents": [row.to_dict() for row in self.documents],
             "findings": [
                 {
