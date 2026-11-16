@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from zolletta_metaskill.grice.defect_catalog import DefectCatalog
+from zolletta_metaskill.grice.diagnosis_engine import DiagnosisEngine
+from zolletta_metaskill.grice.structs.diagnosis import Diagnosis
 from zolletta_metaskill.grice.structs.grice_report import GriceReport
-from zolletta_metaskill.grice.structs.triage_entry import TriageEntry
+from zolletta_metaskill.grice.structs.maxim_scores import MaximScores
 
 
 class GriceTextRenderer:
@@ -16,6 +18,8 @@ class GriceTextRenderer:
     """
 
     NONE = "*None.*"
+    HEADER = "| Document | Quantity | Quality | Relation | Manner | Index |"
+    RULE = "|---|---|---|---|---|---|---|"
 
     @staticmethod
     def render(report: GriceReport) -> str:
@@ -125,66 +129,102 @@ class GriceTextRenderer:
 
     @staticmethod
     def _outliers(report: GriceReport) -> list[str]:
-        """Return the outlier triage section.
+        """Return the outlier triage section, one table per group.
 
         Args:
             report: The scanned corpus.
 
         Returns:
-            The section's lines.
+            The section's lines; groups without outliers are left out.
 
         """
         threshold = f"{report.settings.outlier_threshold:g}"
         lines = ["", f"## 2. Outliers (`grice_index < {threshold}`)", ""]
-        if not report.outliers:
+        groups = [group for group in report.triage if group.outliers]
+        if not groups:
             return [*lines, GriceTextRenderer.NONE]
-        lines += [
-            "| Document | Group | Qty | Qual | Rel | Man | Index "
-            "| Diagnosis & recommended action |",
-            "|---|---|---|---|---|---|---|---|",
-        ]
-        return lines + [GriceTextRenderer._outlier_row(entry) for entry in report.outliers]
-
-    @staticmethod
-    def _outlier_row(entry: TriageEntry) -> str:
-        """Return one outlier table row.
-
-        Args:
-            entry: The outlier and its diagnosis.
-
-        Returns:
-            The markdown row.
-
-        """
-        row = entry.scores
-        cell = GriceTextRenderer.cell
-        return (
-            f"| `{row.path}` | `{row.group}` | {cell(row.quantity)} | {cell(row.quality)} "
-            f"| {cell(row.relation)} | {cell(row.manner)} | **{cell(row.grice_index)}** "
-            f"| **{entry.diagnosis.summary}:** {entry.diagnosis.action} |"
-        )
+        for group in groups:
+            lines += [
+                f"### `{group.name}`",
+                "",
+                f"{GriceTextRenderer.HEADER} Diagnosis & recommended action |",
+                GriceTextRenderer.RULE,
+            ]
+            lines += [
+                f"{GriceTextRenderer._scores_row(entry.scores)} "
+                f"**{entry.diagnosis.summary}:** {entry.diagnosis.action} |"
+                for entry in group.outliers
+            ]
+            lines.append("")
+        return lines[:-1]
 
     @staticmethod
     def _benchmarks(report: GriceReport) -> list[str]:
-        """Return the positive benchmarks section.
+        """Return the positive benchmarks section, one table per group.
 
         Args:
             report: The scanned corpus.
 
         Returns:
-            The section's lines.
+            The section's lines; groups without benchmarks are left out.
 
         """
         lines = ["", "## 3. Positive Benchmarks", ""]
-        if not report.benchmarks:
+        groups = [group for group in report.triage if group.benchmarks]
+        if not groups:
             return [*lines, GriceTextRenderer.NONE]
-        lines += ["| Document | Group | Index | Strength |", "|---|---|---|---|"]
-        return lines + [
-            f"| `{entry.scores.path}` | `{entry.scores.group}` "
-            f"| **{GriceTextRenderer.cell(entry.scores.grice_index)}** "
-            f"| {entry.diagnosis.summary} |"
-            for entry in report.benchmarks
-        ]
+        for group in groups:
+            lines += [
+                f"### `{group.name}`",
+                "",
+                f"{GriceTextRenderer.HEADER} Strength |",
+                GriceTextRenderer.RULE,
+            ]
+            lines += [
+                f"{GriceTextRenderer._scores_row(entry.scores)} "
+                + "; ".join(
+                    GriceTextRenderer._strength(entry.scores, strength)
+                    for strength in entry.strengths
+                )
+                + " |"
+                for entry in group.benchmarks
+            ]
+            lines.append("")
+        return lines[:-1]
+
+    @staticmethod
+    def _scores_row(row: MaximScores) -> str:
+        """Return the document, the four maxims and the index of a triage row.
+
+        Args:
+            row: The document's scores.
+
+        Returns:
+            The row's leading cells, ending with a ``|``.
+
+        """
+        cell = GriceTextRenderer.cell
+        return (
+            f"| `{row.path}` | {cell(row.quantity)} | {cell(row.quality)} "
+            f"| {cell(row.relation)} | {cell(row.manner)} | **{cell(row.grice_index)}** |"
+        )
+
+    @staticmethod
+    def _strength(row: MaximScores, strength: Diagnosis) -> str:
+        """Return one won benchmark slot as text.
+
+        Args:
+            row: The benchmark's scores.
+            strength: The slot's reading.
+
+        Returns:
+            ``**Balanced:** <summary>`` or ``**Top <Maxim> (<value>):** <summary>``.
+
+        """
+        if strength.code == "balanced" or strength.maxim is None:
+            return f"**Balanced:** {strength.summary}"
+        value = GriceTextRenderer.cell(DiagnosisEngine.measured(row).get(strength.maxim))
+        return f"**Top {strength.maxim.capitalize()} ({value}):** {strength.summary}"
 
     @staticmethod
     def _documents(report: GriceReport) -> list[str]:

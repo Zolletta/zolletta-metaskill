@@ -73,10 +73,10 @@ Everything else the report says is a measurement. A low `grice_index` is a promp
 
 ## Triage
 
-Two tables pick the documents worth opening first, both computed by the scanner from `subcommands.grice` in `settings.json`:
+Two tables per group pick the documents worth opening first, both computed by the scanner. The payload's `triage` holds one entry per group, in the Executive Summary order, each with its `outliers` and its `benchmarks`:
 
-- **Outliers** — every document whose `grice_index`, rounded to one decimal, is below `outlier_threshold` (default `40`), worst first.
-- **Positive benchmarks** — the `benchmark_count` (default `5`) top-ranked documents that are not outliers, best first: style models for refactoring the outliers.
+- **Outliers** — every document of the group whose `grice_index`, rounded to one decimal, is below `subcommands.grice.outlier_threshold` (default `40`), worst first.
+- **Positive benchmarks** — at most five non-outliers per group, in slot order: the best-ranked `balanced` document, then the document with the highest Quantity, Quality, Relation and Manner score. A document that wins several slots is listed once, with every slot it won in `strengths`; a group with no `balanced` document has no balanced slot. Ties break on the higher `grice_index`, then on the path. These are style models for refactoring the outliers of the same group.
 
 Each entry carries a `diagnosis` from a fixed rule table over the four maxim sub-scores and nothing else, first match wins:
 
@@ -88,13 +88,13 @@ Each entry carries a `diagnosis` from a fixed rule table over the four maxim sub
 | `verbose_unreferenced` | Quantity > 60 and Quality < 35               | Verbose and poorly referenced — condense  |
 | `weak_<maxim>`         | otherwise, the lowest maxim                  | Problem on that maxim                     |
 | `balanced`             | benchmark: ≥ 2 maxims measured, all above 60 | Above the corpus on every maxim           |
-| `strong_<maxim>`       | benchmark: otherwise, the highest maxim      | Strength on that maxim                    |
+| `strong_<maxim>`       | benchmark: the highest score on that maxim   | Strength on that maxim                    |
 
-`summary` and `action` hold the English wording of the rule; translate it with the rest of the report.
+`summary` and `action` hold the English wording of the rule; translate it with the rest of the report. An outlier entry carries one `diagnosis`; a benchmark entry carries one `strengths` item per slot it won.
 
 ## Report format
 
-**Language.** Write the report in the same language the user used to invoke you. The template below is in English: translate its headings and prose — including the diagnosis wording — into the invocation language. Do not translate paths, group names, metric names (`grice_index`, `Quantity`…), diagnosis codes or ids (`G1`…).
+**Language.** Write the report in the same language the user used to invoke you. The template below is in English: translate its headings and prose — including the diagnosis wording — into the invocation language. Do not translate paths, group names, metric names (`grice_index`, `Quantity`…), diagnosis codes or ids (`G1`…). Never abbreviate a metric name in a table header or cell: write `Quantity`, `Quality`, `Relation`, `Manner` in full, never `Qty`/`Qual`/`Rel`/`Man`.
 
 Write `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/grice.md` with the sections below, in order, every value taken from `cache/grice.json`. An empty section reads `*None.*`.
 
@@ -114,7 +114,7 @@ Write `<runs_dir>/<YYYY-MM-DD-HH-MM>/reports/grice.md` with the sections below, 
 | Group      | Docs            | Median `grice_index` | Outliers (`< <outlier_threshold>`) | Defects          |
 |------------|-----------------|----------------------|------------------------------------|------------------|
 | `<name>`   | …               | …                    | …                                  | …                |
-| **Corpus** | `<corpus_size>` | `<corpus_median>`    | `<len(outliers)>`                  | `<len(defects)>` |
+| **Corpus** | `<corpus_size>` | `<corpus_median>`    | `<outlier_count>`                  | `<len(defects)>` |
 
 One row per entry of `groups`, `(root)` last; one sentence of interpretation below the table (which groups to look at first).
 
@@ -140,13 +140,21 @@ One row per entry of `groups`, `(root)` last; one sentence of interpretation bel
 
 ### Triage table
 
-| Document | Group | Qty | Qual | Rel | Man | **Index** | Diagnosis & recommended action |
-(every entry of `outliers`; bold the sub-score named by `diagnosis.maxim`; last column = `**<summary>** (<maxim> <value>): <action>`)
+One table per entry of `triage` whose `outliers` is not empty, in payload order; groups without outliers are left out.
+
+#### `<group>`
+
+| Document | Quantity | Quality | Relation | Manner | **Index** | Diagnosis & recommended action |
+(every entry of that group's `outliers`; bold the sub-score named by `diagnosis.maxim`; last column = `**<summary>** (<Maxim> <value>): <action>`)
 
 ## 3. Positive Benchmarks
 
-| Document | Group | **Index** | Strength |
-(every entry of `benchmarks`; Strength = `diagnosis.summary`)
+One table per entry of `triage` whose `benchmarks` is not empty, in payload order — at most five rows each.
+
+### `<group>`
+
+| Document | Quantity | Quality | Relation | Manner | **Index** | Strength |
+(every entry of that group's `benchmarks`, in payload order; bold the sub-score of every maxim slot the entry won; Strength = one item per `strengths` entry, joined with `; ` — `**Balanced:** <summary>` for `balanced`, `**Top <Maxim> (<value>):** <summary>` for `strong_<maxim>`)
 
 ## Notes
 
@@ -168,7 +176,7 @@ The Grice result is **advisory and unweighted**: it never enters the overall rev
 
 - Corpus-relative indices for Grice's four maxims over the same documentation set `documentor` reviews
 - Deterministic structural defects for broken internal links, broken anchors (deduplicated per target) and skipped heading levels
-- Deterministic triage: per-group summary, outliers with a rule-based diagnosis, positive benchmarks
+- Deterministic triage: per-group summary, and per group the outliers with a rule-based diagnosis and up to five positive benchmarks (balanced plus the top document on each maxim)
 - Automatic, declared degradation to language-neutral metrics for non-English documentation
 
 **Does NOT cover:**

@@ -75,7 +75,7 @@ class DiagnosisEngine:
             The first matching rule's diagnosis.
 
         """
-        measured = DiagnosisEngine._measured(scores)
+        measured = DiagnosisEngine.measured(scores)
         if not measured:
             return DiagnosisEngine._outlier("unmeasured", None)
         weakest = min(
@@ -105,23 +105,39 @@ class DiagnosisEngine:
             the strongest maxim.
 
         """
-        measured = DiagnosisEngine._measured(scores)
+        measured = DiagnosisEngine.measured(scores)
         if not measured:
             return Diagnosis("unmeasured", None, DiagnosisEngine.OUTLIER_RULES["unmeasured"][0], "")
         strongest = max(
             measured, key=lambda maxim: (measured[maxim], -DiagnosisEngine.MAXIMS.index(maxim))
         )
-        code = (
-            "balanced"
-            if len(measured) > 1 and min(measured.values()) > DiagnosisEngine.HIGH
-            else f"strong_{strongest}"
-        )
+        if len(measured) > 1 and min(measured.values()) > DiagnosisEngine.HIGH:
+            return Diagnosis(
+                "balanced",
+                strongest,
+                DiagnosisEngine.STRENGTHS["balanced"],
+                DiagnosisEngine.BENCHMARK_ACTION,
+            )
+        return DiagnosisEngine.strong(strongest)
+
+    @staticmethod
+    def strong(maxim: str) -> Diagnosis:
+        """Return the benchmark reading of a document that leads on *maxim*.
+
+        Args:
+            maxim: One of :attr:`MAXIMS`.
+
+        Returns:
+            The ``strong_<maxim>`` diagnosis.
+
+        """
+        code = f"strong_{maxim}"
         return Diagnosis(
-            code, strongest, DiagnosisEngine.STRENGTHS[code], DiagnosisEngine.BENCHMARK_ACTION
+            code, maxim, DiagnosisEngine.STRENGTHS[code], DiagnosisEngine.BENCHMARK_ACTION
         )
 
     @staticmethod
-    def _measured(scores: MaximScores) -> dict[str, float]:
+    def measured(scores: MaximScores) -> dict[str, float]:
         """Return the maxims of *scores* that produced an index.
 
         Args:

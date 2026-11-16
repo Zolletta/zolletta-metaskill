@@ -11,6 +11,7 @@ from zolletta_metaskill.grice.structs import (
     GriceReport,
     GriceSettings,
     GroupSummary,
+    GroupTriage,
     MaximScores,
     StructuralDefect,
     TriageEntry,
@@ -97,6 +98,7 @@ class TestGriceReport:
             "G1", "heading_skip", "low", "d", None, (DefectLocation("docs/a/x.md", 2, "a"),)
         )
         group = GroupSummary("a", 1, 30.0, 1, 1)
+        triage = GroupTriage("a", (entry,), ())
         report = GriceReport(
             documents=(row,),
             findings=(),
@@ -106,8 +108,8 @@ class TestGriceReport:
             groups=(group,),
             defects=(defect,),
             outliers=(entry,),
-            benchmarks=(entry,),
-            settings=GriceSettings(35.0, 2),
+            triage=(triage,),
+            settings=GriceSettings(35.0),
         )
         payload = report.to_dict()
         assert payload["corpus_median"] == 30.0
@@ -115,11 +117,13 @@ class TestGriceReport:
             "count": 2,
             "paths": ["docs/adr/1.md", "docs/adr/2.md"],
         }
-        assert payload["settings"] == {"outlier_threshold": 35.0, "benchmark_count": 2}
+        assert payload["settings"] == {"outlier_threshold": 35.0}
         assert payload["groups"] == [group.to_dict()]
         assert payload["defects"] == [defect.to_dict()]
-        assert payload["outliers"] == [entry.to_dict()]
-        assert payload["benchmarks"] == [entry.to_dict()]
+        assert payload["outlier_count"] == 1
+        assert payload["triage"] == [triage.to_dict()]
+        assert "outliers" not in payload
+        assert "benchmarks" not in payload
         assert "grade" not in payload
 
     def test_to_dict_full_report_serializes_every_section(self) -> None:

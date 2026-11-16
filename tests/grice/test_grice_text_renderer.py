@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from zolletta_metaskill.grice.grice_text_renderer import GriceTextRenderer
 from zolletta_metaskill.grice.structs import (
+    BenchmarkEntry,
     DefectLocation,
     Diagnosis,
     GriceReport,
     GroupSummary,
+    GroupTriage,
     MaximScores,
     StructuralDefect,
     TriageEntry,
@@ -15,6 +17,16 @@ from zolletta_metaskill.grice.structs import (
 
 OUTLIER = MaximScores("docs/old/x.md", 30.0, 30.0, 30.0, None, group="old")
 BENCHMARK = MaximScores("docs/new/y.md", 70.0, 70.0, 70.0, 70.0, group="new")
+
+
+OUTLIER_ENTRY = TriageEntry(OUTLIER, Diagnosis("uniform_deficit", "quantity", "Weak", "Fix."))
+BENCHMARK_ENTRY = BenchmarkEntry(
+    BENCHMARK,
+    (
+        Diagnosis("balanced", "quantity", "Good", "Copy."),
+        Diagnosis("strong_relation", "relation", "Cohesive", "Copy."),
+    ),
+)
 
 
 def _report() -> GriceReport:
@@ -46,17 +58,10 @@ def _report() -> GriceReport:
                 (DefectLocation("docs/old/x.md", 9, "old"),),
             ),
         ),
-        outliers=(
-            TriageEntry(
-                OUTLIER,
-                Diagnosis("uniform_deficit", "quantity", "Weak", "Fix."),
-            ),
-        ),
-        benchmarks=(
-            TriageEntry(
-                BENCHMARK,
-                Diagnosis("balanced", "quantity", "Good", "Copy."),
-            ),
+        outliers=(OUTLIER_ENTRY,),
+        triage=(
+            GroupTriage("new", (), (BENCHMARK_ENTRY,)),
+            GroupTriage("old", (OUTLIER_ENTRY,), ()),
         ),
     )
 
@@ -92,14 +97,72 @@ class TestGriceTextRenderer:
         )
         assert "| `G1` | `docs/z.md#a` | 2 | `docs/new/y.md:3`, `docs/old/x.md:4` |" in lines
 
-    def test_render_outliers_and_benchmarks_carry_group_and_diagnosis(self) -> None:
+    def test_render_outliers_one_table_per_group_with_full_metric_names(self) -> None:
         lines = GriceTextRenderer.render(_report()).splitlines()
-        assert "## 2. Outliers (`grice_index < 40`)" in lines
-        assert (
-            "| `docs/old/x.md` | `old` | 30.0 | 30.0 | 30.0 | — | **30.0** | **Weak:** Fix. |"
-            in lines
+        start = lines.index("## 2. Outliers (`grice_index < 40`)")
+        end = lines.index("## 3. Positive Benchmarks")
+        assert lines[start:end] == [
+            "## 2. Outliers (`grice_index < 40`)",
+            "",
+            "### `old`",
+            "",
+            "| Document | Quantity | Quality | Relation | Manner | Index "
+            "| Diagnosis & recommended action |",
+            "|---|---|---|---|---|---|---|",
+            "| `docs/old/x.md` | 30.0 | 30.0 | 30.0 | — | **30.0** | **Weak:** Fix. |",
+            "",
+        ]
+
+    def test_render_benchmarks_one_table_per_group_lists_every_slot(self) -> None:
+        lines = GriceTextRenderer.render(_report()).splitlines()
+        start = lines.index("## 3. Positive Benchmarks")
+        end = lines.index("## Corpus")
+        assert lines[start:end] == [
+            "## 3. Positive Benchmarks",
+            "",
+            "### `new`",
+            "",
+            "| Document | Quantity | Quality | Relation | Manner | Index | Strength |",
+            "|---|---|---|---|---|---|---|",
+            "| `docs/new/y.md` | 70.0 | 70.0 | 70.0 | 70.0 | **70.0** "
+            "| **Balanced:** Good; **Top Relation (70.0):** Cohesive |",
+            "",
+        ]
+
+    def test_render_several_groups_are_separated_by_a_blank_line(self) -> None:
+        other = TriageEntry(
+            MaximScores("docs/new/z.md", 20.0, 20.0, 20.0, 20.0, group="new"),
+            Diagnosis("uniform_deficit", "quantity", "Weak", "Fix."),
         )
-        assert "| `docs/new/y.md` | `new` | **70.0** | Good |" in lines
+        report = GriceReport(
+            documents=(),
+            findings=(),
+            disabled_metrics=(),
+            notes=(),
+            triage=(
+                GroupTriage("new", (other,), (BENCHMARK_ENTRY,)),
+                GroupTriage("old", (OUTLIER_ENTRY,), (BENCHMARK_ENTRY,)),
+            ),
+        )
+        lines = GriceTextRenderer.render(report).splitlines()
+        assert lines.count("### `new`") == 2
+        assert lines.count("### `old`") == 2
+        old = lines.index("### `old`")
+        assert lines[old - 2 : old] == [
+            "| `docs/new/z.md` | 20.0 | 20.0 | 20.0 | 20.0 | **20.0** | **Weak:** Fix. |",
+            "",
+        ]
+
+    def test_render_strength_without_maxim_reads_as_balanced(self) -> None:
+        entry = BenchmarkEntry(BENCHMARK, (Diagnosis("unmeasured", None, "None", ""),))
+        report = GriceReport(
+            documents=(),
+            findings=(),
+            disabled_metrics=(),
+            notes=(),
+            triage=(GroupTriage("new", (), (entry,)),),
+        )
+        assert "| **Balanced:** None |" in GriceTextRenderer.render(report)
 
     def test_render_corpus_table_lists_every_document_with_its_group(self) -> None:
         lines = GriceTextRenderer.render(_report()).splitlines()

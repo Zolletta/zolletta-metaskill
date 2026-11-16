@@ -7,9 +7,11 @@ description: "The grice report is a deterministic triage — per-group summary, 
 
 # ADR-0014: The Grice report is a deterministic triage, not a grade
 
+> **Superseded.** This record is kept as history per [ADR-0000](0000-adrs-record-architecture-not-activity.md). [ADR-0015](0015-grice-triage-is-per-group.md) carries its rules forward and splits the triage per group: one outlier table and up to five benchmarks (balanced plus the top on each maxim) per group, no `benchmark_count` setting, and no abbreviated metric names.
+
 ## Status
 
-Accepted
+Superseded by [ADR-0015](0015-grice-triage-is-per-group.md)
 
 ## Context
 

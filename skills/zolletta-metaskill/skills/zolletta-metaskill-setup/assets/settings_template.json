@@ -19,8 +19,7 @@
     "grice": {
       "model": null,
       "included_in_review": true,
-      "outlier_threshold": 40,
-      "benchmark_count": 5
+      "outlier_threshold": 40
     },
     "python-code-style": {
       "model": null,
