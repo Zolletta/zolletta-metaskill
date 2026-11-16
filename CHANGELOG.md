@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v3.12.0 (2026-11-16)
+
+### Features
+
+- **grice**: Split the triage per group with five benchmark slots
+  ([#97](https://github.com/Zolletta/zolletta-metaskill/pull/97),
+  [`8239ec1`](https://github.com/Zolletta/zolletta-metaskill/commit/8239ec10b8c8be5e67081849bab7c10b40c292d0))
+
+
 ## v3.11.0 (2026-11-16)
 
 ### Bug Fixes
