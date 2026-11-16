@@ -21,6 +21,9 @@ class MaximScores:
         quality: Quality index in 0-100, or ``None``.
         relation: Relation index in 0-100, or ``None``.
         manner: Manner index in 0-100, or ``None``.
+        group: Presentation group — the first-level child of
+            ``documentation.dir`` holding the document, or ``(root)``. It
+            never enters the normalisation, which stays corpus-wide.
 
     """
 
@@ -29,6 +32,7 @@ class MaximScores:
     quality: float | None
     relation: float | None
     manner: float | None
+    group: str = "(root)"
 
     @property
     def available(self) -> tuple[float, ...]:
@@ -61,7 +65,7 @@ class MaximScores:
         """Serialize the row for the JSON report.
 
         Returns:
-            A mapping with the path, the four indices, and the aggregate, each
+            A mapping with the path, the group, the four indices, and the aggregate, each
             rounded to one decimal place. ``None`` stays ``None`` so a reader
             can tell "not measured" from "measured low".
 
@@ -69,6 +73,7 @@ class MaximScores:
         index = self.grice_index
         return {
             "path": self.path,
+            "group": self.group,
             "quantity": MaximScores._round(self.quantity),
             "quality": MaximScores._round(self.quality),
             "relation": MaximScores._round(self.relation),

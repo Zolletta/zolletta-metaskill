@@ -6,7 +6,8 @@ deterministic metrics over the documentation corpus, normalized against that
 corpus, and reported as indices in 0-100. The corpus is the documentor's:
 ``DocumentationFilesFinder`` names it, so ``documentation.dir`` plus
 ``README.md``, ``CONTRIBUTING.md`` and ``AGENTS.md``, with ``skills/``,
-``SKILL.md`` and ``CHANGELOG.md`` out of scope.
+``SKILL.md`` and ``CHANGELOG.md`` out of scope — minus every ADR, which
+``CorpusScope`` removes before anything is normalised.
 
 **The indices are relative, and that is the whole design.** A ``grice_index`` of
 50 means "the middle of this corpus", never "mediocre". Two consequences follow
@@ -17,7 +18,15 @@ corpus with no documents, and adds a noise note below five.
 
 Findings are the exception to the relativity. A broken internal link or a
 heading that skips a level is a defect in the document, not a rank among its
-peers, so those are reported as ordinary findings with file and line.
+peers, so those are reported as ordinary findings with file and line, and
+numbered ``G1``, ``G2``… with broken links deduplicated per target.
+
+Everything the report shows is computed here, deterministically: the
+presentation groups (first-level children of ``documentation.dir``), the
+Executive Summary rows, the outliers and the positive benchmarks selected by
+``subcommands.grice.outlier_threshold`` and ``benchmark_count``, and the
+rule-based diagnosis of each. Groups never enter the normalisation, which
+stays corpus-wide.
 
 Usage:
     python3 grice_scanner.py [--json]
@@ -47,12 +56,23 @@ from zolletta_metaskill.documentor.utils.documentation_files_finder import (
 )
 from zolletta_metaskill.documentor.utils.documentor_settings import DocumentorSettings
 from zolletta_metaskill.grice.corpus_normalizer import CorpusNormalizer
+from zolletta_metaskill.grice.corpus_scope import CorpusScope
+from zolletta_metaskill.grice.defect_catalog import DefectCatalog
+from zolletta_metaskill.grice.document_grouper import DocumentGrouper
+from zolletta_metaskill.grice.grice_text_renderer import GriceTextRenderer
+from zolletta_metaskill.grice.group_summarizer import GroupSummarizer
 from zolletta_metaskill.grice.manner_metrics import MannerMetrics
 from zolletta_metaskill.grice.markdown_corpus import MarkdownCorpus
 from zolletta_metaskill.grice.quality_metrics import QualityMetrics
 from zolletta_metaskill.grice.quantity_metrics import QuantityMetrics
 from zolletta_metaskill.grice.relation_metrics import RelationMetrics
-from zolletta_metaskill.grice.structs import DocumentFeatures, GriceReport, MaximScores
+from zolletta_metaskill.grice.structs import (
+    DocumentFeatures,
+    GriceReport,
+    GriceSettings,
+    MaximScores,
+)
+from zolletta_metaskill.grice.triage_selector import TriageSelector
 
 
 class GriceScanner:
@@ -84,21 +104,40 @@ class GriceScanner:
             document — an empty corpus has nothing to be relative to.
 
         """
-        corpus = GriceScanner._corpus(settings, repo_path)
+        corpus, excluded = GriceScanner._corpus(settings, repo_path)
         if not corpus:
             return None
         language = str(ProjectConfig.setting(settings, "documentation.language", "en"))
-        raw, findings = GriceScanner._raw(corpus, repo_path, language)
+        docs_dir = str(ProjectConfig.docs_dir(settings))
+        raw, link_findings, heading_findings = GriceScanner._raw(corpus, repo_path, language)
+        documents = GriceScanner._score(corpus, raw, docs_dir)
+        thresholds = GriceSettings.from_settings(settings)
+        outliers = TriageSelector.outliers(documents, thresholds.outlier_threshold)
+        defects = DefectCatalog.build(
+            link_findings, heading_findings, lambda path: DocumentGrouper.group_of(path, docs_dir)
+        )
         return GriceReport(
-            documents=GriceScanner._score(corpus, raw),
-            findings=tuple(sorted(findings, key=lambda finding: (finding.file, finding.line))),
+            documents=documents,
+            findings=tuple(
+                sorted(link_findings + heading_findings, key=lambda item: (item.file, item.line))
+            ),
             disabled_metrics=GriceScanner._disabled_metrics(language),
-            notes=GriceScanner._notes(len(corpus), language),
+            notes=GriceScanner._notes(len(corpus), language, len(excluded)),
+            excluded_adrs=tuple(sorted(excluded)),
+            groups=GroupSummarizer.summarise(documents, outliers, defects),
+            defects=defects,
+            outliers=outliers,
+            benchmarks=TriageSelector.benchmarks(
+                documents, thresholds.benchmark_count, thresholds.outlier_threshold
+            ),
+            settings=thresholds,
         )
 
     @staticmethod
-    def _corpus(settings: dict[str, Any], repo_path: str) -> tuple[DocumentFeatures, ...]:
-        """Parse every documentation file in scope.
+    def _corpus(
+        settings: dict[str, Any], repo_path: str
+    ) -> tuple[tuple[DocumentFeatures, ...], tuple[str, ...]]:
+        """Parse every documentation file in scope, ADRs left out.
 
         Args:
             settings: Parsed ``settings.json`` contents.
@@ -108,22 +147,24 @@ class GriceScanner:
             One feature set per readable document, sorted by path. A file that
             cannot be decoded is skipped rather than aborting the scan, because
             one unreadable document should not silence the other fifty-nine.
+            Also returns the ADR paths that :class:`CorpusScope` excluded.
 
         """
         inventory = DocumentationFilesFinder.find(settings, repo_path)
+        paths, excluded = CorpusScope.split(inventory.all_paths, settings)
         features: list[DocumentFeatures] = []
-        for path in inventory.all_paths:
+        for path in paths:
             try:
                 text = (Path(repo_path) / path).read_text(encoding="utf-8")
             except (OSError, UnicodeDecodeError):
                 continue
             features.append(MarkdownCorpus.parse(path, text))
-        return tuple(features)
+        return tuple(features), excluded
 
     @staticmethod
     def _raw(
         corpus: tuple[DocumentFeatures, ...], repo_path: str, language: str
-    ) -> tuple[dict[str, tuple[dict[str, float], ...]], list[Finding]]:
+    ) -> tuple[dict[str, tuple[dict[str, float], ...]], list[Finding], list[Finding]]:
         """Run the four maxim scorers over the corpus.
 
         Runs over every document once, so the cross-document metrics (corpus
@@ -136,13 +177,15 @@ class GriceScanner:
             language: ``documentation.language``.
 
         Returns:
-            Maxim name to one raw metric mapping per document, plus every
-            finding the scorers raised.
+            Maxim name to one raw metric mapping per document, then the
+            broken-link findings (Quality) and the heading-skip findings
+            (Manner).
 
         """
         source_text = GriceScanner._source_text(repo_path)
         rows: dict[str, list[dict[str, float]]] = {maxim: [] for maxim in GriceScanner.MAXIMS}
-        findings: list[Finding] = []
+        link_findings: list[Finding] = []
+        heading_findings: list[Finding] = []
         for features in corpus:
             quantity, _ = QuantityMetrics.evaluate(features, corpus)
             quality, quality_findings = QualityMetrics.evaluate(features, repo_path, source_text)
@@ -155,9 +198,10 @@ class GriceScanner:
                 ("manner", manner),
             ):
                 rows[maxim].append(metrics)
-            findings.extend(quality_findings)
-            findings.extend(manner_findings)
-        return {maxim: tuple(rows[maxim]) for maxim in GriceScanner.MAXIMS}, findings
+            link_findings.extend(quality_findings)
+            heading_findings.extend(manner_findings)
+        rows_by_maxim = {maxim: tuple(rows[maxim]) for maxim in GriceScanner.MAXIMS}
+        return rows_by_maxim, link_findings, heading_findings
 
     @staticmethod
     def _source_text(repo_path: str) -> str:
@@ -185,12 +229,14 @@ class GriceScanner:
     def _score(
         corpus: tuple[DocumentFeatures, ...],
         raw: dict[str, tuple[dict[str, float], ...]],
+        docs_dir: str,
     ) -> tuple[MaximScores, ...]:
         """Normalize every maxim across the corpus and build one row per document.
 
         Args:
             corpus: The parsed documents, used for row paths.
             raw: Maxim name to one raw metric mapping per document.
+            docs_dir: ``documentation.dir``, which names each row's group.
 
         Returns:
             One :class:`MaximScores` per document, in corpus order.
@@ -206,6 +252,7 @@ class GriceScanner:
                 quality=CorpusNormalizer.aggregate_maxim(normalised, "quality", index),
                 relation=CorpusNormalizer.aggregate_maxim(normalised, "relation", index),
                 manner=CorpusNormalizer.aggregate_maxim(normalised, "manner", index),
+                group=DocumentGrouper.group_of(features.path, docs_dir),
             )
             for index, features in enumerate(corpus)
         )
@@ -227,12 +274,13 @@ class GriceScanner:
         return ("readability", "grade_level", "smog", "hedging", "passive_voice")
 
     @staticmethod
-    def _notes(corpus_size: int, language: str) -> tuple[str, ...]:
+    def _notes(corpus_size: int, language: str, excluded_adrs: int) -> tuple[str, ...]:
         """Return the caveats that qualify the numbers.
 
         Args:
             corpus_size: How many documents were scored.
             language: ``documentation.language``.
+            excluded_adrs: How many ADR files were left out.
 
         Returns:
             The caveats, always at least the relativity note — an index is
@@ -242,6 +290,11 @@ class GriceScanner:
         notes = [
             "Indices are relative to this corpus: 50 is the corpus mean, not a quality threshold.",
         ]
+        if excluded_adrs:
+            notes.append(
+                f"{excluded_adrs} ADR file(s) excluded before normalisation: decision records "
+                "are not ranked against documentation."
+            )
         if corpus_size < GriceScanner.MIN_CORPUS:
             notes.append(
                 f"Corpus has {corpus_size} document(s); percentiles over fewer than "
@@ -255,20 +308,6 @@ class GriceScanner:
         return tuple(notes)
 
     @staticmethod
-    def _cell(value: float | None) -> str:
-        """Format one index for the markdown table.
-
-        Args:
-            value: The index, or ``None`` when the maxim was not measured.
-
-        Returns:
-            The index to one decimal place, or an em dash for "not measured" —
-            never ``0``, which would read as "measured and worst".
-
-        """
-        return "—" if value is None else f"{value:.1f}"
-
-    @staticmethod
     def _emit_json(report: GriceReport) -> None:
         """Print the JSON report.
 
@@ -280,41 +319,13 @@ class GriceScanner:
 
     @staticmethod
     def _emit_text(report: GriceReport) -> None:
-        """Print the markdown report.
+        """Print the report as markdown.
 
         Args:
-            report: The scored corpus.
+            report: The scanned corpus.
 
         """
-        print("=" * 70)
-        print("GRICE — DOCUMENTATION MAXIMS REPORT")
-        print("=" * 70)
-        print(f"\nCorpus: {report.corpus_size} document(s)")
-        print("\n| Document | Quantity | Quality | Relation | Manner | Grice |")
-        print("|---|---|---|---|---|---|")
-        for row in report.documents:
-            print(
-                f"| `{row.path}` | {GriceScanner._cell(row.quantity)} "
-                f"| {GriceScanner._cell(row.quality)} "
-                f"| {GriceScanner._cell(row.relation)} "
-                f"| {GriceScanner._cell(row.manner)} "
-                f"| {GriceScanner._cell(row.grice_index)} |"
-            )
-        print(f"\nCorpus index: {GriceScanner._cell(report.corpus_index)}")
-        if report.disabled_metrics:
-            print(f"\nDisabled metrics: {', '.join(report.disabled_metrics)}")
-        if report.findings:
-            print(f"\n## Findings ({len(report.findings)})\n")
-            for finding in report.findings:
-                print(
-                    f"  {finding.file}:{finding.line}  [{finding.severity}] {finding.description}"
-                )
-        else:
-            print("\n## Findings: none")
-        print("\n## Notes\n")
-        for note in report.notes:
-            print(f"  - {note}")
-        print()
+        print(GriceTextRenderer.render(report), end="")
 
     @staticmethod
     def main() -> int:

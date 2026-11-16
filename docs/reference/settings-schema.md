@@ -266,6 +266,8 @@ Profile/model ids are harness-specific. The user supplies a value that exists in
 |-----------------------------------------|----------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `subcommands.<name>.model`              | string \| null | `null`  | Harness-specific profile/model id for subcommand `<name>`. `null` = harness default                                                                                                                                 |
 | `subcommands.<name>.included_in_review` | boolean        | `true`  | When `false`, the review orchestrator does not dispatch `<name>`'s subagent and writes `SKIPPED` in its report slot. Scope is the review roster only — a direct `/zolletta-metaskill <name>` invocation always runs |
+| `subcommands.grice.outlier_threshold` | number (0–100) | `40` | `grice` only. A document whose `grice_index` (rounded to one decimal) is below this value is listed as an outlier, with its rule-based diagnosis. Selects rows only — no index moves |
+| `subcommands.grice.benchmark_count` | integer (≥ 0) | `5` | `grice` only. How many top-ranked documents — never an outlier — the report lists as positive benchmarks |
 
 The seven subcommand keys:
 
@@ -273,7 +275,7 @@ The seven subcommand keys:
 |------------------------|----------------------------------|-----------------|----------------------------------------------------------|
 | `patterns`             | `/zolletta-metaskill patterns`   | `null`          | Judgment-heavy — design pattern analysis                 |
 | `documentor`           | `/zolletta-metaskill documentor` | `null`          | Judgment-heavy — documentation review + drift detection  |
-| `grice`                | `/zolletta-metaskill grice`      | `null`          | Mechanical — Grice maxims corpus-relative scoring        |
+| `grice`                | `/zolletta-metaskill grice`      | `null`          | Mechanical — Grice maxims corpus-relative scoring, ADRs excluded; also takes `outlier_threshold` and `benchmark_count` |
 | `python-code-style`    | `python-code-style`              | `null`          | Mechanical — linting, formatting, naming (Python only)   |
 | `python-testing-style` | `python-testing-style`           | `null`          | Mechanical — test isolation, coverage gaps (Python only) |
 | `php-code-style`       | `php-code-style`                 | `null`          | Mechanical — PSR-12, naming, types (PHP only)            |

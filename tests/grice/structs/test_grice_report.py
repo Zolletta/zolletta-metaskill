@@ -5,7 +5,16 @@ from __future__ import annotations
 import pytest
 
 from zolletta_metaskill.core.structs import Finding
-from zolletta_metaskill.grice.structs import GriceReport, MaximScores
+from zolletta_metaskill.grice.structs import (
+    DefectLocation,
+    Diagnosis,
+    GriceReport,
+    GriceSettings,
+    GroupSummary,
+    MaximScores,
+    StructuralDefect,
+    TriageEntry,
+)
 
 
 class TestGriceReport:
@@ -58,6 +67,61 @@ class TestGriceReport:
 
     # --- to_dict ---
 
+    # --- corpus_median ---
+
+    def test_corpus_median_measured_documents_returns_their_median(self) -> None:
+        report = GriceReport(
+            documents=(
+                MaximScores(path="a.md", quantity=10.0, quality=None, relation=None, manner=None),
+                MaximScores(path="b.md", quantity=20.0, quality=None, relation=None, manner=None),
+                MaximScores(path="c.md", quantity=90.0, quality=None, relation=None, manner=None),
+                MaximScores(path="d.md", quantity=None, quality=None, relation=None, manner=None),
+            ),
+            findings=(),
+            disabled_metrics=(),
+            notes=(),
+        )
+        assert report.corpus_median == 20.0
+
+    def test_corpus_median_no_measured_document_returns_none(self) -> None:
+        report = GriceReport(documents=(), findings=(), disabled_metrics=(), notes=())
+        assert report.corpus_median is None
+        assert report.to_dict()["corpus_median"] is None
+
+    # --- to_dict: triage ---
+
+    def test_to_dict_triage_sections_serialize_every_entry(self) -> None:
+        row = MaximScores("docs/a/x.md", 30.0, 30.0, 30.0, 30.0, group="a")
+        entry = TriageEntry(row, Diagnosis("uniform_deficit", "quantity", "s", "a"))
+        defect = StructuralDefect(
+            "G1", "heading_skip", "low", "d", None, (DefectLocation("docs/a/x.md", 2, "a"),)
+        )
+        group = GroupSummary("a", 1, 30.0, 1, 1)
+        report = GriceReport(
+            documents=(row,),
+            findings=(),
+            disabled_metrics=(),
+            notes=(),
+            excluded_adrs=("docs/adr/1.md", "docs/adr/2.md"),
+            groups=(group,),
+            defects=(defect,),
+            outliers=(entry,),
+            benchmarks=(entry,),
+            settings=GriceSettings(35.0, 2),
+        )
+        payload = report.to_dict()
+        assert payload["corpus_median"] == 30.0
+        assert payload["excluded_adrs"] == {
+            "count": 2,
+            "paths": ["docs/adr/1.md", "docs/adr/2.md"],
+        }
+        assert payload["settings"] == {"outlier_threshold": 35.0, "benchmark_count": 2}
+        assert payload["groups"] == [group.to_dict()]
+        assert payload["defects"] == [defect.to_dict()]
+        assert payload["outliers"] == [entry.to_dict()]
+        assert payload["benchmarks"] == [entry.to_dict()]
+        assert "grade" not in payload
+
     def test_to_dict_full_report_serializes_every_section(self) -> None:
         report = GriceReport(
             documents=(
@@ -81,6 +145,7 @@ class TestGriceReport:
         assert payload["documents"] == [
             {
                 "path": "a.md",
+                "group": "(root)",
                 "quantity": 50.0,
                 "quality": 50.0,
                 "relation": 50.0,

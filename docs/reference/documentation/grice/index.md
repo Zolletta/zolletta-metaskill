@@ -24,13 +24,17 @@ The scanner says this in every report: the first entry of `notes` is always the 
 
 ## Findings are the exception
 
-Relativity governs the indices, not the defects. A broken internal link or a heading that descends two levels is wrong in the document itself, whatever its peers do, so those become ordinary findings with a file and a line. Everything else the scanner produces is a measurement.
+Relativity governs the indices, not the defects. A broken internal link or a heading that descends two levels is wrong in the document itself, whatever its peers do, so those become ordinary findings with a file and a line — numbered `G1`, `G2`… in the report, with broken links deduplicated per target. Everything else the scanner produces is a measurement.
 
 Missing file references are the deliberate half-way case: they lower the `reference_resolution` metric but produce no finding, because the reference extractor returns a set without line numbers and a finding anchored on line 1 would point nowhere.
 
 ## The corpus
 
 The corpus is the documentor's, by construction. `DocumentationFilesFinder.find(settings, repo_path)` names it, so the scan covers the markdown under `documentation.dir` plus the root documents `README.md`, `CONTRIBUTING.md` and `AGENTS.md`. `skills/`, `SKILL.md` and `CHANGELOG.md` are never scored — they are hand-maintained contracts and generated release output, so a percentile over them would measure something the author cannot act on.
+
+ADRs are removed before anything is normalised: `CorpusScope` drops every file under the configured `documentation.adrs` directory and under any directory named `adr` or `adrs` at any depth, so decision records scattered across `current/security/adr/`, `maintainers/adr/` or `old/v3.x/security/adr/` all leave the corpus. A decision record's hypothetical wording and private vocabulary are what the genre demands; ranking it against guides would only produce expected false positives and shift every other percentile. The payload lists them in `excluded_adrs`.
+
+What remains is analysed whole — no directory is treated as active or archived. `DocumentGrouper` assigns each document a presentation group, the first-level child of `documentation.dir` that holds it, with the root documents and the files directly in `documentation.dir` forming `(root)`. Groups never enter the normalisation; they only shape the Executive Summary rows and the `Group` column of the triage tables.
 
 Two scans of the same tree produce the same numbers. Nothing here reads git history, network state or wall-clock time; the metrics are computed from the document text and the file tree alone.
 
@@ -56,9 +60,11 @@ The result is a percentile in 0-100 with 50 at the mean. It is deliberately not 
 
 ## Reading a report
 
-The markdown report is a table with one row per document and five numeric columns: the four maxim indices plus the aggregate. An em dash (`—`) means "not measured", never "zero" — a document with no frontmatter has no frontmatter-content score, and printing `0` would read as "measured and worst".
+The report opens with the corpus size, the number of ADR files excluded and an **Executive Summary**: one row per group with its document count, median `grice_index`, outlier count and defect count, plus a corpus row. There is no headline grade — the corpus median is the headline figure, and it sits near 50 by construction.
 
-Below the table come `Corpus index`, `Disabled metrics`, `Findings` and `Notes`. The notes are the part to read before acting on any number: they carry the relativity statement, the small-corpus warning, and the list of metrics that did not run.
+Then come the **structural defects** (`G1`, `G2`…, broken links deduplicated per target with every location kept), the **outliers** — documents below `subcommands.grice.outlier_threshold`, default `40` — with a rule-based diagnosis read from the four sub-scores, and the **positive benchmarks** — the top `subcommands.grice.benchmark_count`, default `5`. The scanner computes all of it; the report only lays it out, in the language the skill was invoked in. An em dash (`—`) means "not measured", never "zero" — a document with no frontmatter has no frontmatter-content score, and printing `0` would read as "measured and worst".
+
+The full per-document table stays in `cache/grice.json`. The notes are the part to read before acting on any number: they carry the relativity statement, the ADR exclusion, the small-corpus warning, and the list of metrics that did not run.
 
 ## Limits
 

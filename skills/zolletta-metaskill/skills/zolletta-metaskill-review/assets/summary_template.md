@@ -18,11 +18,11 @@ skills: [review]
 | Documentation    | documentor       | {{documentor_grade}}/100 | {{documentor_trend}} |
 | {{lang_area_1}}  | {{lang_skill_1}} | {{lang_grade_1}}/100     | {{lang_trend_1}}     |
 | {{lang_area_2}}  | {{lang_skill_2}} | {{lang_grade_2}}/100     | {{lang_trend_2}}     |
-| Grice (advisory) | grice            | {{grice_grade}}/100      | {{grice_trend}}      |
+| Grice (advisory) | grice            | median {{grice_median}} · {{grice_defects}} defects | {{grice_trend}}      |
 
 > Trend compares each grade with the previous review's grade for the same area (↑ improved, ↓ worsened, → unchanged, — no previous review). Only include rows for skills that were actually run.
 
-The grice row is advisory: its grade is a corpus-relative index (50 = the corpus mean, not a pass mark) and is **excluded** from the weighted overall grade. Write `SKIPPED` when `subcommands.grice.included_in_review` is false.
+The grice row is advisory and has no grade: it shows the corpus median `grice_index` (`corpus_median` in `cache/grice.json`; 50 = the middle of the corpus, not a pass mark) and the number of structural defects (`len(defects)`), and is **excluded** from the weighted overall grade. Its trend compares the median with the previous review's. Write `SKIPPED` when `subcommands.grice.included_in_review` is false.
 
 ## Strengths
 

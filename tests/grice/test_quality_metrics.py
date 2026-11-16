@@ -176,6 +176,20 @@ class TestQualityMetrics:
         )
         assert metrics["lexical_alignment"] == 0.0
 
+    # --- link_target ---
+
+    def test_link_target_broken_link_finding_returns_the_raw_target(self, tmp_path: Path) -> None:
+        (tmp_path / "docs").mkdir()
+        text = "# Index\n\nSee [x](missing.md#a).\n"
+        (tmp_path / "docs" / "index.md").write_text(text)
+        _, findings = QualityMetrics.evaluate(
+            MarkdownCorpus.parse("docs/index.md", text), str(tmp_path), ""
+        )
+        assert QualityMetrics.link_target(findings[0].description) == "missing.md#a"
+
+    def test_link_target_other_description_returns_none(self) -> None:
+        assert QualityMetrics.link_target("heading 'X' jumps from level 1 to 3") is None
+
     # --- _is_file_reference ---
 
     @pytest.mark.parametrize(
